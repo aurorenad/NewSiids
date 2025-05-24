@@ -1,0 +1,145 @@
+.content {
+    padding: 1.5rem;
+    min-width: 100%;
+}
+
+/* Table */
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-row {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-cell {
+    padding: 1rem;
+    font-size: 0.875rem;
+    color: #4a5568;
+}
+
+.header-cell {
+    background-color: #f7fafc;
+    font-weight: 500;
+    color: #2d3748;
+}
+
+/* Footer */
+.footer {
+    margin-top: 2rem;
+    text-align: right;
+    font-size: 0.875rem;
+    color: #718096;
+}
+/* TaxReportView.css */
+
+.tax-report-container {
+    display: flex;
+    justify-content: center;
+    padding: 40px 20px;
+    background-color: #f7f9fc;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.tax-report-card {
+    width: 100%;
+    max-width: 800px;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #2a3f54;
+    margin: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.print-btn {
+    background-color: #1890ff;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.print-btn:hover {
+    background-color: #0077e6;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+}
+
+.report-table .header-cell {
+    background-color: #f0f4f8;
+    font-weight: 600;
+    padding: 12px 15px;
+    width: 35%;
+    text-align: left;
+    border: 1px solid #e0e6ed;
+}
+
+.report-table .table-cell {
+    padding: 12px 15px;
+    border: 1px solid #e0e6ed;
+    word-break: break-word;
+}
+
+.footer {
+    font-size: 14px;
+    color: #777;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+
+    .tax-report-card,
+    .tax-report-card * {
+        visibility: visible;
+    }
+
+    .tax-report-card {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+    }
+
+    .action-buttons {
+        display: none;
+    }
+
+    .footer {
+        color: #000;
+    }
+}
