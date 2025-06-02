@@ -20,11 +20,29 @@ import {ClaimForm} from "./Components/ClaimForm.jsx";
 import {SClaimForm} from "./Components/SClaimForm.jsx"
 import SurveillanceCaseView from "./Components/SurveillenceOffice/SurveillanceCaseView.jsx";
 
-const ProtectedRoute = ({ children }) => {
-    const { currentUser } = useContext(AuthContext);
+// const ProtectedRoute = ({ children }) => {
+//     const { currentUser } = useContext(AuthContext);
+//
+//     if (!currentUser) {
+//         return <Navigate to="/login" />;
+//     }
+//
+//     return (
+//         <div className="app-container">
+//             <Sidebar />
+//             <div className="main-content">
+//                 <Header />
+//                 {children}
+//             </div>
+//         </div>
+//     );
+// };
 
-    if (!currentUser) {
-        return <Navigate to="/login" />;
+const ProtectedRoute = ({ children }) => {
+    const { currentUser, token } = useContext(AuthContext);
+
+    if (!currentUser || !token) {
+        return <Navigate to="/" />;
     }
 
     return (

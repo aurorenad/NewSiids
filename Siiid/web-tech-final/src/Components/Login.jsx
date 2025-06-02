@@ -1,22 +1,57 @@
-// src/components/Login.jsx
 import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
+import axios from '../api/axios.jsx';
 import '../styles/Login.css';
 
 const Login = () => {
     const [userId, setUserId] = useState('');
     const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
+    const [error, setError] = useState('');
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        login(userId);
-        navigate('home');
-    };
+        setError('');
 
+        try {
+            const authAxios = axios.create({
+                baseURL: 'http://localhost:8080',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const response = await authAxios.post('/login', {
+                username: userId.trim(),
+                password: password
+            });
+
+            console.log('Login response:', response.data);
+
+            if (response.data?.token) {
+                login(userId, response.data.token, rememberMe);
+                navigate('/intelligence-officer');
+            } else {
+                setError(response.data?.error || 'Authentication failed');
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            let errorMessage = 'Login failed. Please try again.';
+
+            if (err.response) {
+                errorMessage = err.response.data?.error ||
+                    err.response.data?.message ||
+                    `Server error: ${err.response.status}`;
+            } else if (err.request) {
+                errorMessage = 'No response from server. Check your connection.';
+            }
+
+            setError(errorMessage);
+        }
+    };
     return (
         <div className="login-container">
             <div className="login-card">
@@ -26,6 +61,8 @@ const Login = () => {
 
                 <h2 className="system-title">Strategic Intelligence & Investigation Division System</h2>
                 <h3 className="system-subtitle">(SIIDs)</h3>
+
+                {error && <div className="error-message">{error}</div>}
 
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
@@ -54,15 +91,6 @@ const Login = () => {
                         />
                     </div>
 
-                    <div className="remember-me">
-                        <input
-                            type="checkbox"
-                            id="rememberMe"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                        />
-                        <label htmlFor="rememberMe">Remember Me</label>
-                    </div>
 
                     <button type="submit" className="login-btn">Login</button>
 

@@ -1,35 +1,48 @@
-// src/contexts/AuthContext.jsx
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 
-export const AuthContext = createContext();
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [token, setToken] = useState(null);
 
-    useEffect(() => {
-        // Check if user is stored in localStorage
-        const user = localStorage.getItem('user');
-        if (user) {
-            setCurrentUser(JSON.parse(user));
+    const login = (userId, jwtToken, remember = false) => {
+        setCurrentUser(userId);
+        setToken(jwtToken);
+
+        if (remember) {
+            localStorage.setItem('token', jwtToken);
+            localStorage.setItem('userId', userId);
+        } else {
+            sessionStorage.setItem('token', jwtToken);
+            sessionStorage.setItem('userId', userId);
         }
-        setLoading(false);
-    }, []);
-
-    const login = (userId) => {
-        const user = { userId };
-        localStorage.setItem('user', JSON.stringify(user));
-        setCurrentUser(user);
     };
 
     const logout = () => {
-        localStorage.removeItem('user');
         setCurrentUser(null);
+        setToken(null);
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('userId');
     };
 
+    React.useEffect(() => {
+        const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const storedUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+        if (storedToken && storedUserId) {
+            setCurrentUser(storedUserId);
+            setToken(storedToken);
+        }
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ currentUser, login, logout }}>
-            {!loading && children}
+        <AuthContext.Provider value={{ currentUser, token, login, logout }}>
+            {children}
         </AuthContext.Provider>
     );
 };
+
+export const useAuth = () => useContext(AuthContext);
+export { AuthContext };
