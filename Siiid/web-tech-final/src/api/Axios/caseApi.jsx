@@ -2,86 +2,74 @@ import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
-const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 const caseApi = axios.create({
     baseURL: BASE_URL,
     headers: {
         'Content-Type': 'application/json',
-        'Authorization':`Bearer ${token}`
     },
     timeout: 60000,
 });
 
-// caseApi.interceptors.request.use(
-//     (config) => {
-//         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-//         if (token) {
-//             config.headers['Authorization'] = `Bearer ${token}`;
-//         }
-//         return config;
-//     },
-//     (error) => Promise.reject(error)
-// );
+// Enhanced request interceptor
+caseApi.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    const employeeId = localStorage.getItem('employeeId') || localStorage.getItem('userId');
 
-// caseApi.interceptors.response.use(
-//     (response) => response,
-//     (error) => {
-//         if (error.code === 'ECONNABORTED') {
-//             error.message = 'The request took too long - please try again later';
-//         }
-//         return Promise.reject(error);
-//     }
-// );
+    // Debug logging
+    console.log('Request interceptor:');
+    console.log('- Token:', token ? 'Present' : 'Missing');
+    console.log('- Employee ID:', employeeId);
 
-// caseApi.interceptors.response.use(
-//     (response) => response,
-//     async (error) => {
-//         const originalRequest = error.config;
-//
-//         if (
-//             error.response &&
-//             error.response.status === 401 &&
-//             !originalRequest._retry
-//         ) {
-//             originalRequest._retry = true;
-//             try {
-//                 const refreshToken = localStorage.getItem('refreshToken');
-//                 if (!refreshToken) {
-//                     window.location.href = '/';
-//                     return Promise.reject(error);
-//                 }
-//
-//                 const refreshResponse = await axios.post(`${BASE_URL}/refresh_token`, {
-//                     token: refreshToken,
-//                 });
-//
-//                 const { access_token } = refreshResponse.data;
-//
-//                 localStorage.setItem('authToken', access_token);
-//
-//                 // Update the original request's Authorization header
-//                 originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
-//
-//                 return caseApi(originalRequest); // Use your configured axios instance
-//             } catch (refreshError) {
-//                 console.error('Token refresh failed:', refreshError);
-//                 localStorage.removeItem('authToken');
-//                 localStorage.removeItem('refreshToken');
-//                 window.location.href = '/login';
-//                 return Promise.reject(refreshError);
-//             }
-//         }
-//
-//         return Promise.reject(error);
-//     }
-// );
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
 
+    // Add Employee-Id header if available
+    if (employeeId) {
+        config.headers['Employee-Id'] = employeeId;
+    }
+
+    return config;
+}, (error) => Promise.reject(error));
+
+// Enhanced response interceptor
+caseApi.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            console.error('401 Unauthorized - Token may be invalid or expired');
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
 
 export const CaseService = {
-    createCase: (caseData) => caseApi.post('/api/cases', caseData),
-    updateCase: (id, caseData) => caseApi.put(`/Case/${id}`, caseData),
+    createCase: (caseData, currentUser) => {
+        console.log('Creating case with data:', caseData);
+
+        const apiData = {
+            informerId: caseData.informerId || '',
+            informerName: caseData.informerName || '',
+            tin: caseData.taxpayerInfo?.tin || caseData.tin,
+            taxPayerName: caseData.taxpayerInfo?.name || caseData.taxPayerName,
+            taxPayerType: caseData.taxpayerInfo?.type || caseData.taxPayerType,
+            taxPayerAddress: caseData.taxpayerInfo?.address || caseData.taxPayerAddress,
+            taxPeriod: caseData.period || caseData.taxPeriod,
+            summaryOfInformationCase: caseData.description || caseData.summaryOfInformationCase,
+            status: caseData.status || 'case_created',
+            reportedDate: caseData.reportDate || caseData.reportedDate,
+            updatedAt: null
+        };
+
+        console.log('Transformed API data:', apiData);
+
+        return caseApi.post('/api/cases', apiData);
+    },
+    updateCase: (id, caseData, options = {}) => caseApi.put(`/Case/${id}`, caseData, options),
     getCase: (id) => caseApi.get(`/Case/${id}`),
-    getAllCases: () => caseApi.get('/Case/all'),
+    getAllCases: () => caseApi.get('/api/cases'),
     deleteCase: (id) => caseApi.delete(`/Case/${id}`),
 };
 

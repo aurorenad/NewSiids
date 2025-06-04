@@ -107,13 +107,14 @@ function App() {
                         }
                     />
                     <Route
-                        path="intelligence-officer/view"
+                        path="intelligence-officer/view-case/:caseId"
                         element={
                             <ProtectedRoute>
-                                <TaxReportView/>
+                                <TaxReportView />
                             </ProtectedRoute>
                         }
                     />
+
                     <Route
                         path="intelligence-officer/attachment"
                         element={
