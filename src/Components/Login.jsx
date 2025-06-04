@@ -1,0 +1,106 @@
+import React, { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext.jsx';
+import axios from '../api/axios.jsx';
+import '../styles/Login.css';
+
+const Login = () => {
+    const [userId, setUserId] = useState('');
+    const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(true);
+    const [error, setError] = useState('');
+    const { login } = useContext(AuthContext);
+    const navigate = useNavigate();
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        try {
+            const authAxios = axios.create({
+                baseURL: 'http://localhost:8080',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            const response = await authAxios.post('/login', {
+                username: userId.trim(),
+                password: password
+            });
+
+            console.log('Login response:', response.data);
+
+            if (response.data?.token) {
+                login(userId, response.data.token, rememberMe);
+                navigate('/intelligence-officer');
+            } else {
+                setError(response.data?.error || 'Authentication failed');
+            }
+        } catch (err) {
+            console.error('Login error:', err);
+            let errorMessage = 'Login failed. Please try again.';
+
+            if (err.response) {
+                errorMessage = err.response.data?.error ||
+                    err.response.data?.message ||
+                    `Server error: ${err.response.status}`;
+            } else if (err.request) {
+                errorMessage = 'No response from server. Check your connection.';
+            }
+
+            setError(errorMessage);
+        }
+    };
+    return (
+        <div className="login-container">
+            <div className="login-card">
+                <div className="logo-container">
+                    <img src="/public/Images/HomeLogo.jpeg" alt="Home" />
+                </div>
+
+                <h2 className="system-title">Strategic Intelligence & Investigation Division System</h2>
+                <h3 className="system-subtitle">(SIIDs)</h3>
+
+                {error && <div className="error-message">{error}</div>}
+
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label htmlFor="userId">
+                            <i className="fa fa-user"></i> User ID
+                        </label>
+                        <input
+                            type="text"
+                            id="userId"
+                            value={userId}
+                            onChange={(e) => setUserId(e.target.value)}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">
+                            <i className="fa fa-lock"></i> Password
+                        </label>
+                        <input
+                            type="password"
+                            id="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+
+
+                    <button type="submit" className="login-btn">Login</button>
+
+                    <div className="forgot-password">
+                        <a href="/forgot-password">Forgot Password</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default Login;
