@@ -55,7 +55,6 @@ public ResponseEntity<?> login(@RequestBody User user) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
         }
 
-        // If we get here, result should be the JWT token
         Map<String, String> response = new HashMap<>();
         response.put("token", result);
         response.put("username", user.getUsername());

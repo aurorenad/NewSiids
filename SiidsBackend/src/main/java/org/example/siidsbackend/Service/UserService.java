@@ -60,7 +60,8 @@ public class UserService {
                 System.out.println("Authentication successful");
                 String token = jwtService.generateToken(user.getUsername());
                 System.out.println("Login request received for user: " + user.getUsername());
-                System.out.println("Token generated: " + (token != null ? "Yes" : "No"));
+                System.out.println("Token generated: " + token);
+//                (token != null ? "Yes" : "No")+
 
                 return token;
             } else {
