@@ -1,48 +1,54 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [token, setToken] = useState(null);
+    const [authState, setAuthState] = useState({
+        token: null,
+        userId: null,
+        employeeId: null
+    });
 
-    const login = (userId, jwtToken, remember = false) => {
-        setCurrentUser(userId);
-        setToken(jwtToken);
+    useEffect(() => {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+        const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
 
-        if (remember) {
-            localStorage.setItem('token', jwtToken);
-            localStorage.setItem('userId', userId);
-        } else {
-            sessionStorage.setItem('token', jwtToken);
-            sessionStorage.setItem('userId', userId);
-        }
-    };
-
-    const logout = () => {
-        setCurrentUser(null);
-        setToken(null);
-        localStorage.removeItem('token');
-        localStorage.removeItem('userId');
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('userId');
-    };
-
-    React.useEffect(() => {
-        const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
-        const storedUserId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        if (storedToken && storedUserId) {
-            setCurrentUser(storedUserId);
-            setToken(storedToken);
+        if (token && employeeId) {
+            setAuthState({
+                token,
+                userId,
+                employeeId
+            });
         }
     }, []);
 
+    const login = (userId, token, employeeId, remember) => {
+        if (remember) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('employeeId', employeeId);
+            localStorage.setItem('userId', userId);
+        } else {
+            sessionStorage.setItem('token', token);
+            sessionStorage.setItem('employeeId', employeeId);
+            sessionStorage.setItem('userId', userId);
+        }
+        setAuthState({ token, userId, employeeId });
+    };
+
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('employeeId');
+        localStorage.removeItem('userId');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('employeeId');
+        sessionStorage.removeItem('userId');
+        setAuthState({ token: null, userId: null, employeeId: null });
+    };
+
     return (
-        <AuthContext.Provider value={{ currentUser, token, login, logout }}>
+        <AuthContext.Provider value={{ authState, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
 };
-
-export const useAuth = () => useContext(AuthContext);
-export { AuthContext };

@@ -20,29 +20,15 @@ import {ClaimForm} from "./Components/ClaimForm.jsx";
 import {SClaimForm} from "./Components/SClaimForm.jsx"
 import SurveillanceCaseView from "./Components/SurveillenceOffice/SurveillanceCaseView.jsx";
 
-// const ProtectedRoute = ({ children }) => {
-//     const { currentUser } = useContext(AuthContext);
-//
-//     if (!currentUser) {
-//         return <Navigate to="/login" />;
-//     }
-//
-//     return (
-//         <div className="app-container">
-//             <Sidebar />
-//             <div className="main-content">
-//                 <Header />
-//                 {children}
-//             </div>
-//         </div>
-//     );
-// };
-
 const ProtectedRoute = ({ children }) => {
-    const { currentUser, token } = useContext(AuthContext);
+    const { authState } = useContext(AuthContext);
 
-    if (!currentUser || !token) {
-        return <Navigate to="/" />;
+    console.log('ProtectedRoute - Current authState:', authState);
+
+    // Check if user is authenticated (has token and employeeId)
+    if (!authState?.token || !authState?.employeeId) {
+        console.log('ProtectedRoute - Not authenticated, redirecting to login');
+        return <Navigate to="/" replace />;
     }
 
     return (
@@ -63,7 +49,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<Login />} />
                     <Route
-                        path="home"
+                        path="/home"
                         element={
                             <ProtectedRoute>
                                 <Home />
@@ -72,17 +58,7 @@ function App() {
                     />
 
                     <Route
-                        path="home"
-                        element={
-                            <ProtectedRoute>
-                                <Sidebar />
-                            </ProtectedRoute>
-                        }
-                    />
-
-
-                    <Route
-                        path="director-intelligence"
+                        path="/director-intelligence"
                         element={
                             <ProtectedRoute>
                                 <DirectorIntelligence />
@@ -91,7 +67,7 @@ function App() {
                     />
 
                     <Route
-                        path="intelligence-officer"
+                        path="/intelligence-officer"
                         element={
                             <ProtectedRoute>
                                 <IntelligenceOfficer />
@@ -99,15 +75,15 @@ function App() {
                         }
                     />
                     <Route
-                        path="intelligence-officer/newCase"
+                        path="/intelligence-officer/newCase"
                         element={
                             <ProtectedRoute>
-                            <NewCase />
+                                <NewCase />
                             </ProtectedRoute>
                         }
                     />
                     <Route
-                        path="intelligence-officer/view-case/:caseId"
+                        path="/intelligence-officer/view-case/:caseId"
                         element={
                             <ProtectedRoute>
                                 <TaxReportView />
@@ -116,7 +92,7 @@ function App() {
                     />
 
                     <Route
-                        path="intelligence-officer/attachment"
+                        path="/intelligence-officer/attachment/:caseId"
                         element={
                             <ProtectedRoute>
                                 <ClaimForm />
@@ -124,36 +100,36 @@ function App() {
                         }
                     />
                     <Route
-                        path="investigation-officer"
+                        path="/investigation-officer"
                         element={
-                        <ProtectedRoute>
-                            <InvestigationOfficer/>
-                        </ProtectedRoute>
+                            <ProtectedRoute>
+                                <InvestigationOfficer/>
+                            </ProtectedRoute>
                         }
                     />
                     <Route
-                        path="surveillence-officer"
+                        path="/surveillence-officer"
                         element={
                             <ProtectedRoute>
-                             <SurveillenceOfficer/>
+                                <SurveillenceOfficer/>
                             </ProtectedRoute>
-                    }/>
+                        }/>
                     <Route
-                        path="surveillence-officer/New"
+                        path="/surveillence-officer/New"
                         element={
                             <ProtectedRoute>
                                 <NewSurveillenceCase/>
                             </ProtectedRoute>
                         }/>
                     <Route
-                        path="surveillence-officer/view"
+                        path="/surveillence-officer/view/:caseId"
                         element={
                             <ProtectedRoute>
                                 <SurveillanceCaseView />
                             </ProtectedRoute>
                         }/>
                     <Route
-                        path="surveillence/attachment"
+                        path="/surveillence/attachment"
                         element={
                             <ProtectedRoute>
                                 <SClaimForm />
@@ -162,7 +138,7 @@ function App() {
                     />
 
                     <Route
-                        path="Director-Investigation"
+                        path="/Director-Investigation"
                         element={
                             <ProtectedRoute>
                                 <DirectorInvestigation/>
@@ -171,7 +147,7 @@ function App() {
                     />
 
                     <Route
-                        path="assistant-commissioner"
+                        path="/assistant-commissioner"
                         element={
                             <ProtectedRoute>
                                 <AssistantCommissioner />
@@ -180,7 +156,7 @@ function App() {
                     />
 
                     <Route
-                        path="history"
+                        path="/history"
                         element={
                             <ProtectedRoute>
                                 <History />
