@@ -28,10 +28,8 @@ const TaxReportForm = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Updated to match API expectations
     const taxPayerTypes = ['Individual', 'Company', 'Partnership', 'Trust', 'PAYEE'];
 
-    // Check authentication and employee ID
     useEffect(() => {
         const token = localStorage.getItem('token');
         const employeeId = localStorage.getItem('employeeId') || localStorage.getItem('userId');

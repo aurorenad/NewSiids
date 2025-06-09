@@ -25,6 +25,7 @@ public class structures {
     @Column(name = "structure_type")
     private String structureType;
 
+    @Column(name = "level")
     private short level;
 
     @Column(name = "created_at")
@@ -33,5 +34,6 @@ public class structures {
     @Column(name = "created_by")
     private String createdBy;
 
-    private String reference_id;
+    @Column(name = "reference_id")
+    private int referenceId;
 }

@@ -4,13 +4,12 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import lombok.Data;
-import lombok.ToString;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "grades")
 @Data
-@ToString
 public class Grade {
-
     @Id
     @Column(name = "grade_id")
     private int gradeId;
@@ -45,3 +44,4 @@ public class Grade {
     @Column(name = "num_years")
     private int numYears;
 }
+

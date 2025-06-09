@@ -15,7 +15,7 @@ public class Placement_Structure {
 
     @OneToOne
     @JoinColumn(name = "employee_id", referencedColumnName = "employee_id", nullable = false)
-    private Employee employee;
+    private Employee Employee;
 
     @ManyToOne
     @JoinColumn(name = "structure_id", referencedColumnName = "structure_id")

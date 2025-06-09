@@ -3,10 +3,11 @@ package org.example.siidsbackend.Model;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Entity
-@Table(name = "case_record")
+@Table(name = "`case`")
 @Data
 public class Case {
     @Id
@@ -19,8 +20,12 @@ public class Case {
     private String taxPayerType;
     private String taxPayerAddress;
     private String taxPeriod;
-    private Date reportedDate;
+    private LocalDateTime reportedDate;
+    private LocalDateTime updatedAt;
     private String summaryOfInformationCase;
-    private Status status;
-
+    @Enumerated(EnumType.STRING)
+    private WorkflowStatus status;
+    @ManyToOne
+    @JoinColumn(name = "created_by", referencedColumnName = "employee_id")
+    private Employee createdBy;
 }

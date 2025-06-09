@@ -10,67 +10,87 @@ const caseApi = axios.create({
     timeout: 60000,
 });
 
-// Enhanced request interceptor
 caseApi.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    const employeeId = localStorage.getItem('employeeId') || localStorage.getItem('userId');
-
-    // Debug logging
-    console.log('Request interceptor:');
-    console.log('- Token:', token ? 'Present' : 'Missing');
-    console.log('- Employee ID:', employeeId);
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Add Employee-Id header if available
     if (employeeId) {
-        config.headers['Employee-Id'] = employeeId;
+        config.headers['employee_id'] = employeeId.trim();
     }
 
+    console.log('Request headers:', config.headers);
     return config;
 }, (error) => Promise.reject(error));
 
-// Enhanced response interceptor
 caseApi.interceptors.response.use(
-    (response) => response,
-    (error) => {
+    (response) => {
+        console.log('Response received:', response.data);
+        return response;
+    },
+    async (error) => {
+        console.error('Response error:', error.response?.data || error.message);
+
         if (error.response?.status === 401) {
-            console.error('401 Unauthorized - Token may be invalid or expired');
-            localStorage.removeItem('token');
-            window.location.href = '/login';
+            const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+            try {
+                const response = await axios.post(`${BASE_URL}/api/auth/refresh`, { refreshToken });
+                const { token, employeeId } = response.data;
+
+                // Store the new token and employee ID in the same storage as original login
+                if (localStorage.getItem('token')) {
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('employeeId', employeeId);
+                } else {
+                    sessionStorage.setItem('token', token);
+                    sessionStorage.setItem('employeeId', employeeId);
+                }
+
+                error.config.headers['Authorization'] = `Bearer ${token}`;
+                error.config.headers['employee_id'] = employeeId;
+                return caseApi.request(error.config);
+            } catch (refreshError) {
+                // Clear all auth storage if refresh fails
+                localStorage.removeItem('token');
+                localStorage.removeItem('employeeId');
+                localStorage.removeItem('refreshToken');
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('employeeId');
+                sessionStorage.removeItem('refreshToken');
+                window.location.href = '/login';
+                return Promise.reject(refreshError);
+            }
         }
         return Promise.reject(error);
     }
 );
 
 export const CaseService = {
-    createCase: (caseData, currentUser) => {
-        console.log('Creating case with data:', caseData);
-
-        const apiData = {
-            informerId: caseData.informerId || '',
-            informerName: caseData.informerName || '',
-            tin: caseData.taxpayerInfo?.tin || caseData.tin,
-            taxPayerName: caseData.taxpayerInfo?.name || caseData.taxPayerName,
-            taxPayerType: caseData.taxpayerInfo?.type || caseData.taxPayerType,
-            taxPayerAddress: caseData.taxpayerInfo?.address || caseData.taxPayerAddress,
-            taxPeriod: caseData.period || caseData.taxPeriod,
-            summaryOfInformationCase: caseData.description || caseData.summaryOfInformationCase,
-            status: caseData.status || 'case_created',
-            reportedDate: caseData.reportDate || caseData.reportedDate,
-            updatedAt: null
-        };
-
-        console.log('Transformed API data:', apiData);
-
-        return caseApi.post('/api/cases', apiData);
+    createCase: (caseData) => {
+        return caseApi.post('/api/cases', {
+            ...caseData,
+            status: caseData.status || 'CASE_CREATED'
+        });
     },
-    updateCase: (id, caseData, options = {}) => caseApi.put(`/Case/${id}`, caseData, options),
-    getCase: (id) => caseApi.get(`/Case/${id}`),
-    getAllCases: () => caseApi.get('/api/cases'),
-    deleteCase: (id) => caseApi.delete(`/Case/${id}`),
+
+    getMyCases: () => {
+        return caseApi.get('/api/cases');
+    },
+
+    getCase: (id) => {
+        return caseApi.get(`/api/cases/${id}`);
+    },
+
+    updateCaseStatus: (id, status) => {
+        return caseApi.patch(`/api/cases/${id}/status`, { status });
+    },
+
+    deleteCase: (id) => {
+        return caseApi.delete(`/api/cases/${id}`);
+    }
 };
 
 export default caseApi;

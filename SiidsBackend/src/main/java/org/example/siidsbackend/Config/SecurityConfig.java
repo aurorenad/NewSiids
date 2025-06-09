@@ -45,7 +45,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(request -> request
                         // Fix the login endpoint matcher - add leading slash
                         .requestMatchers("/login", "/register").permitAll()
-                        .requestMatchers("/Case/**").hasAnyAuthority("User")
+                        .requestMatchers("/Case/**").hasAnyAuthority("User", "Surv")
                         .requestMatchers("/Report/**").hasAnyAuthority("User")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
