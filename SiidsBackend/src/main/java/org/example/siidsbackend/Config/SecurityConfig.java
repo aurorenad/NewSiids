@@ -46,7 +46,7 @@ public class SecurityConfig {
                         // Fix the login endpoint matcher - add leading slash
                         .requestMatchers("/login", "/register").permitAll()
                         .requestMatchers("/Case/**").hasAnyAuthority("User", "Surv")
-                        .requestMatchers("/Report/**").hasAnyAuthority("User")
+                        .requestMatchers("//api/reports/**").hasAnyAuthority("User")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
