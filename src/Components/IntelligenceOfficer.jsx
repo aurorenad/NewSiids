@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import {
+    Box,
     Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     IconButton,
+    MenuItem,
     Paper,
+    Select,
+    Snackbar,
     Table,
     TableBody,
     TableCell,
@@ -10,23 +19,31 @@ import {
     TableHead,
     TableRow,
     TextField,
-    CircularProgress,
-    Snackbar,
-    Alert,
-    Box
-} from "@mui/material";
-import { Add, Description, Search } from "@mui/icons-material";
-import SendIcon from "@mui/icons-material/Send";
-import AttachFileIcon from "@mui/icons-material/AttachFile";
+    Typography
+} from '@mui/material';
+import {
+    Add as AddIcon,
+    Description as DescriptionIcon,
+    Search as SearchIcon,
+    Send as SendIcon,
+    AttachFile as AttachFileIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { CaseService } from '../api/Axios/caseApi';
+import { CaseService, ReportApi } from '../api/Axios/caseApi';
 
 const IntelligenceOfficer = () => {
     const [cases, setCases] = useState([]);
     const [filteredCases, setFilteredCases] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [directors, setDirectors] = useState([]);
+    const [loading, setLoading] = useState({
+        cases: true,
+        directors: true
+    });
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDirector, setSelectedDirector] = useState('');
+    const [selectedReport, setSelectedReport] = useState(null);
+    const [dialogOpen, setDialogOpen] = useState(false);
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: '',
@@ -36,60 +53,41 @@ const IntelligenceOfficer = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchCases = async () => {
-            const employeeId = localStorage.getItem('employeeId')?.trim();
-            console.log("🔍 Loaded employeeId from localStorage:", employeeId);
-
-            if (!employeeId) {
-                setError('Missing employee ID. Please log in again.');
-                showSnackbar('Missing employee ID. Please log in again.', 'error');
-                setLoading(false);
-                return;
-            }
-
+        const fetchData = async () => {
             try {
-                const response = await CaseService.getMyCases();
-                console.log("✅ Fetched cases:", response.data);
+                // Fetch cases and directors in parallel
+                const [casesResponse, directorsResponse] = await Promise.all([
+                    CaseService.getMyCases(),
+                    ReportApi.getIntelligenceDirectors()
+                ]);
 
-                setCases(response.data);
-                setFilteredCases(response.data);
+                setCases(casesResponse.data);
+                setFilteredCases(casesResponse.data);
+                setDirectors(directorsResponse.data);
+
+                if (directorsResponse.data.length > 0) {
+                    setSelectedDirector(directorsResponse.data[0].employeeId);
+                }
             } catch (err) {
-                console.error('❌ Failed to fetch cases:', err);
-                setError(err.response?.data?.message || 'Failed to fetch cases');
-                showSnackbar('Failed to fetch cases', 'error');
+                console.error('Failed to load data:', err);
+                setError(err.response?.data?.message || 'Failed to load data');
+                showSnackbar('Failed to load data', 'error');
             } finally {
-                setLoading(false);
+                setLoading({ cases: false, directors: false });
             }
         };
 
-        fetchCases();
+        fetchData();
     }, []);
 
     useEffect(() => {
         const results = cases.filter(caseItem =>
             Object.values(caseItem).some(
-                value =>
-                    value &&
-                    value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+                value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
             )
         );
         setFilteredCases(results);
     }, [searchTerm, cases]);
-
-    const handleSend = async (caseId) => {
-        try {
-            await CaseService.updateCaseStatus(caseId, 'SENT_TO_DIRECTOR');
-            setCases(prevCases =>
-                prevCases.map(c =>
-                    c.caseNum === caseId ? { ...c, status: 'SENT_TO_DIRECTOR' } : c
-                )
-            );
-            showSnackbar('Case sent successfully', 'success');
-        } catch (err) {
-            console.error('❌ Failed to update case status:', err);
-            showSnackbar('Failed to send case', 'error');
-        }
-    };
 
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
@@ -99,12 +97,46 @@ const IntelligenceOfficer = () => {
         setSnackbar(prev => ({ ...prev, open: false }));
     };
 
+    const handleSendClick = (caseItem) => {
+        if (!caseItem.reportId) {
+            showSnackbar('This case has no associated report', 'error');
+            return;
+        }
+        setSelectedReport({
+            caseId: caseItem.caseNum,
+            reportId: caseItem.reportId
+        });
+        setDialogOpen(true);
+    };
+
+    const confirmSendReport = async () => {
+        try {
+            await ReportApi.sendToDirector(selectedReport.reportId, selectedDirector);
+
+            setCases(prevCases =>
+                prevCases.map(c =>
+                    c.caseNum === selectedReport.caseId
+                        ? { ...c, status: 'CASE_SUBMITTED_TO_DIRECTOR' }
+                        : c
+                )
+            );
+
+            showSnackbar('Report successfully sent to director', 'success');
+        } catch (err) {
+            console.error('Failed to send report:', err);
+            showSnackbar(err.response?.data?.message || 'Failed to send report', 'error');
+        } finally {
+            setDialogOpen(false);
+        }
+    };
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'CASE_CREATED': return '#1976d2';
-            case 'SENT_TO_DIRECTOR': return '#2e7d32';
+            case 'REPORT_SUBMITTED': return '#ff9800';
+            case 'CASE_SUBMITTED_TO_DIRECTOR': return '#4caf50';
             case 'REJECTED': return '#d32f2f';
-            case 'APPROVED': return '#4caf50';
+            case 'APPROVED': return '#2e7d32';
             default: return '#757575';
         }
     };
@@ -113,7 +145,7 @@ const IntelligenceOfficer = () => {
         return status.toLowerCase().replace(/_/g, ' ');
     };
 
-    if (loading) {
+    if (loading.cases || loading.directors) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
                 <CircularProgress />
@@ -135,19 +167,20 @@ const IntelligenceOfficer = () => {
                 display="flex"
                 justifyContent="space-between"
                 alignItems="center"
-                mb={2}
+                mb={3}
             >
-                <Box display="flex" alignItems="center">
+                <Box display="flex" alignItems="center" width="50%">
                     <TextField
+                        fullWidth
                         size="small"
                         placeholder="Search cases..."
                         variant="outlined"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         InputProps={{
-                            endAdornment: (
-                                <IconButton>
-                                    <Search />
+                            startAdornment: (
+                                <IconButton edge="start">
+                                    <SearchIcon />
                                 </IconButton>
                             ),
                         }}
@@ -156,8 +189,8 @@ const IntelligenceOfficer = () => {
                 <Button
                     variant="contained"
                     color="primary"
-                    startIcon={<Add />}
-                    onClick={() => navigate('/intelligence-officer/newCase')}
+                    startIcon={<AddIcon />}
+                    onClick={() => navigate('/intelligence-officer/new-case')}
                 >
                     New Case
                 </Button>
@@ -168,10 +201,9 @@ const IntelligenceOfficer = () => {
                     <TableHead>
                         <TableRow sx={{ backgroundColor: 'grey.100' }}>
                             <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Report ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Taxpayer Name</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
                         </TableRow>
@@ -181,51 +213,68 @@ const IntelligenceOfficer = () => {
                             filteredCases.map((caseItem) => (
                                 <TableRow key={caseItem.caseNum} hover>
                                     <TableCell>{caseItem.caseNum}</TableCell>
+                                    <TableCell>
+                                        {caseItem.reportId || 'N/A'}
+                                    </TableCell>
                                     <TableCell>{caseItem.tin || '-'}</TableCell>
                                     <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
-                                    <TableCell>{caseItem.taxPayerType || '-'}</TableCell>
-                                    <TableCell>{caseItem.taxPayerName || '-'}</TableCell>
-
                                     <TableCell>
-                                        <Box
-                                            component="span"
+                                        <Typography
+                                            variant="body2"
                                             sx={{
                                                 color: getStatusColor(caseItem.status),
-                                                fontWeight: 'medium'
+                                                fontWeight: 'medium',
+                                                textTransform: 'capitalize'
                                             }}
                                         >
                                             {formatStatusText(caseItem.status)}
-                                        </Box>
+                                        </Typography>
                                     </TableCell>
                                     <TableCell>
-                                        <IconButton
-                                            onClick={() => handleSend(caseItem.caseNum)}
-                                            color="primary"
-                                            disabled={caseItem.status !== 'CASE_CREATED'}
-                                            title="Send to Director"
-                                        >
-                                            <SendIcon />
-                                        </IconButton>
-                                        <IconButton
-                                            color="primary"
-                                            onClick={() => navigate(`/intelligence-officer/view-case/${caseItem.caseNum}`)}
-                                            title="View Details"
-                                        >
-                                            <Description />
-                                        </IconButton>
-                                        <IconButton
-                                            color="primary"
-                                            onClick={() => navigate(`/intelligence-officer/attachment/${caseItem.caseNum}`)}
-                                            title="Attachments"
-                                        >
-                                            <AttachFileIcon />
-                                        </IconButton>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <Select
+                                                value={selectedDirector}
+                                                onChange={(e) => setSelectedDirector(e.target.value)}
+                                                size="small"
+                                                sx={{ minWidth: 180 }}
+                                                disabled={caseItem.status !== 'REPORT_SUBMITTED'}
+                                            >
+                                                {directors.map((director) => (
+                                                    <MenuItem
+                                                        key={director.employeeId}
+                                                        value={director.employeeId}
+                                                    >
+                                                        {director.givenName} ({director.employeeId})
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                            <IconButton
+                                                onClick={() => handleSendClick(caseItem)}
+                                                color="primary"
+                                                disabled={caseItem.status !== 'REPORT_SUBMITTED' || !selectedDirector}
+                                                title="Send to Director"
+                                            >
+                                                <SendIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => navigate(`/intelligence-officer/view-case/${caseItem.caseNum}`)}
+                                                title="View Details"
+                                            >
+                                                <DescriptionIcon />
+                                            </IconButton>
+                                            <IconButton
+                                                onClick={() => navigate(`/intelligence-officer/claim-form/${caseItem.caseNum}`)}
+                                                title="Attachments"
+                                            >
+                                                <AttachFileIcon />
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={7} align="center">
+                                <TableCell colSpan={6} align="center">
                                     No cases found
                                 </TableCell>
                             </TableRow>
@@ -234,6 +283,28 @@ const IntelligenceOfficer = () => {
                 </Table>
             </TableContainer>
 
+            {/* Confirmation Dialog */}
+            <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
+                <DialogTitle>Confirm Report Submission</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Are you sure you want to send report <strong>{selectedReport?.reportId}</strong> to the selected director?
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        onClick={confirmSendReport}
+                        variant="contained"
+                        color="primary"
+                        startIcon={<SendIcon />}
+                    >
+                        Confirm Send
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Snackbar */}
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={6000}

@@ -40,7 +40,6 @@ caseApi.interceptors.response.use(
                 const response = await axios.post(`${BASE_URL}/api/auth/refresh`, { refreshToken });
                 const { token, employeeId } = response.data;
 
-                // Store the new token and employee ID in the same storage as original login
                 if (localStorage.getItem('token')) {
                     localStorage.setItem('token', token);
                     localStorage.setItem('employeeId', employeeId);
@@ -60,7 +59,7 @@ caseApi.interceptors.response.use(
                 sessionStorage.removeItem('token');
                 sessionStorage.removeItem('employeeId');
                 sessionStorage.removeItem('refreshToken');
-                window.location.href = '/login';
+                window.location.href = '/';
                 return Promise.reject(refreshError);
             }
         }
@@ -90,6 +89,51 @@ export const CaseService = {
 
     deleteCase: (id) => {
         return caseApi.delete(`/api/cases/${id}`);
+    }
+};
+
+export const ReportApi = {
+    submitReport: (formData, caseId) => {
+        return caseApi.post('/api/reports', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+            params: {
+                caseId: caseId
+            }
+        });
+    },
+    getIntelligenceDirectors: () => {
+        return caseApi.get('/api/reports/intelligence-directors');
+    },
+
+    getMyReports: () => {
+        return caseApi.get('/api/reports/my-reports');
+    },
+
+    getReport: (id) => {
+        return caseApi.get(`/api/reports/${id}`);
+    },
+
+    sendToDirector: (reportId, directorId) => {
+        return caseApi.post(`/api/reports/${reportId}/send-to-director`, null, {
+            params: { directorId },
+            headers: {
+                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
+            }
+        });
+    },
+
+    sendToCommissioner: (id, commissionerId) => {
+        return caseApi.post(`/api/reports/${id}/send-to-commissioner`, null, {
+            params: { commissionerId }
+        });
+    },
+
+    returnReport: (id, returnToEmployeeId) => {
+        return caseApi.post(`/api/reports/${id}/return`, null, {
+            params: { returnToEmployeeId }
+        });
     }
 };
 

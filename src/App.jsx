@@ -92,7 +92,7 @@ function App() {
                     />
 
                     <Route
-                        path="/intelligence-officer/attachment/:caseId"
+                        path="/intelligence-officer/claim-form/:caseId"
                         element={
                             <ProtectedRoute>
                                 <ClaimForm />

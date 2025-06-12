@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { ReportApi } from '../api/Axios/caseApi.jsx';
+import { useNavigate, useParams } from 'react-router-dom';
 
 export const ClaimForm = () => {
     const [text, setText] = useState('');
@@ -6,6 +8,8 @@ export const ClaimForm = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const navigate = useNavigate();
+    const { caseId } = useParams(); // Get caseId from URL parameters
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -30,8 +34,15 @@ export const ClaimForm = () => {
             return;
         }
 
+        // Check if caseId is available
+        if (!caseId) {
+            setError('Case ID is required to submit a report');
+            return;
+        }
+
         setIsSubmitting(true);
         setError('');
+        setSuccess('');
 
         try {
             const formData = new FormData();
@@ -41,29 +52,17 @@ export const ClaimForm = () => {
                 formData.append('attachment', attachment);
             }
 
-            const response = await fetch('/api/reports', {
-                method: 'POST',
-                headers: {
-                    'Employee-Id': localStorage.getItem('employeeId') || 'EMP001' // Replace with actual employee ID
-                },
-                body: formData
-            });
+            const response = await ReportApi.submitReport(formData, caseId);
 
-            if (response.ok) {
-                const result = await response.json();
-                setSuccess('Report submitted successfully!');
-                setText('');
-                setAttachment(null);
+            setSuccess('Report submitted successfully!');
+            setText('');
+            setAttachment(null);
 
-                // Redirect after 2 seconds
-                setTimeout(() => {
-                    window.location.href = '/intelligence-officer';
-                }, 2000);
-            } else {
-                throw new Error('Failed to submit report');
-            }
+            setTimeout(() => {
+                navigate('/intelligence-officer');
+            }, 2000);
         } catch (err) {
-            setError('Failed to submit report. Please try again.');
+            setError(err.response?.data?.message || 'Failed to submit report. Please try again.');
             console.error('Error submitting report:', err);
         } finally {
             setIsSubmitting(false);
@@ -71,14 +70,17 @@ export const ClaimForm = () => {
     };
 
     const handleCancel = () => {
-        window.location.href = '/intelligence-officer';
+        navigate('/intelligence-officer');
     };
 
     return (
         <div className="claim-form-wrapper">
             <div className="claim-form-container">
                 <div className="claim-form-header">
-                    <h2 className="claim-form-title">Intelligence Office Report</h2>
+                    <h2 className="claim-form-title">
+                        Intelligence Office Report
+                        {caseId && <span className="case-id"> - Case #{caseId}</span>}
+                    </h2>
                     <button className="close-button" onClick={handleCancel}>
                         ✕
                     </button>
@@ -146,7 +148,7 @@ export const ClaimForm = () => {
                     <button
                         className="send-button"
                         onClick={handleSubmit}
-                        disabled={isSubmitting || !text.trim()}
+                        disabled={isSubmitting || !text.trim() || !caseId}
                     >
                         {isSubmitting ? (
                             <>
@@ -199,6 +201,12 @@ export const ClaimForm = () => {
                     font-size: 28px;
                     font-weight: 700;
                     letter-spacing: -0.02em;
+                }
+
+                .case-id {
+                    font-size: 18px;
+                    color: #1877f2;
+                    font-weight: 600;
                 }
 
                 .close-button {
@@ -440,15 +448,15 @@ export const ClaimForm = () => {
                     .claim-form-wrapper {
                         padding: 12px;
                     }
-                    
+
                     .claim-form-container {
                         padding: 20px;
                     }
-                    
+
                     .form-buttons {
                         flex-direction: column;
                     }
-                    
+
                     .send-button, .discard-button {
                         width: 100%;
                         justify-content: center;
