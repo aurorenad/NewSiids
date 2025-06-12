@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Data
 public class Report {
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
     private String description;
@@ -33,7 +34,6 @@ public class Report {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "case_num")
-    @JsonIgnore
     private Case relatedCase;
 
     @PrePersist

@@ -3,7 +3,10 @@ package org.example.siidsbackend.Controller;
 import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
+import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
+import org.example.siidsbackend.Model.WorkflowStatus;
+import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,8 +16,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -22,14 +25,20 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ReportController {
     private final ReportService reportService;
+    private final EmployeeRepo employeeRepo;
 
     @PostMapping
     public ResponseEntity<ReportResponseDTO> createReport(
             @RequestParam("description") String description,
+            @RequestParam(value = "caseId") Integer caseId, // Fixed parameter name
             @RequestParam(value = "attachment", required = false) MultipartFile attachment,
-            @RequestHeader("Employee-Id") String employeeId) {
+            @RequestHeader("employee_id") String employeeId) { // Standardized header name
 
         try {
+            if (description == null || description.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
             String attachmentPath = null;
             if (attachment != null && !attachment.isEmpty()) {
                 attachmentPath = storeAttachment(attachment);
@@ -38,19 +47,29 @@ public class ReportController {
             ReportRequestDTO dto = new ReportRequestDTO();
             dto.setDescription(description);
             dto.setAttachmentPath(attachmentPath);
+            dto.setRelatedCase(caseId); // Fixed variable name
 
             Report report = reportService.createReport(dto, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
+            // Add logging to help debug
+            System.err.println("Error creating report: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     private String storeAttachment(MultipartFile file) throws Exception {
-        String fileName = LocalDateTime.now().toString() + "_" + file.getOriginalFilename();
-        Path filePath = Paths.get("C:\\Users\\int000098\\Documents" + fileName);
-        Files.createDirectories(filePath.getParent());
-        Files.write(filePath, file.getBytes());
+        // Create uploads directory if it doesn't exist
+        Path uploadDir = Paths.get("uploads");
+        if (!Files.exists(uploadDir)) {
+            Files.createDirectories(uploadDir);
+        }
+
+        // Generate unique filename
+        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+        Path filePath = uploadDir.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath);
         return fileName;
     }
 
@@ -64,6 +83,8 @@ public class ReportController {
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responseList);
         } catch (Exception e) {
+            System.err.println("Error getting reports: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -77,32 +98,42 @@ public class ReportController {
             // Add authorization check here if needed
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
+            System.err.println("Error getting report: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
 
-    @PostMapping("/{id}/send-to-director")
+    @PostMapping("/{id}/send-to-director-intelligence")
     public ResponseEntity<ReportResponseDTO> sendToDirector(
-            @PathVariable Integer id,
+            @PathVariable("id") Integer reportId,
             @RequestParam String directorId,
-            @RequestHeader("Employee-Id") String employeeId) {
+            @RequestHeader("employee_id") String employeeId) {
         try {
-            Report report = reportService.sendToDirector(id, directorId);
+            Employee sender = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Sender not found"));
+
+            Report report = reportService.sendToDirectorIntelligence(reportId, directorId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
+
         } catch (Exception e) {
+            System.err.println("Error sending to director: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
-    @PostMapping("/{id}/send-to-commissioner")
+    @PostMapping("/{id}/send-to-commissioner-intelligence")
     public ResponseEntity<ReportResponseDTO> sendToCommissioner(
             @PathVariable Integer id,
             @RequestParam String commissionerId,
-            @RequestHeader("Employee-Id") String employeeId) {
+            @RequestHeader("employee_id") String employeeId) {
         try {
             Report report = reportService.sendToAssistantCommissioner(id, commissionerId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
+            System.err.println("Error sending to commissioner: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
@@ -111,11 +142,13 @@ public class ReportController {
     public ResponseEntity<ReportResponseDTO> returnReport(
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
-            @RequestHeader("Employee-Id") String employeeId) {
+            @RequestHeader("employee_id") String employeeId) {
         try {
             Report report = reportService.returnReport(id, returnToEmployeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
+            System.err.println("Error returning report: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }

@@ -1,11 +1,13 @@
 package org.example.siidsbackend.Service;
 
+import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
+import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.ReportRepo;
 import org.example.siidsbackend.Repository.EmployeeRepo;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,21 +15,28 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class ReportService {
-    @Autowired
-    private ReportRepo reportRepo;
+    private final ReportRepo reportRepo;
+    private final EmployeeRepo employeeRepo;
+    private final CaseRepo caseRepo;
 
-    @Autowired
-    private EmployeeRepo employeeRepo;
+    @Value("${file.upload-dir}")
+    private String uploadDir;
 
+    @Transactional
     public Report createReport(ReportRequestDTO dto, String employeeId) {
         Employee creator = employeeRepo.findByEmployeeId(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + employeeId));
+
+        Case caseEntity = caseRepo.findById(dto.getRelatedCase())
+                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + dto.getRelatedCase()));
 
         Report report = new Report();
         report.setDescription(dto.getDescription());
         report.setAttachmentPath(dto.getAttachmentPath());
         report.setCreatedBy(creator);
+        report.setRelatedCase(caseEntity);
         report.setCreatedAt(LocalDateTime.now());
         report.setStatus(WorkflowStatus.REPORT_SUBMITTED);
 
@@ -35,14 +44,32 @@ public class ReportService {
     }
 
     @Transactional
-    public Report sendToDirector(Integer reportId, String directorId) {
-        Report report = getReport(reportId);
+    public Report sendToDirectorIntelligence(Integer reportId, String directorId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
         Employee director = employeeRepo.findByEmployeeId(directorId)
                 .orElseThrow(() -> new RuntimeException("Director not found"));
 
-        report.setStatus(WorkflowStatus.CASE_SUBMITTED_TO_DIRECTOR);
+        report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
         report.setCurrentRecipient(director);
         report.setUpdatedAt(LocalDateTime.now());
+
+        return reportRepo.save(report);
+    }
+
+    @Transactional
+    public Report sendToDirectorInvestigation(Integer reportId, String directorId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee director = employeeRepo.findByEmployeeId(directorId)
+                .orElseThrow(() -> new RuntimeException("Director not found"));
+
+        report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
+        report.setCurrentRecipient(director);
+        report.setUpdatedAt(LocalDateTime.now());
+
         return reportRepo.save(report);
     }
 
@@ -52,7 +79,7 @@ public class ReportService {
         Employee commissioner = employeeRepo.findByEmployeeId(commissionerId)
                 .orElseThrow(() -> new RuntimeException("Commissioner not found"));
 
-        report.setStatus(WorkflowStatus.REPORT_SUBMITTED);
+        report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER);
         report.setCurrentRecipient(commissioner);
         report.setUpdatedAt(LocalDateTime.now());
         return reportRepo.save(report);
@@ -95,4 +122,5 @@ public class ReportService {
 
         return reportRepo.findByCreatedByOrderByCreatedAtDesc(employee);
     }
+
 }
