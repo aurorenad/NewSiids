@@ -44,46 +44,60 @@ public class ReportService {
     }
 
     @Transactional
-    public Report sendToDirectorIntelligence(Integer reportId, String directorId) {
+    public Report sendToDirectorIntelligence(Integer reportId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
-        Employee director = employeeRepo.findByEmployeeId(directorId)
-                .orElseThrow(() -> new RuntimeException("Director not found"));
+        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
 
         report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
-        report.setCurrentRecipient(director);
-        report.setUpdatedAt(LocalDateTime.now());
+        if (!directors.isEmpty()) {
+            report.setCurrentRecipient(directors.get(0));
+        } else {
+            throw new IllegalStateException("No Director of Intelligence found.");
+        }
 
+        report.setUpdatedAt(LocalDateTime.now());
         return reportRepo.save(report);
     }
 
     @Transactional
-    public Report sendToDirectorInvestigation(Integer reportId, String directorId) {
+    public Report sendToDirectorInvestigation(Integer reportId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
-        Employee director = employeeRepo.findByEmployeeId(directorId)
-                .orElseThrow(() -> new RuntimeException("Director not found"));
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
 
         report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
-        report.setCurrentRecipient(director);
-        report.setUpdatedAt(LocalDateTime.now());
+        if (!directors.isEmpty()) {
+            report.setCurrentRecipient(directors.get(0));
+        } else {
+            throw new IllegalStateException("No Director of Investigation found.");
+        }
 
+        report.setUpdatedAt(LocalDateTime.now());
         return reportRepo.save(report);
     }
 
     @Transactional
-    public Report sendToAssistantCommissioner(Integer reportId, String commissionerId) {
-        Report report = getReport(reportId);
-        Employee commissioner = employeeRepo.findByEmployeeId(commissionerId)
-                .orElseThrow(() -> new RuntimeException("Commissioner not found"));
+    public Report sendToAssistantCommissioner(Integer reportId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
 
         report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER);
-        report.setCurrentRecipient(commissioner);
+        if (!commissioners.isEmpty()) {
+            report.setCurrentRecipient(commissioners.get(0));
+        } else {
+            throw new IllegalStateException("No Assistant Commissioner found.");
+        }
+
         report.setUpdatedAt(LocalDateTime.now());
         return reportRepo.save(report);
     }
+
+
 
     @Transactional
     public Report returnReport(Integer reportId, String returnToEmployeeId) {

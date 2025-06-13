@@ -105,38 +105,39 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-director-intelligence")
-    public ResponseEntity<ReportResponseDTO> sendToDirector(
+    public ResponseEntity<ReportResponseDTO> sendToDirectorIntelligence(
             @PathVariable("id") Integer reportId,
-            @RequestParam String directorId,
             @RequestHeader("employee_id") String employeeId) {
         try {
             Employee sender = employeeRepo.findByEmployeeId(employeeId)
                     .orElseThrow(() -> new RuntimeException("Sender not found"));
 
-            Report report = reportService.sendToDirectorIntelligence(reportId, directorId);
+            Report report = reportService.sendToDirectorIntelligence(reportId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
-
         } catch (Exception e) {
-            System.err.println("Error sending to director: " + e.getMessage());
+            System.err.println("Error sending to Director of Intelligence: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
 
     @PostMapping("/{id}/send-to-commissioner-intelligence")
-    public ResponseEntity<ReportResponseDTO> sendToCommissioner(
+    public ResponseEntity<ReportResponseDTO> sendToAssistantCommissioner(
             @PathVariable Integer id,
-            @RequestParam String commissionerId,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Report report = reportService.sendToAssistantCommissioner(id, commissionerId);
+            Employee sender = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Sender not found"));
+
+            Report report = reportService.sendToAssistantCommissioner(id);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
-            System.err.println("Error sending to commissioner: " + e.getMessage());
+            System.err.println("Error sending to Assistant Commissioner: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
+
 
     @PostMapping("/{id}/return")
     public ResponseEntity<ReportResponseDTO> returnReport(
@@ -152,4 +153,5 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
+
 }
