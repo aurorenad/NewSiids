@@ -103,9 +103,6 @@ export const ReportApi = {
             }
         });
     },
-    getIntelligenceDirectors: () => {
-        return caseApi.get('/api/reports/intelligence-directors');
-    },
 
     getMyReports: () => {
         return caseApi.get('/api/reports/my-reports');
@@ -115,26 +112,36 @@ export const ReportApi = {
         return caseApi.get(`/api/reports/${id}`);
     },
 
-    sendToDirector: (reportId, directorId) => {
-        return caseApi.post(`/api/reports/${reportId}/send-to-director`, null, {
-            params: { directorId },
+    sendToDirectorIntelligence: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {
             headers: {
                 'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
             }
         });
     },
 
-    sendToCommissioner: (id, commissionerId) => {
-        return caseApi.post(`/api/reports/${id}/send-to-commissioner`, null, {
-            params: { commissionerId }
+    sendToCommissioner: (id) => {
+        return caseApi.post(`/api/reports/${id}/send-to-commissioner`,{
+            headers: {
+                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
+            }
         });
     },
-
+    sendToDirectorInvestigation: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {
+            headers: {
+                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
+            }
+        });
+    },
     returnReport: (id, returnToEmployeeId) => {
         return caseApi.post(`/api/reports/${id}/return`, null, {
             params: { returnToEmployeeId }
         });
-    }
+    },
+    getReportsForDirectorIntelligence: () => {
+        return caseApi.get('/api/reports/director-intelligence/reports');
+    },
 };
 
 export default caseApi;

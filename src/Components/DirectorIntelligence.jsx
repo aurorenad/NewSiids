@@ -1,89 +1,128 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, IconButton,
-    Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Button, TextField, CircularProgress, Alert, Box
 } from "@mui/material";
 import { Description, Check, Close, Search } from "@mui/icons-material";
 import { Link, useNavigate } from 'react-router-dom';
+import { ReportApi } from '../api/Axios/caseApi';
 
 const DirectorIntelligence = () => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [cases, setCases] = useState([
-        {
-            id: 'CS001/25',
-            delegate: '100111',
-            reportedDate: '21/09/2025',
-            status: 'Report received from Intelligence Officer',
-            reason: ''
-        },
-        {
-            id: 'CS002/25',
-            delegate: '100114',
-            reportedDate: '22/09/2025',
-            status: 'Received from Surveillance Officer',
-            reason: ''
-        }
-    ]);
+    const [reports, setReports] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [actionLoading, setActionLoading] = useState(false);
 
     const navigate = useNavigate();
 
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
-    const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
+    const [selectedReportIndex, setSelectedReportIndex] = useState(null);
     const [reasonInput, setReasonInput] = useState('');
 
-    const handleApprove = (index) => {
-        const updatedCases = [...cases];
-        updatedCases[index] = {
-            ...updatedCases[index],
-            status: 'Sent to Assistant Commissioner',
-            reason: ''
+    useEffect(() => {
+        const fetchReports = async () => {
+            try {
+                const response = await ReportApi.getReportsForDirectorIntelligence();
+                setReports(response.data);
+            } catch (err) {
+                console.error('Failed to fetch reports:', err);
+                setError(err.response?.data?.message || 'Failed to fetch reports');
+            } finally {
+                setLoading(false);
+            }
         };
-        setCases(updatedCases);
-        setTimeout(() => {
-            navigate('/assistant-commissioner');
-        }, 3000);
+
+        fetchReports();
+    }, []);
+
+    const handleApprove = async (index) => {
+        setActionLoading(true);
+        try {
+            const report = reports[index];
+            await ReportApi.sendToAssistantCommissioner(report.id);
+
+            setReports(prev => prev.map((r, i) =>
+                i === index ? { ...r, status: 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER' } : r
+            ));
+
+            setTimeout(() => {
+                navigate('/assistant-commissioner');
+            }, 3000);
+        } catch (err) {
+            console.error('Failed to approve report:', err);
+            setError(err.response?.data?.message || 'Failed to approve report');
+        } finally {
+            setActionLoading(false);
+        }
     };
 
     const handleOpenCloseDialog = (index) => {
-        setSelectedCaseIndex(index);
+        setSelectedReportIndex(index);
         setReasonInput('');
         setCloseDialogOpen(true);
     };
 
-    const handleConfirmClose = () => {
-        const updatedCases = [...cases];
-        updatedCases[selectedCaseIndex] = {
-            ...updatedCases[selectedCaseIndex],
-            status: 'Case Closed',
-            reason: reasonInput
-        };
-        setCases(updatedCases);
-        setCloseDialogOpen(false);
+    const handleConfirmClose = async () => {
+        setActionLoading(true);
+        try {
+            const report = reports[selectedReportIndex];
+            await ReportApi.returnReport(report.id, report.createdBy.employeeId);
+
+            setReports(prev => prev.map((r, i) =>
+                i === selectedReportIndex ? {
+                    ...r,
+                    status: 'REPORT_RETURNED',
+                    reason: reasonInput
+                } : r
+            ));
+
+            setCloseDialogOpen(false);
+        } catch (err) {
+            console.error('Failed to close report:', err);
+            setError(err.response?.data?.message || 'Failed to close report');
+        } finally {
+            setActionLoading(false);
+        }
     };
 
-    const handleDelegateChange = (e, index) => {
-        const updatedCases = [...cases];
-        updatedCases[index] = {
-            ...updatedCases[index],
-            delegate: e.target.value
-        };
-        setCases(updatedCases);
-    };
+    const searchString = searchQuery.toLowerCase();
+    const filteredReports = reports.filter((report) => {
+        const id = report.id?.toString().toLowerCase() || '';
+        const caseNum = report.relatedCase?.caseNum?.toLowerCase() || '';
+        const givenName = report.createdBy?.givenName?.toLowerCase() || '';
+        const familyName = report.createdBy?.familyName?.toLowerCase() || '';
+        return id.includes(searchString) || caseNum.includes(searchString) || givenName.includes(searchString) || familyName.includes(searchString);
+    });
 
-    const filteredCases = cases.filter(
-        (item) =>
-            item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.delegate.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Sort newest reports first (by ID descending)
+    const sortedReports = [...filteredReports].sort((a, b) => b.id - a.id);
+
+    if (loading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (error) {
+        return (
+            <Box p={3}>
+                <Alert severity="error">{error}</Alert>
+            </Box>
+        );
+    }
 
     return (
         <div className="page-container" style={{ padding: "20px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-                <div style={{ display: "flex", alignItems: "center" }}>
+            <Box display="flex" justifyContent="space-between" mb={2}>
+                <Box display="flex" alignItems="center">
                     <TextField
                         size="small"
-                        placeholder="Search"
+                        placeholder="Search reports..."
                         variant="outlined"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -91,72 +130,79 @@ const DirectorIntelligence = () => {
                     <IconButton>
                         <Search />
                     </IconButton>
-                </div>
-            </div>
+                </Box>
+            </Box>
 
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
                         <TableRow style={{ backgroundColor: "#cfd8dc" }}>
-                            <TableCell>Case Id</TableCell>
-                            <TableCell>Delegate</TableCell>
-                            <TableCell>Reported Date</TableCell>
+                            <TableCell>Report ID</TableCell>
+                            <TableCell>Case ID</TableCell>
+                            <TableCell>Created By</TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell>Action</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {filteredCases.map((caseItem, index) => (
-                            <TableRow key={caseItem.id}>
-                                <TableCell>{caseItem.id}</TableCell>
-                                <TableCell>
-                                    <input
-                                        type="text"
-                                        value={caseItem.delegate}
-                                        onChange={(e) => handleDelegateChange(e, index)}
-                                        style={{
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '4px 8px',
-                                            width: '100%',
-                                            fontSize: '14px'
-                                        }}
-                                    />
-                                </TableCell>
-                                <TableCell>{caseItem.reportedDate}</TableCell>
-                                <TableCell style={{
-                                    color: caseItem.status === "Sent to Assistant Commissioner" ? "green" :
-                                        caseItem.status === "Case Closed" ? "red" : "#555",
-                                    fontWeight: "bold"
-                                }}>
-                                    {caseItem.status === "Case Closed" && caseItem.reason
-                                        ? `${caseItem.status} - ${caseItem.reason}`
-                                        : caseItem.status}
-                                </TableCell>
-                                <TableCell>
-                                    <Link to="/intelligence-officer/view">
-                                        <IconButton color="primary">
-                                            <Description />
-                                        </IconButton>
-                                    </Link>
+                        {sortedReports.length > 0 ? (
+                            sortedReports.map((report, index) => (
+                                <TableRow key={report.id}>
+                                    <TableCell>{report.id}</TableCell>
+                                    <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
+                                    <TableCell>
+                                        {report.createdBy?.givenName} {report.createdBy?.familyName}
+                                    </TableCell>
+                                    <TableCell style={{
+                                        color: report.status === "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER" ? "green" :
+                                            report.status === "REPORT_RETURNED" ? "red" : "#555",
+                                        fontWeight: "bold"
+                                    }}>
+                                        {report.status === "REPORT_RETURNED" && report.reason
+                                            ? `${report.status} - ${report.reason}`
+                                            : report.status}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Box display="flex" gap={1}>
+                                            <Link to={`/reports/${report.id}`}>
+                                                <IconButton color="primary">
+                                                    <Description />
+                                                </IconButton>
+                                            </Link>
 
-                                    <IconButton color="success" onClick={() => handleApprove(index)}>
-                                        <Check />
-                                    </IconButton>
+                                            <IconButton
+                                                color="success"
+                                                onClick={() => handleApprove(index)}
+                                                disabled={report.status === "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER" || actionLoading}
+                                            >
+                                                <Check />
+                                            </IconButton>
 
-                                    <IconButton color="error" onClick={() => handleOpenCloseDialog(index)}>
-                                        <Close />
-                                    </IconButton>
+                                            <IconButton
+                                                color="error"
+                                                onClick={() => handleOpenCloseDialog(index)}
+                                                disabled={report.status === "REPORT_RETURNED" || actionLoading}
+                                            >
+                                                <Close />
+                                            </IconButton>
+                                        </Box>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={5} align="center">
+                                    No reports found
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        )}
                     </TableBody>
                 </Table>
             </TableContainer>
 
             {/* Close Reason Dialog */}
             <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)}>
-                <DialogTitle>Reason for Case Closure</DialogTitle>
+                <DialogTitle>Reason for Returning Report</DialogTitle>
                 <DialogContent>
                     <TextField
                         fullWidth
@@ -164,7 +210,7 @@ const DirectorIntelligence = () => {
                         rows={3}
                         value={reasonInput}
                         onChange={(e) => setReasonInput(e.target.value)}
-                        placeholder="Enter reason..."
+                        placeholder="Enter reason for returning..."
                         variant="outlined"
                     />
                 </DialogContent>
@@ -176,7 +222,7 @@ const DirectorIntelligence = () => {
                         onClick={handleConfirmClose}
                         variant="contained"
                         color="primary"
-                        disabled={!reasonInput.trim()}
+                        disabled={!reasonInput.trim() || actionLoading}
                     >
                         Confirm
                     </Button>

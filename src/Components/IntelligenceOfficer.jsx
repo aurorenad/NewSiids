@@ -19,7 +19,8 @@ import {
     TableHead,
     TableRow,
     TextField,
-    Typography
+    Typography,
+    Alert
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -55,19 +56,12 @@ const IntelligenceOfficer = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                // Fetch cases and directors in parallel
-                const [casesResponse, directorsResponse] = await Promise.all([
-                    CaseService.getMyCases(),
-                    ReportApi.getIntelligenceDirectors()
+                const [casesResponse] = await Promise.all([
+                    CaseService.getMyCases()
                 ]);
 
                 setCases(casesResponse.data);
                 setFilteredCases(casesResponse.data);
-                setDirectors(directorsResponse.data);
-
-                if (directorsResponse.data.length > 0) {
-                    setSelectedDirector(directorsResponse.data[0].employeeId);
-                }
             } catch (err) {
                 console.error('Failed to load data:', err);
                 setError(err.response?.data?.message || 'Failed to load data');
@@ -111,7 +105,7 @@ const IntelligenceOfficer = () => {
 
     const confirmSendReport = async () => {
         try {
-            await ReportApi.sendToDirector(selectedReport.reportId, selectedDirector);
+            await ReportApi.sendToDirectorIntelligence(selectedReport.reportId, selectedDirector);
 
             setCases(prevCases =>
                 prevCases.map(c =>
@@ -232,26 +226,13 @@ const IntelligenceOfficer = () => {
                                     </TableCell>
                                     <TableCell>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                            <Select
-                                                value={selectedDirector}
-                                                onChange={(e) => setSelectedDirector(e.target.value)}
-                                                size="small"
-                                                sx={{ minWidth: 180 }}
-                                                disabled={caseItem.status !== 'REPORT_SUBMITTED'}
-                                            >
-                                                {directors.map((director) => (
-                                                    <MenuItem
-                                                        key={director.employeeId}
-                                                        value={director.employeeId}
-                                                    >
-                                                        {director.givenName} ({director.employeeId})
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
+
+
+
                                             <IconButton
                                                 onClick={() => handleSendClick(caseItem)}
-                                                color="primary"
-                                                disabled={caseItem.status !== 'REPORT_SUBMITTED' || !selectedDirector}
+                                                color="#01010"
+                                                // disabled={caseItem.status !== 'CASE_CREATED' || !selectedDirector}
                                                 title="Send to Director"
                                             >
                                                 <SendIcon />
