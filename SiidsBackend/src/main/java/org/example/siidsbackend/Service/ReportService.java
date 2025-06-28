@@ -1,10 +1,12 @@
 package org.example.siidsbackend.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.example.siidsbackend.DTO.NotificationDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.CaseRepo;
+import org.example.siidsbackend.Repository.NotificationRepo;
 import org.example.siidsbackend.Repository.ReportRepo;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +22,8 @@ public class ReportService {
     private final ReportRepo reportRepo;
     private final EmployeeRepo employeeRepo;
     private final CaseRepo caseRepo;
+    private final NotificationRepo notificationRepo;
+    private final WebSocketNotificationService webSocketNotificationService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -43,6 +47,29 @@ public class ReportService {
         return reportRepo.save(report);
     }
 
+    private void createNotification(Report report, String message) {
+        if (report.getCurrentRecipient() != null) {
+            // Save notification in database
+            Notification notification = new Notification();
+            notification.setMessage(message);
+            notification.setRecipient(report.getCurrentRecipient());
+            notification.setReport(report);
+            notification.setCreatedAt(LocalDateTime.now());
+            notification.setRead(false);
+            notificationRepo.save(notification);
+
+            // Send real-time notification
+            NotificationDTO notificationDTO = webSocketNotificationService
+                    .createNotificationDTO(report, message, report.getCurrentRecipient());
+            notificationDTO.setNotificationType(getNotificationType(report.getStatus()));
+
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getCurrentRecipient().getEmployeeId(),
+                    notificationDTO
+            );
+        }
+    }
+
     @Transactional
     public Report sendToDirectorIntelligence(Integer reportId) {
         Report report = reportRepo.findById(reportId)
@@ -58,7 +85,22 @@ public class ReportService {
         }
 
         report.setUpdatedAt(LocalDateTime.now());
-        return reportRepo.save(report);
+        Report savedReport = reportRepo.save(report);
+
+        // Create and send notification
+        String message = String.format("New report #%d submitted for your review by %s %s",
+                savedReport.getId(),
+                savedReport.getCreatedBy().getGivenName(),
+                savedReport.getCreatedBy().getFamilyName());
+        createNotification(savedReport, message);
+
+        // Also broadcast to all directors of intelligence
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("NEW_REPORT_DIRECTOR_INTELLIGENCE");
+        webSocketNotificationService.sendNotificationToDirectorsIntelligence(broadcastNotification);
+
+        return savedReport;
     }
 
     @Transactional
@@ -76,7 +118,21 @@ public class ReportService {
         }
 
         report.setUpdatedAt(LocalDateTime.now());
-        return reportRepo.save(report);
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("New investigation report #%d submitted for your review by %s %s",
+                savedReport.getId(),
+                savedReport.getCreatedBy().getGivenName(),
+                savedReport.getCreatedBy().getFamilyName());
+        createNotification(savedReport, message);
+
+        // Broadcast to all directors of investigation
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("NEW_REPORT_DIRECTOR_INVESTIGATION");
+        webSocketNotificationService.sendNotificationToDirectorsInvestigation(broadcastNotification);
+
+        return savedReport;
     }
 
     @Transactional
@@ -94,10 +150,22 @@ public class ReportService {
         }
 
         report.setUpdatedAt(LocalDateTime.now());
-        return reportRepo.save(report);
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("Report #%d requires your approval from %s %s",
+                savedReport.getId(),
+                savedReport.getCreatedBy().getGivenName(),
+                savedReport.getCreatedBy().getFamilyName());
+        createNotification(savedReport, message);
+
+        // Broadcast to all assistant commissioners
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("NEW_REPORT_ASSISTANT_COMMISSIONER");
+        webSocketNotificationService.sendNotificationToAssistantCommissioners(broadcastNotification);
+
+        return savedReport;
     }
-
-
 
     @Transactional
     public Report returnReport(Integer reportId, String returnToEmployeeId) {
@@ -108,7 +176,27 @@ public class ReportService {
         report.setStatus(WorkflowStatus.REPORT_RETURNED);
         report.setCurrentRecipient(returnTo);
         report.setUpdatedAt(LocalDateTime.now());
-        return reportRepo.save(report);
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("Report #%d has been returned for corrections", savedReport.getId());
+        createNotification(savedReport, message);
+
+        return savedReport;
+    }
+
+    private String getNotificationType(WorkflowStatus status) {
+        switch (status) {
+            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+                return "NEW_REPORT_DIRECTOR_INTELLIGENCE";
+            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
+                return "NEW_REPORT_DIRECTOR_INVESTIGATION";
+            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
+                return "NEW_REPORT_ASSISTANT_COMMISSIONER";
+            case REPORT_RETURNED:
+                return "REPORT_RETURNED";
+            default:
+                return "GENERAL_NOTIFICATION";
+        }
     }
 
     public Report getReport(Integer id) {
@@ -137,4 +225,16 @@ public class ReportService {
         return reportRepo.findByCreatedByOrderByCreatedAtDesc(employee);
     }
 
+    // Uncomment and update this method as needed
+    // public List<Report> getReportsForDirectorIntelligence(String directorId) {
+    //     List<Employee> directors = reportRepo.DirectorsOfIntelligence();
+    //     boolean isDirector = directors.stream()
+    //             .anyMatch(d -> d.getEmployeeId().equals(directorId));
+    //
+    //     if (!isDirector) {
+    //         throw new RuntimeException("Employee is not a Director of Intelligence");
+    //     }
+    //
+    //     return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
+    // }
 }

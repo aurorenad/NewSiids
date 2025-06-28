@@ -33,4 +33,8 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "INNER JOIN structures s ON s.structureId = j.structureId " +
             "WHERE j.gradeId.gradeId = 4 AND s.structureId = 10")
     List<Employee> assistantCommissioner();
+
+    @Query("SELECT r FROM Report r WHERE r.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE " +
+            "AND r.currentRecipient.employeeId = :directorId")
+    List<Report> findReportsSubmittedToDirectorIntelligence(@Param("directorId") String directorId);
 }

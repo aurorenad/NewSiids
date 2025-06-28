@@ -35,16 +35,15 @@ public class SecurityConfig {
         return http.csrf(customizer -> customizer.disable())
                 .cors(customizer -> customizer.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    // Allow both ports to be safe
                     config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
+
                 .authorizeHttpRequests(request -> request
-                        // Fix the login endpoint matcher - add leading slash
-                        .requestMatchers("/login", "/register").permitAll()
+                        .requestMatchers("/login", "/register", "/ws-notifications/**").permitAll()
                         .requestMatchers("/Case/**").hasAnyAuthority("User", "Surv")
                         .requestMatchers("/api/reports/**").hasAnyAuthority("User")
                         .anyRequest().authenticated())

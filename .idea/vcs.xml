@@ -2,6 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/Siiid/web-tech-final" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/Siiid/siidsfrontend" vcs="Git" />
   </component>
 </project>

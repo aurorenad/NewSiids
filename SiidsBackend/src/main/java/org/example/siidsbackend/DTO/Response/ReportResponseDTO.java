@@ -1,6 +1,7 @@
 package org.example.siidsbackend.DTO.Response;
 
 import lombok.Data;
+import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.WorkflowStatus;
 
 import java.time.LocalDateTime;
@@ -15,4 +16,5 @@ public class ReportResponseDTO {
     private String currentRecipient;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Case relatedCase;
 }

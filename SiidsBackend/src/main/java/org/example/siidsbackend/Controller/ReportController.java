@@ -154,4 +154,23 @@ public class ReportController {
         }
     }
 
+    @GetMapping("/director-intelligence/reports")
+    public ResponseEntity<List<ReportResponseDTO>> getReportsForDirectorIntelligence(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<Report> reports = reportService.getReportsForDirectorIntelligence(directorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            System.err.println("Error getting reports for Director of Intelligence: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            System.err.println("Error getting reports: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }
