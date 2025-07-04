@@ -19,7 +19,7 @@ caseApi.interceptors.request.use((config) => {
     }
 
     if (employeeId) {
-        config.headers['employee_id'] = employeeId.trim();
+        config.headers['employee_id'] = employeeId.trim(); // Fixed: consistent header name
     }
 
     console.log('Request headers:', config.headers);
@@ -49,7 +49,7 @@ caseApi.interceptors.response.use(
                 }
 
                 error.config.headers['Authorization'] = `Bearer ${token}`;
-                error.config.headers['employee_id'] = employeeId;
+                error.config.headers['employee_id'] = employeeId; // Fixed: consistent header name
                 return caseApi.request(error.config);
             } catch (refreshError) {
                 // Clear all auth storage if refresh fails
@@ -93,55 +93,85 @@ export const CaseService = {
 };
 
 export const ReportApi = {
-    submitReport: (formData, caseId) => {
-        return caseApi.post('/api/reports', formData, {
+    submitReport: async (formData, caseNum) => {
+        // Option 1: Send caseNum as a request parameter
+        formData.append('caseNum', caseNum);
+
+        const response = await caseApi.post(
+            '/api/reports',  // Changed from `/api/reports/${caseNum}`
+            formData,
+            {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                }
+            }
+        );
+        return response.data;
+    },
+    getMyReports: () => {
+        return caseApi.get('/api/reports/my-reports', {
             headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-            params: {
-                caseId: caseId
+                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') // Fixed: changed to match backend expectation
             }
         });
-    },
-
-    getMyReports: () => {
-        return caseApi.get('/api/reports/my-reports');
     },
 
     getReport: (id) => {
-        return caseApi.get(`/api/reports/${id}`);
-    },
-
-    sendToDirectorIntelligence: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {
+        return caseApi.get(`/api/reports/${id}`, {
             headers: {
-                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
+                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') // Fixed: changed to match backend expectation
             }
         });
+    },
+
+    createReport: (data) => caseApi.post('/api/reports', data),
+
+    sendToDirectorIntelligence: (reportId) => {
+        console.log('Sending report to Director of Intelligence:', reportId);
+        return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {});
     },
 
     sendToCommissioner: (id) => {
-        return caseApi.post(`/api/reports/${id}/send-to-commissioner`,{
-            headers: {
-                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
-            }
-        });
+        return caseApi.post(`/api/reports/${id}/send-to-commissioner-intelligence`, {}); // Fixed: corrected endpoint
     },
+
     sendToDirectorInvestigation: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {
-            headers: {
-                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
-            }
-        });
+        return caseApi.post(`/api/reports/${reportId}/send-to-director-investigation`, {});
     },
+
     returnReport: (id, returnToEmployeeId) => {
         return caseApi.post(`/api/reports/${id}/return`, null, {
             params: { returnToEmployeeId }
         });
     },
+
     getReportsForDirectorIntelligence: () => {
         return caseApi.get('/api/reports/director-intelligence/reports');
     },
+
+    approveReport: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/approve`, {});
+    },
+
+    rejectReport: (reportId, rejectionReason) => {
+        return caseApi.post(`/api/reports/${reportId}/reject`, null, {
+            params: { rejectionReason }
+        });
+    }
+};
+
+export const CommissionerApi = {
+    getCommissionerCases: () => {
+        return caseApi.get('/api/commissioner/cases');
+    },
+
+    approveCase: (caseId) => {
+        return caseApi.post(`/api/commissioner/cases/${caseId}/approve`);
+    },
+
+    rejectCase: (caseId, reason) => {
+        return caseApi.post(`/api/commissioner/cases/${caseId}/reject`, { reason });
+    }
 };
 
 export default caseApi;

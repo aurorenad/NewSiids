@@ -57,7 +57,7 @@ const TaxReportView = () => {
             const caseInfo = {
                 ...response.data,
                 caseNum: response.data.caseNum || response.data.id,
-                intelligenceOfficer: response.data.reportingOfficer,
+                intelligenceOfficer: response.data.reportingOfficer || response.data.userId,
             };
             setCaseData(caseInfo);
         } catch (err) {

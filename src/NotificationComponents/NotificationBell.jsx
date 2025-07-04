@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
 import { NotificationContext } from './NotificationContext';
+import './NotificationBell.css';
 
 export const NotificationBell = () => {
     const [open, setOpen] = useState(false);
@@ -7,8 +8,12 @@ export const NotificationBell = () => {
 
     return (
         <div className="notification-bell">
-            <button onClick={() => setOpen(!open)} className="bell-button">
-                <span className="bell-icon">🔔</span>
+            <button
+                onClick={() => setOpen(!open)}
+                className="bell-button"
+                aria-label="Notifications"
+            >
+                <i className="fa fa-bell bell-icon"></i>
                 {unreadCount > 0 && (
                     <span className="badge">{unreadCount}</span>
                 )}
@@ -24,7 +29,6 @@ export const NotificationBell = () => {
                             </button>
                         )}
                     </div>
-
                     <div className="notification-list">
                         {notifications.length === 0 ? (
                             <div className="empty">No notifications</div>
@@ -37,9 +41,9 @@ export const NotificationBell = () => {
                                 >
                                     <div className="message">{notification.message}</div>
                                     <div className="meta">
-                    <span className="time">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </span>
+                                        <span className="time">
+                                            {new Date(notification.createdAt).toLocaleString()}
+                                        </span>
                                         <span className="sender">{notification.senderName}</span>
                                     </div>
                                 </div>

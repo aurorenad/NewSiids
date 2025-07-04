@@ -1,6 +1,8 @@
-import React, { useContext, useState } from 'react';
+import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
+import { NotificationBell } from './../NotificationComponents/NotificationBell.jsx';
+import { NotificationProvider } from './../NotificationComponents/NotificationContext';
 import 'font-awesome/css/font-awesome.min.css';
 import '../styles/Header.css';
 
@@ -8,19 +10,9 @@ const Header = () => {
     const { currentUser, logout } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    const [notifications, setNotifications] = useState([
-        { id: 1, message: 'New case assigned' },
-        { id: 2, message: 'System update at 10PM' },
-    ]);
-    const [isOpen, setIsOpen] = useState(false);
-
     const handleLogout = () => {
         logout();
         navigate('/login');
-    };
-
-    const toggleDropdown = () => {
-        setIsOpen(!isOpen);
     };
 
     return (
@@ -33,21 +25,11 @@ const Header = () => {
                     <div className="user-profile">
                         <i className="fa fa-user"></i>
                     </div>
-                    <div className="notifications" onClick={toggleDropdown}>
-                        <i className="fa fa-bell"></i>
-                        {notifications.length > 0 && (
-                            <span className="notification-badge">{notifications.length}</span>
-                        )}
-                        {isOpen && (
-                            <div className="notification-dropdown">
-                                {notifications.map((n) => (
-                                    <div key={n.id} className="notification-item">
-                                        {n.message}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                    {currentUser?.employeeId && (
+                        <NotificationProvider employeeId={currentUser.employeeId}>
+                            <NotificationBell />
+                        </NotificationProvider>
+                    )}
                     <button className="logout-btn" onClick={handleLogout}>
                         <i className="fa fa-sign-out"></i>
                     </button>

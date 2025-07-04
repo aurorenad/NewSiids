@@ -5,18 +5,16 @@ import '../../Styles/NewSurveillenceCases.css';
 
 const NewSurveillenceCase = () => {
     const [formData, setFormData] = useState({
+        caseNumber: '',
         informerId: '',
         informerName: '',
-        caseNumber: '',
-        tin: '', // Previously taxPayerTin
+        tin: '',
         taxPayerName: '',
         taxPayerAddress: '',
-        taxPayerType: 'Individual', // Previously taxType
+        taxPayerType: 'Individual',
         taxPeriod: '',
-        intelligenceOfficer: '',
         reportedDate: new Date().toISOString().split('T')[0],
-        summaryOfInformationCase: '', // Previously issueDescription
-        status: 'case_created'
+        summaryOfInformationCase: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,12 +26,7 @@ const NewSurveillenceCase = () => {
 
     useEffect(() => {
         const officer = localStorage.getItem('employeeId');
-        if (officer) {
-            setFormData(prev => ({
-                ...prev,
-                intelligenceOfficer: officer
-            }));
-        } else {
+        if (!officer) {
             setError("No employee ID found. Please log in.");
         }
     }, []);
@@ -51,6 +44,13 @@ const NewSurveillenceCase = () => {
             setError("Please fill in all required fields: Case Number, TIN, Tax Payer Name, and Summary.");
             return false;
         }
+
+        // Validate case number is numeric
+        if (isNaN(formData.caseNumber)) {
+            setError("Case Number must be a number");
+            return false;
+        }
+
         return true;
     };
 
@@ -66,14 +66,26 @@ const NewSurveillenceCase = () => {
         }
 
         try {
-            const currentUser = localStorage.getItem('employeeId') || 'Unknown';
+            // Prepare data for backend
+            const caseData = {
+                caseNum: parseInt(formData.caseNumber),
+                informerId: formData.informerId,
+                informerName: formData.informerName,
+                tin: formData.tin,
+                taxPayerName: formData.taxPayerName,
+                taxPayerType: formData.taxPayerType,
+                taxPayerAddress: formData.taxPayerAddress,
+                taxPeriod: formData.taxPeriod,
+                reportedDate: new Date(formData.reportedDate).toISOString(),
+                summaryOfInformationCase: formData.summaryOfInformationCase
+            };
 
-            const response = await CaseService.createCase(formData, currentUser);
+            const response = await CaseService.createCase(caseData);
 
             if (response.data) {
                 setSuccess("Case successfully created.");
                 setTimeout(() => {
-                    navigate('/surveillence-officer/view', { state: response.data });
+                    navigate('/surveillence-officer', { state: response.data });
                 }, 1500);
             }
         } catch (err) {
@@ -104,6 +116,8 @@ const NewSurveillenceCase = () => {
                                 value={formData.caseNumber}
                                 onChange={handleChange}
                                 required
+                                pattern="\d*"
+                                title="Please enter numbers only"
                             />
                         </div>
 
@@ -159,17 +173,6 @@ const NewSurveillenceCase = () => {
                                 name="taxPeriod"
                                 value={formData.taxPeriod}
                                 onChange={handleChange}
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label>Intelligence Officer</label>
-                            <input
-                                type="text"
-                                name="intelligenceOfficer"
-                                value={formData.intelligenceOfficer}
-                                onChange={handleChange}
-                                readOnly
                             />
                         </div>
 

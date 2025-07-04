@@ -8,8 +8,9 @@ export const ClaimForm = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [createdReport, setCreatedReport] = useState(null); // Store the created report
     const navigate = useNavigate();
-    const { caseId } = useParams(); // Get caseId from URL parameters
+    const { caseNum } = useParams();
 
     const handleFileChange = (event) => {
         const file = event.target.files[0];
@@ -34,8 +35,7 @@ export const ClaimForm = () => {
             return;
         }
 
-        // Check if caseId is available
-        if (!caseId) {
+        if (!caseNum) {
             setError('Case ID is required to submit a report');
             return;
         }
@@ -47,19 +47,38 @@ export const ClaimForm = () => {
         try {
             const formData = new FormData();
             formData.append('description', text);
-
             if (attachment) {
                 formData.append('attachment', attachment);
             }
 
-            const response = await ReportApi.submitReport(formData, caseId);
+            // Send the report
+            const response = await ReportApi.submitReport(formData, caseNum);
 
-            setSuccess('Report submitted successfully!');
+            // ✅ Store the created report data
+            setCreatedReport(response);
+            console.log('Created report:', response); // Debug log
+
+            // ✅ Store in localStorage/sessionStorage for persistence (optional)
+            const reportData = {
+                reportId: response.id,
+                caseNum: caseNum,
+                status: response.status,
+                createdAt: new Date().toISOString()
+            };
+            localStorage.setItem(`report_${caseNum}`, JSON.stringify(reportData));
+
+            setSuccess(`Report submitted successfully! Report ID: ${response.id}`);
             setText('');
             setAttachment(null);
 
             setTimeout(() => {
-                navigate('/intelligence-officer');
+                // ✅ Pass the report data when navigating
+                navigate('/intelligence-officer', {
+                    state: {
+                        newReport: response,
+                        caseNum: caseNum
+                    }
+                });
             }, 2000);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to submit report. Please try again.');
@@ -79,7 +98,7 @@ export const ClaimForm = () => {
                 <div className="claim-form-header">
                     <h2 className="claim-form-title">
                         Intelligence Office Report
-                        {caseId && <span className="case-id"> - Case #{caseId}</span>}
+                        {caseNum && <span className="case-id"> - Case #{caseNum}</span>}
                     </h2>
                     <button className="close-button" onClick={handleCancel}>
                         ✕
@@ -95,6 +114,12 @@ export const ClaimForm = () => {
                 {success && (
                     <div className="alert alert-success">
                         {success}
+                        {createdReport && (
+                            <div className="report-details">
+                                <strong>Report ID:</strong> {createdReport.id}<br/>
+                                <strong>Status:</strong> {createdReport.status}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -148,7 +173,7 @@ export const ClaimForm = () => {
                     <button
                         className="send-button"
                         onClick={handleSubmit}
-                        disabled={isSubmitting || !text.trim() || !caseId}
+                        disabled={isSubmitting || !text.trim() || !caseNum}
                     >
                         {isSubmitting ? (
                             <>
@@ -231,7 +256,8 @@ export const ClaimForm = () => {
                     margin-bottom: 24px;
                     font-weight: 500;
                     display: flex;
-                    align-items: center;
+                    flex-direction: column;
+                    align-items: flex-start;
                 }
 
                 .alert-error {
@@ -244,6 +270,15 @@ export const ClaimForm = () => {
                     background: #e8f5e8;
                     color: #2e7d32;
                     border-left: 4px solid #2e7d32;
+                }
+
+                .report-details {
+                    margin-top: 12px;
+                    padding: 8px 12px;
+                    background: rgba(46, 125, 50, 0.1);
+                    border-radius: 4px;
+                    font-size: 14px;
+                    line-height: 1.4;
                 }
 
                 .textarea-container {

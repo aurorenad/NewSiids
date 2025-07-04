@@ -5,20 +5,19 @@ import { AuthContext } from '../context/AuthContext';
 import '../Styles/TaxReportForm.css';
 
 const TaxReportForm = () => {
-    const { currentUser } = useContext(AuthContext);
+    const { authState } = useContext(AuthContext);
     const [formData, setFormData] = useState({
-        caseNumber: '',
-        tin: '', // Changed from taxPayerTin to tin
+        tin: '',
         taxPayerName: '',
         taxPayerType: 'Individual',
         taxPayerAddress: '',
-        taxPeriod: '', // Changed from period to taxPeriod
-        intelligenceOfficer: currentUser || '',
+        taxPeriod: '',
+        intelligenceOfficer: authState.userId || '',
         reportedDate: new Date().toISOString().split('T')[0],
-        summaryOfInformationCase: '', // Changed from issueDescription
-        status: 'case_created', // Changed default status
+        summaryOfInformationCase: '',
+        status: 'CASE_CREATED', // Fixed: Use enum value
         informerId: '',
-        informerName: '' // Added informerName field
+        informerName: ''
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,13 +30,13 @@ const TaxReportForm = () => {
     const taxPayerTypes = ['Individual', 'Company', 'Partnership', 'Trust', 'PAYEE'];
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        const employeeId = localStorage.getItem('employeeId') || localStorage.getItem('userId');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
         console.log('Authentication check:');
         console.log('- Token exists:', !!token);
         console.log('- Employee ID:', employeeId);
-        console.log('- Current user:', currentUser);
+        console.log('- Current user:', authState.userId);
 
         if (!token) {
             setError('No authentication token found. Please log in again.');
@@ -49,28 +48,27 @@ const TaxReportForm = () => {
             setError('Employee ID not found. Please ensure you are properly logged in.');
             return;
         }
-    }, [currentUser, navigate]);
+    }, [authState.userId, navigate]);
 
     // Load case data if in edit mode
     useEffect(() => {
         if (location.state?.caseData) {
             const { caseData } = location.state;
             setFormData({
-                caseNumber: caseData.caseNumber || '',
                 tin: caseData.tin || '',
                 taxPayerName: caseData.taxPayerName || '',
                 taxPayerType: caseData.taxPayerType || 'Individual',
                 taxPayerAddress: caseData.taxPayerAddress || '',
                 taxPeriod: caseData.taxPeriod || '',
-                intelligenceOfficer: caseData.reportingOfficer || currentUser || '',
+                intelligenceOfficer: caseData.reportingOfficer || authState.userId || '',
                 reportedDate: caseData.reportedDate || new Date().toISOString().split('T')[0],
                 summaryOfInformationCase: caseData.summaryOfInformationCase || '',
-                status: caseData.status || 'case_created',
+                status: caseData.status || 'CASE_CREATED',
                 informerId: caseData.informerId || '',
                 informerName: caseData.informerName || ''
             });
         }
-    }, [location.state, currentUser]);
+    }, [location.state, authState.userId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -78,10 +76,6 @@ const TaxReportForm = () => {
     };
 
     const validateForm = () => {
-        if (!formData.caseNumber) {
-            setError('Case number is required');
-            return false;
-        }
         if (!formData.tin) {
             setError('Tax Payer TIN is required');
             return false;
@@ -103,8 +97,8 @@ const TaxReportForm = () => {
         setSuccess('');
 
         // Pre-submission validation
-        const token = localStorage.getItem('token');
-        const employeeId = localStorage.getItem('employeeId') || localStorage.getItem('userId');
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
         if (!token) {
             setError('Authentication token is missing. Please log in again.');
@@ -127,33 +121,26 @@ const TaxReportForm = () => {
 
             // Create the case data in the format expected by the API
             const caseData = {
-                informerId: formData.informerId,
-                informerName: formData.informerName,
+                informerId: formData.informerId || null,
+                informerName: formData.informerName || null,
                 tin: formData.tin,
                 taxPayerName: formData.taxPayerName,
                 taxPayerType: formData.taxPayerType,
-                taxPayerAddress: formData.taxPayerAddress,
-                taxPeriod: formData.taxPeriod,
+                taxPayerAddress: formData.taxPayerAddress || null,
+                taxPeriod: formData.taxPeriod || null,
                 summaryOfInformationCase: formData.summaryOfInformationCase,
                 status: formData.status,
-                reportedDate: new Date(formData.reportedDate).toISOString(),
-                updatedAt: null
+                reportedDate: new Date(formData.reportedDate).toISOString()
             };
 
             console.log('Submitting case data:', caseData);
 
-            if (location.state?.caseData?.id) {
-                await CaseService.updateCase(location.state.caseData.id, caseData, {
-                    signal: controller.signal
-                });
-                setSuccess('Case updated successfully!');
-            } else {
-                await CaseService.createCase(caseData, currentUser || 'Unknown');
-                setSuccess('Case created successfully!');
-            }
+            const response = await CaseService.createCase(caseData);
+            console.log('Case created successfully:', response.data);
 
             clearTimeout(id);
-            setTimeout(() => navigate('/intelligence-officer/view'), 2000);
+            setSuccess('Case created successfully!');
+            setTimeout(() => navigate('/intelligence-officer'), 2000);
         } catch (err) {
             clearTimeout(timeoutId);
 
@@ -164,6 +151,7 @@ const TaxReportForm = () => {
             } else if (err.response?.status === 401) {
                 setError('Authentication failed. Please log in again.');
                 localStorage.removeItem('token');
+                sessionStorage.removeItem('token');
                 setTimeout(() => navigate('/login'), 2000);
             } else if (err.response?.status === 403) {
                 setError('You do not have permission to perform this action.');
@@ -192,7 +180,7 @@ const TaxReportForm = () => {
         <div className="tax-report-form-container">
             <div className="tax-report-form-card">
                 <div className="tax-report-form-header">
-                    <h1>{location.state?.caseData ? "Edit Case" : "New Case Report"}</h1>
+                    <h1>New Case Report</h1>
                 </div>
 
                 {error && (
@@ -209,19 +197,6 @@ const TaxReportForm = () => {
 
                 <form onSubmit={handleSubmit} className="tax-report-form">
                     <div className="tax-report-form-grid">
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Case Number*</label>
-                            <input
-                                type="text"
-                                name="caseNumber"
-                                value={formData.caseNumber}
-                                onChange={handleChange}
-                                className="tax-report-form-input"
-                                placeholder="Enter case number"
-                                required
-                            />
-                        </div>
-
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Payer TIN*</label>
                             <input
@@ -295,6 +270,7 @@ const TaxReportForm = () => {
                                 onChange={handleChange}
                                 className="tax-report-form-input"
                                 placeholder="Officer name"
+                                readOnly
                             />
                         </div>
 
@@ -346,23 +322,6 @@ const TaxReportForm = () => {
                                 required
                             />
                         </div>
-
-                        {location.state?.caseData && (
-                            <div className="form-group">
-                                <label className="tax-report-form-label">Status</label>
-                                <select
-                                    name="status"
-                                    value={formData.status}
-                                    onChange={handleChange}
-                                    className="tax-report-form-input"
-                                >
-                                    <option value="case_created">case_created</option>
-                                    <option value="Open">Open</option>
-                                    <option value="In Progress">In Progress</option>
-                                    <option value="Closed">Closed</option>
-                                </select>
-                            </div>
-                        )}
                     </div>
 
                     <div className="tax-report-form-buttons">
@@ -384,7 +343,7 @@ const TaxReportForm = () => {
                                     <i className="fas fa-spinner fa-spin"></i> Processing...
                                 </>
                             ) : (
-                                location.state?.caseData ? 'Update Case' : 'Create Case'
+                                'Create Case'
                             )}
                         </button>
                     </div>

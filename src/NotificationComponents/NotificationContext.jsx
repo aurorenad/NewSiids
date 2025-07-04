@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { connectWebSocket, disconnectWebSocket } from './websocket';
+import { connectWebSocket, disconnectWebSocket } from '../../websocket.js';
 
 export const NotificationContext = createContext();
 

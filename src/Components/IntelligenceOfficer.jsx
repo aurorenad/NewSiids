@@ -8,9 +8,7 @@ import {
     DialogContent,
     DialogTitle,
     IconButton,
-    MenuItem,
     Paper,
-    Select,
     Snackbar,
     Table,
     TableBody,
@@ -20,14 +18,17 @@ import {
     TableRow,
     TextField,
     Typography,
-    Alert
+    Alert,
+    Chip,
+    Tooltip
 } from '@mui/material';
 import {
     Add as AddIcon,
     Description as DescriptionIcon,
     Search as SearchIcon,
     Send as SendIcon,
-    AttachFile as AttachFileIcon
+    AttachFile as AttachFileIcon,
+    FilterList as FilterListIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { CaseService, ReportApi } from '../api/Axios/caseApi';
@@ -35,14 +36,12 @@ import { CaseService, ReportApi } from '../api/Axios/caseApi';
 const IntelligenceOfficer = () => {
     const [cases, setCases] = useState([]);
     const [filteredCases, setFilteredCases] = useState([]);
-    const [directors, setDirectors] = useState([]);
     const [loading, setLoading] = useState({
         cases: true,
-        directors: true
+        directors: false
     });
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedDirector, setSelectedDirector] = useState('');
     const [selectedReport, setSelectedReport] = useState(null);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [snackbar, setSnackbar] = useState({
@@ -50,6 +49,7 @@ const IntelligenceOfficer = () => {
         message: '',
         severity: 'info'
     });
+    const [showOnlyWithReports, setShowOnlyWithReports] = useState(false);
 
     const navigate = useNavigate();
 
@@ -60,6 +60,7 @@ const IntelligenceOfficer = () => {
                     CaseService.getMyCases()
                 ]);
 
+                console.log('Fetched cases:', casesResponse.data);
                 setCases(casesResponse.data);
                 setFilteredCases(casesResponse.data);
             } catch (err) {
@@ -67,7 +68,7 @@ const IntelligenceOfficer = () => {
                 setError(err.response?.data?.message || 'Failed to load data');
                 showSnackbar('Failed to load data', 'error');
             } finally {
-                setLoading({ cases: false, directors: false });
+                setLoading(prev => ({ ...prev, cases: false }));
             }
         };
 
@@ -75,13 +76,19 @@ const IntelligenceOfficer = () => {
     }, []);
 
     useEffect(() => {
-        const results = cases.filter(caseItem =>
-            Object.values(caseItem).some(
-                value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-            )
-        );
+        let results = cases;
+        if (searchTerm) {
+            results = results.filter(caseItem =>
+                Object.values(caseItem).some(
+                    value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+                )
+            );
+        }
+        if (showOnlyWithReports) {
+            results = results.filter(caseItem => caseItem.reportId);
+        }
         setFilteredCases(results);
-    }, [searchTerm, cases]);
+    }, [searchTerm, cases, showOnlyWithReports]);
 
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
@@ -92,35 +99,46 @@ const IntelligenceOfficer = () => {
     };
 
     const handleSendClick = (caseItem) => {
+        console.log('Send button clicked for case:', caseItem);
+
         if (!caseItem.reportId) {
             showSnackbar('This case has no associated report', 'error');
             return;
         }
         setSelectedReport({
             caseId: caseItem.caseNum,
-            reportId: caseItem.reportId
+            reportId: caseItem.reportId,
+            currentStatus: caseItem.status
         });
         setDialogOpen(true);
     };
 
     const confirmSendReport = async () => {
+        if (!selectedReport) {
+            showSnackbar('No report selected', 'error');
+            return;
+        }
+
         try {
-            await ReportApi.sendToDirectorIntelligence(selectedReport.reportId, selectedDirector);
+            console.log('Attempting to send report:', selectedReport.reportId);
+            await ReportApi.sendToDirectorIntelligence(selectedReport.reportId);
 
             setCases(prevCases =>
                 prevCases.map(c =>
                     c.caseNum === selectedReport.caseId
-                        ? { ...c, status: 'CASE_SUBMITTED_TO_DIRECTOR' }
+                        ? { ...c, status: 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE' }
                         : c
                 )
             );
 
-            showSnackbar('Report successfully sent to director', 'success');
+            showSnackbar('Report successfully sent to Director of Intelligence', 'success');
         } catch (err) {
             console.error('Failed to send report:', err);
+            console.log('Error details:', err.response);
             showSnackbar(err.response?.data?.message || 'Failed to send report', 'error');
         } finally {
             setDialogOpen(false);
+            setSelectedReport(null);
         }
     };
 
@@ -128,18 +146,31 @@ const IntelligenceOfficer = () => {
         switch (status) {
             case 'CASE_CREATED': return '#1976d2';
             case 'REPORT_SUBMITTED': return '#ff9800';
-            case 'CASE_SUBMITTED_TO_DIRECTOR': return '#4caf50';
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE': return '#4caf50';
             case 'REJECTED': return '#d32f2f';
             case 'APPROVED': return '#2e7d32';
             default: return '#757575';
         }
     };
 
-    const formatStatusText = (status) => {
-        return status.toLowerCase().replace(/_/g, ' ');
+    const canSendReport = (caseItem) => {
+        if (!caseItem.reportId) {
+            return false;
+        }
+
+        const allowedStatuses = ['CASE_CREATED', 'REPORT_SUBMITTED'];
+        return allowedStatuses.includes(caseItem.status);
     };
 
-    if (loading.cases || loading.directors) {
+    const getButtonDisabledReason = (caseItem) => {
+        if (!caseItem.reportId) return "No report created yet";
+        if (!['CASE_CREATED', 'REPORT_SUBMITTED'].includes(caseItem.status)) {
+            return `Cannot send - status is ${caseItem.status}`;
+        }
+        return "Send to Director";
+    };
+
+    if (loading.cases) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
                 <CircularProgress />
@@ -163,7 +194,7 @@ const IntelligenceOfficer = () => {
                 alignItems="center"
                 mb={3}
             >
-                <Box display="flex" alignItems="center" width="50%">
+                <Box display="flex" alignItems="center" width="50%" gap={2}>
                     <TextField
                         fullWidth
                         size="small"
@@ -179,12 +210,22 @@ const IntelligenceOfficer = () => {
                             ),
                         }}
                     />
+                    <Tooltip title={showOnlyWithReports ? "Show all cases" : "Show only cases with reports"}>
+                        <Button
+                            variant={showOnlyWithReports ? "contained" : "outlined"}
+                            onClick={() => setShowOnlyWithReports(!showOnlyWithReports)}
+                            startIcon={<FilterListIcon />}
+                            color={showOnlyWithReports ? "primary" : "inherit"}
+                        >
+                            {showOnlyWithReports ? "All Cases" : "With Reports"}
+                        </Button>
+                    </Tooltip>
                 </Box>
                 <Button
                     variant="contained"
                     color="primary"
                     startIcon={<AddIcon />}
-                    onClick={() => navigate('/intelligence-officer/new-case')}
+                    onClick={() => navigate('/intelligence-officer/newCase')}
                 >
                     New Case
                 </Button>
@@ -205,10 +246,42 @@ const IntelligenceOfficer = () => {
                     <TableBody>
                         {filteredCases.length > 0 ? (
                             filteredCases.map((caseItem) => (
-                                <TableRow key={caseItem.caseNum} hover>
+                                <TableRow
+                                    key={caseItem.caseNum}
+                                    hover
+                                    sx={{
+                                        backgroundColor: caseItem.reportId ? '#f0f9ff' : 'inherit'
+                                    }}
+                                >
                                     <TableCell>{caseItem.caseNum}</TableCell>
                                     <TableCell>
-                                        {caseItem.reportId || 'N/A'}
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            {caseItem.reportId ? (
+                                                <>
+                                                    <Chip
+                                                        label={caseItem.reportId}
+                                                        size="small"
+                                                        color="primary"
+                                                        variant="outlined"
+                                                    />
+                                                    <IconButton
+                                                        onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                        title="View Report"
+                                                    >
+                                                        <DescriptionIcon />
+                                                    </IconButton>
+                                                </>
+                                            ) : (
+                                                <Button
+                                                    variant="outlined"
+                                                    startIcon={<AddIcon />}
+                                                    onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                    disabled={loading.reports}
+                                                >
+                                                    Create Report
+                                                </Button>
+                                            )}
+                                        </Box>
                                     </TableCell>
                                     <TableCell>{caseItem.tin || '-'}</TableCell>
                                     <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
@@ -217,26 +290,25 @@ const IntelligenceOfficer = () => {
                                             variant="body2"
                                             sx={{
                                                 color: getStatusColor(caseItem.status),
-                                                fontWeight: 'medium',
-                                                textTransform: 'capitalize'
+                                                fontWeight: 'medium'
                                             }}
                                         >
-                                            {formatStatusText(caseItem.status)}
+                                            {caseItem.status}
                                         </Typography>
                                     </TableCell>
                                     <TableCell>
                                         <Box display="flex" alignItems="center" gap={1}>
-
-
-
-                                            <IconButton
-                                                onClick={() => handleSendClick(caseItem)}
-                                                color="#01010"
-                                                // disabled={caseItem.status !== 'CASE_CREATED' || !selectedDirector}
-                                                title="Send to Director"
-                                            >
-                                                <SendIcon />
-                                            </IconButton>
+                                            <Tooltip title={getButtonDisabledReason(caseItem)}>
+                                                <span>
+                                                    <IconButton
+                                                        onClick={() => handleSendClick(caseItem)}
+                                                        color="primary"
+                                                        disabled={!canSendReport(caseItem)}
+                                                    >
+                                                        <SendIcon />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
                                             <IconButton
                                                 onClick={() => navigate(`/intelligence-officer/view-case/${caseItem.caseNum}`)}
                                                 title="View Details"
@@ -245,7 +317,7 @@ const IntelligenceOfficer = () => {
                                             </IconButton>
                                             <IconButton
                                                 onClick={() => navigate(`/intelligence-officer/claim-form/${caseItem.caseNum}`)}
-                                                title="Attachments"
+                                                title="Make report and Attachment"
                                             >
                                                 <AttachFileIcon />
                                             </IconButton>
@@ -268,19 +340,30 @@ const IntelligenceOfficer = () => {
             <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)}>
                 <DialogTitle>Confirm Report Submission</DialogTitle>
                 <DialogContent>
-                    <Typography>
-                        Are you sure you want to send report <strong>{selectedReport?.reportId}</strong> to the selected director?
+                    <Typography sx={{ mb: 2 }}>
+                        Are you sure you want to send report <strong>{selectedReport?.reportId}</strong> to the Director of Intelligence?
                     </Typography>
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                        This report will be forwarded to the Director of Intelligence for review and approval.
+                    </Alert>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            setDialogOpen(false);
+                            setSelectedReport(null);
+                        }}
+                    >
+                        Cancel
+                    </Button>
                     <Button
                         onClick={confirmSendReport}
                         variant="contained"
                         color="primary"
                         startIcon={<SendIcon />}
+                        disabled={!selectedReport}
                     >
-                        Confirm Send
+                        Send to Director
                     </Button>
                 </DialogActions>
             </Dialog>
