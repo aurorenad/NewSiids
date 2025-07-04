@@ -1,4 +1,3 @@
-// Report.java
 package org.example.siidsbackend.Model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -17,8 +16,13 @@ public class Report {
     private String description;
     private String attachmentPath;
 
-    @Enumerated(EnumType.STRING)
-    private WorkflowStatus status = WorkflowStatus.CASE_CREATED;
+    @OneToOne
+    @JoinColumn(name = "case_num", referencedColumnName = "caseNum")
+    private Case relatedCase;
+
+    // Remove the status field since we'll use the Case's status
+    // @Enumerated(EnumType.STRING)
+    // private WorkflowStatus status = WorkflowStatus.CASE_CREATED;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
@@ -31,10 +35,22 @@ public class Report {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @ManyToOne
+    @JoinColumn(name = "approved_by_employee_id")
+    private Employee approvedBy;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "case_num")
-    private Case relatedCase;
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "rejected_by_employee_id")
+    private Employee rejectedBy;
+
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
 
     @PrePersist
     protected void onCreate() {
@@ -45,5 +61,8 @@ public class Report {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-}
 
+    public WorkflowStatus getStatus() {
+        return this.relatedCase != null ? this.relatedCase.getStatus() : null;
+    }
+}

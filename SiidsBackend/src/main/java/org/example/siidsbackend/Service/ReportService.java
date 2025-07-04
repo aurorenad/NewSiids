@@ -33,16 +33,17 @@ public class ReportService {
         Employee creator = employeeRepo.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + employeeId));
 
-        Case caseEntity = caseRepo.findById(dto.getRelatedCase())
-                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + dto.getRelatedCase()));
-
+        Case relatedCase = caseRepo.findByCaseNum(dto.getRelatedCase().getCaseNum())
+                .orElseThrow(() -> new RuntimeException("Case not found with number: " + dto.getRelatedCase().getCaseNum()));
         Report report = new Report();
         report.setDescription(dto.getDescription());
         report.setAttachmentPath(dto.getAttachmentPath());
         report.setCreatedBy(creator);
-        report.setRelatedCase(caseEntity);
+        report.setRelatedCase(relatedCase);
         report.setCreatedAt(LocalDateTime.now());
-        report.setStatus(WorkflowStatus.REPORT_SUBMITTED);
+
+        relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED);
+        caseRepo.save(relatedCase);
 
         return reportRepo.save(report);
     }
@@ -77,7 +78,11 @@ public class ReportService {
 
         List<Employee> directors = reportRepo.DirectorsOfIntelligence();
 
-        report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
+        // Update the case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
+        caseRepo.save(relatedCase);
+
         if (!directors.isEmpty()) {
             report.setCurrentRecipient(directors.get(0));
         } else {
@@ -110,7 +115,7 @@ public class ReportService {
 
         List<Employee> directors = reportRepo.DirectorsOfInvestigation();
 
-        report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
+        report.getRelatedCase().setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
         if (!directors.isEmpty()) {
             report.setCurrentRecipient(directors.get(0));
         } else {
@@ -142,7 +147,7 @@ public class ReportService {
 
         List<Employee> commissioners = reportRepo.assistantCommissioner();
 
-        report.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER);
+        report.getRelatedCase().setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER);
         if (!commissioners.isEmpty()) {
             report.setCurrentRecipient(commissioners.get(0));
         } else {
@@ -173,7 +178,7 @@ public class ReportService {
         Employee returnTo = employeeRepo.findByEmployeeId(returnToEmployeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
-        report.setStatus(WorkflowStatus.REPORT_RETURNED);
+        report.getRelatedCase().setStatus(WorkflowStatus.REPORT_RETURNED);
         report.setCurrentRecipient(returnTo);
         report.setUpdatedAt(LocalDateTime.now());
         Report savedReport = reportRepo.save(report);
@@ -192,6 +197,14 @@ public class ReportService {
                 return "NEW_REPORT_DIRECTOR_INVESTIGATION";
             case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
                 return "NEW_REPORT_ASSISTANT_COMMISSIONER";
+            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+            case REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
+            case REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER:
+                return "REPORT_APPROVED";
+            case REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE:
+            case REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION:
+            case REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER:
+                return "REPORT_REJECTED";
             case REPORT_RETURNED:
                 return "REPORT_RETURNED";
             default:
@@ -209,12 +222,20 @@ public class ReportService {
         dto.setId(report.getId());
         dto.setDescription(report.getDescription());
         dto.setAttachmentPath(report.getAttachmentPath());
-        dto.setStatus(report.getStatus());
+        dto.setStatus(report.getRelatedCase() != null ? report.getRelatedCase().getStatus() : null);
         dto.setCreatedBy(report.getCreatedBy().getGivenName() + " " + report.getCreatedBy().getFamilyName());
         dto.setCurrentRecipient(report.getCurrentRecipient() != null ?
                 report.getCurrentRecipient().getGivenName() + " " + report.getCurrentRecipient().getFamilyName() : null);
         dto.setCreatedAt(report.getCreatedAt());
         dto.setUpdatedAt(report.getUpdatedAt());
+        dto.setRelatedCase(report.getRelatedCase());
+        dto.setApprovedBy(report.getApprovedBy() != null ?
+                report.getApprovedBy().getGivenName() + " " + report.getApprovedBy().getFamilyName() : null);
+        dto.setApprovedAt(report.getApprovedAt());
+        dto.setRejectedBy(report.getRejectedBy() != null ?
+                report.getRejectedBy().getGivenName() + " " + report.getRejectedBy().getFamilyName() : null);
+        dto.setRejectionReason(report.getRejectionReason());
+        dto.setRejectedAt(report.getRejectedAt());
         return dto;
     }
 
@@ -224,17 +245,101 @@ public class ReportService {
 
         return reportRepo.findByCreatedByOrderByCreatedAtDesc(employee);
     }
+     public List<Report> getReportsForDirectorIntelligence(String directorId) {
+         List<Employee> directors = reportRepo.DirectorsOfIntelligence();
+         boolean isDirector = directors.stream()
+                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
-    // Uncomment and update this method as needed
-    // public List<Report> getReportsForDirectorIntelligence(String directorId) {
-    //     List<Employee> directors = reportRepo.DirectorsOfIntelligence();
-    //     boolean isDirector = directors.stream()
-    //             .anyMatch(d -> d.getEmployeeId().equals(directorId));
-    //
-    //     if (!isDirector) {
-    //         throw new RuntimeException("Employee is not a Director of Intelligence");
-    //     }
-    //
-    //     return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
-    // }
+         if (!isDirector) {
+             throw new RuntimeException("Employee is not a Director of Intelligence");
+         }
+
+         return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
+     }
+
+    @Transactional
+    public Report approveReport(Integer reportId, String approverId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        Case relatedCase = report.getRelatedCase();
+        WorkflowStatus newStatus;
+
+        switch(relatedCase.getStatus()) {
+            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+                newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
+                break;
+            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
+                newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION;
+                break;
+            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
+                newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                break;
+            default:
+                throw new IllegalStateException("Cannot approve report in current status: " + relatedCase.getStatus());
+        }
+
+        relatedCase.setStatus(newStatus);
+        caseRepo.save(relatedCase);
+
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("Your report #%d has been approved by %s %s",
+                savedReport.getId(),
+                approver.getGivenName(),
+                approver.getFamilyName());
+        createNotification(savedReport, message);
+
+        return savedReport;
+    }
+
+    @Transactional
+    public Report rejectReport(Integer reportId, String rejectionReason, String rejectorId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
+                .orElseThrow(() -> new RuntimeException("Rejector not found"));
+
+        WorkflowStatus newStatus;
+        switch(report.getStatus()) {
+            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+                newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
+                break;
+            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
+                newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
+                break;
+            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
+                newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
+                break;
+            default:
+                throw new IllegalStateException("Cannot reject report in current status: " + report.getStatus());
+        }
+
+        report.getRelatedCase().setStatus(newStatus);
+        report.setRejectedBy(rejector);
+        report.setRejectionReason(rejectionReason);
+        report.setRejectedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+        report.setCurrentRecipient(report.getCreatedBy()); // Return to creator
+
+        Report savedReport = reportRepo.save(report);
+
+        // Notify creator
+        String message = String.format("Your report #%d has been rejected by %s %s. Reason: %s",
+                savedReport.getId(),
+                rejector.getGivenName(),
+                rejector.getFamilyName(),
+                rejectionReason != null ? rejectionReason : "No reason provided");
+        createNotification(savedReport, message);
+
+        return savedReport;
+    }
 }

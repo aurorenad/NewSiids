@@ -1,16 +1,14 @@
 package org.example.siidsbackend.DTO.Request;
 
+import jakarta.persistence.OneToOne;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
+import org.example.siidsbackend.Model.Case;
 
 import java.time.LocalDateTime;
 
 @Data
 public class ReportRequestDTO {
-    private Integer id;
     private String description;
     private String attachmentPath;
-    private Integer relatedCase;
-    private String createdByName;
-    private LocalDateTime createdAt;
+    private Case relatedCase;
 }

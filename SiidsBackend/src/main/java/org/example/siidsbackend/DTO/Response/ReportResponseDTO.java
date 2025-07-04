@@ -17,4 +17,10 @@ public class ReportResponseDTO {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Case relatedCase;
+
+    private String approvedBy;
+    private LocalDateTime approvedAt;
+    private String rejectedBy;
+    private String rejectionReason;
+    private LocalDateTime rejectedAt;
 }

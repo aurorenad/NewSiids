@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Entity
 @Table(name = "`case`")
@@ -12,7 +11,11 @@ import java.util.Date;
 public class Case {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer caseNum;
+    private Integer id;
+
+    @Column(unique = true)
+    private String caseNum;
+
     private String informerId;
     private String informerName;
     private String tin;
@@ -23,9 +26,23 @@ public class Case {
     private LocalDateTime reportedDate;
     private LocalDateTime updatedAt;
     private String summaryOfInformationCase;
+
     @Enumerated(EnumType.STRING)
     private WorkflowStatus status;
+
     @ManyToOne
     @JoinColumn(name = "created_by", referencedColumnName = "employee_id")
     private Employee createdBy;
+
+    @PrePersist
+    protected void onCreate() {
+        this.reportedDate = LocalDateTime.now();
+    }
+
+    public String generateCaseNumber() {
+        LocalDateTime now = LocalDateTime.now();
+        String year = String.format("%02d", now.getYear() % 100);
+        String month = String.format("%02d", now.getMonthValue());
+        return "CS/" + year + "/" + month + "/" + this.id;
+    }
 }

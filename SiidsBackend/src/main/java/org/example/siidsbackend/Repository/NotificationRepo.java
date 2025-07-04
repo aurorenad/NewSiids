@@ -15,17 +15,9 @@ import java.util.List;
 
 @Repository
 public interface NotificationRepo extends JpaRepository<Notification, Integer> {
-    List<Notification> findByRecipientEmployeeIdOrderByCreatedAtDesc(String employeeId);
-    List<Notification> findByRecipientEmployeeIdAndIsReadFalseOrderByCreatedAtDesc(String employeeId);
-
-    Page<Notification> findByRecipientEmployeeIdOrderByCreatedAtDesc(String employeeId, Pageable pageable);
-    Page<Notification> findByRecipientEmployeeIdAndIsReadFalseOrderByCreatedAtDesc(String employeeId, Pageable pageable);
-
     @Modifying
-    @Query("UPDATE Notification n SET n.isRead = true WHERE n.id IN :ids")
-    void markAsRead(@Param("ids") List<Integer> ids);
-
-    long countByRecipientEmployeeIdAndIsReadFalse(String employeeId);
+    @Query("UPDATE Notification n SET n.read = true WHERE n.recipient.employeeId = :employeeId")
+    void markAllNotificationsAsRead(@Param("Id") List<Integer> id);
 
     List<Notification> findByRecipientAndReadFalseOrderByCreatedAtDesc(Employee employee);
 

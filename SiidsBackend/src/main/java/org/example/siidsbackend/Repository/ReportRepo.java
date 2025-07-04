@@ -1,5 +1,6 @@
 package org.example.siidsbackend.Repository;
 
+import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+
 @Repository
 public interface ReportRepo extends JpaRepository<Report, Integer> {
 
@@ -34,7 +37,12 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "WHERE j.gradeId.gradeId = 4 AND s.structureId = 10")
     List<Employee> assistantCommissioner();
 
-    @Query("SELECT r FROM Report r WHERE r.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE " +
+    @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
+            "WHERE c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE " +
             "AND r.currentRecipient.employeeId = :directorId")
     List<Report> findReportsSubmittedToDirectorIntelligence(@Param("directorId") String directorId);
+
+
+    @Query("SELECT c FROM Case c WHERE c.caseNum = :caseId")
+    Optional<Case> findRelatedCaseById(@Param("caseId") Integer caseId);
 }

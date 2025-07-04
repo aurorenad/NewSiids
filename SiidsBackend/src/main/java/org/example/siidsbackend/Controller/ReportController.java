@@ -3,6 +3,7 @@ package org.example.siidsbackend.Controller;
 import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
+import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
 import org.example.siidsbackend.Model.WorkflowStatus;
@@ -27,12 +28,12 @@ public class ReportController {
     private final ReportService reportService;
     private final EmployeeRepo employeeRepo;
 
-    @PostMapping
+    @PostMapping  // Keep as /api/reports
     public ResponseEntity<ReportResponseDTO> createReport(
             @RequestParam("description") String description,
-            @RequestParam(value = "caseId") Integer caseId, // Fixed parameter name
+            @RequestParam("caseNum") String caseNum,  // Changed from @PathVariable to @RequestParam
             @RequestParam(value = "attachment", required = false) MultipartFile attachment,
-            @RequestHeader("employee_id") String employeeId) { // Standardized header name
+            @RequestHeader("employee_id") String employeeId) {
 
         try {
             if (description == null || description.trim().isEmpty()) {
@@ -47,12 +48,15 @@ public class ReportController {
             ReportRequestDTO dto = new ReportRequestDTO();
             dto.setDescription(description);
             dto.setAttachmentPath(attachmentPath);
-            dto.setRelatedCase(caseId); // Fixed variable name
+
+            // Create a Case object with just the ID
+            Case caseObj = new Case();
+            caseObj.setCaseNum(caseNum);
+            dto.setRelatedCase(caseObj);
 
             Report report = reportService.createReport(dto, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
-            // Add logging to help debug
             System.err.println("Error creating report: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -75,7 +79,7 @@ public class ReportController {
 
     @GetMapping("/my-reports")
     public ResponseEntity<List<ReportResponseDTO>> getMyReports(
-            @RequestHeader("Employee-Id") String employeeId) {
+            @RequestHeader("employee_id") String employeeId) {
         try {
             List<Report> reports = reportService.getReportsByEmployee(employeeId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -92,7 +96,7 @@ public class ReportController {
     @GetMapping("/{id}")
     public ResponseEntity<ReportResponseDTO> getReport(
             @PathVariable Integer id,
-            @RequestHeader("Employee-Id") String employeeId) {
+            @RequestHeader("employee_id") String employeeId) {
         try {
             Report report = reportService.getReport(id);
             // Add authorization check here if needed
@@ -138,6 +142,22 @@ public class ReportController {
         }
     }
 
+    @PostMapping("/{id}/send-to-director-investigation")
+    public ResponseEntity<ReportResponseDTO> sendToDirectorInvestigation(
+            @PathVariable("id") Integer reportId,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Employee sender = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Sender not found"));
+
+            Report report = reportService.sendToDirectorInvestigation(reportId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            System.err.println("Error sending to Director of Intelligence: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
 
     @PostMapping("/{id}/return")
     public ResponseEntity<ReportResponseDTO> returnReport(
@@ -173,4 +193,38 @@ public class ReportController {
         }
     }
 
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<ReportResponseDTO> approveReport(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Employee approver = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+            Report report = reportService.approveReport(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            System.err.println("Error approving report: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<ReportResponseDTO> rejectReport(
+            @PathVariable Integer id,
+            @RequestParam(required = false) String rejectionReason,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Employee rejector = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Rejector not found"));
+
+            Report report = reportService.rejectReport(id, rejectionReason, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            System.err.println("Error rejecting report: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
 }

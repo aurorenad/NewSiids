@@ -18,7 +18,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class CaseService {
-
     private final CaseRepo caseRepo;
     private final EmployeeRepo employeeRepo;
 
@@ -39,37 +38,30 @@ public class CaseService {
         newCase.setSummaryOfInformationCase(dto.getSummaryOfInformationCase());
         newCase.setStatus(WorkflowStatus.CASE_CREATED);
         newCase.setCreatedBy(creator);
-        newCase.setReportedDate(LocalDateTime.now());
 
         Case savedCase = caseRepo.save(newCase);
-        log.info("Successfully created case with ID: {}", savedCase.getCaseNum());
-        return savedCase;
+        savedCase.setCaseNum(savedCase.generateCaseNumber());
+        return caseRepo.save(savedCase);
     }
 
     public List<Case> getCasesByCreator(String employeeId) {
         employeeId = employeeId.trim();
         log.info("Fetching cases for employee: {}", employeeId);
-
-        String finalEmployeeId = employeeId;
-        Employee creator = employeeRepo.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + finalEmployeeId));
-
-        List<Case> cases = caseRepo.findByCreatedBy_EmployeeId(employeeId);
-        log.info("Found {} cases for employee: {}", cases.size(), employeeId);
-        return cases;
+        return caseRepo.findByCreatedBy_EmployeeId(employeeId);
     }
 
-    public Optional<Case> getCaseIfCreator(Integer caseNum, String employeeId) {
-        log.info("Fetching case {} for employee: {}", caseNum, employeeId);
-        return caseRepo.findByCaseNumAndCreatedBy_EmployeeId(caseNum, employeeId);
+    public Optional<Case> getCaseIfCreator(Integer caseId, String employeeId) {
+        log.info("Fetching case {} for employee: {}", caseId, employeeId);
+        return caseRepo.findById(caseId)
+                .filter(caseObj -> caseObj.getCreatedBy().getEmployeeId().equals(employeeId));
     }
 
-    public Case updateCaseStatus(Integer caseNum, String employeeId, WorkflowStatus newStatus) {
-        log.info("Updating case {} status to {} for employee: {}", caseNum, newStatus, employeeId);
+    public Case updateCaseStatus(Integer id, String employeeId, WorkflowStatus newStatus) {
+        log.info("Updating case {} status to {} for employee: {}", id, newStatus, employeeId);
 
-        Optional<Case> caseOpt = getCaseIfCreator(caseNum, employeeId);
+        Optional<Case> caseOpt = getCaseIfCreator(id, employeeId);
         if (caseOpt.isEmpty()) {
-            log.warn("Case {} not found or not owned by employee {}", caseNum, employeeId);
+            log.warn("Case {} not found or not owned by employee {}", id, employeeId);
             return null;
         }
 
@@ -77,8 +69,6 @@ public class CaseService {
         existingCase.setStatus(newStatus);
         existingCase.setUpdatedAt(LocalDateTime.now());
 
-        Case updatedCase = caseRepo.save(existingCase);
-        log.info("Successfully updated case {} status to {}", caseNum, newStatus);
-        return updatedCase;
+        return caseRepo.save(existingCase);
     }
 }
