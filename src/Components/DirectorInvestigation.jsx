@@ -20,7 +20,7 @@ import {
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { Check, Close, Description, Search } from "@mui/icons-material";
-import { ReportApi } from './../api/Axios/caseApi';
+import { ReportApi } from './../api/Axios/caseApi';// try
 
 const DirectorInvestigation = () => {
     const [searchQuery, setSearchQuery] = useState('');
