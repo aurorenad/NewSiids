@@ -3,6 +3,7 @@ package org.example.siidsbackend.Service;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Service
+@Slf4j
 public class JWTService {
 
     private final SecretKey accessTokenKey;
@@ -72,6 +74,18 @@ public class JWTService {
         }
     }
 
+//    public boolean validateRefreshToken(String refreshToken) {
+//        try {
+//            Jwts.parser()
+//                    .verifyWith(refreshTokenKey)
+//                    .build()
+//                    .parseSignedClaims(refreshToken);
+//            return true;
+//        } catch (Exception e) {
+//            return false;
+//        }
+//    }
+
     public boolean validateRefreshToken(String refreshToken) {
         try {
             Jwts.parser()
@@ -80,6 +94,7 @@ public class JWTService {
                     .parseSignedClaims(refreshToken);
             return true;
         } catch (Exception e) {
+            log.error("Invalid refresh token: {}", e.getMessage());
             return false;
         }
     }

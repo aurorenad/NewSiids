@@ -43,8 +43,8 @@ public class SecurityConfig {
                 }))
 
                 .authorizeHttpRequests(request -> request
-                        .requestMatchers("/login", "/register", "/ws-notifications/**").permitAll()
-                        .requestMatchers("/Case/**").hasAnyAuthority("User", "Surv")
+                        .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**").permitAll()
+                        .requestMatchers("/api/cases/**").hasAnyAuthority("User", "Surv")
                         .requestMatchers("/api/reports/**").hasAnyAuthority("User")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())

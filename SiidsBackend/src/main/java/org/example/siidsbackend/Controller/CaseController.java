@@ -1,5 +1,6 @@
 package org.example.siidsbackend.Controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
@@ -11,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +22,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/cases")
 @RequiredArgsConstructor
 @Slf4j
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
 public class CaseController {
     private final CaseService caseService;
 
@@ -108,5 +112,43 @@ public class CaseController {
         dto.setInformerId(c.getInformerId());
         dto.setInformerName(c.getInformerName());
         return dto;
+    }
+
+    // Fixed method to handle case numbers with slashes
+    @GetMapping("/caseNum/**")
+    public ResponseEntity<CaseResponseDTO> getCaseByCaseNum(
+            @RequestHeader("employee_id") String employeeId,
+            HttpServletRequest request) {
+        try {
+            // Extract the case number from the URL path
+            String requestURI = request.getRequestURI();
+            String caseNumPath = "/api/cases/caseNum/";
+
+            if (!requestURI.contains(caseNumPath)) {
+                log.error("Invalid request URI: {}", requestURI);
+                return ResponseEntity.badRequest().build();
+            }
+
+            // Extract everything after "/api/cases/caseNum/"
+            String caseNum = requestURI.substring(requestURI.indexOf(caseNumPath) + caseNumPath.length());
+
+            // URL decode the case number to handle encoded slashes
+            try {
+                caseNum = URLDecoder.decode(caseNum, "UTF-8");
+            } catch (UnsupportedEncodingException e) {
+                log.error("Error decoding case number: {}", caseNum, e);
+                return ResponseEntity.badRequest().build();
+            }
+
+            log.info("Searching for case with number: {}", caseNum);
+
+            return caseService.getCaseByCaseNum(caseNum, employeeId)
+                    .map(this::toResponseDTO)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error fetching case by number", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

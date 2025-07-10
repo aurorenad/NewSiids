@@ -272,6 +272,9 @@ public class ReportService {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
                 break;
+            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+                newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                break;
             case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION;
                 break;
@@ -341,5 +344,30 @@ public class ReportService {
         createNotification(savedReport, message);
 
         return savedReport;
+    }
+
+    public List<Report> getApprovedReportsForAssistantCommissioner(String employeeId) {
+        List<Employee> assistantCommissioners = reportRepo.assistantCommissioner();
+        boolean isAssistantCommissioner = assistantCommissioners.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+        if (!isAssistantCommissioner) {
+            throw new RuntimeException("Employee is not an Assistant Commissioner");
+        }
+
+        return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
+    }
+
+    public List<Report> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(String directorId) {
+        // Verify the requester is a Director of Investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(directorId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Employee is not a Director of Investigation");
+        }
+
+        return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
     }
 }

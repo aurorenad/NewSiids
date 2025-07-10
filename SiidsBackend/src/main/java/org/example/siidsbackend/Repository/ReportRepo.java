@@ -3,6 +3,7 @@ package org.example.siidsbackend.Repository;
 import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
+import org.example.siidsbackend.Model.WorkflowStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -45,4 +46,6 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     @Query("SELECT c FROM Case c WHERE c.caseNum = :caseId")
     Optional<Case> findRelatedCaseById(@Param("caseId") Integer caseId);
+
+    List<Report> findByRelatedCaseStatus(WorkflowStatus workflowStatus);
 }

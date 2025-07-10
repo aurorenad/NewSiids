@@ -34,6 +34,8 @@ public class Case {
     @JoinColumn(name = "created_by", referencedColumnName = "employee_id")
     private Employee createdBy;
 
+
+
     @PrePersist
     protected void onCreate() {
         this.reportedDate = LocalDateTime.now();
@@ -45,4 +47,5 @@ public class Case {
         String month = String.format("%02d", now.getMonthValue());
         return "CS/" + year + "/" + month + "/" + this.id;
     }
+
 }

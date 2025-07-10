@@ -71,4 +71,10 @@ public class CaseService {
 
         return caseRepo.save(existingCase);
     }
+
+    public Optional<Case> getCaseByCaseNum(String caseNum, String employeeId) {
+        log.info("Fetching case by number {} for employee: {}", caseNum, employeeId);
+        return caseRepo.findByCaseNum(caseNum)
+                .filter(caseObj -> caseObj.getCreatedBy().getEmployeeId().equals(employeeId));
+    }
 }

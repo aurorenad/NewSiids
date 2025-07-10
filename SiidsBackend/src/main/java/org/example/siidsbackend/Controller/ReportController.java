@@ -1,5 +1,6 @@
 package org.example.siidsbackend.Controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
@@ -10,6 +11,7 @@ import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,15 +30,45 @@ public class ReportController {
     private final ReportService reportService;
     private final EmployeeRepo employeeRepo;
 
-    @PostMapping  // Keep as /api/reports
+//    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+//    public ResponseEntity<ReportResponseDTO> createReport(
+//            @RequestBody ReportRequestDTO reportData,
+//            @RequestPart(value = "attachment", required = false) MultipartFile attachment,
+//            @RequestHeader("employee_id") String employeeId) {
+//
+//        try {
+//            if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
+//                return ResponseEntity.badRequest().build();
+//            }
+//
+//            String attachmentPath = null;
+//            if (attachment != null && !attachment.isEmpty()) {
+//                attachmentPath = storeAttachment(attachment);
+//            }
+//
+//            reportData.setAttachmentPath(attachmentPath);
+//
+//            Report report = reportService.createReport(reportData, employeeId);
+//            return ResponseEntity.ok(reportService.toResponseDTO(report));
+//        } catch (Exception e) {
+//            System.err.println("Error creating report: " + e.getMessage());
+//            e.printStackTrace();
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+//        }
+//    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReportResponseDTO> createReport(
-            @RequestParam("description") String description,
-            @RequestParam("caseNum") String caseNum,  // Changed from @PathVariable to @RequestParam
-            @RequestParam(value = "attachment", required = false) MultipartFile attachment,
+            @RequestPart("reportData") String reportDataJson,
+            @RequestPart(value = "attachment", required = false) MultipartFile attachment,
             @RequestHeader("employee_id") String employeeId) {
 
         try {
-            if (description == null || description.trim().isEmpty()) {
+            // Parse JSON from string
+            ObjectMapper objectMapper = new ObjectMapper();
+            ReportRequestDTO reportData = objectMapper.readValue(reportDataJson, ReportRequestDTO.class);
+
+            if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
                 return ResponseEntity.badRequest().build();
             }
 
@@ -45,16 +77,9 @@ public class ReportController {
                 attachmentPath = storeAttachment(attachment);
             }
 
-            ReportRequestDTO dto = new ReportRequestDTO();
-            dto.setDescription(description);
-            dto.setAttachmentPath(attachmentPath);
+            reportData.setAttachmentPath(attachmentPath);
 
-            // Create a Case object with just the ID
-            Case caseObj = new Case();
-            caseObj.setCaseNum(caseNum);
-            dto.setRelatedCase(caseObj);
-
-            Report report = reportService.createReport(dto, employeeId);
+            Report report = reportService.createReport(reportData, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             System.err.println("Error creating report: " + e.getMessage());
@@ -62,7 +87,6 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
     private String storeAttachment(MultipartFile file) throws Exception {
         // Create uploads directory if it doesn't exist
         Path uploadDir = Paths.get("uploads");
@@ -225,6 +249,43 @@ public class ReportController {
             System.err.println("Error rejecting report: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+    @GetMapping("/assistant-commissioner/approved-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getApprovedReportsForAssistantCommissioner(
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            List<Report> reports = reportService.getApprovedReportsForAssistantCommissioner(employeeId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            System.err.println("Error getting approved reports for Assistant Commissioner: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            System.err.println("Error getting reports: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/director-investigation/approved-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<Report> reports = reportService.getReportsApprovedByAssistantCommissionerForDirectorInvestigation(directorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            System.err.println("Authorization error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            System.err.println("Error getting approved reports: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }
