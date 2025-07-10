@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     Paper,
     Typography,
@@ -43,21 +43,42 @@ const formatDate = (dateString) => {
 };
 
 const TaxReportView = () => {
-    const { caseId } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const [caseData, setCaseData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    // Extract case ID from the wildcard path
+    const getCaseIdFromPath = () => {
+        const pathname = location.pathname;
+        const basePath = '/intelligence-officer/view-case/';
+        if (pathname.startsWith(basePath)) {
+            return pathname.substring(basePath.length);
+        }
+        return null;
+    };
+
+    const caseId = getCaseIdFromPath();
+
     const fetchCaseDetails = async () => {
+        if (!caseId) {
+            setError('No case ID provided');
+            setLoading(false);
+            return;
+        }
+
         try {
             setLoading(true);
             setError('');
+            console.log('Fetching case with ID:', caseId);
             const response = await CaseService.getCase(caseId);
             const caseInfo = {
                 ...response.data,
                 caseNum: response.data.caseNum || response.data.id,
-                intelligenceOfficer: response.data.reportingOfficer || response.data.userId,
+                intelligenceOfficer: response.data.createdByName || 'N/A', // Use createdByName from the DTO
+                reportedDate: response.data.createdAt || 'N/A', // Add reportedDate if available
+                taxPayerAddress: response.data.taxPayerAddress || 'N/A', // Ensure all fields are handled
             };
             setCaseData(caseInfo);
         } catch (err) {
@@ -90,9 +111,7 @@ const TaxReportView = () => {
     };
 
     useEffect(() => {
-        if (caseId) {
-            fetchCaseDetails();
-        }
+        fetchCaseDetails();
     }, [caseId]);
 
     if (loading) {

@@ -48,7 +48,11 @@ function App() {
                     <Route path="/director-intelligence" element={<ProtectedRoute><DirectorIntelligence /></ProtectedRoute>} />
                     <Route path="/intelligence-officer" element={<ProtectedRoute><IntelligenceOfficer /></ProtectedRoute>} />
                     <Route path="/intelligence-officer/newCase" element={<ProtectedRoute><NewCase /></ProtectedRoute>} />
-                    <Route path="/intelligence-officer/view-case/:caseId" element={<ProtectedRoute><TaxReportView /></ProtectedRoute>} />
+                    {/* Updated route to handle case IDs with slashes using wildcard */}
+                    <Route
+                        path="/intelligence-officer/view-case/*"
+                        element={<ProtectedRoute><TaxReportView /></ProtectedRoute>}
+                    />
                     <Route path="/intelligence-officer/claim-form/:caseNum" element={<ProtectedRoute><ClaimForm /></ProtectedRoute>} />
                     <Route path="/investigation-officer" element={<ProtectedRoute><InvestigationOfficer/></ProtectedRoute>} />
                     <Route path="/surveillence-officer" element={<ProtectedRoute><SurveillenceOfficer/></ProtectedRoute>} />

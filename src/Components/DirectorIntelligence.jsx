@@ -42,12 +42,13 @@ const DirectorIntelligence = () => {
         setActionLoading(true);
         try {
             const report = reports[index];
-            await ReportApi.sendToAssistantCommissioner(report.id);
+            await ReportApi.approveReport(report.id);
 
             setReports(prev => prev.map((r, i) =>
-                i === index ? { ...r, status: 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER' } : r
+                i === index ? { ...r, status: 'REPORT_APPROVED' } : r
             ));
 
+            // Optional: navigate after approval
             setTimeout(() => {
                 navigate('/assistant-commissioner');
             }, 3000);
@@ -69,7 +70,7 @@ const DirectorIntelligence = () => {
         setActionLoading(true);
         try {
             const report = reports[selectedReportIndex];
-            await ReportApi.returnReport(report.id, report.createdBy.employeeId);
+            await ReportApi.returnReport(report.id, report.createdBy);
 
             setReports(prev => prev.map((r, i) =>
                 i === selectedReportIndex ? {
@@ -92,9 +93,8 @@ const DirectorIntelligence = () => {
     const filteredReports = reports.filter((report) => {
         const id = report.id?.toString().toLowerCase() || '';
         const caseNum = report.relatedCase?.caseNum?.toLowerCase() || '';
-        const givenName = report.createdBy?.givenName?.toLowerCase() || '';
-        const familyName = report.createdBy?.familyName?.toLowerCase() || '';
-        return id.includes(searchString) || caseNum.includes(searchString) || givenName.includes(searchString) || familyName.includes(searchString);
+        const Name = report.createdBy?.toLowerCase() || '';
+        return id.includes(searchString) || caseNum.includes(searchString) || Name.includes(searchString);
     });
 
     // Sort newest reports first (by ID descending)
@@ -151,7 +151,7 @@ const DirectorIntelligence = () => {
                                     <TableCell>{report.id}</TableCell>
                                     <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
                                     <TableCell>
-                                        {report.createdBy?.givenName} {report.createdBy?.familyName}
+                                        {report.createdBy}
                                     </TableCell>
                                     <TableCell style={{
                                         color: report.status === "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER" ? "green" :

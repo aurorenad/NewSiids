@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     IconButton,
     Paper,
@@ -13,69 +13,120 @@ import {
     DialogContent,
     DialogActions,
     Button,
-    TextField
+    TextField,
+    CircularProgress,
+    Snackbar,
+    Alert
 } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import { Check, Close, Description, Search } from "@mui/icons-material";
+import { ReportApi } from './../api/Axios/caseApi';
 
 const DirectorInvestigation = () => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [cases, setCases] = useState([
-        {
-            id: 'CS001/25',
-            delegate: '100124',
-            reportedDate: '21/09/2025',
-            status: 'Report received from Investigation Officer',
-            reason: ''
-        },
-        {
-            id: 'CS002/25',
-            delegate: '100125',
-            reportedDate: '22/09/2025',
-            status: 'Sent to Assistant Commissioner',
-            reason: ''
-        }
-    ]);
+    const [cases, setCases] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
     const navigate = useNavigate();
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
-    const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
+    const [selectedCase, setSelectedCase] = useState(null);
     const [reasonInput, setReasonInput] = useState('');
 
-    const handleApprove = (index) => {
-        const updatedCases = [...cases];
-        updatedCases[index] = {
-            ...updatedCases[index],
-            status: 'Received from Assistant Commissioner',
-            reason: ''
+    useEffect(() => {
+        const fetchApprovedReports = async () => {
+            try {
+                setLoading(true);
+                const response = await ReportApi.getReportsForDirectorInvestigation();
+
+                // Map API response to your frontend structure
+                const mappedCases = response.data.map(report => ({
+                    id: report.relatedCase?.caseNum || `CS${report.id}`,
+                    delegate: report.currentRecipient?.employeeId || '',
+                    reportedDate: new Date(report.createdAt).toLocaleDateString(),
+                    status: report.status || 'Approved by Assistant Commissioner',
+                    reason: report.rejectionReason || '',
+                    reportId: report.id // Store the report ID for API calls
+                }));
+
+                setCases(mappedCases);
+            } catch (err) {
+                setError(err.message);
+                setSnackbar({
+                    open: true,
+                    message: err.response?.data?.message || 'Failed to fetch reports',
+                    severity: 'error'
+                });
+            } finally {
+                setLoading(false);
+            }
         };
-        setCases(updatedCases);
-        setTimeout(() => {
-            navigate('/assistant-commissioner');
-        }, 3000);
+
+        fetchApprovedReports();
+    }, []);
+
+    const handleApprove = async (reportId) => {
+        try {
+            await ReportApi.approveReport(reportId);
+
+            // Update local state
+            setCases(cases.map(c =>
+                c.reportId === reportId ? {
+                    ...c,
+                    status: 'Approved by Director of Investigation',
+                    reason: ''
+                } : c
+            ));
+
+            setSnackbar({
+                open: true,
+                message: 'Report approved successfully',
+                severity: 'success'
+            });
+        } catch (err) {
+            setSnackbar({
+                open: true,
+                message: err.response?.data?.message || 'Failed to approve report',
+                severity: 'error'
+            });
+        }
     };
 
-    const handleOpenCloseDialog = (index) => {
-        setSelectedCaseIndex(index);
+    const handleReject = async () => {
+        if (!selectedCase || !reasonInput.trim()) return;
+
+        try {
+            await ReportApi.rejectReport(selectedCase.reportId, reasonInput);
+
+            // Update local state
+            setCases(cases.map(c =>
+                c.reportId === selectedCase.reportId ? {
+                    ...c,
+                    status: 'Rejected by Director of Investigation',
+                    reason: reasonInput
+                } : c
+            ));
+
+            setCloseDialogOpen(false);
+            setSnackbar({
+                open: true,
+                message: 'Report rejected successfully',
+                severity: 'success'
+            });
+        } catch (err) {
+            setSnackbar({
+                open: true,
+                message: err.response?.data?.message || 'Failed to reject report',
+                severity: 'error'
+            });
+        }
+    };
+
+    const handleOpenRejectDialog = (caseItem) => {
+        setSelectedCase(caseItem);
         setReasonInput('');
         setCloseDialogOpen(true);
-    };
-
-    const handleConfirmClose = () => {
-        const updatedCases = [...cases];
-        updatedCases[selectedCaseIndex] = {
-            ...updatedCases[selectedCaseIndex],
-            status: 'Case Closed',
-            reason: reasonInput
-        };
-        setCases(updatedCases);
-        setCloseDialogOpen(false);
-    };
-
-    const handleDelegateChange = (e, index) => {
-        const updatedCases = [...cases];
-        updatedCases[index].delegate = e.target.value;
-        setCases(updatedCases);
     };
 
     const filteredCases = cases.filter(
@@ -101,67 +152,80 @@ const DirectorInvestigation = () => {
                 </div>
             </div>
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow style={{ backgroundColor: "#cfd8dc" }}>
-                            <TableCell>Case Id</TableCell>
-                            <TableCell>Delegate</TableCell>
-                            <TableCell>Reported Date</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Action</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredCases.map((caseItem, index) => (
-                            <TableRow key={caseItem.id}>
-                                <TableCell>{caseItem.id}</TableCell>
-                                <TableCell>
-                                    <input
-                                        type="text"
-                                        value={caseItem.delegate}
-                                        onChange={(e) => handleDelegateChange(e, index)}
-                                        style={{
-                                            border: 'none',
-                                            borderRadius: '4px',
-                                            padding: '4px 8px',
-                                            width: '100%',
-                                            fontSize: '14px'
-                                        }}
-                                    />
-                                </TableCell>
-                                <TableCell>{caseItem.reportedDate}</TableCell>
-                                <TableCell style={{
-                                    color: caseItem.status === "Received from Assistant Commissioner" ? "default" :
-                                        caseItem.status === "Case Closed" ? "red" : "#555",
-                                    fontWeight: "bold"
-                                }}>
-                                    {caseItem.status === "Case Closed" && caseItem.reason
-                                        ? `${caseItem.status} - ${caseItem.reason}`
-                                        : caseItem.status}
-                                </TableCell>
-                                <TableCell>
-                                    <Link to={`/intelligence-officer/view/${caseItem.id}`}>
-                                        <IconButton color="primary">
-                                            <Description />
-                                        </IconButton>
-                                    </Link>
-                                    <IconButton color="success" onClick={() => handleApprove(index)}>
-                                        <Check />
-                                    </IconButton>
-                                    <IconButton color="error" onClick={() => handleOpenCloseDialog(index)}>
-                                        <Close />
-                                    </IconButton>
-                                </TableCell>
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                    <CircularProgress />
+                </div>
+            ) : error ? (
+                <Alert severity="error">{error}</Alert>
+            ) : (
+                <TableContainer component={Paper}>
+                    <Table>
+                        <TableHead>
+                            <TableRow style={{ backgroundColor: "#cfd8dc" }}>
+                                <TableCell>Case Id</TableCell>
+                                <TableCell>Delegate</TableCell>
+                                <TableCell>Reported Date</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Action</TableCell>
                             </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {filteredCases.map((caseItem) => (
+                                <TableRow key={caseItem.id}>
+                                    <TableCell>{caseItem.id}</TableCell>
+                                    <TableCell>
+                                        <TextField
+                                            size="small"
+                                            value={caseItem.delegate}
+                                            onChange={(e) => {
+                                                const updatedCases = cases.map(c =>
+                                                    c.id === caseItem.id ? { ...c, delegate: e.target.value } : c
+                                                );
+                                                setCases(updatedCases);
+                                            }}
+                                        />
+                                    </TableCell>
+                                    <TableCell>{caseItem.reportedDate}</TableCell>
+                                    <TableCell style={{
+                                        color: caseItem.status.includes("Approved") ? "green" :
+                                            caseItem.status.includes("Rejected") ? "red" : "#555",
+                                        fontWeight: "bold"
+                                    }}>
+                                        {caseItem.status}
+                                        {caseItem.reason && ` - ${caseItem.reason}`}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Link to={`/report/${caseItem.reportId}`}>
+                                            <IconButton color="primary">
+                                                <Description />
+                                            </IconButton>
+                                        </Link>
+                                        <IconButton
+                                            color="success"
+                                            onClick={() => handleApprove(caseItem.reportId)}
+                                            disabled={caseItem.status.includes("Approved") || caseItem.status.includes("Rejected")}
+                                        >
+                                            <Check />
+                                        </IconButton>
+                                        <IconButton
+                                            color="error"
+                                            onClick={() => handleOpenRejectDialog(caseItem)}
+                                            disabled={caseItem.status.includes("Approved") || caseItem.status.includes("Rejected")}
+                                        >
+                                            <Close />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
 
-            {/* Dialog for closing a case with reason */}
+            {/* Dialog for rejecting a report */}
             <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)}>
-                <DialogTitle>Reason for Case Closure</DialogTitle>
+                <DialogTitle>Reason for Rejection</DialogTitle>
                 <DialogContent>
                     <TextField
                         fullWidth
@@ -169,7 +233,7 @@ const DirectorInvestigation = () => {
                         rows={3}
                         value={reasonInput}
                         onChange={(e) => setReasonInput(e.target.value)}
-                        placeholder="Enter reason..."
+                        placeholder="Enter reason for rejection..."
                         variant="outlined"
                     />
                 </DialogContent>
@@ -178,15 +242,28 @@ const DirectorInvestigation = () => {
                         Cancel
                     </Button>
                     <Button
-                        onClick={handleConfirmClose}
+                        onClick={handleReject}
                         variant="contained"
                         color="primary"
                         disabled={!reasonInput.trim()}
                     >
-                        Confirm
+                        Confirm Rejection
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+            >
+                <Alert
+                    onClose={() => setSnackbar({ ...snackbar, open: false })}
+                    severity={snackbar.severity}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </div>
     );
 };

@@ -19,7 +19,7 @@ caseApi.interceptors.request.use((config) => {
     }
 
     if (employeeId) {
-        config.headers['employee_id'] = employeeId.trim(); // Fixed: consistent header name
+        config.headers['employee_id'] = employeeId.trim();
     }
 
     console.log('Request headers:', config.headers);
@@ -49,13 +49,13 @@ caseApi.interceptors.response.use(
                 }
 
                 error.config.headers['Authorization'] = `Bearer ${token}`;
-                error.config.headers['employee_id'] = employeeId; // Fixed: consistent header name
+                error.config.headers['employee_id'] = employeeId;
                 return caseApi.request(error.config);
             } catch (refreshError) {
                 // Clear all auth storage if refresh fails
                 localStorage.removeItem('token');
                 localStorage.removeItem('employeeId');
-                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('refreshToken'); // Fixed typo: removeToken -> removeItem
                 sessionStorage.removeItem('token');
                 sessionStorage.removeItem('employeeId');
                 sessionStorage.removeItem('refreshToken');
@@ -79,8 +79,17 @@ export const CaseService = {
         return caseApi.get('/api/cases');
     },
 
-    getCase: (id) => {
-        return caseApi.get(`/api/cases/${id}`);
+    getCase: (identifier) => {
+        // Handle case numbers with slashes by properly encoding them
+        if (typeof identifier === 'string' && identifier.includes('/')) {
+            // Single encode the case number - the browser will handle the rest
+            const encodedCaseNum = encodeURIComponent(identifier);
+            console.log('Original case number:', identifier);
+            console.log('Encoded case number:', encodedCaseNum);
+            return caseApi.get(`/api/cases/caseNum/${encodedCaseNum}`);
+        }
+        // Handle numeric IDs
+        return caseApi.get(`/api/cases/${identifier}`);
     },
 
     updateCaseStatus: (id, status) => {
@@ -93,35 +102,32 @@ export const CaseService = {
 };
 
 export const ReportApi = {
-    submitReport: async (formData, caseNum) => {
-        // Option 1: Send caseNum as a request parameter
-        formData.append('caseNum', caseNum);
-
-        const response = await caseApi.post(
-            '/api/reports',  // Changed from `/api/reports/${caseNum}`
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
+    submitReport: async (formData, employeeId) => {
+        try {
+            const response = await axios.post(
+                `${BASE_URL}/api/reports`, // Correct endpoint
+                formData,
+                {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                        'employee_id': employeeId, // Add employee_id header
+                        'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}` // Add auth token
+                    },
                 }
-            }
-        );
-        return response.data;
+            );
+            return response.data;
+        } catch (error) {
+            console.error('Error submitting report:', error);
+            throw error;
+        }
     },
+
     getMyReports: () => {
-        return caseApi.get('/api/reports/my-reports', {
-            headers: {
-                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') // Fixed: changed to match backend expectation
-            }
-        });
+        return caseApi.get('/api/reports/my-reports');
     },
 
     getReport: (id) => {
-        return caseApi.get(`/api/reports/${id}`, {
-            headers: {
-                'Employee-Id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') // Fixed: changed to match backend expectation
-            }
-        });
+        return caseApi.get(`/api/reports/${id}`);
     },
 
     createReport: (data) => caseApi.post('/api/reports', data),
@@ -132,7 +138,7 @@ export const ReportApi = {
     },
 
     sendToCommissioner: (id) => {
-        return caseApi.post(`/api/reports/${id}/send-to-commissioner-intelligence`, {}); // Fixed: corrected endpoint
+        return caseApi.post(`/api/reports/${id}/send-to-commissioner-intelligence`, {});
     },
 
     sendToDirectorInvestigation: (reportId) => {
@@ -147,6 +153,14 @@ export const ReportApi = {
 
     getReportsForDirectorIntelligence: () => {
         return caseApi.get('/api/reports/director-intelligence/reports');
+    },
+
+    getReportsForDirectorInvestigation: () => {
+        return caseApi.get('/api/reports/director-investigation/approved-reports');
+    },
+
+    getReportsForAssistantCommissioner: () => {
+        return caseApi.get('/api/reports/assistant-commissioner/approved-reports');
     },
 
     approveReport: (reportId) => {

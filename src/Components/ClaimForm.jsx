@@ -8,7 +8,7 @@ export const ClaimForm = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [createdReport, setCreatedReport] = useState(null); // Store the created report
+    const [createdReport, setCreatedReport] = useState(null);
     const navigate = useNavigate();
     const { caseNum } = useParams();
 
@@ -27,6 +27,11 @@ export const ClaimForm = () => {
 
     const removeAttachment = () => {
         setAttachment(null);
+        // Reset the file input
+        const fileInput = document.getElementById('file-input');
+        if (fileInput) {
+            fileInput.value = '';
+        }
     };
 
     const handleSubmit = async () => {
@@ -46,49 +51,94 @@ export const ClaimForm = () => {
 
         try {
             const formData = new FormData();
-            formData.append('description', text);
+
+            // Create the report data object
+            const reportData = {
+                description: text,
+                relatedCase: {
+                    caseNum: caseNum
+                }
+            };
+
+            // Append report data as JSON string
+            formData.append('reportData', JSON.stringify(reportData));
+
+            // Add attachment if present
             if (attachment) {
                 formData.append('attachment', attachment);
             }
 
-            // Send the report
-            const response = await ReportApi.submitReport(formData, caseNum);
+            // Get employee ID from storage with fallback
+            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
-            // ✅ Store the created report data
+            if (!employeeId) {
+                throw new Error('Employee ID not found. Please log in again.');
+            }
+
+            // Submit the report and get response
+            const response = await ReportApi.submitReport(formData, employeeId);
+            console.log('New report created with ID:', response.id);
             setCreatedReport(response);
-            console.log('Created report:', response); // Debug log
 
-            // ✅ Store in localStorage/sessionStorage for persistence (optional)
-            const reportData = {
-                reportId: response.id,
-                caseNum: caseNum,
-                status: response.status,
-                createdAt: new Date().toISOString()
-            };
-            localStorage.setItem(`report_${caseNum}`, JSON.stringify(reportData));
+            try {
+                // Automatically send to Director of Intelligence
+                await ReportApi.sendToDirectorIntelligence(response.id);
+                setSuccess(`Report submitted and sent to Director of Intelligence! Report ID: ${response.id}`);
+            } catch (directorError) {
+                console.warn('Failed to send to Director:', directorError);
+                setSuccess(`Report submitted successfully! Report ID: ${response.id}`);
+                setError('Failed to automatically send to Director. Please send manually.');
+            }
 
-            setSuccess(`Report submitted successfully! Report ID: ${response.id}`);
+            // Reset form
             setText('');
             setAttachment(null);
+            // Reset file input
+            const fileInput = document.getElementById('file-input');
+            if (fileInput) {
+                fileInput.value = '';
+            }
 
+            // Navigate back after successful submission
             setTimeout(() => {
-                // ✅ Pass the report data when navigating
                 navigate('/intelligence-officer', {
                     state: {
                         newReport: response,
-                        caseNum: caseNum
+                        caseNum: caseNum,
+                        reportId: response.id
                     }
                 });
             }, 2000);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to submit report. Please try again.');
             console.error('Error submitting report:', err);
+
+            // More specific error handling
+            if (err.response?.status === 401) {
+                setError('Authentication failed. Please log in again.');
+            } else if (err.response?.status === 400) {
+                setError('Invalid report data. Please check your input.');
+            } else if (err.response?.status === 404) {
+                setError('Case not found. Please verify the case number.');
+            } else if (err.response?.status === 413) {
+                setError('File too large. Please use a smaller file.');
+            } else if (err.response?.status === 500) {
+                setError('Server error. Please try again later.');
+            } else if (err.message === 'Employee ID not found. Please log in again.') {
+                setError(err.message);
+            } else {
+                setError(err.response?.data?.message || err.message || 'Failed to submit report. Please try again.');
+            }
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleCancel = () => {
+        // Clear form data before navigating
+        setText('');
+        setAttachment(null);
+        setError('');
+        setSuccess('');
         navigate('/intelligence-officer');
     };
 
@@ -100,24 +150,30 @@ export const ClaimForm = () => {
                         Intelligence Office Report
                         {caseNum && <span className="case-id"> - Case #{caseNum}</span>}
                     </h2>
-                    <button className="close-button" onClick={handleCancel}>
+                    <button
+                        className="close-button"
+                        onClick={handleCancel}
+                        aria-label="Close form"
+                        type="button"
+                    >
                         ✕
                     </button>
                 </div>
 
                 {error && (
-                    <div className="alert alert-error">
+                    <div className="alert alert-error" role="alert">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div className="alert alert-success">
+                    <div className="alert alert-success" role="alert">
                         {success}
                         {createdReport && (
                             <div className="report-details">
                                 <strong>Report ID:</strong> {createdReport.id}<br/>
-                                <strong>Status:</strong> {createdReport.status}
+                                <strong>Status:</strong> {createdReport.status}<br/>
+                                <strong>Created At:</strong> {new Date(createdReport.createdAt).toLocaleString()}
                             </div>
                         )}
                     </div>
@@ -131,6 +187,8 @@ export const ClaimForm = () => {
                         onChange={(e) => setText(e.target.value)}
                         rows={8}
                         disabled={isSubmitting}
+                        maxLength={5000}
+                        aria-label="Report description"
                     />
                     <div className="character-count">
                         {text.length} characters
@@ -145,6 +203,7 @@ export const ClaimForm = () => {
                         onChange={handleFileChange}
                         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                         disabled={isSubmitting}
+                        aria-label="File attachment"
                     />
 
                     <label htmlFor="file-input" className="file-label">
@@ -162,6 +221,8 @@ export const ClaimForm = () => {
                                 className="remove-attachment"
                                 onClick={removeAttachment}
                                 disabled={isSubmitting}
+                                aria-label="Remove attachment"
+                                type="button"
                             >
                                 ✕
                             </button>
@@ -174,6 +235,8 @@ export const ClaimForm = () => {
                         className="send-button"
                         onClick={handleSubmit}
                         disabled={isSubmitting || !text.trim() || !caseNum}
+                        type="button"
+                        aria-label="Submit report"
                     >
                         {isSubmitting ? (
                             <>
@@ -189,6 +252,8 @@ export const ClaimForm = () => {
                         className="discard-button"
                         onClick={handleCancel}
                         disabled={isSubmitting}
+                        type="button"
+                        aria-label="Cancel and return"
                     >
                         Cancel
                     </button>
@@ -378,6 +443,7 @@ export const ClaimForm = () => {
                     flex: 1;
                     font-weight: 600;
                     color: #1c1e21;
+                    word-break: break-word;
                 }
 
                 .attachment-size {
@@ -486,6 +552,14 @@ export const ClaimForm = () => {
 
                     .claim-form-container {
                         padding: 20px;
+                    }
+
+                    .claim-form-title {
+                        font-size: 24px;
+                    }
+
+                    .case-id {
+                        font-size: 16px;
                     }
 
                     .form-buttons {
