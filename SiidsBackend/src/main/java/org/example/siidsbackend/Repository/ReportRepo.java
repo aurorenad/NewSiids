@@ -48,4 +48,26 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
     Optional<Case> findRelatedCaseById(@Param("caseId") Integer caseId);
 
     List<Report> findByRelatedCaseStatus(WorkflowStatus workflowStatus);
+
+    @Query("SELECT e FROM Employee e " +
+            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
+            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
+            "INNER JOIN structures s ON s.structureId = j.structureId " +
+            "INNER JOIN Grade g ON g.gradeId = j.gradeId.gradeId " +
+            "WHERE j.gradeId.gradeId = 10 " +
+            "AND s.structureId = 165")
+    List<Employee> findAvailableT3Officers();
+
+    @Query("SELECT COUNT(r) FROM Report r JOIN r.relatedCase c " +
+            "WHERE r.currentRecipient.employeeId = :officerId " +
+            "AND c.status IN (org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_IN_PROGRESS)")
+    int countActiveReportsByOfficer(@Param("officerId") String officerId);
+
+    @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
+            "WHERE r.currentRecipient.employeeId = :officerId " +
+            "AND c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER " +
+            "ORDER BY r.createdAt DESC")
+    List<Report> findReportsAssignedToInvestigationOfficer(@Param("officerId") String officerId);
+
 }

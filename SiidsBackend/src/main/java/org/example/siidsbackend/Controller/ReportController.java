@@ -10,6 +10,7 @@ import org.example.siidsbackend.Model.Report;
 import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Service.ReportService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
+    @Autowired
     private final ReportService reportService;
     private final EmployeeRepo employeeRepo;
 
@@ -284,6 +286,56 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             System.err.println("Error getting approved reports: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/assign-to-investigation-officer")
+    public ResponseEntity<ReportResponseDTO> assignToInvestigationOfficer(
+            @PathVariable Integer id,
+            @RequestParam(required = false) String specificOfficerId,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Employee assigner = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Assigner not found"));
+
+            Report report = reportService.assignToInvestigationOfficer(id, specificOfficerId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            System.err.println("Error assigning report to investigation officer: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/investigation-officers")
+    public ResponseEntity<List<Employee>> getAvailableInvestigationOfficers(
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            List<Employee> officers = reportService.getAvailableInvestigationOfficers();
+            return ResponseEntity.ok(officers);
+        } catch (Exception e) {
+            System.err.println("Error getting investigation officers: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/investigation-officer/assigned-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAssignedReportsForInvestigationOfficer(
+            @RequestHeader("employee_id") String officerId) {
+        try {
+            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            System.err.println("Error getting assigned reports: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            System.err.println("Error getting reports: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }

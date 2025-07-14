@@ -197,6 +197,8 @@ public class ReportService {
                 return "NEW_REPORT_DIRECTOR_INVESTIGATION";
             case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
                 return "NEW_REPORT_ASSISTANT_COMMISSIONER";
+            case REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER:
+                return "REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER";
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
             case REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
             case REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER:
@@ -207,8 +209,13 @@ public class ReportService {
                 return "REPORT_REJECTED";
             case REPORT_RETURNED:
                 return "REPORT_RETURNED";
+            case INVESTIGATION_IN_PROGRESS:
+                return "INVESTIGATION_IN_PROGRESS";
+            case INVESTIGATION_COMPLETED:
+                return "INVESTIGATION_COMPLETED";
             default:
                 return "GENERAL_NOTIFICATION";
+
         }
     }
 
@@ -359,7 +366,6 @@ public class ReportService {
     }
 
     public List<Report> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(String directorId) {
-        // Verify the requester is a Director of Investigation
         List<Employee> directors = reportRepo.DirectorsOfInvestigation();
         boolean isDirector = directors.stream()
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
@@ -370,4 +376,103 @@ public class ReportService {
 
         return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
     }
+
+    @Transactional
+    public Report assignToInvestigationOfficer(Integer reportId, String specificOfficerId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee assignedOfficer;
+
+        if (specificOfficerId != null && !specificOfficerId.trim().isEmpty()) {
+            // Assign to specific officer
+            assignedOfficer = employeeRepo.findByEmployeeId(specificOfficerId)
+                    .orElseThrow(() -> new RuntimeException("Officer not found with ID: " + specificOfficerId));
+
+            // Verify the officer is a T3 Investigation Officer
+            List<Employee> availableOfficers = reportRepo.findAvailableT3Officers();
+            boolean isValidOfficer = availableOfficers.stream()
+                    .anyMatch(officer -> officer.getEmployeeId().equals(specificOfficerId));
+
+            if (!isValidOfficer) {
+                throw new RuntimeException("Employee is not a valid T3 Investigation Officer");
+            }
+        } else {
+            // Auto-assign to available officer with least workload
+            assignedOfficer = findBestAvailableOfficer();
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER);
+        caseRepo.save(relatedCase);
+
+        // Update report
+        report.setCurrentRecipient(assignedOfficer);
+        report.setUpdatedAt(LocalDateTime.now());
+        Report savedReport = reportRepo.save(report);
+
+        // Create notification
+        String message = String.format("Investigation report #%d has been assigned to you for investigation by %s %s",
+                savedReport.getId(),
+                savedReport.getCreatedBy().getGivenName(),
+                savedReport.getCreatedBy().getFamilyName());
+        createNotification(savedReport, message);
+
+        // Send WebSocket notification
+        NotificationDTO notificationDTO = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, assignedOfficer);
+        notificationDTO.setNotificationType("REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER");
+        webSocketNotificationService.sendNotificationToUser(
+                assignedOfficer.getEmployeeId(),
+                notificationDTO
+        );
+
+        return savedReport;
+    }
+
+    private Employee findBestAvailableOfficer() {
+        List<Employee> availableOfficers = reportRepo.findAvailableT3Officers();
+
+        if (availableOfficers.isEmpty()) {
+            throw new RuntimeException("No available T3 Investigation Officers found");
+        }
+
+        // Find officer with least current workload
+        Employee bestOfficer = availableOfficers.get(0);
+        int minWorkload = getCurrentWorkload(bestOfficer.getEmployeeId());
+
+        for (Employee officer : availableOfficers) {
+            int workload = getCurrentWorkload(officer.getEmployeeId());
+            if (workload < minWorkload) {
+                minWorkload = workload;
+                bestOfficer = officer;
+            }
+        }
+
+        return bestOfficer;
+    }
+
+    private int getCurrentWorkload(String officerId) {
+        // Count active reports assigned to this officer
+        return reportRepo.countActiveReportsByOfficer(officerId);
+    }
+
+    public List<Employee> getAvailableInvestigationOfficers() {
+        return reportRepo.findAvailableT3Officers();
+    }
+
+    public List<Report> getReportsAssignedToInvestigationOfficer(String officerId) {
+        // Verify the requester is a T3 Investigation Officer
+        List<Employee> officers = reportRepo.findAvailableT3Officers();
+        boolean isValidOfficer = officers.stream()
+                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
+
+        if (!isValidOfficer) {
+            throw new RuntimeException("Employee is not a T3 Investigation Officer");
+        }
+
+        return reportRepo.findReportsAssignedToInvestigationOfficer(officerId);
+    }
+
 }
