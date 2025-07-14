@@ -19,10 +19,12 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    MenuItem
+    MenuItem,
+    Tooltip,
+    Chip
 } from "@mui/material";
-import { Search, Description, Send, Check } from "@mui/icons-material";
-import { Link } from "react-router-dom";
+import { Search, Description, Send, Check, ArrowBack } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import { ReportApi } from "./../api/Axios/caseApi";
 
 const InvestigationOfficer = () => {
@@ -35,6 +37,7 @@ const InvestigationOfficer = () => {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [statusUpdate, setStatusUpdate] = useState("");
     const [notes, setNotes] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchAssignedReports = async () => {
@@ -115,6 +118,15 @@ const InvestigationOfficer = () => {
         );
     });
 
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'Investigation Completed': return 'success';
+            case 'Investigation In Progress': return 'warning';
+            case 'Investigation On Hold': return 'error';
+            default: return 'default';
+        }
+    };
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -126,46 +138,56 @@ const InvestigationOfficer = () => {
     if (error) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                <Typography color="error">Error loading reports: {error}</Typography>
+                <Alert severity="error">Error loading reports: {error}</Alert>
+                <Button
+                    startIcon={<ArrowBack />}
+                    onClick={() => window.location.reload()}
+                    sx={{ ml: 2 }}
+                >
+                    Retry
+                </Button>
             </Box>
         );
     }
 
     return (
-        <div style={{ padding: "20px" }}>
-            <Typography variant="h4" gutterBottom>
-                Investigation Officer Dashboard
-            </Typography>
-            <Typography variant="subtitle1" gutterBottom>
-                Assigned Cases
-            </Typography>
-
-            {/* Search Bar */}
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <TextField
-                    label="Search cases"
-                    variant="outlined"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    InputProps={{
-                        startAdornment: <Search />,
-                    }}
-                    sx={{ minWidth: 300 }}
-                />
-                <Typography variant="body2" color="text.secondary">
-                    Assigned Cases: {filteredReports.length}
-                </Typography>
+        <Box sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                    <Typography variant="h4" gutterBottom>
+                        Investigation Officer Dashboard
+                    </Typography>
+                    <Typography variant="subtitle1" color="text.secondary">
+                        Assigned Cases
+                    </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <TextField
+                        label="Search cases"
+                        variant="outlined"
+                        size="small"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        InputProps={{
+                            startAdornment: <Search fontSize="small" />,
+                        }}
+                    />
+                    <Chip
+                        label={`${filteredReports.length} cases`}
+                        color="primary"
+                        variant="outlined"
+                    />
+                </Box>
             </Box>
 
-            {/* Reports Table */}
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} elevation={3}>
                 <Table>
                     <TableHead>
-                        <TableRow style={{ backgroundColor: "#f5f5f5" }}>
-                            <TableCell><strong>Case ID</strong></TableCell>
-                            <TableCell><strong>Status</strong></TableCell>
-                            <TableCell><strong>Reported Date</strong></TableCell>
-                            <TableCell><strong>Actions</strong></TableCell>
+                        <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Reported Date</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -174,48 +196,49 @@ const InvestigationOfficer = () => {
                                 <TableRow key={report.id}>
                                     <TableCell>{report.caseId}</TableCell>
                                     <TableCell>
-                                        <Typography
-                                            sx={{
-                                                color: report.status.includes("Completed") ? "green" :
-                                                    report.status.includes("Rejected") ? "red" : "#555",
-                                                fontWeight: "bold"
-                                            }}
-                                        >
-                                            {report.status}
-                                        </Typography>
+                                        <Chip
+                                            label={report.status}
+                                            color={getStatusColor(report.status)}
+                                            variant="outlined"
+                                        />
                                     </TableCell>
                                     <TableCell>{report.reportedDate}</TableCell>
                                     <TableCell>
                                         <Box display="flex" gap={1}>
-                                            <Link to={`/report/${report.id}`}>
-                                                <IconButton color="primary" size="small">
+                                            <Tooltip title="View Report">
+                                                <IconButton
+                                                    onClick={() => navigate(`/reports/${report.id}`)}
+                                                    color="primary"
+                                                >
                                                     <Description />
                                                 </IconButton>
-                                            </Link>
-                                            <IconButton
-                                                color="secondary"
-                                                size="small"
-                                                onClick={() => {
-                                                    setSelectedReport(report);
-                                                    setStatusUpdate(report.status || "");
-                                                    setNotes(report.notes || "");
-                                                    setDialogOpen(true);
-                                                }}
-                                            >
-                                                <Send />
-                                            </IconButton>
-                                            <IconButton
-                                                color="success"
-                                                size="small"
-                                                onClick={() => {
-                                                    setSelectedReport(report);
-                                                    setStatusUpdate("Investigation Completed");
-                                                    setNotes(report.notes || "");
-                                                    setDialogOpen(true);
-                                                }}
-                                            >
-                                                <Check />
-                                            </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Update Status">
+                                                <IconButton
+                                                    color="secondary"
+                                                    onClick={() => {
+                                                        setSelectedReport(report);
+                                                        setStatusUpdate(report.status || "");
+                                                        setNotes(report.notes || "");
+                                                        setDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Send />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Mark as Completed">
+                                                <IconButton
+                                                    color="success"
+                                                    onClick={() => {
+                                                        setSelectedReport(report);
+                                                        setStatusUpdate("Investigation Completed");
+                                                        setNotes(report.notes || "");
+                                                        setDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Check />
+                                                </IconButton>
+                                            </Tooltip>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
@@ -232,14 +255,15 @@ const InvestigationOfficer = () => {
             </TableContainer>
 
             {/* Status Update Dialog */}
-            <Dialog open={dialogOpen} onClose={handleCloseDialog}>
+            <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
                 <DialogTitle>
-                    Update Case Status: {selectedReport?.caseId || 'N/A'}
+                    Update Investigation Status
                 </DialogTitle>
                 <DialogContent>
-                    <Box sx={{ mt: 2, mb: 3 }}>
-                        <Typography variant="body1" gutterBottom>
-                            Current Status: <strong>{selectedReport?.status || 'N/A'}</strong>
+                    <Box sx={{ my: 2 }}>
+                        <Typography variant="subtitle1">Case ID: {selectedReport?.caseId || 'N/A'}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Current Status: {selectedReport?.status || 'N/A'}
                         </Typography>
                     </Box>
                     <TextField
@@ -259,6 +283,7 @@ const InvestigationOfficer = () => {
                         multiline
                         rows={4}
                         label="Investigation Notes"
+                        placeholder="Enter detailed investigation notes..."
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                     />
@@ -281,6 +306,7 @@ const InvestigationOfficer = () => {
                 open={snackbar.open}
                 autoHideDuration={6000}
                 onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
                 <Alert
                     onClose={() => setSnackbar({ ...snackbar, open: false })}
@@ -290,7 +316,7 @@ const InvestigationOfficer = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </div>
+        </Box>
     );
 };
 

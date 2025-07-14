@@ -21,7 +21,8 @@ const STATUS_MAP = {
     open: { label: 'Open', color: 'info' },
     in_progress: { label: 'In Progress', color: 'warning' },
     closed: { label: 'Closed', color: 'success' },
-    sent_to_director: { label: 'Sent to Director', color: 'secondary' }
+    sent_to_director: { label: 'Sent to Director', color: 'secondary' },
+    report_submitted_to_director_of_intelligence: { label: 'Sent to Director', color: 'secondary' }
 };
 
 const getStatusProps = (status) => {
@@ -72,13 +73,15 @@ const TaxReportView = () => {
             setLoading(true);
             setError('');
             console.log('Fetching case with ID:', caseId);
+
+            // The CaseService.getCase will handle both ID and case number automatically
             const response = await CaseService.getCase(caseId);
             const caseInfo = {
                 ...response.data,
                 caseNum: response.data.caseNum || response.data.id,
-                intelligenceOfficer: response.data.createdByName || 'N/A', // Use createdByName from the DTO
-                reportedDate: response.data.createdAt || 'N/A', // Add reportedDate if available
-                taxPayerAddress: response.data.taxPayerAddress || 'N/A', // Ensure all fields are handled
+                intelligenceOfficer: response.data.createdByName || 'N/A',
+                reportedDate: response.data.createdAt || 'N/A',
+                taxPayerAddress: response.data.taxPayerAddress || 'N/A',
             };
             setCaseData(caseInfo);
         } catch (err) {
@@ -91,13 +94,17 @@ const TaxReportView = () => {
 
     const handleSendToDirector = async () => {
         try {
-            const updatedCase = {
-                ...caseData,
-                status: 'sent_to_director'
-            };
-            await CaseService.updateCase(caseData.caseNum || caseData.id, updatedCase);
-            setCaseData(updatedCase);
-            navigate('/Director-intelligence');
+            // Use the correct method to update case status
+            await CaseService.updateCaseStatus(caseData.id || caseData.caseNum, 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE');
+
+            // Update local state
+            setCaseData(prev => ({
+                ...prev,
+                status: 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
+            }));
+
+            // Navigate back to the main page
+            navigate('/intelligence-officer');
         } catch (err) {
             console.error('Error sending case to director:', err);
             setError('Failed to send case to director');
@@ -133,7 +140,7 @@ const TaxReportView = () => {
                     <Button
                         variant="contained"
                         startIcon={<ArrowBack />}
-                        onClick={() => navigate('/intelligence-officer/view')}
+                        onClick={() => navigate('/intelligence-officer')}
                     >
                         Back to Cases
                     </Button>
@@ -154,7 +161,7 @@ const TaxReportView = () => {
                 <Button
                     variant="contained"
                     startIcon={<ArrowBack />}
-                    onClick={() => navigate('/intelligence-officer/view')}
+                    onClick={() => navigate('/intelligence-officer')}
                 >
                     Back to Cases
                 </Button>
@@ -170,7 +177,7 @@ const TaxReportView = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     <Button
                         startIcon={<ArrowBack />}
-                        onClick={() => navigate('/intelligence-officer/view')}
+                        onClick={() => navigate('/intelligence-officer')}
                         sx={{ mr: 2 }}
                     >
                         Back
@@ -185,7 +192,7 @@ const TaxReportView = () => {
                         startIcon={<Edit />}
                         onClick={handleEdit}
                         sx={{ mr: 1 }}
-                        disabled={caseData.status === 'sent_to_director'}
+                        disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
                     >
                         Edit Case
                     </Button>
@@ -193,9 +200,9 @@ const TaxReportView = () => {
                         variant="contained"
                         startIcon={<Send />}
                         onClick={handleSendToDirector}
-                        disabled={caseData.status === 'sent_to_director'}
+                        disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
                     >
-                        {caseData.status === 'sent_to_director' ? 'Sent to Director' : 'Send to Director'}
+                        {caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE' ? 'Sent to Director' : 'Send to Director'}
                     </Button>
                 </Box>
             </Box>

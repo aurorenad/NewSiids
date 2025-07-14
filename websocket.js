@@ -1,47 +1,73 @@
-import { Stomp } from '@stomp/stompjs';
+import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
 let stompClient = null;
 
 export const connectWebSocket = (employeeId, onNotification, onError) => {
-    console.log('Connecting WebSocket for employee:', employeeId);
+    console.log(`Connecting WebSocket for employee: ${employeeId}`);
 
-    const socket = new SockJS('/ws-notifications');
-    stompClient = Stomp.over(socket);
+    // Disconnect existing connection if it exists
+    if (stompClient) {
+        stompClient.deactivate();
+    }
 
-    // Enable debug logging
-    stompClient.debug = (str) => {
-        console.log('STOMP Debug:', str);
-    };
+    // Create new client
+    stompClient = new Client({
+        webSocketFactory: () => new SockJS('http://localhost:8080/ws-notifications'),
+        connectHeaders: {
+            'employee_id': employeeId
+        },
+        debug: (str) => {
+            console.log('STOMP Debug:', str);
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
 
-    stompClient.connect({}, (frame) => {
-        console.log('Connected to WebSocket:', frame);
+        onConnect: (frame) => {
+            console.log('Connected to WebSocket:', frame);
 
-        const subscription = stompClient.subscribe(`/user/${employeeId}/notifications`, (message) => {
-            console.log('Received notification:', message.body);
-            try {
-                const notification = JSON.parse(message.body);
-                onNotification(notification);
-            } catch (e) {
-                console.error('Failed to parse notification:', e);
-            }
-        });
+            stompClient.subscribe(`/user/${employeeId}/notifications`, (message) => {
+                console.log('Received notification:', message.body);
+                try {
+                    const notification = JSON.parse(message.body);
+                    onNotification(notification);
+                } catch (err) {
+                    console.error('Error parsing notification:', err);
+                    onError(err);
+                }
+            });
 
-        console.log('Subscribed to notifications for employee:', employeeId);
+            stompClient.publish({
+                destination: '/app/connect',
+                body: JSON.stringify(employeeId)
+            });
+        },
 
-        stompClient.send("/app/connect", {}, employeeId);
-        console.log('Sent connect message for employee:', employeeId);
+        onDisconnect: (frame) => {
+            console.log('Disconnected from WebSocket:', frame);
+        },
 
-    }, (error) => {
-        console.error('WebSocket connection error:', error);
-        onError('Connection error: ' + error);
+        onStompError: (frame) => {
+            console.error('STOMP Error:', frame);
+            onError(frame);
+        },
+
+        onWebSocketError: (error) => {
+            console.error('WebSocket Error:', error);
+            onError(error);
+        }
     });
+
+    stompClient.activate();
 };
 
 export const disconnectWebSocket = () => {
     if (stompClient) {
         console.log('Disconnecting WebSocket');
-        stompClient.disconnect();
+        stompClient.deactivate();
         stompClient = null;
     }
 };
+
+export const getStompClient = () => stompClient;

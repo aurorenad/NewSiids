@@ -16,11 +16,12 @@ const DirectorIntelligence = () => {
     const [error, setError] = useState(null);
     const [actionLoading, setActionLoading] = useState(false);
 
-    const navigate = useNavigate();
-
-    const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+    // Dialog states
+    const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [selectedReportIndex, setSelectedReportIndex] = useState(null);
-    const [reasonInput, setReasonInput] = useState('');
+    const [rejectionReason, setRejectionReason] = useState('');
+
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchReports = async () => {
@@ -60,30 +61,30 @@ const DirectorIntelligence = () => {
         }
     };
 
-    const handleOpenCloseDialog = (index) => {
+    const handleOpenRejectDialog = (index) => {
         setSelectedReportIndex(index);
-        setReasonInput('');
-        setCloseDialogOpen(true);
+        setRejectionReason('');
+        setRejectDialogOpen(true);
     };
 
-    const handleConfirmClose = async () => {
+    const handleConfirmReject = async () => {
         setActionLoading(true);
         try {
             const report = reports[selectedReportIndex];
-            await ReportApi.returnReport(report.id, report.createdBy);
+            await ReportApi.rejectReport(report.id, rejectionReason);
 
             setReports(prev => prev.map((r, i) =>
                 i === selectedReportIndex ? {
                     ...r,
-                    status: 'REPORT_RETURNED',
-                    reason: reasonInput
+                    status: 'REPORT_REJECTED',
+                    rejectionReason: rejectionReason
                 } : r
             ));
 
-            setCloseDialogOpen(false);
+            setRejectDialogOpen(false);
         } catch (err) {
-            console.error('Failed to close report:', err);
-            setError(err.response?.data?.message || 'Failed to close report');
+            console.error('Failed to reject report:', err);
+            setError(err.response?.data?.message || 'Failed to reject report');
         } finally {
             setActionLoading(false);
         }
@@ -154,12 +155,12 @@ const DirectorIntelligence = () => {
                                         {report.createdBy}
                                     </TableCell>
                                     <TableCell style={{
-                                        color: report.status === "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER" ? "green" :
-                                            report.status === "REPORT_RETURNED" ? "red" : "#555",
+                                        color: report.status === "REPORT_APPROVED" ? "green" :
+                                            report.status === "REPORT_REJECTED" ? "red" : "#555",
                                         fontWeight: "bold"
                                     }}>
-                                        {report.status === "REPORT_RETURNED" && report.reason
-                                            ? `${report.status} - ${report.reason}`
+                                        {report.status === "REPORT_REJECTED" && report.rejectionReason
+                                            ? `REJECTED - ${report.rejectionReason}`
                                             : report.status}
                                     </TableCell>
                                     <TableCell>
@@ -173,15 +174,23 @@ const DirectorIntelligence = () => {
                                             <IconButton
                                                 color="success"
                                                 onClick={() => handleApprove(index)}
-                                                disabled={report.status === "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER" || actionLoading}
+                                                disabled={
+                                                    report.status === "REPORT_APPROVED" ||
+                                                    report.status === "REPORT_REJECTED" ||
+                                                    actionLoading
+                                                }
                                             >
                                                 <Check />
                                             </IconButton>
 
                                             <IconButton
                                                 color="error"
-                                                onClick={() => handleOpenCloseDialog(index)}
-                                                disabled={report.status === "REPORT_RETURNED" || actionLoading}
+                                                onClick={() => handleOpenRejectDialog(index)}
+                                                disabled={
+                                                    report.status === "REPORT_APPROVED" ||
+                                                    report.status === "REPORT_REJECTED" ||
+                                                    actionLoading
+                                                }
                                             >
                                                 <Close />
                                             </IconButton>
@@ -200,31 +209,40 @@ const DirectorIntelligence = () => {
                 </Table>
             </TableContainer>
 
-            {/* Close Reason Dialog */}
-            <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)}>
-                <DialogTitle>Reason for Returning Report</DialogTitle>
+            {/* Reject Dialog */}
+            <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
+                <DialogTitle>Reject Report</DialogTitle>
                 <DialogContent>
                     <TextField
+                        autoFocus
+                        margin="dense"
+                        id="rejectionReason"
+                        label="Rejection Reason"
+                        type="text"
                         fullWidth
+                        variant="standard"
                         multiline
-                        rows={3}
-                        value={reasonInput}
-                        onChange={(e) => setReasonInput(e.target.value)}
-                        placeholder="Enter reason for returning..."
-                        variant="outlined"
+                        rows={4}
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="Please provide a detailed reason for rejecting this report..."
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setCloseDialogOpen(false)} color="secondary">
+                    <Button
+                        onClick={() => setRejectDialogOpen(false)}
+                        color="secondary"
+                        disabled={actionLoading}
+                    >
                         Cancel
                     </Button>
                     <Button
-                        onClick={handleConfirmClose}
+                        onClick={handleConfirmReject}
+                        color="error"
                         variant="contained"
-                        color="primary"
-                        disabled={!reasonInput.trim() || actionLoading}
+                        disabled={!rejectionReason.trim() || actionLoading}
                     >
-                        Confirm
+                        {actionLoading ? <CircularProgress size={24} /> : "Confirm Rejection"}
                     </Button>
                 </DialogActions>
             </Dialog>

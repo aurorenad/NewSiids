@@ -19,6 +19,7 @@ import './App.css';
 import { ClaimForm } from "./Components/ClaimForm.jsx";
 import { SClaimForm } from "./Components/SClaimForm.jsx";
 import SurveillanceCaseView from "./Components/SurveillenceOffice/SurveillanceCaseView.jsx";
+import ReportView from "./Components/ReportView.jsx";
 
 const ProtectedRoute = ({ children }) => {
     const { authState } = useContext(AuthContext);
@@ -62,6 +63,7 @@ function App() {
                     <Route path="/Director-Investigation" element={<ProtectedRoute><DirectorInvestigation/></ProtectedRoute>} />
                     <Route path="/assistant-commissioner" element={<ProtectedRoute><AssistantCommissioner /></ProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+                    <Route path="/reports/:id" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
                 </Routes>
             </Router>
         </AuthProvider>

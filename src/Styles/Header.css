@@ -160,6 +160,7 @@ body, h1, h2, ul, li, button {
 .notification-item {
     padding: 10px;
     border-bottom: 1px solid #eee;
+    color: black; /* Added this line to make notification text black */
 }
 
 .notification-item:last-child {

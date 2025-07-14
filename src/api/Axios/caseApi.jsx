@@ -80,8 +80,7 @@ export const CaseService = {
 
     getCase: (identifier) => {
         if (typeof identifier === 'string' && identifier.includes('/')) {
-            const encodedCaseNum = encodeURIComponent(identifier);
-            return caseApi.get(`/api/cases/caseNum/${encodedCaseNum}`);
+            return caseApi.get(`/api/cases/caseNum/${identifier}`);
         }
         return caseApi.get(`/api/cases/${identifier}`);
     },
@@ -116,28 +115,13 @@ export const ReportApi = {
         }
     },
 
-    getMyReports: () => {
-        return caseApi.get('/api/reports/my-reports');
-    },
-
     getReport: (id) => {
         return caseApi.get(`/api/reports/${id}`);
     },
 
-    createReport: (data) => caseApi.post('/api/reports', data),
-
     sendToDirectorIntelligence: (reportId) => {
         return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {});
     },
-
-    sendToCommissioner: (id) => {
-        return caseApi.post(`/api/reports/${id}/send-to-commissioner-intelligence`, {});
-    },
-
-    sendToDirectorInvestigation: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/send-to-director-investigation`, {});
-    },
-
     returnReport: (id, returnToEmployeeId) => {
         return caseApi.post(`/api/reports/${id}/return`, null, {
             params: { returnToEmployeeId }
@@ -180,7 +164,51 @@ export const ReportApi = {
             status,
             notes
         });
-    }
+    },
+
+    downloadAttachment: async (reportId) => {
+        try {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+
+            const response = await axios.get(
+                `${BASE_URL}/api/reports/${reportId}/attachment`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'employee_id': employeeId
+                    },
+                    responseType: 'blob', // Important for file downloads
+                }
+            );
+
+            // Create a download link
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Get filename from response headers or use default
+            const contentDisposition = response.headers['content-disposition'];
+            let filename = 'attachment';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+
+            return response;
+        } catch (error) {
+            console.error('Error downloading attachment:', error);
+            throw error;
+        }
+    },
 };
 
 export const InvestigationApi = {
@@ -188,32 +216,7 @@ export const InvestigationApi = {
         return caseApi.get('/api/reports/investigation-officers');
     },
 
-    getCaseAssignments: (caseId) => {
-        return caseApi.get(`/api/investigation/cases/${caseId}/assignments`);
-    },
 
-    removeOfficerAssignment: (caseId, officerId) => {
-        return caseApi.delete(`/api/investigation/cases/${caseId}/assignments/${officerId}`);
-    },
-
-    getOfficerCases: (officerId) => {
-        return caseApi.get(`/api/investigation/officers/${officerId}/cases`);
-    },
-
-    updateInvestigationStatus: (caseId, status, notes) => {
-        return caseApi.patch(`/api/investigation/cases/${caseId}/status`, {
-            status,
-            notes
-        });
-    },
-
-    getInvestigationDetails: (caseId) => {
-        return caseApi.get(`/api/investigation/cases/${caseId}`);
-    },
-
-    submitInvestigationReport: (caseId, reportData) => {
-        return caseApi.post(`/api/investigation/cases/${caseId}/report`, reportData);
-    }
 };
 
 export default caseApi;
