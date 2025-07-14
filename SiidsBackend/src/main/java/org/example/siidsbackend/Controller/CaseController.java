@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/cases")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173"})
+@CrossOrigin(origins = {"http://localhost:5173", "http://127.0.0.1:5173", "http://127.0.0.3000", "http://localhost:3000"})
 public class CaseController {
     private final CaseService caseService;
 
@@ -99,28 +99,11 @@ public class CaseController {
         }
     }
 
-    private CaseResponseDTO toResponseDTO(Case c) {
-        CaseResponseDTO dto = new CaseResponseDTO();
-        dto.setCaseNum(c.getCaseNum());
-        dto.setTin(c.getTin());
-        dto.setTaxPeriod(c.getTaxPeriod());
-        dto.setTaxPayerType(c.getTaxPayerType());
-        dto.setTaxPayerName(c.getTaxPayerName());
-        dto.setStatus(c.getStatus().name());
-        dto.setCreatedByName(c.getCreatedBy().getGivenName() + " " + c.getCreatedBy().getFamilyName());
-        dto.setSummaryOfInformationCase(c.getSummaryOfInformationCase());
-        dto.setInformerId(c.getInformerId());
-        dto.setInformerName(c.getInformerName());
-        return dto;
-    }
-
-    // Fixed method to handle case numbers with slashes
     @GetMapping("/caseNum/**")
     public ResponseEntity<CaseResponseDTO> getCaseByCaseNum(
             @RequestHeader("employee_id") String employeeId,
             HttpServletRequest request) {
         try {
-            // Extract the case number from the URL path
             String requestURI = request.getRequestURI();
             String caseNumPath = "/api/cases/caseNum/";
 
@@ -132,14 +115,6 @@ public class CaseController {
             // Extract everything after "/api/cases/caseNum/"
             String caseNum = requestURI.substring(requestURI.indexOf(caseNumPath) + caseNumPath.length());
 
-            // URL decode the case number to handle encoded slashes
-            try {
-                caseNum = URLDecoder.decode(caseNum, "UTF-8");
-            } catch (UnsupportedEncodingException e) {
-                log.error("Error decoding case number: {}", caseNum, e);
-                return ResponseEntity.badRequest().build();
-            }
-
             log.info("Searching for case with number: {}", caseNum);
 
             return caseService.getCaseByCaseNum(caseNum, employeeId)
@@ -150,5 +125,25 @@ public class CaseController {
             log.error("Error fetching case by number", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private CaseResponseDTO toResponseDTO(Case c) {
+        CaseResponseDTO dto = new CaseResponseDTO();
+        dto.setId(c.getId()); // Add the ID field
+        dto.setCaseNum(c.getCaseNum());
+        dto.setTin(c.getTin());
+        dto.setTaxPeriod(c.getTaxPeriod());
+        dto.setTaxPayerType(c.getTaxPayerType());
+        dto.setTaxPayerName(c.getTaxPayerName());
+        dto.setTaxPayerAddress(c.getTaxPayerAddress());
+        dto.setStatus(c.getStatus().name());
+        dto.setCreatedByName(c.getCreatedBy().getGivenName() + " " + c.getCreatedBy().getFamilyName());
+        dto.setSummaryOfInformationCase(c.getSummaryOfInformationCase());
+        dto.setInformerId(c.getInformerId());
+        dto.setInformerName(c.getInformerName());
+        dto.setCreatedAt(c.getReportedDate());
+        dto.setUpdatedAt(c.getUpdatedAt());
+
+        return dto;
     }
 }

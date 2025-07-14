@@ -38,6 +38,8 @@ public class CaseService {
         newCase.setSummaryOfInformationCase(dto.getSummaryOfInformationCase());
         newCase.setStatus(WorkflowStatus.CASE_CREATED);
         newCase.setCreatedBy(creator);
+        newCase.setReportedDate(LocalDateTime.now());
+        newCase.setUpdatedAt(LocalDateTime.now());
 
         Case savedCase = caseRepo.save(newCase);
         savedCase.setCaseNum(savedCase.generateCaseNumber());
@@ -76,5 +78,34 @@ public class CaseService {
         log.info("Fetching case by number {} for employee: {}", caseNum, employeeId);
         return caseRepo.findByCaseNum(caseNum)
                 .filter(caseObj -> caseObj.getCreatedBy().getEmployeeId().equals(employeeId));
+    }
+
+    // Additional method to get case by case number without employee restriction (for admin use)
+    public Optional<Case> getCaseByCaseNumAdmin(String caseNum) {
+        log.info("Fetching case by number {} (admin access)", caseNum);
+        return caseRepo.findByCaseNum(caseNum);
+    }
+
+    // Method to get case by ID without employee restriction (for admin use)
+    public Optional<Case> getCaseByIdAdmin(Integer caseId) {
+        log.info("Fetching case by ID {} (admin access)", caseId);
+        return caseRepo.findById(caseId);
+    }
+
+    // Method to update case without employee restriction (for system use)
+    public Case updateCaseStatusSystem(Integer id, WorkflowStatus newStatus) {
+        log.info("Updating case {} status to {} (system update)", id, newStatus);
+
+        Optional<Case> caseOpt = caseRepo.findById(id);
+        if (caseOpt.isEmpty()) {
+            log.warn("Case {} not found", id);
+            return null;
+        }
+
+        Case existingCase = caseOpt.get();
+        existingCase.setStatus(newStatus);
+        existingCase.setUpdatedAt(LocalDateTime.now());
+
+        return caseRepo.save(existingCase);
     }
 }

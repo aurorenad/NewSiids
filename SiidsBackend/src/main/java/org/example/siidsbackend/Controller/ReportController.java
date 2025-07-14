@@ -11,6 +11,9 @@ import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -253,6 +256,7 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
+
     @GetMapping("/assistant-commissioner/approved-reports")
     public ResponseEntity<List<ReportResponseDTO>> getApprovedReportsForAssistantCommissioner(
             @RequestHeader("employee_id") String employeeId) {
@@ -340,4 +344,54 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+    @GetMapping("/{id}/attachment")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.getReport(id);
+
+            // Security check: Ensure user has access to this report
+            Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+            // Check if user is the creator, current recipient, or has appropriate role
+            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+                    (report.getCurrentRecipient() != null &&
+                            report.getCurrentRecipient().getEmployeeId().equals(employeeId));
+
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (report.getAttachmentPath() == null || report.getAttachmentPath().isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Path filePath = Paths.get("uploads").resolve(report.getAttachmentPath()).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Get original filename without UUID prefix
+            String originalFilename = report.getAttachmentPath();
+            if (originalFilename.contains("_")) {
+                originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + originalFilename + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            System.err.println("Error downloading attachment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+
 }
