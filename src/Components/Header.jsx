@@ -24,6 +24,9 @@ const Header = () => {
                 <div className="header-actions">
                     <div className="user-profile">
                         <i className="fa fa-user"></i>
+                        {currentUser?.name && (
+                            <span className="user-name">{currentUser.name}</span>
+                        )}
                     </div>
                     {currentUser?.employeeId && (
                         <NotificationProvider employeeId={currentUser.employeeId}>

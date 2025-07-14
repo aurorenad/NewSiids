@@ -52,10 +52,9 @@ caseApi.interceptors.response.use(
                 error.config.headers['employee_id'] = employeeId;
                 return caseApi.request(error.config);
             } catch (refreshError) {
-                // Clear all auth storage if refresh fails
                 localStorage.removeItem('token');
                 localStorage.removeItem('employeeId');
-                localStorage.removeItem('refreshToken'); // Fixed typo: removeToken -> removeItem
+                localStorage.removeItem('refreshToken');
                 sessionStorage.removeItem('token');
                 sessionStorage.removeItem('employeeId');
                 sessionStorage.removeItem('refreshToken');
@@ -80,15 +79,10 @@ export const CaseService = {
     },
 
     getCase: (identifier) => {
-        // Handle case numbers with slashes by properly encoding them
         if (typeof identifier === 'string' && identifier.includes('/')) {
-            // Single encode the case number - the browser will handle the rest
             const encodedCaseNum = encodeURIComponent(identifier);
-            console.log('Original case number:', identifier);
-            console.log('Encoded case number:', encodedCaseNum);
             return caseApi.get(`/api/cases/caseNum/${encodedCaseNum}`);
         }
-        // Handle numeric IDs
         return caseApi.get(`/api/cases/${identifier}`);
     },
 
@@ -105,13 +99,13 @@ export const ReportApi = {
     submitReport: async (formData, employeeId) => {
         try {
             const response = await axios.post(
-                `${BASE_URL}/api/reports`, // Correct endpoint
+                `${BASE_URL}/api/reports`,
                 formData,
                 {
                     headers: {
                         'Content-Type': 'multipart/form-data',
-                        'employee_id': employeeId, // Add employee_id header
-                        'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}` // Add auth token
+                        'employee_id': employeeId,
+                        'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
                     },
                 }
             );
@@ -133,7 +127,6 @@ export const ReportApi = {
     createReport: (data) => caseApi.post('/api/reports', data),
 
     sendToDirectorIntelligence: (reportId) => {
-        console.log('Sending report to Director of Intelligence:', reportId);
         return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {});
     },
 
@@ -171,20 +164,55 @@ export const ReportApi = {
         return caseApi.post(`/api/reports/${reportId}/reject`, null, {
             params: { rejectionReason }
         });
+    },
+
+    assignToInvestigationOfficer: (reportId, officerId) => {
+        return caseApi.post(`/api/reports/${reportId}/assign-to-investigation-officer`, {
+            specificOfficerId: officerId
+        });
+    },
+    getAssignedReportsForInvestigationOfficer: () => {
+        return caseApi.get('/api/reports/investigation-officer/assigned-reports');
+    },
+
+    updateInvestigationStatus: (caseId, status, notes) => {
+        return caseApi.patch(`/api/investigation/cases/${caseId}/status`, {
+            status,
+            notes
+        });
     }
 };
 
-export const CommissionerApi = {
-    getCommissionerCases: () => {
-        return caseApi.get('/api/commissioner/cases');
+export const InvestigationApi = {
+    getAvailableOfficers: () => {
+        return caseApi.get('/api/reports/investigation-officers');
     },
 
-    approveCase: (caseId) => {
-        return caseApi.post(`/api/commissioner/cases/${caseId}/approve`);
+    getCaseAssignments: (caseId) => {
+        return caseApi.get(`/api/investigation/cases/${caseId}/assignments`);
     },
 
-    rejectCase: (caseId, reason) => {
-        return caseApi.post(`/api/commissioner/cases/${caseId}/reject`, { reason });
+    removeOfficerAssignment: (caseId, officerId) => {
+        return caseApi.delete(`/api/investigation/cases/${caseId}/assignments/${officerId}`);
+    },
+
+    getOfficerCases: (officerId) => {
+        return caseApi.get(`/api/investigation/officers/${officerId}/cases`);
+    },
+
+    updateInvestigationStatus: (caseId, status, notes) => {
+        return caseApi.patch(`/api/investigation/cases/${caseId}/status`, {
+            status,
+            notes
+        });
+    },
+
+    getInvestigationDetails: (caseId) => {
+        return caseApi.get(`/api/investigation/cases/${caseId}`);
+    },
+
+    submitInvestigationReport: (caseId, reportData) => {
+        return caseApi.post(`/api/investigation/cases/${caseId}/report`, reportData);
     }
 };
 

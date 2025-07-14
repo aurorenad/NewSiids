@@ -39,11 +39,11 @@ const Login = () => {
                         token: !!data.token,
                         employeeId: employeeId,
                         userId: userId.trim(),
+                        name: name,
                         fullResponse: data
                     });
 
-                    // Store auth data using the context
-                    login(userId.trim(), data.token, employeeId, rememberMe);
+                    login(userId.trim(), data.token, employeeId, name, rememberMe);
 
                     console.log('Login successful, navigating to /intelligence-officer');
 

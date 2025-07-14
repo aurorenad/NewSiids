@@ -8,14 +8,33 @@ export const NotificationProvider = ({ children, employeeId }) => {
     const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
-        // Fetch initial notifications
-        fetch(`/api/notifications/employee/${employeeId}`)
-            .then(res => res.json())
-            .then(data => {
+        // Fetch initial notifications with better error handling
+        const fetchNotifications = async () => {
+            try {
+                const response = await fetch(`/api/notifications/employee/${employeeId}`);
+
+                // Check if response is ok and content-type is JSON
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('Response is not JSON');
+                }
+
+                const data = await response.json();
                 setNotifications(data);
                 setUnreadCount(data.filter(n => !n.read).length);
-            })
-            .catch(err => console.error('Fetch error:', err));
+            } catch (err) {
+                console.error('Failed to fetch notifications:', err);
+                // Set empty array as fallback
+                setNotifications([]);
+                setUnreadCount(0);
+            }
+        };
+
+        fetchNotifications();
 
         // Setup WebSocket
         connectWebSocket(
@@ -24,7 +43,7 @@ export const NotificationProvider = ({ children, employeeId }) => {
                 setNotifications(prev => [notification, ...prev]);
                 setUnreadCount(prev => prev + 1);
             },
-            (error) => console.error(error)
+            (error) => console.error('WebSocket error:', error)
         );
 
         return () => disconnectWebSocket();
@@ -32,15 +51,22 @@ export const NotificationProvider = ({ children, employeeId }) => {
 
     const markAsRead = async (id) => {
         try {
-            await fetch(`/api/notifications/${id}/read`, {
+            const response = await fetch(`/api/notifications/${id}/read`, {
                 method: 'PUT',
-                headers: { 'employee_id': employeeId }
+                headers: {
+                    'employee_id': employeeId,
+                    'Content-Type': 'application/json'
+                }
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, read: true } : n)
             );
-            setUnreadCount(prev => prev - 1);
+            setUnreadCount(prev => Math.max(0, prev - 1));
         } catch (error) {
             console.error('Mark as read error:', error);
         }
@@ -48,10 +74,17 @@ export const NotificationProvider = ({ children, employeeId }) => {
 
     const markAllAsRead = async () => {
         try {
-            await fetch(`/api/notifications/employee/${employeeId}/read-all`, {
+            const response = await fetch(`/api/notifications/employee/${employeeId}/read-all`, {
                 method: 'PUT',
-                headers: { 'employee_id': employeeId }
+                headers: {
+                    'employee_id': employeeId,
+                    'Content-Type': 'application/json'
+                }
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             setNotifications(prev =>
                 prev.map(n => ({ ...n, read: true }))
