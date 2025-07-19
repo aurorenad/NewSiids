@@ -11,4 +11,5 @@ public class ReportRequestDTO {
     private String description;
     private String attachmentPath;
     private Case relatedCase;
+
 }

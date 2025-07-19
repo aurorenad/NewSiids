@@ -2,6 +2,7 @@ package org.example.siidsbackend.Service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.DTO.NotificationDTO;
+import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
@@ -12,9 +13,15 @@ import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -62,7 +69,7 @@ public class ReportService {
             // Send real-time notification
             NotificationDTO notificationDTO = webSocketNotificationService
                     .createNotificationDTO(report, message, report.getCurrentRecipient());
-            notificationDTO.setNotificationType(getNotificationType(report.getStatus()));
+            notificationDTO.setNotificationType(getNotificationType(report.getRelatedCase().getStatus()));
 
             webSocketNotificationService.sendNotificationToUser(
                     report.getCurrentRecipient().getEmployeeId(),
@@ -173,17 +180,41 @@ public class ReportService {
     }
 
     @Transactional
-    public Report returnReport(Integer reportId, String returnToEmployeeId) {
+    public Report returnReport(Integer reportId, String returnReason, String returnToEmployeeId, String returnerId) {
         Report report = getReport(reportId);
         Employee returnTo = employeeRepo.findByEmployeeId(returnToEmployeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> new RuntimeException("Return target employee not found"));
+        Employee returner = employeeRepo.findByEmployeeId(returnerId)
+                .orElseThrow(() -> new RuntimeException("Returner not found"));
 
-        report.getRelatedCase().setStatus(WorkflowStatus.REPORT_RETURNED);
+        // Determine appropriate status based on current workflow position
+        WorkflowStatus newStatus;
+        switch(report.getRelatedCase().getStatus()) {
+            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+                newStatus = WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER;
+                break;
+            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
+                newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+                break;
+            default:
+                throw new IllegalStateException("Cannot return report in current status");
+        }
+
+        report.getRelatedCase().setStatus(newStatus);
         report.setCurrentRecipient(returnTo);
+        report.setReturnedBy(returner);
+        report.setReturnReason(returnReason);
+        report.setReturnedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
+
         Report savedReport = reportRepo.save(report);
 
-        String message = String.format("Report #%d has been returned for corrections", savedReport.getId());
+        String message = String.format("Report #%d has been returned by %s %s. Reason: %s",
+                savedReport.getId(),
+                returner.getGivenName(),
+                returner.getFamilyName(),
+                returnReason);
         createNotification(savedReport, message);
 
         return savedReport;
@@ -207,15 +238,16 @@ public class ReportService {
             case REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION:
             case REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER:
                 return "REPORT_REJECTED";
-            case REPORT_RETURNED:
-                return "REPORT_RETURNED";
+            case REPORT_RETURNED_ASSISTANT_COMMISSIONER:
+            case REPORT_RETURNED_TO_INTELLIGENCE_OFFICER:
+            case REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION:
+                return "REPORT_RETURNED_ASSISTANT_COMMISSIONER";
             case INVESTIGATION_IN_PROGRESS:
                 return "INVESTIGATION_IN_PROGRESS";
             case INVESTIGATION_COMPLETED:
                 return "INVESTIGATION_COMPLETED";
             default:
                 return "GENERAL_NOTIFICATION";
-
         }
     }
 
@@ -235,6 +267,7 @@ public class ReportService {
                 report.getCurrentRecipient().getGivenName() + " " + report.getCurrentRecipient().getFamilyName() : null);
         dto.setCreatedAt(report.getCreatedAt());
         dto.setUpdatedAt(report.getUpdatedAt());
+        dto.setCreatedByEmployeeId(report.getCreatedBy().getEmployeeId());
         dto.setRelatedCase(report.getRelatedCase());
         dto.setApprovedBy(report.getApprovedBy() != null ?
                 report.getApprovedBy().getGivenName() + " " + report.getApprovedBy().getFamilyName() : null);
@@ -243,6 +276,9 @@ public class ReportService {
                 report.getRejectedBy().getGivenName() + " " + report.getRejectedBy().getFamilyName() : null);
         dto.setRejectionReason(report.getRejectionReason());
         dto.setRejectedAt(report.getRejectedAt());
+        dto.setFindings(report.getFindings());
+        dto.setRecommendations(report.getRecommendations());
+        dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths());
         return dto;
     }
 
@@ -252,17 +288,18 @@ public class ReportService {
 
         return reportRepo.findByCreatedByOrderByCreatedAtDesc(employee);
     }
-     public List<Report> getReportsForDirectorIntelligence(String directorId) {
-         List<Employee> directors = reportRepo.DirectorsOfIntelligence();
-         boolean isDirector = directors.stream()
-                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
-         if (!isDirector) {
-             throw new RuntimeException("Employee is not a Director of Intelligence");
-         }
+    public List<Report> getReportsForDirectorIntelligence(String directorId) {
+        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
-         return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
-     }
+        if (!isDirector) {
+            throw new RuntimeException("Employee is not a Director of Intelligence");
+        }
+
+        return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
+    }
 
     @Transactional
     public Report approveReport(Integer reportId, String approverId) {
@@ -319,7 +356,7 @@ public class ReportService {
                 .orElseThrow(() -> new RuntimeException("Rejector not found"));
 
         WorkflowStatus newStatus;
-        switch(report.getStatus()) {
+        switch(report.getRelatedCase().getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
                 break;
@@ -330,7 +367,7 @@ public class ReportService {
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
                 break;
             default:
-                throw new IllegalStateException("Cannot reject report in current status: " + report.getStatus());
+                throw new IllegalStateException("Cannot reject report in current status: " + report.getRelatedCase().getStatus());
         }
 
         report.getRelatedCase().setStatus(newStatus);
@@ -475,4 +512,91 @@ public class ReportService {
         return reportRepo.findReportsAssignedToInvestigationOfficer(officerId);
     }
 
+    @Transactional
+    public Report submitFindings(Integer reportId, FindingsRequestDTO findingsDTO, String officerId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        // Verify the submitter is the assigned investigation officer
+        if (report.getCurrentRecipient() == null ||
+                !report.getCurrentRecipient().getEmployeeId().equals(officerId)) {
+            throw new RuntimeException("You are not the assigned investigation officer for this report");
+        }
+
+        // Store attachments if any
+        List<String> attachmentPaths = new ArrayList<>();
+        if (findingsDTO.getAttachments() != null) {
+            for (MultipartFile file : findingsDTO.getAttachments()) {
+                if (!file.isEmpty()) {
+                    try {
+                        String path = storeAttachment(file);
+                        attachmentPaths.add(path);
+                    } catch (Exception e) {
+                        throw new RuntimeException("Failed to store attachment: " + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.INVESTIGATION_COMPLETED);
+        caseRepo.save(relatedCase);
+
+        // Update report with findings and attachments
+        report.setFindings(findingsDTO.getFindings());
+        report.setRecommendations(findingsDTO.getRecommendations());
+        report.setFindingsAttachmentPaths(attachmentPaths);
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Assign back to Director of Investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        if (!directors.isEmpty()) {
+            report.setCurrentRecipient(directors.get(0));
+        } else {
+            throw new IllegalStateException("No Director of Investigation found.");
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        // Create notification
+        String message = String.format("Investigation findings submitted for report #%d by %s %s",
+                savedReport.getId(),
+                savedReport.getCurrentRecipient().getGivenName(),
+                savedReport.getCurrentRecipient().getFamilyName());
+        createNotification(savedReport, message);
+
+        // Broadcast to all directors of investigation
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("INVESTIGATION_FINDINGS_SUBMITTED");
+        webSocketNotificationService.sendNotificationToDirectorsInvestigation(broadcastNotification);
+
+        return savedReport;
+    }
+
+    private String storeAttachment(MultipartFile file) throws Exception {
+
+        Path uploadPath = Paths.get(this.uploadDir);
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+        Path filePath = uploadPath.resolve(fileName);
+        Files.copy(file.getInputStream(), filePath);
+        return fileName;
+    }
+
+    public List<Report> getAllReportsForDirectorInvestigation(String directorId) {
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(directorId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Employee is not a Director of Investigation");
+        }
+
+        return reportRepo.findReportsHandledByDirectorInvestigation();
+    }
 }

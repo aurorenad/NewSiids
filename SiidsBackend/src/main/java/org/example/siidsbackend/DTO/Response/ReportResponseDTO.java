@@ -5,6 +5,7 @@ import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.WorkflowStatus;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 public class ReportResponseDTO {
@@ -23,4 +24,11 @@ public class ReportResponseDTO {
     private String rejectedBy;
     private String rejectionReason;
     private LocalDateTime rejectedAt;
+    private String createdByEmployeeId;
+    private String returnedBy;
+    private String returnReason;
+    private LocalDateTime returnedAt;
+    private String findings;
+    private String recommendations;
+    private List<String> findingsAttachmentPaths;
 }

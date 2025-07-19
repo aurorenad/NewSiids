@@ -70,4 +70,12 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "ORDER BY r.createdAt DESC")
     List<Report> findReportsAssignedToInvestigationOfficer(@Param("officerId") String officerId);
 
+    @Query("SELECT r FROM Report r " +
+            "WHERE r.relatedCase.status IN " +
+            "(org.example.siidsbackend.Model.WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED) " +
+            "ORDER BY r.updatedAt DESC")
+    List<Report> findReportsHandledByDirectorInvestigation();
 }

@@ -14,4 +14,5 @@ public class CaseRequestDTO {
     private String taxPeriod;
     private Date reportedDate;
     private String summaryOfInformationCase;
+    
 }

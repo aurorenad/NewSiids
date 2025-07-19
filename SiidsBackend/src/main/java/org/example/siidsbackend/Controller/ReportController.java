@@ -2,6 +2,7 @@ package org.example.siidsbackend.Controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.Case;
@@ -9,6 +10,7 @@ import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
 import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.EmployeeRepo;
+import org.example.siidsbackend.Repository.ReportRepo;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -31,36 +33,10 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
-    @Autowired
+    // Remove @Autowired since we're using @RequiredArgsConstructor
     private final ReportService reportService;
     private final EmployeeRepo employeeRepo;
-
-//    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-//    public ResponseEntity<ReportResponseDTO> createReport(
-//            @RequestBody ReportRequestDTO reportData,
-//            @RequestPart(value = "attachment", required = false) MultipartFile attachment,
-//            @RequestHeader("employee_id") String employeeId) {
-//
-//        try {
-//            if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
-//                return ResponseEntity.badRequest().build();
-//            }
-//
-//            String attachmentPath = null;
-//            if (attachment != null && !attachment.isEmpty()) {
-//                attachmentPath = storeAttachment(attachment);
-//            }
-//
-//            reportData.setAttachmentPath(attachmentPath);
-//
-//            Report report = reportService.createReport(reportData, employeeId);
-//            return ResponseEntity.ok(reportService.toResponseDTO(report));
-//        } catch (Exception e) {
-//            System.err.println("Error creating report: " + e.getMessage());
-//            e.printStackTrace();
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-//        }
-//    }
+    private final ReportRepo reportRepo;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReportResponseDTO> createReport(
@@ -69,7 +45,6 @@ public class ReportController {
             @RequestHeader("employee_id") String employeeId) {
 
         try {
-            // Parse JSON from string
             ObjectMapper objectMapper = new ObjectMapper();
             ReportRequestDTO reportData = objectMapper.readValue(reportDataJson, ReportRequestDTO.class);
 
@@ -83,7 +58,6 @@ public class ReportController {
             }
 
             reportData.setAttachmentPath(attachmentPath);
-
             Report report = reportService.createReport(reportData, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
@@ -92,14 +66,13 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     private String storeAttachment(MultipartFile file) throws Exception {
-        // Create uploads directory if it doesn't exist
         Path uploadDir = Paths.get("uploads");
         if (!Files.exists(uploadDir)) {
             Files.createDirectories(uploadDir);
         }
 
-        // Generate unique filename
         String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
         Path filePath = uploadDir.resolve(fileName);
         Files.copy(file.getInputStream(), filePath);
@@ -128,7 +101,6 @@ public class ReportController {
             @RequestHeader("employee_id") String employeeId) {
         try {
             Report report = reportService.getReport(id);
-            // Add authorization check here if needed
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             System.err.println("Error getting report: " + e.getMessage());
@@ -182,7 +154,7 @@ public class ReportController {
             Report report = reportService.sendToDirectorInvestigation(reportId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
-            System.err.println("Error sending to Director of Intelligence: " + e.getMessage());
+            System.err.println("Error sending to Director of Investigation: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
@@ -192,14 +164,28 @@ public class ReportController {
     public ResponseEntity<ReportResponseDTO> returnReport(
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
+            @RequestParam String returnReason,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Report report = reportService.returnReport(id, returnToEmployeeId);
+            Employee returner = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Returner not found"));
+
+            Employee returnTarget = employeeRepo.findByEmployeeId(returnToEmployeeId)
+                    .orElseThrow(() -> new RuntimeException("Return target employee not found"));
+
+            if (returnReason == null || returnReason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(null);
+            }
+
+            Report report = reportService.returnReport(id, returnReason, returnToEmployeeId, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            System.err.println("Error returning report: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
         } catch (Exception e) {
             System.err.println("Error returning report: " + e.getMessage());
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 
@@ -344,6 +330,7 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     @GetMapping("/{id}/attachment")
     public ResponseEntity<Resource> downloadAttachment(
             @PathVariable Integer id,
@@ -351,11 +338,9 @@ public class ReportController {
         try {
             Report report = reportService.getReport(id);
 
-            // Security check: Ensure user has access to this report
             Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
                     .orElseThrow(() -> new RuntimeException("Employee not found"));
 
-            // Check if user is the creator, current recipient, or has appropriate role
             boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
                     (report.getCurrentRecipient() != null &&
                             report.getCurrentRecipient().getEmployeeId().equals(employeeId));
@@ -375,7 +360,6 @@ public class ReportController {
                 return ResponseEntity.notFound().build();
             }
 
-            // Get original filename without UUID prefix
             String originalFilename = report.getAttachmentPath();
             if (originalFilename.contains("_")) {
                 originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
@@ -393,5 +377,123 @@ public class ReportController {
         }
     }
 
+    @PostMapping(value = "/{id}/submit-findings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReportResponseDTO> submitFindings(
+            @PathVariable Integer id,
+            @RequestPart("findingsData") String findingsDataJson,
+            @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
+            @RequestHeader("employee_id") String officerId) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            FindingsRequestDTO findingsDTO = objectMapper.readValue(findingsDataJson, FindingsRequestDTO.class);
+            findingsDTO.setAttachments(attachments);
 
+            Report report = reportService.submitFindings(id, findingsDTO, officerId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            System.err.println("Error submitting findings: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            System.err.println("Error submitting findings: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/findings-attachments/{attachmentIndex}")
+    public ResponseEntity<Resource> downloadFindingsAttachment(
+            @PathVariable Integer id,
+            @PathVariable Integer attachmentIndex,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.getReport(id);
+
+            Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+                    (report.getCurrentRecipient() != null &&
+                            report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
+                    reportRepo.DirectorsOfInvestigation().stream()
+                            .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            if (report.getFindingsAttachmentPaths() == null ||
+                    report.getFindingsAttachmentPaths().isEmpty() ||
+                    attachmentIndex >= report.getFindingsAttachmentPaths().size()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String attachmentPath = report.getFindingsAttachmentPaths().get(attachmentIndex);
+            Path filePath = Paths.get("uploads").resolve(attachmentPath).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String originalFilename = attachmentPath;
+            if (originalFilename.contains("_")) {
+                originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + originalFilename + "\"")
+                    .body(resource);
+        } catch (Exception e) {
+            System.err.println("Error downloading findings attachment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/findings")
+    public ResponseEntity<ReportResponseDTO> getFindings(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.getReport(id);
+
+            Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+                    (report.getCurrentRecipient() != null &&
+                            report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
+                    reportRepo.DirectorsOfInvestigation().stream()
+                            .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            System.err.println("Error getting findings: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+    @GetMapping("/director-investigation/all-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<Report> reports = reportService.getAllReportsForDirectorInvestigation(directorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            System.err.println("Authorization error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            System.err.println("Error getting reports: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

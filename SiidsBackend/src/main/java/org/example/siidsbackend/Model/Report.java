@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Data
@@ -18,10 +20,6 @@ public class Report {
     @OneToOne
     @JoinColumn(name = "case_num", referencedColumnName = "caseNum")
     private Case relatedCase;
-
-    // Remove the status field since we'll use the Case's status
-    // @Enumerated(EnumType.STRING)
-    // private WorkflowStatus status = WorkflowStatus.CASE_CREATED;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
@@ -50,6 +48,24 @@ public class Report {
 
     @Column(name = "rejected_at")
     private LocalDateTime rejectedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "returned_by_employee_id")
+    private Employee returnedBy;
+
+    @Column(name = "returned_reason")
+    private String returnReason;
+
+    @Column(name = "returned_at")
+    private LocalDateTime returnedAt;
+
+    private String findings;
+    private String recommendations;
+
+    @ElementCollection
+    @CollectionTable(name = "report_findings_attachments", joinColumns = @JoinColumn(name = "report_id"))
+    @Column(name = "attachment_path")
+    private List<String> findingsAttachmentPaths = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
