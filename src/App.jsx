@@ -20,6 +20,7 @@ import { ClaimForm } from "./Components/ClaimForm.jsx";
 import { SClaimForm } from "./Components/SClaimForm.jsx";
 import SurveillanceCaseView from "./Components/SurveillenceOffice/SurveillanceCaseView.jsx";
 import ReportView from "./Components/ReportView.jsx";
+import FindingsViewerPage from "./Components/FindingsViewerPage.jsx";
 
 const ProtectedRoute = ({ children }) => {
     const { authState } = useContext(AuthContext);
@@ -49,7 +50,6 @@ function App() {
                     <Route path="/director-intelligence" element={<ProtectedRoute><DirectorIntelligence /></ProtectedRoute>} />
                     <Route path="/intelligence-officer" element={<ProtectedRoute><IntelligenceOfficer /></ProtectedRoute>} />
                     <Route path="/intelligence-officer/newCase" element={<ProtectedRoute><NewCase /></ProtectedRoute>} />
-                    {/* Updated route to handle case IDs with slashes using wildcard */}
                     <Route
                         path="/intelligence-officer/view-case/*"
                         element={<ProtectedRoute><TaxReportView /></ProtectedRoute>}
@@ -64,6 +64,7 @@ function App() {
                     <Route path="/assistant-commissioner" element={<ProtectedRoute><AssistantCommissioner /></ProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
                     <Route path="/reports/:id" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
+                    <Route path="/reports/:id/findings" element={<ProtectedRoute><FindingsViewerPage /></ProtectedRoute>} />
                 </Routes>
             </Router>
         </AuthProvider>

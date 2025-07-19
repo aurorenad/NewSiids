@@ -21,9 +21,27 @@ import {
     DialogActions,
     MenuItem,
     Tooltip,
-    Chip
+    Chip,
+    DialogContentText,
+    Input,
+    FormControl,
+    InputLabel,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemIcon,
+    Divider
 } from "@mui/material";
-import { Search, Description, Send, Check, ArrowBack } from "@mui/icons-material";
+import {
+    Search,
+    Description,
+    Send,
+    Check,
+    ArrowBack,
+    AttachFile,
+    Delete,
+    NoteAdd
+} from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { ReportApi } from "./../api/Axios/caseApi";
 
@@ -32,11 +50,20 @@ const InvestigationOfficer = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: "",
+        severity: "success"
+    });
     const [selectedReport, setSelectedReport] = useState(null);
-    const [dialogOpen, setDialogOpen] = useState(false);
+    const [statusDialogOpen, setStatusDialogOpen] = useState(false);
     const [statusUpdate, setStatusUpdate] = useState("");
     const [notes, setNotes] = useState("");
+    const [findingsDialogOpen, setFindingsDialogOpen] = useState(false);
+    const [findings, setFindings] = useState("");
+    const [recommendations, setRecommendations] = useState("");
+    const [attachments, setAttachments] = useState([]);
+    const [attachmentPreviews, setAttachmentPreviews] = useState([]);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -46,9 +73,9 @@ const InvestigationOfficer = () => {
                 const response = await ReportApi.getAssignedReportsForInvestigationOfficer();
                 const formattedReports = response.data.map(report => ({
                     id: report.id || '',
-                    caseId: report.caseId || 'N/A',
-                    status: report.status || 'Pending',
-                    reportedDate: report.reportedDate || 'N/A',
+                    caseId: report.relatedCase?.caseNum || 'N/A',
+                    status: report.relatedCase?.status || 'Pending',
+                    reportedDate: report.createdAt || 'N/A',
                     notes: report.notes || '',
                     ...report
                 }));
@@ -67,6 +94,13 @@ const InvestigationOfficer = () => {
         };
 
         fetchAssignedReports();
+
+        return () => {
+            // Clean up object URLs
+            attachmentPreviews.forEach(preview => {
+                if (preview.url) URL.revokeObjectURL(preview.url);
+            });
+        };
     }, []);
 
     const handleStatusUpdate = async () => {
@@ -88,12 +122,20 @@ const InvestigationOfficer = () => {
             setReports(prev =>
                 prev.map(report =>
                     report.id === selectedReport.id
-                        ? { ...report, status: statusUpdate, notes }
+                        ? {
+                            ...report,
+                            status: statusUpdate,
+                            notes,
+                            relatedCase: {
+                                ...report.relatedCase,
+                                status: statusUpdate
+                            }
+                        }
                         : report
                 )
             );
 
-            handleCloseDialog();
+            handleCloseStatusDialog();
         } catch (err) {
             console.error("Error updating status:", err);
             setSnackbar({
@@ -104,10 +146,114 @@ const InvestigationOfficer = () => {
         }
     };
 
-    const handleCloseDialog = () => {
-        setDialogOpen(false);
+    const handleOpenFindingsDialog = (report) => {
+        setSelectedReport(report);
+        setFindingsDialogOpen(true);
+    };
+
+    const handleCloseFindingsDialog = () => {
+        setFindingsDialogOpen(false);
+        setFindings("");
+        setRecommendations("");
+        setAttachments([]);
+        setAttachmentPreviews([]);
+    };
+
+    const handleCloseStatusDialog = () => {
+        setStatusDialogOpen(false);
         setStatusUpdate("");
         setNotes("");
+    };
+
+    const handleFileUpload = (e) => {
+        const files = Array.from(e.target.files);
+        setAttachments([...attachments, ...files]);
+
+        // Create previews for images
+        const newPreviews = files.map(file => {
+            if (file.type.startsWith('image/')) {
+                return {
+                    name: file.name,
+                    url: URL.createObjectURL(file),
+                    type: 'image'
+                };
+            }
+            return {
+                name: file.name,
+                url: null,
+                type: 'file'
+            };
+        });
+        setAttachmentPreviews([...attachmentPreviews, ...newPreviews]);
+    };
+
+    const removeAttachment = (index) => {
+        const newAttachments = [...attachments];
+        newAttachments.splice(index, 1);
+        setAttachments(newAttachments);
+
+        const newPreviews = [...attachmentPreviews];
+        if (newPreviews[index]?.url) {
+            URL.revokeObjectURL(newPreviews[index].url);
+        }
+        newPreviews.splice(index, 1);
+        setAttachmentPreviews(newPreviews);
+    };
+
+    const submitFindings = async () => {
+        if (!selectedReport || !findings) {
+            setSnackbar({
+                open: true,
+                message: "Findings are required",
+                severity: "error"
+            });
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append("findingsData", JSON.stringify({
+                findings,
+                recommendations
+            }));
+
+            attachments.forEach(file => {
+                formData.append("attachments", file);
+            });
+
+            await ReportApi.submitFindings(selectedReport.id, formData);
+
+            setSnackbar({
+                open: true,
+                message: "Findings submitted successfully",
+                severity: "success"
+            });
+
+            // Update local state
+            setReports(prev =>
+                prev.map(report =>
+                    report.id === selectedReport.id
+                        ? {
+                            ...report,
+                            status: "INVESTIGATION_COMPLETED",
+                            relatedCase: {
+                                ...report.relatedCase,
+                                status: "INVESTIGATION_COMPLETED"
+                            }
+                        }
+                        : report
+                )
+            );
+
+            handleCloseFindingsDialog();
+        } catch (err) {
+            console.error("Error submitting findings:", err);
+            setSnackbar({
+                open: true,
+                message: "Failed to submit findings",
+                severity: "error"
+            });
+        }
     };
 
     const filteredReports = reports.filter(report => {
@@ -120,11 +266,19 @@ const InvestigationOfficer = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'Investigation Completed': return 'success';
-            case 'Investigation In Progress': return 'warning';
-            case 'Investigation On Hold': return 'error';
+            case 'INVESTIGATION_COMPLETED': return 'success';
+            case 'REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER':
+            case 'INVESTIGATION_IN_PROGRESS': return 'warning';
+            case 'INVESTIGATION_ON_HOLD': return 'error';
             default: return 'default';
         }
+    };
+
+    const formatStatus = (status) => {
+        return status
+            .split('_')
+            .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+            .join(' ');
     };
 
     if (loading) {
@@ -197,12 +351,14 @@ const InvestigationOfficer = () => {
                                     <TableCell>{report.caseId}</TableCell>
                                     <TableCell>
                                         <Chip
-                                            label={report.status}
+                                            label={formatStatus(report.status)}
                                             color={getStatusColor(report.status)}
                                             variant="outlined"
                                         />
                                     </TableCell>
-                                    <TableCell>{report.reportedDate}</TableCell>
+                                    <TableCell>
+                                        {new Date(report.reportedDate).toLocaleDateString()}
+                                    </TableCell>
                                     <TableCell>
                                         <Box display="flex" gap={1}>
                                             <Tooltip title="View Report">
@@ -220,23 +376,18 @@ const InvestigationOfficer = () => {
                                                         setSelectedReport(report);
                                                         setStatusUpdate(report.status || "");
                                                         setNotes(report.notes || "");
-                                                        setDialogOpen(true);
+                                                        setStatusDialogOpen(true);
                                                     }}
                                                 >
                                                     <Send />
                                                 </IconButton>
                                             </Tooltip>
-                                            <Tooltip title="Mark as Completed">
+                                            <Tooltip title="Submit Findings">
                                                 <IconButton
-                                                    color="success"
-                                                    onClick={() => {
-                                                        setSelectedReport(report);
-                                                        setStatusUpdate("Investigation Completed");
-                                                        setNotes(report.notes || "");
-                                                        setDialogOpen(true);
-                                                    }}
+                                                    color="primary"
+                                                    onClick={() => handleOpenFindingsDialog(report)}
                                                 >
-                                                    <Check />
+                                                    <NoteAdd />
                                                 </IconButton>
                                             </Tooltip>
                                         </Box>
@@ -255,7 +406,7 @@ const InvestigationOfficer = () => {
             </TableContainer>
 
             {/* Status Update Dialog */}
-            <Dialog open={dialogOpen} onClose={handleCloseDialog} fullWidth maxWidth="sm">
+            <Dialog open={statusDialogOpen} onClose={handleCloseStatusDialog} fullWidth maxWidth="sm">
                 <DialogTitle>
                     Update Investigation Status
                 </DialogTitle>
@@ -263,7 +414,7 @@ const InvestigationOfficer = () => {
                     <Box sx={{ my: 2 }}>
                         <Typography variant="subtitle1">Case ID: {selectedReport?.caseId || 'N/A'}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                            Current Status: {selectedReport?.status || 'N/A'}
+                            Current Status: {selectedReport?.status ? formatStatus(selectedReport.status) : 'N/A'}
                         </Typography>
                     </Box>
                     <TextField
@@ -274,9 +425,15 @@ const InvestigationOfficer = () => {
                         onChange={(e) => setStatusUpdate(e.target.value)}
                         sx={{ mb: 2 }}
                     >
-                        <MenuItem value="Investigation In Progress">Investigation In Progress</MenuItem>
-                        <MenuItem value="Investigation Completed">Investigation Completed</MenuItem>
-                        <MenuItem value="Investigation On Hold">Investigation On Hold</MenuItem>
+                        <MenuItem value="INVESTIGATION_IN_PROGRESS">
+                            {formatStatus("INVESTIGATION_IN_PROGRESS")}
+                        </MenuItem>
+                        <MenuItem value="INVESTIGATION_COMPLETED">
+                            {formatStatus("INVESTIGATION_COMPLETED")}
+                        </MenuItem>
+                        <MenuItem value="INVESTIGATION_ON_HOLD">
+                            {formatStatus("INVESTIGATION_ON_HOLD")}
+                        </MenuItem>
                     </TextField>
                     <TextField
                         fullWidth
@@ -289,7 +446,7 @@ const InvestigationOfficer = () => {
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCloseDialog}>Cancel</Button>
+                    <Button onClick={handleCloseStatusDialog}>Cancel</Button>
                     <Button
                         onClick={handleStatusUpdate}
                         variant="contained"
@@ -297,6 +454,115 @@ const InvestigationOfficer = () => {
                         disabled={!statusUpdate}
                     >
                         Update Status
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Findings Submission Dialog */}
+            <Dialog
+                open={findingsDialogOpen}
+                onClose={handleCloseFindingsDialog}
+                fullWidth
+                maxWidth="md"
+            >
+                <DialogTitle>Submit Investigation Findings</DialogTitle>
+                <DialogContent>
+                    <DialogContentText sx={{ mb: 2 }}>
+                        Case ID: {selectedReport?.caseId || 'N/A'}
+                    </DialogContentText>
+
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={6}
+                        label="Detailed Findings *"
+                        value={findings}
+                        onChange={(e) => setFindings(e.target.value)}
+                        sx={{ mb: 3 }}
+                        helperText="Provide detailed investigation findings"
+                    />
+
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={4}
+                        label="Recommendations"
+                        value={recommendations}
+                        onChange={(e) => setRecommendations(e.target.value)}
+                        sx={{ mb: 3 }}
+                        helperText="Provide recommendations based on your findings"
+                    />
+
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                        <InputLabel htmlFor="attachment-upload">Attachments</InputLabel>
+                        <Input
+                            id="attachment-upload"
+                            type="file"
+                            inputProps={{
+                                multiple: true,
+                                accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                            }}
+                            onChange={handleFileUpload}
+                            startAdornment={<AttachFile />}
+                        />
+                    </FormControl>
+
+                    {attachmentPreviews.length > 0 && (
+                        <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Attachments ({attachmentPreviews.length})
+                            </Typography>
+                            <List dense>
+                                {attachmentPreviews.map((file, index) => (
+                                    <React.Fragment key={index}>
+                                        <ListItem
+                                            secondaryAction={
+                                                <IconButton
+                                                    edge="end"
+                                                    onClick={() => removeAttachment(index)}
+                                                >
+                                                    <Delete />
+                                                </IconButton>
+                                            }
+                                        >
+                                            <ListItemIcon>
+                                                {file.type === 'image' ? (
+                                                    <img
+                                                        src={file.url}
+                                                        alt={file.name}
+                                                        style={{
+                                                            width: 50,
+                                                            height: 50,
+                                                            objectFit: 'cover',
+                                                            borderRadius: 1
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <Description fontSize="large" />
+                                                )}
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={file.name}
+                                                secondary={file.type === 'image' ? "Image" : "Document"}
+                                            />
+                                        </ListItem>
+                                        {index < attachmentPreviews.length - 1 && <Divider />}
+                                    </React.Fragment>
+                                ))}
+                            </List>
+                        </Paper>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseFindingsDialog}>Cancel</Button>
+                    <Button
+                        onClick={submitFindings}
+                        variant="contained"
+                        color="primary"
+                        disabled={!findings}
+                        startIcon={<Check />}
+                    >
+                        Submit Findings
                     </Button>
                 </DialogActions>
             </Dialog>

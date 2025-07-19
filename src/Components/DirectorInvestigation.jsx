@@ -22,10 +22,15 @@ import {
     FormControl,
     InputLabel,
     Typography,
-    Box
+    Box,
+    Tooltip,
+    List,
+    ListItem,
+    ListItemText,
+    Divider
 } from "@mui/material";
-import { Link } from "react-router-dom";
-import { Check, Close, Description, Search } from "@mui/icons-material";
+import { Check, Close, Description, Search, Visibility, Download } from "@mui/icons-material";
+import { useNavigate, Link } from "react-router-dom";
 import { ReportApi, InvestigationApi } from './../api/Axios/caseApi';
 
 const DirectorInvestigation = () => {
@@ -38,6 +43,13 @@ const DirectorInvestigation = () => {
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [selectedCase, setSelectedCase] = useState(null);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [viewFindingsDialogOpen, setViewFindingsDialogOpen] = useState(false);
+    const [viewReportDialogOpen, setViewReportDialogOpen] = useState(false);
+    const [currentFindings, setCurrentFindings] = useState(null);
+    const [currentReport, setCurrentReport] = useState(null);
+    const [downloadLoading, setDownloadLoading] = useState(false);
+    const [downloadAttachmentIndex, setDownloadAttachmentIndex] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -58,7 +70,9 @@ const DirectorInvestigation = () => {
                     reason: report.rejectionReason || '',
                     reportId: report.id,
                     caseId: report.relatedCase?._id,
-                    isAssigned: !!report.assignedOfficer
+                    isAssigned: !!report.assignedOfficer,
+                    hasFindings: report.findings || report.recommendations ||
+                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0)
                 }));
 
                 const mappedOfficers = officersResponse.data.map(officer => ({
@@ -187,13 +201,94 @@ const DirectorInvestigation = () => {
         }
     };
 
+    const handleViewFindings = async (caseItem) => {
+        try {
+            setLoading(true);
+            const response = await ReportApi.getFindings(caseItem.reportId, {
+                headers: {
+                    'employee_id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
+                }
+            });
+            setCurrentFindings({
+                findings: response.data.findings,
+                recommendations: response.data.recommendations,
+                attachments: response.data.findingsAttachmentPaths || []
+            });
+            setSelectedCase(caseItem);
+            setViewFindingsDialogOpen(true);
+        } catch (err) {
+            console.error('Error fetching findings:', err);
+            setSnackbar({
+                open: true,
+                message: err.response?.data?.message || 'Failed to load findings',
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleViewReport = async (caseItem) => {
+        try {
+            setLoading(true);
+            const response = await ReportApi.getReport(caseItem.reportId);
+            setCurrentReport(response.data);
+            setSelectedCase(caseItem);
+            setViewReportDialogOpen(true);
+        } catch (err) {
+            console.error('Error fetching report:', err);
+            setSnackbar({
+                open: true,
+                message: 'Failed to load report',
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDownloadAttachment = async (reportId, attachmentIndex) => {
+        try {
+            setDownloadLoading(true);
+            setDownloadAttachmentIndex(attachmentIndex);
+            const response = await ReportApi.downloadFindingsAttachment(reportId, attachmentIndex);
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+
+            const contentDisposition = response.headers['content-disposition'];
+            let filename = 'attachment';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                if (filenameMatch) filename = filenameMatch[1];
+            }
+
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Error downloading attachment:', err);
+            setSnackbar({
+                open: true,
+                message: 'Failed to download attachment',
+                severity: 'error'
+            });
+        } finally {
+            setDownloadLoading(false);
+            setDownloadAttachmentIndex(null);
+        }
+    };
+
     const filteredCases = cases.filter(caseItem =>
         caseItem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         caseItem.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
         caseItem.delegateName.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    if (loading) {
+    if (loading && !viewFindingsDialogOpen && !viewReportDialogOpen) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
                 <CircularProgress />
@@ -252,7 +347,9 @@ const DirectorInvestigation = () => {
                                                     } : c
                                                 ));
                                             }}
-                                            disabled={caseItem.status.includes("Approved") || caseItem.status.includes("Rejected")}
+                                            disabled={caseItem.status.includes("Approved") ||
+                                                caseItem.status.includes("Rejected") ||
+                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
                                         >
                                             <MenuItem value=""><em>None</em></MenuItem>
                                             {officers.map((officer) => (
@@ -275,7 +372,8 @@ const DirectorInvestigation = () => {
                                     <Typography
                                         sx={{
                                             color: caseItem.status.includes("Approved") ? "green" :
-                                                caseItem.status.includes("Rejected") ? "red" : "inherit",
+                                                caseItem.status.includes("Rejected") ? "red" :
+                                                    caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" : "inherit",
                                             fontWeight: 'bold'
                                         }}
                                     >
@@ -289,16 +387,33 @@ const DirectorInvestigation = () => {
                                 </TableCell>
                                 <TableCell>
                                     <Box display="flex" gap={1}>
-                                        <Link to={`/report/${caseItem.reportId}`}>
-                                            <IconButton color="primary" size="small">
+                                        <Tooltip title="View Report">
+                                            <IconButton
+                                                color="primary"
+                                                size="small"
+                                                onClick={() => handleViewReport(caseItem)}
+                                            >
                                                 <Description />
                                             </IconButton>
-                                        </Link>
+                                        </Tooltip>
+                                        {caseItem.hasFindings && (
+                                            <Tooltip title="View Findings">
+                                                <IconButton
+                                                    color="info"
+                                                    size="small"
+                                                    onClick={() => handleViewFindings(caseItem)}
+                                                >
+                                                    <Visibility />
+                                                </IconButton>
+                                            </Tooltip>
+                                        )}
                                         <IconButton
                                             color="success"
                                             size="small"
                                             onClick={() => handleApprove(caseItem.reportId)}
-                                            disabled={caseItem.status.includes("Approved") || caseItem.status.includes("Rejected")}
+                                            disabled={caseItem.status.includes("Approved") ||
+                                                caseItem.status.includes("Rejected") ||
+                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
                                         >
                                             <Check />
                                         </IconButton>
@@ -306,7 +421,10 @@ const DirectorInvestigation = () => {
                                             color="secondary"
                                             size="small"
                                             onClick={() => handleAssignOfficer(caseItem.reportId, caseItem.delegate)}
-                                            disabled={!caseItem.delegate || caseItem.status.includes("Approved") || caseItem.status.includes("Rejected")}
+                                            disabled={!caseItem.delegate ||
+                                                caseItem.status.includes("Approved") ||
+                                                caseItem.status.includes("Rejected") ||
+                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
                                         >
                                             Assign
                                         </IconButton>
@@ -317,10 +435,22 @@ const DirectorInvestigation = () => {
                                                 setSelectedCase(caseItem);
                                                 setRejectDialogOpen(true);
                                             }}
-                                            disabled={caseItem.status.includes("Approved") || caseItem.status.includes("Rejected")}
+                                            disabled={caseItem.status.includes("Approved") ||
+                                                caseItem.status.includes("Rejected") ||
+                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
                                         >
                                             <Close />
                                         </IconButton>
+                                        <Tooltip title="View Full Findings">
+                                            <IconButton
+                                                color="info"
+                                                size="small"
+                                                component={Link}
+                                                to={`/reports/${caseItem.reportId}/findings`}
+                                            >
+                                                <Visibility />
+                                            </IconButton>
+                                        </Tooltip>
                                     </Box>
                                 </TableCell>
                             </TableRow>
@@ -329,6 +459,7 @@ const DirectorInvestigation = () => {
                 </Table>
             </TableContainer>
 
+            {/* Reject Dialog */}
             <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
                 <DialogTitle>Reject Report</DialogTitle>
                 <DialogContent>
@@ -352,6 +483,183 @@ const DirectorInvestigation = () => {
                         disabled={!rejectionReason.trim()}
                     >
                         Reject
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Report Details Dialog */}
+            <Dialog
+                open={viewReportDialogOpen}
+                onClose={() => setViewReportDialogOpen(false)}
+                fullWidth
+                maxWidth="md"
+            >
+                <DialogTitle>Report Details - Case {selectedCase?.id}</DialogTitle>
+                <DialogContent>
+                    {loading ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <>
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" gutterBottom>Description:</Typography>
+                                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                                    {currentReport?.description || 'No description available'}
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" gutterBottom>Status:</Typography>
+                                <Typography variant="body1">
+                                    {currentReport?.status || 'No status available'}
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" gutterBottom>Created By:</Typography>
+                                <Typography variant="body1">
+                                    {currentReport?.createdBy || 'Unknown'}
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" gutterBottom>Created At:</Typography>
+                                <Typography variant="body1">
+                                    {currentReport?.createdAt ? new Date(currentReport.createdAt).toLocaleString() : 'Unknown'}
+                                </Typography>
+                            </Box>
+
+                            {currentReport?.attachmentPath && (
+                                <Box sx={{ mb: 2 }}>
+                                    <Typography variant="h6" gutterBottom>Attachment:</Typography>
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<Download />}
+                                        onClick={() => ReportApi.downloadAttachment(currentReport.id)}
+                                        disabled={downloadLoading}
+                                    >
+                                        {downloadLoading ? 'Downloading...' : 'Download Attachment'}
+                                    </Button>
+                                </Box>
+                            )}
+                        </>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setViewReportDialogOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Findings Dialog */}
+            <Dialog
+                open={viewFindingsDialogOpen}
+                onClose={() => setViewFindingsDialogOpen(false)}
+                fullWidth
+                maxWidth="md"
+            >
+                <DialogTitle>
+                    Investigation Findings - Case {selectedCase?.id}
+                </DialogTitle>
+                <DialogContent>
+                    {loading ? (
+                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <>
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                    Findings
+                                </Typography>
+                                <Divider sx={{ mb: 2 }} />
+                                {currentFindings?.findings ? (
+                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
+                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                                            {currentFindings.findings}
+                                        </Typography>
+                                    </Paper>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                        No findings submitted
+                                    </Typography>
+                                )}
+                            </Box>
+
+                            <Box sx={{ mb: 3 }}>
+                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                    Recommendations
+                                </Typography>
+                                <Divider sx={{ mb: 2 }} />
+                                {currentFindings?.recommendations ? (
+                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
+                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                                            {currentFindings.recommendations}
+                                        </Typography>
+                                    </Paper>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                        No recommendations submitted
+                                    </Typography>
+                                )}
+                            </Box>
+
+                            {currentFindings?.attachments?.length > 0 && (
+                                <Box sx={{ mb: 2 }}>
+                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                        Attachments ({currentFindings.attachments.length})
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <List>
+                                        {currentFindings.attachments.map((attachment, index) => (
+                                            <ListItem
+                                                key={index}
+                                                sx={{
+                                                    border: '1px solid #e0e0e0',
+                                                    borderRadius: 1,
+                                                    mb: 1,
+                                                    '&:hover': {
+                                                        backgroundColor: '#f5f5f5'
+                                                    }
+                                                }}
+                                                secondaryAction={
+                                                    <Tooltip title="Download">
+                                                        <IconButton
+                                                            edge="end"
+                                                            onClick={() => handleDownloadAttachment(selectedCase.reportId, index)}
+                                                            disabled={downloadLoading && downloadAttachmentIndex === index}
+                                                        >
+                                                            {downloadLoading && downloadAttachmentIndex === index ?
+                                                                <CircularProgress size={24} /> :
+                                                                <Download />
+                                                            }
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                }
+                                            >
+                                                <ListItemText
+                                                    primary={
+                                                        <Typography variant="body1">
+                                                            {attachment.substring(attachment.indexOf('_') + 1)}
+                                                        </Typography>
+                                                    }
+                                                    secondary={`Attachment ${index + 1}`}
+                                                />
+                                            </ListItem>
+                                        ))}
+                                    </List>
+                                </Box>
+                            )}
+                        </>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        onClick={() => setViewFindingsDialogOpen(false)}
+                        variant="contained"
+                        color="primary"
+                    >
+                        Close
                     </Button>
                 </DialogActions>
             </Dialog>

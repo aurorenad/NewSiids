@@ -17,14 +17,17 @@ import {
     Box,
     CircularProgress,
     Alert,
-    Snackbar
+    Snackbar,
+    Tooltip
 } from "@mui/material";
-import { Search, Description, Check, Close } from "@mui/icons-material";
-import { Link } from 'react-router-dom';
+import { Search, Description, Check, Close, Undo } from "@mui/icons-material";
+import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 
 const AssistantCommissioner = () => {
     const [reports, setReports] = useState([]);
+    const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+    const [returnReason, setReturnReason] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -33,6 +36,7 @@ const AssistantCommissioner = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [actionLoading, setActionLoading] = useState({});
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchReports = async () => {
@@ -105,6 +109,47 @@ const AssistantCommissioner = () => {
         }
     };
 
+    const handleOpenReturnDialog = (report) => {
+        setSelectedReport(report);
+        setReturnDialogOpen(true);
+    };
+
+    const handleCloseReturnDialog = () => {
+        setReturnDialogOpen(false);
+        setReturnReason('');
+    };
+
+    const handleConfirmReturn = async () => {
+        if (!returnReason.trim()) {
+            showSnackbar("Return reason is required", "error");
+            return;
+        }
+
+        try {
+            setActionLoading(prev => ({ ...prev, [selectedReport.id]: true }));
+            await ReportApi.returnReport(
+                selectedReport.id,
+                selectedReport.createdByEmployeeId,
+                returnReason
+            );
+
+            setReports(prev => prev.map(r =>
+                r.id === selectedReport.id ? {
+                    ...r,
+                    status: "REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE"
+                } : r
+            ));
+
+            showSnackbar("Report returned successfully");
+            handleCloseReturnDialog();
+        } catch (err) {
+            console.error('Failed to return report:', err);
+            showSnackbar(err.response?.data?.message || 'Failed to return report', "error");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [selectedReport.id]: false }));
+        }
+    };
+
     const filteredReports = reports.filter(report => {
         const searchLower = searchQuery.toLowerCase();
         return (
@@ -115,8 +160,10 @@ const AssistantCommissioner = () => {
     });
 
     const formatStatus = (status) => {
+        if (status === "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE") return "Approved by Director";
         if (status.startsWith("REPORT_APPROVED")) return "Approved";
         if (status.startsWith("REPORT_REJECTED")) return "Rejected";
+        if (status === "REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE") return "Returned";
         return status.replace(/_/g, ' ').toLowerCase();
     };
 
@@ -171,18 +218,22 @@ const AssistantCommissioner = () => {
                                     <TableCell>{report.createdBy}</TableCell>
                                     <TableCell style={{
                                         color: report.status.includes("APPROVED") ? "green" :
-                                            report.status.includes("REJECTED") ? "red" : "#555",
+                                            report.status.includes("REJECTED") ? "red" :
+                                                report.status.includes("RETURNED") ? "orange" : "#555",
                                         fontWeight: "bold"
                                     }}>
                                         {formatStatus(report.status)}
                                     </TableCell>
                                     <TableCell>
                                         <Box display="flex" gap={1}>
-                                            <Link to={`/reports/${report.id}`}>
-                                                <IconButton color="primary">
+                                            <Tooltip title="View Report">
+                                                <IconButton
+                                                    onClick={() => navigate(`/reports/${report.id}`)}
+                                                    color="primary"
+                                                >
                                                     <Description />
                                                 </IconButton>
-                                            </Link>
+                                            </Tooltip>
 
                                             <IconButton
                                                 color="success"
@@ -190,6 +241,14 @@ const AssistantCommissioner = () => {
                                                 disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
                                             >
                                                 <Check />
+                                            </IconButton>
+
+                                            <IconButton
+                                                color="warning"
+                                                onClick={() => handleOpenReturnDialog(report)}
+                                                disabled={actionLoading[report.id]}
+                                            >
+                                                <Undo />
                                             </IconButton>
 
                                             <IconButton
@@ -213,6 +272,34 @@ const AssistantCommissioner = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <Dialog open={returnDialogOpen} onClose={handleCloseReturnDialog}>
+                <DialogTitle>Return Report to Director of Intelligence</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        value={returnReason}
+                        onChange={(e) => setReturnReason(e.target.value)}
+                        placeholder="Enter reason for returning this report..."
+                        variant="outlined"
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseReturnDialog} color="secondary">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleConfirmReturn}
+                        variant="contained"
+                        color="warning"
+                        disabled={!returnReason.trim() || actionLoading[selectedReport?.id]}
+                    >
+                        Confirm Return
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Dialog open={closeDialogOpen} onClose={handleDialogClose}>
                 <DialogTitle>Reason for Rejection</DialogTitle>

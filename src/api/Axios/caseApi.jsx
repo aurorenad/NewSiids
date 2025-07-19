@@ -66,6 +66,23 @@ caseApi.interceptors.response.use(
     }
 );
 
+const submitFindings = async (reportId, formData) => {
+    try {
+        const response = await caseApi.post(
+            `/api/reports/${reportId}/submit-findings`,
+            formData,
+            {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+        return response.data;
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
 export const CaseService = {
     createCase: (caseData) => {
         return caseApi.post('/api/cases', {
@@ -95,17 +112,27 @@ export const CaseService = {
 };
 
 export const ReportApi = {
+    submitFindings,
+    getFindings: (reportId) => {
+        return caseApi.get(`/api/reports/${reportId}/findings`);
+    },
+
+    downloadFindingsAttachment: (reportId, attachmentIndex) => {
+        return caseApi.get(
+            `/api/reports/${reportId}/findings-attachments/${attachmentIndex}`,
+            { responseType: 'blob' }
+        );
+    },
     submitReport: async (formData, employeeId) => {
         try {
-            const response = await axios.post(
-                `${BASE_URL}/api/reports`,
+            const response = await caseApi.post(
+                '/api/reports',
                 formData,
                 {
                     headers: {
                         'Content-Type': 'multipart/form-data',
-                        'employee_id': employeeId,
-                        'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
-                    },
+                        'employee_id': employeeId
+                    }
                 }
             );
             return response.data;
@@ -122,9 +149,13 @@ export const ReportApi = {
     sendToDirectorIntelligence: (reportId) => {
         return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {});
     },
-    returnReport: (id, returnToEmployeeId) => {
+
+    returnReport: (id, returnToEmployeeId, returnReason) => {
         return caseApi.post(`/api/reports/${id}/return`, null, {
-            params: { returnToEmployeeId }
+            params: {
+                returnToEmployeeId,
+                returnReason
+            }
         });
     },
 
@@ -155,6 +186,7 @@ export const ReportApi = {
             specificOfficerId: officerId
         });
     },
+
     getAssignedReportsForInvestigationOfficer: () => {
         return caseApi.get('/api/reports/investigation-officer/assigned-reports');
     },
@@ -168,17 +200,10 @@ export const ReportApi = {
 
     downloadAttachment: async (reportId) => {
         try {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            const response = await axios.get(
-                `${BASE_URL}/api/reports/${reportId}/attachment`,
+            const response = await caseApi.get(
+                `/api/reports/${reportId}/attachment`,
                 {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'employee_id': employeeId
-                    },
-                    responseType: 'blob', // Important for file downloads
+                    responseType: 'blob' // Important for file downloads
                 }
             );
 
@@ -215,8 +240,6 @@ export const InvestigationApi = {
     getAvailableOfficers: () => {
         return caseApi.get('/api/reports/investigation-officers');
     },
-
-
 };
 
 export default caseApi;
