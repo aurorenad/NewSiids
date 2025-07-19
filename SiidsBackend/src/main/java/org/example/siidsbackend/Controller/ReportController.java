@@ -5,14 +5,11 @@ import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
-import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
-import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Repository.ReportRepo;
 import org.example.siidsbackend.Service.ReportService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -25,15 +22,13 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
-    // Remove @Autowired since we're using @RequiredArgsConstructor
     private final ReportService reportService;
     private final EmployeeRepo employeeRepo;
     private final ReportRepo reportRepo;
@@ -105,6 +100,56 @@ public class ReportController {
         } catch (Exception e) {
             System.err.println("Error getting report: " + e.getMessage());
             e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @GetMapping("/{id}/participants")
+    public ResponseEntity<Map<String, String>> getReportParticipants(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.getReport(id);
+
+            // Check access permissions
+            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+                    (report.getCurrentRecipient() != null &&
+                            report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
+                    reportRepo.DirectorsOfInvestigation().stream()
+                            .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            Map<String, String> participants = new HashMap<>();
+
+            if (report.getAssistantCommissioner() != null) {
+                participants.put("assistantCommissioner",
+                        report.getAssistantCommissioner().getGivenName() + " " +
+                                report.getAssistantCommissioner().getFamilyName());
+            }
+
+            if (report.getDirectorInvestigation() != null) {
+                participants.put("directorInvestigation",
+                        report.getDirectorInvestigation().getGivenName() + " " +
+                                report.getDirectorInvestigation().getFamilyName());
+            }
+
+            if (report.getDirectorIntelligence() != null) {
+                participants.put("directorIntelligence",
+                        report.getDirectorIntelligence().getGivenName() + " " +
+                                report.getDirectorIntelligence().getFamilyName());
+            }
+
+            if (report.getInvestigationOfficer() != null) {
+                participants.put("investigationOfficer",
+                        report.getInvestigationOfficer().getGivenName() + " " +
+                                report.getInvestigationOfficer().getFamilyName());
+            }
+
+            return ResponseEntity.ok(participants);
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
@@ -478,6 +523,7 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
+
     @GetMapping("/director-investigation/all-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
             @RequestHeader("employee_id") String directorId) {

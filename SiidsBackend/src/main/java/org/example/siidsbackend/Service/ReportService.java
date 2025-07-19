@@ -279,6 +279,21 @@ public class ReportService {
         dto.setFindings(report.getFindings());
         dto.setRecommendations(report.getRecommendations());
         dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths());
+        dto.setAssistantCommissioner(report.getAssistantCommissioner() != null ?
+                report.getAssistantCommissioner().getGivenName() + " " +
+                        report.getAssistantCommissioner().getFamilyName() : null);
+
+        dto.setDirectorInvestigation(report.getDirectorInvestigation() != null ?
+                report.getDirectorInvestigation().getGivenName() + " " +
+                        report.getDirectorInvestigation().getFamilyName() : null);
+
+        dto.setDirectorIntelligence(report.getDirectorIntelligence() != null ?
+                report.getDirectorIntelligence().getGivenName() + " " +
+                        report.getDirectorIntelligence().getFamilyName() : null);
+
+        dto.setInvestigationOfficer(report.getInvestigationOfficer() != null ?
+                report.getInvestigationOfficer().getGivenName() + " " +
+                        report.getInvestigationOfficer().getFamilyName() : null);
         return dto;
     }
 
@@ -315,15 +330,19 @@ public class ReportService {
         switch(relatedCase.getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
+                report.setDirectorIntelligence(approver); // Set Director of Intelligence
                 break;
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                report.setAssistantCommissioner(approver); // Set Assistant Commissioner
                 break;
             case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION;
+                report.setDirectorInvestigation(approver); // Set Director of Investigation
                 break;
             case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                report.setAssistantCommissioner(approver); // Set Assistant Commissioner
                 break;
             default:
                 throw new IllegalStateException("Cannot approve report in current status: " + relatedCase.getStatus());
@@ -359,12 +378,15 @@ public class ReportService {
         switch(report.getRelatedCase().getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
+                report.setDirectorIntelligence(rejector); // Set Director of Intelligence
                 break;
             case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
+                report.setDirectorInvestigation(rejector); // Set Director of Investigation
                 break;
             case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
+                report.setAssistantCommissioner(rejector); // Set Assistant Commissioner
                 break;
             default:
                 throw new IllegalStateException("Cannot reject report in current status: " + report.getRelatedCase().getStatus());

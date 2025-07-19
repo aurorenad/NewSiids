@@ -58,6 +58,21 @@ public class Report {
 
     @Column(name = "returned_at")
     private LocalDateTime returnedAt;
+    @ManyToOne
+    @JoinColumn(name = "assistant_commissioner_id")
+    private Employee assistantCommissioner;
+
+    @ManyToOne
+    @JoinColumn(name = "director_investigation_id")
+    private Employee directorInvestigation;
+
+    @ManyToOne
+    @JoinColumn(name = "director_intelligence_id")
+    private Employee directorIntelligence;
+
+    @ManyToOne
+    @JoinColumn(name = "investigation_officer_id")
+    private Employee investigationOfficer;
 
     private String findings;
     private String recommendations;

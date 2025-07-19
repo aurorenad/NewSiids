@@ -31,4 +31,8 @@ public class ReportResponseDTO {
     private String findings;
     private String recommendations;
     private List<String> findingsAttachmentPaths;
+    private String assistantCommissioner;
+    private String directorInvestigation;
+    private String directorIntelligence;
+    private String investigationOfficer;
 }
