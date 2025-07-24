@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**").permitAll()
                         .requestMatchers("/api/cases/**").hasAnyAuthority("User", "Surv")
                         .requestMatchers("/api/reports/**").hasAnyAuthority("User")
+                        .requestMatchers("/api/taxpayers/**").hasAnyAuthority("User")
+                        .requestMatchers("/api/informers/**").hasAnyAuthority("User")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

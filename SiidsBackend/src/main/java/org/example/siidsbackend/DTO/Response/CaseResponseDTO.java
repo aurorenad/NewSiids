@@ -3,6 +3,8 @@ package org.example.siidsbackend.DTO.Response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.example.siidsbackend.DTO.InformerDTO;
+import org.example.siidsbackend.DTO.TaxPayerDTO;
 
 import java.time.LocalDateTime;
 
@@ -12,16 +14,16 @@ import java.time.LocalDateTime;
 public class CaseResponseDTO {
     private Integer id;
     private String caseNum;
-    private String tin;
+
+    private TaxPayerDTO taxPayer;
+
     private String taxPeriod;
-    private String taxPayerType;
-    private String taxPayerName;
-    private String taxPayerAddress;
     private String status;
     private String createdByName;
     private String summaryOfInformationCase;
-    private String informerId;
-    private String informerName;
+
+    private InformerDTO informer;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

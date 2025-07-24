@@ -3,11 +3,11 @@ package org.example.siidsbackend.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
-import org.example.siidsbackend.Model.Case;
-import org.example.siidsbackend.Model.Employee;
-import org.example.siidsbackend.Model.WorkflowStatus;
+import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.EmployeeRepo;
+import org.example.siidsbackend.Repository.InformerRepository;
+import org.example.siidsbackend.Repository.TaxPayerRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -20,23 +20,22 @@ import java.util.Optional;
 public class CaseService {
     private final CaseRepo caseRepo;
     private final EmployeeRepo employeeRepo;
+    private final TaxPayerRepository taxPayerRepo;
+    private final InformerRepository informerRepo;
 
-    public Case createCase(CaseRequestDTO dto, String employeeId) {
+
+    public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer) {
         log.info("Creating case for employee: {}", employeeId);
 
         Employee creator = employeeRepo.findById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found with ID: " + employeeId));
 
         Case newCase = new Case();
-        newCase.setInformerId(dto.getInformerId());
-        newCase.setInformerName(dto.getInformerName());
-        newCase.setTin(dto.getTin());
-        newCase.setTaxPayerName(dto.getTaxPayerName());
-        newCase.setTaxPayerType(dto.getTaxPayerType());
-        newCase.setTaxPayerAddress(dto.getTaxPayerAddress());
-        newCase.setTaxPeriod(dto.getTaxPeriod());
+        newCase.setInformerId(informer);
+        newCase.setTin(taxPayer);
         newCase.setSummaryOfInformationCase(dto.getSummaryOfInformationCase());
         newCase.setStatus(WorkflowStatus.CASE_CREATED);
+        newCase.setTaxPeriod(dto.getTaxPeriod());
         newCase.setCreatedBy(creator);
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());

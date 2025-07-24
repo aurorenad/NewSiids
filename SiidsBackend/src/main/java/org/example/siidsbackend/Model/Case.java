@@ -16,12 +16,12 @@ public class Case {
     @Column(unique = true)
     private String caseNum;
 
-    private String informerId;
-    private String informerName;
-    private String tin;
-    private String taxPayerName;
-    private String taxPayerType;
-    private String taxPayerAddress;
+    @ManyToOne
+    @JoinColumn(name = "informer_id")
+    private Informer informerId;
+    @ManyToOne
+    @JoinColumn(name = "tax_payer_tin")
+    private TaxPayer tin;
     private String taxPeriod;
     private LocalDateTime reportedDate;
     private LocalDateTime updatedAt;
