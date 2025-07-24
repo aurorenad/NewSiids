@@ -207,7 +207,7 @@ const DirectorIntelligence = () => {
 
     const getStatusText = (status) => {
         const statusMap = {
-            'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE': 'Approved by Director',
+            'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE': 'Approved by Director Intelligence',
             'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': 'Rejected by Director',
             'REPORT_RETURNED_ASSISTANT_COMMISSIONER': 'Returned to Assistant Commissioner',
             'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Director',
@@ -364,7 +364,7 @@ const DirectorIntelligence = () => {
                                                 </span>
                                             </Tooltip>
 
-                                            <Tooltip title="Reject">
+                                            <Tooltip title="Closed">
                                                 <span>
                                                     <IconButton
                                                         disabled={isActionDisabled(report)}
@@ -390,14 +390,14 @@ const DirectorIntelligence = () => {
                                                 </span>
                                             </Tooltip>
 
-                                            <Tooltip title="Info">
-                                                <IconButton
-                                                    onClick={() => handleOpenInfoDialog(report)}
-                                                    size="small"
-                                                >
-                                                    <Info fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
+                                            {/*<Tooltip title="Info">*/}
+                                            {/*    <IconButton*/}
+                                            {/*        onClick={() => handleOpenInfoDialog(report)}*/}
+                                            {/*        size="small"*/}
+                                            {/*    >*/}
+                                            {/*        <Info fontSize="small" />*/}
+                                            {/*    </IconButton>*/}
+                                            {/*</Tooltip>*/}
                                         </Box>
                                     </TableCell>
                                 </TableRow>

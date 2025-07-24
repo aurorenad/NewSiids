@@ -40,7 +40,7 @@ const NewSurveillenceCase = () => {
     };
 
     const validateForm = () => {
-        if (!formData.caseNumber || !formData.tin || !formData.taxPayerName || !formData.summaryOfInformationCase) {
+        if ( !formData.tin || !formData.taxPayerName || !formData.summaryOfInformationCase) {
             setError("Please fill in all required fields: Case Number, TIN, Tax Payer Name, and Summary.");
             return false;
         }
@@ -68,7 +68,6 @@ const NewSurveillenceCase = () => {
         try {
             // Prepare data for backend
             const caseData = {
-                caseNum: parseInt(formData.caseNumber),
                 informerId: formData.informerId,
                 informerName: formData.informerName,
                 tin: formData.tin,
@@ -108,19 +107,6 @@ const NewSurveillenceCase = () => {
 
                 <form onSubmit={handleSubmit} className="tax-report-form">
                     <div className="tax-report-form-grid">
-                        <div className="form-group">
-                            <label>Case Number*</label>
-                            <input
-                                type="text"
-                                name="caseNumber"
-                                value={formData.caseNumber}
-                                onChange={handleChange}
-                                required
-                                pattern="\d*"
-                                title="Please enter numbers only"
-                            />
-                        </div>
-
                         <div className="form-group">
                             <label>Tax Payer TIN*</label>
                             <input
@@ -232,7 +218,7 @@ const NewSurveillenceCase = () => {
                             className="tax-report-form-button tax-report-form-button-save"
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? 'Submitting...' : 'Create Case'}
+                            {isSubmitting ? 'Submitting...' : 'Create Surviellance Case'}
                         </button>
                     </div>
                 </form>

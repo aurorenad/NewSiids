@@ -28,8 +28,10 @@ import {
     Search as SearchIcon,
     Send as SendIcon,
     AttachFile as AttachFileIcon,
-    FilterList as FilterListIcon
+    FilterList as FilterListIcon,
+    PictureAsPdf
 } from '@mui/icons-material';
+
 import { useNavigate } from 'react-router-dom';
 import { CaseService, ReportApi } from '../api/Axios/caseApi';
 
@@ -98,20 +100,7 @@ const IntelligenceOfficer = () => {
         setSnackbar(prev => ({ ...prev, open: false }));
     };
 
-    const handleSendClick = (caseItem) => {
-        console.log('Send button clicked for case:', caseItem);
 
-        if (!caseItem.reportId) {
-            showSnackbar('This case has no associated report', 'error');
-            return;
-        }
-        setSelectedReport({
-            caseId: caseItem.caseNum,
-            reportId: caseItem.reportId,
-            currentStatus: caseItem.status
-        });
-        setDialogOpen(true);
-    };
 
     const confirmSendReport = async () => {
         if (!selectedReport) {
@@ -142,6 +131,40 @@ const IntelligenceOfficer = () => {
         }
     };
 
+    const [reportDialogOpen, setReportDialogOpen] = useState(false);
+    const [currentReport, setCurrentReport] = useState(null);
+    const [reportLoading, setReportLoading] = useState(false);
+
+    const handleViewReport = async (caseItem) => {
+        try {
+            if (!caseItem.reportId) {
+                showSnackbar('No report available for this case', 'warning');
+                return;
+            }
+
+            setReportLoading(true);
+            const response = await ReportApi.getReport(caseItem.reportId);
+            setCurrentReport(response.data);
+            setReportDialogOpen(true);
+        } catch (error) {
+            console.error('Error fetching report:', error);
+            showSnackbar(error.response?.data?.message || 'Failed to load report', 'error');
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
+// Add this function to handle downloading the attachment
+    const handleDownloadAttachment = async (reportId) => {
+        try {
+            await ReportApi.downloadAttachment(reportId);
+        } catch (error) {
+            console.error('Error downloading attachment:', error);
+            showSnackbar(error.response?.data?.message || 'Failed to download attachment', 'error');
+        }
+    };
+
+
     const getStatusColor = (status) => {
         switch (status) {
             case 'CASE_CREATED': return '#1976d2';
@@ -153,22 +176,7 @@ const IntelligenceOfficer = () => {
         }
     };
 
-    const canSendReport = (caseItem) => {
-        if (!caseItem.reportId) {
-            return false;
-        }
 
-        const allowedStatuses = ['CASE_CREATED', 'REPORT_SUBMITTED'];
-        return allowedStatuses.includes(caseItem.status);
-    };
-
-    const getButtonDisabledReason = (caseItem) => {
-        if (!caseItem.reportId) return "No report created yet";
-        if (!['CASE_CREATED', 'REPORT_SUBMITTED'].includes(caseItem.status)) {
-            return `Cannot send - status is ${caseItem.status}`;
-        }
-        return "Send to Director";
-    };
 
     if (loading.cases) {
         return (
@@ -236,7 +244,6 @@ const IntelligenceOfficer = () => {
                     <TableHead>
                         <TableRow sx={{ backgroundColor: 'grey.100' }}>
                             <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Report ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
@@ -254,36 +261,7 @@ const IntelligenceOfficer = () => {
                                     }}
                                 >
                                     <TableCell>{caseItem.caseNum}</TableCell>
-                                    <TableCell>
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            {caseItem.reportId ? (
-                                                <>
-                                                    <Chip
-                                                        label={caseItem.reportId}
-                                                        size="small"
-                                                        color="primary"
-                                                        variant="outlined"
-                                                    />
-                                                    <IconButton
-                                                        onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
-                                                        title="View Report"
-                                                    >
-                                                        <DescriptionIcon />
-                                                    </IconButton>
-                                                </>
-                                            ) : (
-                                                <Button
-                                                    variant="outlined"
-                                                    startIcon={<AddIcon />}
-                                                    onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(caseItem.caseNum)}`)}
-                                                    disabled={loading.reports}
-                                                >
-                                                    Create Report
-                                                </Button>
-                                            )}
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>{caseItem.tin || '-'}</TableCell>
+                                    <TableCell>{caseItem.taxPayer?.tin  || '-'}</TableCell>
                                     <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
                                     <TableCell>
                                         <Typography
@@ -298,28 +276,48 @@ const IntelligenceOfficer = () => {
                                     </TableCell>
                                     <TableCell>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                            <Tooltip title={getButtonDisabledReason(caseItem)}>
-                                                <span>
-                                                    <IconButton
-                                                        onClick={() => handleSendClick(caseItem)}
-                                                        color="primary"
-                                                        disabled={!canSendReport(caseItem)}
+                                                {caseItem.reportId ? (
+                                                    <>
+                                                        <Chip
+                                                            label={caseItem.reportId}
+                                                            size="small"
+                                                            color="primary"
+                                                            variant="outlined"
+                                                        />
+                                                        <IconButton
+                                                            onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                            title="View Report"
+                                                        >
+                                                            <DescriptionIcon />
+                                                        </IconButton>
+                                                    </>
+                                                ) : (
+                                                    <Button
+                                                        variant="outlined"
+                                                        startIcon={<AddIcon />}
+                                                        onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                        disabled={loading.reports}
                                                     >
-                                                        <SendIcon />
-                                                    </IconButton>
-                                                </span>
+                                                        Create Report
+                                                    </Button>
+                                                )}
+                                            </Box>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <Tooltip title="View Report">
+    <span>
+        <IconButton
+            onClick={() => handleViewReport(caseItem)}
+            disabled={!caseItem.reportId || reportLoading}
+        >
+            {reportLoading ? <CircularProgress size={24} /> : <PictureAsPdf />}
+        </IconButton>
+    </span>
                                             </Tooltip>
                                             <IconButton
                                                 onClick={() => navigate(`/intelligence-officer/view-case/${caseItem.caseNum}`)}
                                                 title="View Details"
                                             >
                                                 <DescriptionIcon />
-                                            </IconButton>
-                                            <IconButton
-                                                onClick={() => navigate(`/intelligence-officer/claim-form/${caseItem.caseNum}`)}
-                                                title="Make report and Attachment"
-                                            >
-                                                <AttachFileIcon />
                                             </IconButton>
                                         </Box>
                                     </TableCell>
@@ -365,6 +363,68 @@ const IntelligenceOfficer = () => {
                     >
                         Send to Director
                     </Button>
+                </DialogActions>
+            </Dialog>
+            <Dialog
+                open={reportDialogOpen}
+                onClose={() => setReportDialogOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Report Details</DialogTitle>
+                <DialogContent>
+                    {currentReport ? (
+                        <Box>
+                            <Typography variant="h6" gutterBottom>
+                                Case ID: {currentReport.relatedCase.caseNum}
+                            </Typography>
+                            <Typography variant="subtitle1" gutterBottom>
+                                Status: {currentReport.relatedCase.status}
+                            </Typography>
+                            <Typography variant="body1" paragraph sx={{ mt: 2 }}>
+                                {currentReport.description || 'No description available'}
+                            </Typography>
+
+                            {currentReport.attachmentPath && (
+                                <Box sx={{ mt: 3 }}>
+                                    <Typography variant="subtitle2">Attachment:</Typography>
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<PictureAsPdf />}
+                                        onClick={() => handleDownloadAttachment(currentReport.id)}
+                                        sx={{ mt: 1 }}
+                                    >
+                                        Download PDF
+                                    </Button>
+                                </Box>
+                            )}
+
+                            {currentReport.findings && (
+                                <Box sx={{ mt: 3 }}>
+                                    <Typography variant="subtitle2">Findings:</Typography>
+                                    <Typography variant="body1" paragraph>
+                                        {currentReport.findings}
+                                    </Typography>
+                                </Box>
+                            )}
+
+                            {currentReport.recommendations && (
+                                <Box sx={{ mt: 3 }}>
+                                    <Typography variant="subtitle2">Recommendations:</Typography>
+                                    <Typography variant="body1" paragraph>
+                                        {currentReport.recommendations}
+                                    </Typography>
+                                </Box>
+                            )}
+                        </Box>
+                    ) : (
+                        <Box display="flex" justifyContent="center" py={4}>
+                            <CircularProgress />
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setReportDialogOpen(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
 

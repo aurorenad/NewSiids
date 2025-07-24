@@ -4,14 +4,16 @@ import {
     Paper,
     Typography,
     Grid,
-    Card,
-    CardContent,
     Button,
     Chip,
     Divider,
     Box,
     CircularProgress,
-    Alert
+    Alert,
+    Table,
+    TableBody,
+    TableCell,
+    TableRow
 } from '@mui/material';
 import { ArrowBack, Edit, Send } from '@mui/icons-material';
 import { CaseService } from '../api/Axios/caseApi.jsx';
@@ -50,7 +52,6 @@ const TaxReportView = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    // Extract case ID from the wildcard path
     const getCaseIdFromPath = () => {
         const pathname = location.pathname;
         const basePath = '/intelligence-officer/view-case/';
@@ -72,16 +73,19 @@ const TaxReportView = () => {
         try {
             setLoading(true);
             setError('');
-            console.log('Fetching case with ID:', caseId);
-
-            // The CaseService.getCase will handle both ID and case number automatically
             const response = await CaseService.getCase(caseId);
             const caseInfo = {
                 ...response.data,
                 caseNum: response.data.caseNum || response.data.id,
                 intelligenceOfficer: response.data.createdByName || 'N/A',
                 reportedDate: response.data.createdAt || 'N/A',
-                taxPayerAddress: response.data.taxPayerAddress || 'N/A',
+                taxPayerName: response.data.taxPayer?.name || 'N/A',
+                taxPayerTIN: response.data.taxPayer?.tin || 'N/A',
+                taxPayerAddress: response.data.taxPayer?.address || 'N/A',
+                taxPayerType: response.data.taxType || 'N/A',
+                informerId: response.data.informer?.informerId || 'N/A',
+                informerName: response.data.informer?.name || 'N/A',
+                informerNationalId: response.data.informer?.nationalId || 'N/A'
             };
             setCaseData(caseInfo);
         } catch (err) {
@@ -94,16 +98,11 @@ const TaxReportView = () => {
 
     const handleSendToDirector = async () => {
         try {
-            // Use the correct method to update case status
             await CaseService.updateCaseStatus(caseData.id || caseData.caseNum, 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE');
-
-            // Update local state
             setCaseData(prev => ({
                 ...prev,
                 status: 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
             }));
-
-            // Navigate back to the main page
             navigate('/intelligence-officer');
         } catch (err) {
             console.error('Error sending case to director:', err);
@@ -172,196 +171,164 @@ const TaxReportView = () => {
     const { label: statusLabel, color: statusColor } = getStatusProps(caseData.status);
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Button
-                        startIcon={<ArrowBack />}
-                        onClick={() => navigate('/intelligence-officer')}
-                        sx={{ mr: 2 }}
-                    >
-                        Back
-                    </Button>
-                    <Typography variant="h4" component="h1">
-                        Case Details
-                    </Typography>
-                </Box>
-                <Box>
-                    <Button
-                        variant="outlined"
-                        startIcon={<Edit />}
-                        onClick={handleEdit}
-                        sx={{ mr: 1 }}
-                        disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
-                    >
-                        Edit Case
-                    </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<Send />}
-                        onClick={handleSendToDirector}
-                        disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
-                    >
-                        {caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE' ? 'Sent to Director' : 'Send to Director'}
-                    </Button>
-                </Box>
+        <Paper elevation={3} sx={{ p: 3, maxWidth: 1000, margin: 'auto' }}>
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Typography variant="h6" fontWeight="bold">
+                    RWANDA REVENUE AUTHORITY
+                </Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    TAXES FOR GROWTH AND DEVELOPMENT
+                </Typography>
+                <Typography variant="subtitle2" sx={{
+                    backgroundColor: 'grey.200',
+                    p: 0.5,
+                    display: 'inline-block',
+                    fontWeight: 'bold'
+                }}>
+                    INTERNAL
+                </Typography>
             </Box>
 
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom color="primary">
-                                Case Information
-                            </Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Case Number
-                                    </Typography>
-                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                                        {caseData.caseNum || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Status
-                                    </Typography>
-                                    <Chip
-                                        label={statusLabel}
-                                        color={statusColor}
-                                        size="small"
-                                    />
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Reported Date
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {formatDate(caseData.reportedDate)}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Intelligence Officer
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.intelligenceOfficer}
-                                    </Typography>
-                                </Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
+            {/* Case Reference */}
+            <Grid container justifyContent="space-between" sx={{ mb: 3 }}>
+                <Grid item>
+                    <Typography variant="body2">
+                        <strong>Case Reference:</strong> {caseData.caseNum || 'N/A'}
+                    </Typography>
                 </Grid>
-
-                <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom color="primary">
-                                Taxpayer Information
-                            </Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <Grid container spacing={2}>
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Name
-                                    </Typography>
-                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                                        {caseData.taxPayerName || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        TIN
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.tin || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Type
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.taxPayerType || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={12}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Address
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.taxPayerAddress || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Tax Period
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.taxPeriod || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom color="primary">
-                                Informer Information
-                            </Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Informer ID
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.informerId || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Typography variant="subtitle2" color="textSecondary">
-                                        Informer Name
-                                    </Typography>
-                                    <Typography variant="body1">
-                                        {caseData.informerName || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom color="primary">
-                                Summary of Information
-                            </Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    p: 2,
-                                    backgroundColor: 'grey.50',
-                                    border: '1px solid',
-                                    borderColor: 'grey.200'
-                                }}
-                            >
-                                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                                    {caseData.summaryOfInformationCase || 'No summary provided'}
-                                </Typography>
-                            </Paper>
-                        </CardContent>
-                    </Card>
+                <Grid item>
+                    <Typography variant="body2">
+                        <strong>Date:</strong> {formatDate(caseData.reportedDate)}
+                    </Typography>
                 </Grid>
             </Grid>
-        </Box>
+
+            {/* Title */}
+            <Typography variant="h5" align="center" sx={{ mb: 3, fontWeight: 'bold' }}>
+                Tax Case Report
+            </Typography>
+
+            {/* Action Buttons */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+                <Button
+                    variant="outlined"
+                    startIcon={<Edit />}
+                    onClick={handleEdit}
+                    disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
+                >
+                    Edit Case
+                </Button>
+                <Button
+                    variant="contained"
+                    startIcon={<Send />}
+                    onClick={handleSendToDirector}
+                    disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
+                >
+                    {caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE' ? 'Sent to Director' : 'Send to Director'}
+                </Button>
+            </Box>
+
+            {/* Case Details Table */}
+            <Table sx={{ mb: 3 }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Case Status</TableCell>
+                        <TableCell>
+                            <Chip label={statusLabel} color={statusColor} size="small" />
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Intelligence Officer</TableCell>
+                        <TableCell>{caseData.intelligenceOfficer}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            {/* Taxpayer Information Section */}
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Taxpayer Information
+            </Typography>
+            <Table sx={{ mb: 3 }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Taxpayer Name</TableCell>
+                        <TableCell>{caseData.taxPayerName}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
+                        <TableCell>{caseData.taxPayerTIN}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
+                        <TableCell>{caseData.taxPayerType}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                        <TableCell>{caseData.taxPayerAddress}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            {/* Informer Information Section */}
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Informer Information
+            </Typography>
+            <Table sx={{ mb: 3 }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Informer Name</TableCell>
+                        <TableCell>{caseData.informerName}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Informer ID</TableCell>
+                        <TableCell>{caseData.informerId}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>National ID</TableCell>
+                        <TableCell>{caseData.informerNationalId}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            {/* Case Summary Section */}
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Case Summary
+            </Typography>
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 2,
+                    backgroundColor: 'grey.50',
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    mb: 3
+                }}
+            >
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {caseData.summaryOfInformationCase || 'No summary provided'}
+                </Typography>
+            </Paper>
+
+            {/* Footer */}
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Prepared by:</strong> {caseData.intelligenceOfficer}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Date Prepared:</strong> {formatDate(caseData.reportedDate)}
+            </Typography>
+
+            <Typography variant="h6" align="center" sx={{ mb: 1, fontWeight: 'bold' }}>
+                HEREFOR YOU TO SERVE
+            </Typography>
+            <Typography variant="body2" align="center" sx={{ fontStyle: 'italic' }}>
+                Kicukiro-Sonatube-Silverback Mall, P.O.Box 3987 Kigali, Rwanda
+            </Typography>
+            <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+                3004 www.rra.gov.tw @rainfo
+            </Typography>
+        </Paper>
     );
 };
 

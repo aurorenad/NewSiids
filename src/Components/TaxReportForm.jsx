@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService } from '../api/Axios/caseApi.jsx';
 import { AuthContext } from '../context/AuthContext';
+import caseApi from '../api/Axios/caseApi.jsx';
 import '../Styles/TaxReportForm.css';
 
 const TaxReportForm = () => {
@@ -9,13 +10,13 @@ const TaxReportForm = () => {
     const [formData, setFormData] = useState({
         tin: '',
         taxPayerName: '',
-        taxPayerType: 'Individual',
+        taxType: 'None',
         taxPayerAddress: '',
         taxPeriod: '',
         intelligenceOfficer: authState.userId || '',
         reportedDate: new Date().toISOString().split('T')[0],
         summaryOfInformationCase: '',
-        status: 'CASE_CREATED', // Fixed: Use enum value
+        status: 'CASE_CREATED',
         informerId: '',
         informerName: ''
     });
@@ -24,19 +25,18 @@ const TaxReportForm = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [timeoutId, setTimeoutId] = useState(null);
+    const [isSearchingTaxPayer, setIsSearchingTaxPayer] = useState(false);
+    const [isSearchingInformer, setIsSearchingInformer] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
 
-    const taxPayerTypes = ['Individual', 'Company', 'Partnership', 'Trust', 'PAYEE'];
+    const taxTypes = ['None','PAYEE','VAT','Income Tax','Corporate Tax','Withholding Tax','Property Tax',
+        'Capital gains','Consumption Tax','Immovable Property Tax', 'Payroll Tax', 'Trading Tax'];
 
+    // Authentication check
     useEffect(() => {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-        console.log('Authentication check:');
-        console.log('- Token exists:', !!token);
-        console.log('- Employee ID:', employeeId);
-        console.log('- Current user:', authState.userId);
 
         if (!token) {
             setError('No authentication token found. Please log in again.');
@@ -57,18 +57,67 @@ const TaxReportForm = () => {
             setFormData({
                 tin: caseData.tin || '',
                 taxPayerName: caseData.taxPayerName || '',
-                taxPayerType: caseData.taxPayerType || 'Individual',
+                taxType: caseData.taxType || 'None',
                 taxPayerAddress: caseData.taxPayerAddress || '',
                 taxPeriod: caseData.taxPeriod || '',
                 intelligenceOfficer: caseData.reportingOfficer || authState.userId || '',
                 reportedDate: caseData.reportedDate || new Date().toISOString().split('T')[0],
                 summaryOfInformationCase: caseData.summaryOfInformationCase || '',
                 status: caseData.status || 'CASE_CREATED',
-                informerId: caseData.informerId || '',
+                informerId: caseData.informerId ? caseData.informerId.toString() : '',
                 informerName: caseData.informerName || ''
             });
         }
     }, [location.state, authState.userId]);
+
+    // Tax payer lookup by TIN
+    const handleTinChange = async (e) => {
+        const { value } = e.target;
+        handleChange(e);
+
+        if (value.length >= 3) {
+            setIsSearchingTaxPayer(true);
+            try {
+                const response = await caseApi.get(`/api/taxpayers/tin/${value}`);
+
+                if (response.data) {
+                    setFormData(prev => ({
+                        ...prev,
+                        taxPayerName: response.data.taxPayerName || prev.taxPayerName,
+                        taxPayerAddress: response.data.taxPayerAddress || prev.taxPayerAddress
+                    }));
+                }
+            } catch (error) {
+                console.error('Error fetching tax payer:', error);
+            } finally {
+                setIsSearchingTaxPayer(false);
+            }
+        }
+    };
+
+    // Informer lookup by ID
+    const handleInformerIdChange = async (e) => {
+        const { value } = e.target;
+        handleChange(e);
+
+        if (value) {
+            setIsSearchingInformer(true);
+            try {
+                const response = await caseApi.get(`/api/informers/${value}`);
+
+                if (response.data) {
+                    setFormData(prev => ({
+                        ...prev,
+                        informerName: response.data.informerName || prev.informerName
+                    }));
+                }
+            } catch (error) {
+                console.error('Error fetching informer:', error);
+            } finally {
+                setIsSearchingInformer(false);
+            }
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -96,74 +145,39 @@ const TaxReportForm = () => {
         setError('');
         setSuccess('');
 
-        // Pre-submission validation
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-        if (!token) {
-            setError('Authentication token is missing. Please log in again.');
-            return;
-        }
-
-        if (!employeeId) {
-            setError('Employee ID is missing. Please log in again.');
-            return;
-        }
-
         if (!validateForm()) return;
 
         setIsSubmitting(true);
 
         try {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), 15000);
-            setTimeoutId(id);
-
-            // Create the case data in the format expected by the API
             const caseData = {
-                informerId: formData.informerId || null,
-                informerName: formData.informerName || null,
                 tin: formData.tin,
                 taxPayerName: formData.taxPayerName,
-                taxPayerType: formData.taxPayerType,
-                taxPayerAddress: formData.taxPayerAddress || null,
+                taxType: formData.taxType,
+                taxPayerAddress: formData.taxPayerAddress,
                 taxPeriod: formData.taxPeriod || null,
                 summaryOfInformationCase: formData.summaryOfInformationCase,
                 status: formData.status,
+                informerNationalId: formData.informerId ? parseInt(formData.informerId) : null,
+                informerName: formData.informerName || null,
                 reportedDate: new Date(formData.reportedDate).toISOString()
             };
 
-            console.log('Submitting case data:', caseData);
-
             const response = await CaseService.createCase(caseData);
-            console.log('Case created successfully:', response.data);
-
-            clearTimeout(id);
             setSuccess('Case created successfully!');
-            setTimeout(() => navigate('/intelligence-officer'), 2000);
+            const id = setTimeout(() => navigate('/intelligence-officer'), 2000);
+            setTimeoutId(id);
         } catch (err) {
-            clearTimeout(timeoutId);
+            console.error('Error creating case:', err);
 
-            console.error('Full error object:', err);
-
-            if (err.code === 'ECONNABORTED') {
-                setError('Request timed out. Please check your connection and try again.');
-            } else if (err.response?.status === 401) {
-                setError('Authentication failed. Please log in again.');
-                localStorage.removeItem('token');
-                sessionStorage.removeItem('token');
-                setTimeout(() => navigate('/login'), 2000);
-            } else if (err.response?.status === 403) {
-                setError('You do not have permission to perform this action.');
-            } else if (err.response) {
-                const errorMsg = err.response.data?.message ||
-                    err.response.data?.error ||
-                    `Server error (${err.response.status}): ${err.response.statusText}`;
-                setError(errorMsg);
-            } else if (err.request) {
-                setError('No response from server. Please check your network connection.');
+            if (err.response?.status === 401) {
+                setError('Session expired. Please log in again.');
+                const id = setTimeout(() => navigate('/login'), 2000);
+                setTimeoutId(id);
+            } else if (err.response?.data?.message) {
+                setError(err.response.data.message);
             } else {
-                setError('An unexpected error occurred. Please try again.');
+                setError('Failed to create case. Please try again.');
             }
         } finally {
             setIsSubmitting(false);
@@ -197,19 +211,24 @@ const TaxReportForm = () => {
 
                 <form onSubmit={handleSubmit} className="tax-report-form">
                     <div className="tax-report-form-grid">
+                        {/* TIN Field */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Payer TIN*</label>
                             <input
                                 type="text"
                                 name="tin"
                                 value={formData.tin}
-                                onChange={handleChange}
+                                onChange={handleTinChange}
                                 className="tax-report-form-input"
                                 placeholder="Enter tax identification number"
                                 required
                             />
+                            {isSearchingTaxPayer && (
+                                <div className="search-indicator">Searching tax payer...</div>
+                            )}
                         </div>
 
+                        {/* Tax Payer Name */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Payer Name*</label>
                             <input
@@ -223,20 +242,22 @@ const TaxReportForm = () => {
                             />
                         </div>
 
+                        {/* Tax Type */}
                         <div className="form-group">
-                            <label className="tax-report-form-label">Tax Payer Type</label>
+                            <label className="tax-report-form-label">Tax Type</label>
                             <select
-                                name="taxPayerType"
-                                value={formData.taxPayerType}
+                                name="taxType"
+                                value={formData.taxType}
                                 onChange={handleChange}
                                 className="tax-report-form-input"
                             >
-                                {taxPayerTypes.map(type => (
+                                {taxTypes.map(type => (
                                     <option key={type} value={type}>{type}</option>
                                 ))}
                             </select>
                         </div>
 
+                        {/* Tax Payer Address */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Payer Address</label>
                             <input
@@ -249,6 +270,7 @@ const TaxReportForm = () => {
                             />
                         </div>
 
+                        {/* Tax Period */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Period</label>
                             <input
@@ -257,10 +279,11 @@ const TaxReportForm = () => {
                                 value={formData.taxPeriod}
                                 onChange={handleChange}
                                 className="tax-report-form-input"
-                                placeholder="e.g. March, Dec, September"
+                                placeholder="e.g. March 2023, Q2 2023, FY2023"
                             />
                         </div>
 
+                        {/* Intelligence Officer */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Intelligence Officer</label>
                             <input
@@ -274,6 +297,7 @@ const TaxReportForm = () => {
                             />
                         </div>
 
+                        {/* Reported Date */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Reported Date</label>
                             <input
@@ -286,18 +310,25 @@ const TaxReportForm = () => {
                             />
                         </div>
 
+                        {/* Informer ID */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Informer ID</label>
                             <input
                                 type="text"
                                 name="informerId"
                                 value={formData.informerId}
-                                onChange={handleChange}
+                                onChange={handleInformerIdChange}
                                 className="tax-report-form-input"
-                                placeholder="e.g. 119998001"
+                                placeholder="Enter national ID number"
+                                pattern="\d*"
+                                title="Please enter numbers only"
                             />
+                            {isSearchingInformer && (
+                                <div className="search-indicator">Searching informer...</div>
+                            )}
                         </div>
 
+                        {/* Informer Name */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Informer Name</label>
                             <input
@@ -310,6 +341,7 @@ const TaxReportForm = () => {
                             />
                         </div>
 
+                        {/* Summary of Information */}
                         <div className="form-group full-width">
                             <label className="tax-report-form-label">Summary of Information Provided*</label>
                             <textarea
