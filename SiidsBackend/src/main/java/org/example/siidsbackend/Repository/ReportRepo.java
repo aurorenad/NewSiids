@@ -79,4 +79,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED) " +
             "ORDER BY r.updatedAt DESC")
     List<Report> findReportsHandledByDirectorInvestigation();
+
+
+    List<Report> findByRelatedCase(Case relatedCase);
 }

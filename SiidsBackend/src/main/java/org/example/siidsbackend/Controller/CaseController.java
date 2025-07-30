@@ -215,4 +215,23 @@ public class CaseController {
         return dto;
     }
 
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<CaseResponseDTO>> getCasesByStatus(
+            @PathVariable String status,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status.toUpperCase());
+            List<Case> cases = caseService.getCasesByStatus(workflowStatus, employeeId);
+            List<CaseResponseDTO> response = cases.stream()
+                    .map(this::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error fetching cases by status", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }

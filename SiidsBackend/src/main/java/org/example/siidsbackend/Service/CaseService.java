@@ -112,4 +112,8 @@ public class CaseService {
 
         return caseRepo.save(existingCase);
     }
+
+    public List<Case> getCasesByStatus(WorkflowStatus status, String employeeId) {
+        return caseRepo.findByStatusAndCreatedBy_EmployeeId(status, employeeId.trim());
+    }
 }

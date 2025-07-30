@@ -2,36 +2,61 @@ package org.example.siidsbackend.Controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
+import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
+import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
+import org.example.siidsbackend.Model.WorkflowStatus;
+import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Repository.ReportRepo;
+import org.example.siidsbackend.Service.CaseService;
 import org.example.siidsbackend.Service.ReportService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
+@Slf4j
 public class ReportController {
     private final ReportService reportService;
     private final EmployeeRepo employeeRepo;
     private final ReportRepo reportRepo;
+    private final CaseRepo caseRepo;
+    private final CaseService caseService;
+    private final ObjectMapper objectMapper; // Added missing ObjectMapper field
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
+    @Value("${file.max-size:10485760}")
+    private String maxFileSize;
+
+    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("application/pdf");
+    private static final Map<String, String> EXTENSION_TO_MIME = Map.of("pdf", "application/pdf");
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReportResponseDTO> createReport(
@@ -40,7 +65,6 @@ public class ReportController {
             @RequestHeader("employee_id") String employeeId) {
 
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
             ReportRequestDTO reportData = objectMapper.readValue(reportDataJson, ReportRequestDTO.class);
 
             if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
@@ -49,29 +73,228 @@ public class ReportController {
 
             String attachmentPath = null;
             if (attachment != null && !attachment.isEmpty()) {
-                attachmentPath = storeAttachment(attachment);
+                validatePdfFile(attachment);
+                attachmentPath = storePdfAttachment(attachment);
             }
 
             reportData.setAttachmentPath(attachmentPath);
             Report report = reportService.createReport(reportData, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Validation error creating report: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(null);
         } catch (Exception e) {
-            System.err.println("Error creating report: " + e.getMessage());
+            log.error("Error creating report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/attachment")
+    public ResponseEntity<?> downloadAttachment(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+
+        try {
+            // Validate report exists and user has access
+            Report report = reportService.getReport(id);
+            validateAttachmentAccess(report, employeeId);
+
+            // Validate attachment path
+            if (report.getAttachmentPath() == null || report.getAttachmentPath().trim().isEmpty()) {
+                log.warn("Empty attachment path for report {}", id);
+                return ResponseEntity.notFound().build();
+            }
+
+            // DEBUG: Log the values
+            log.info("Upload directory: {}", uploadDir);
+            log.info("Attachment path from DB: {}", report.getAttachmentPath());
+
+            // Resolve and validate file path
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path filePath = uploadPath.resolve(report.getAttachmentPath()).normalize();
+
+            // DEBUG: Log resolved paths
+            log.info("Upload directory resolved: {}", uploadPath);
+            log.info("File path resolved: {}", filePath);
+            log.info("File exists: {}", Files.exists(filePath));
+            log.info("File is readable: {}", Files.isReadable(filePath));
+            log.info("File size: {}", Files.exists(filePath) ? Files.size(filePath) : "N/A");
+
+            // Security: Prevent path traversal
+            if (!filePath.startsWith(uploadPath)) {
+                log.error("Path traversal attempt detected for file: {}", filePath);
+                return ResponseEntity.badRequest().body("Invalid file path");
+            }
+
+            // Verify file exists and is readable
+            if (!Files.exists(filePath)) {
+                log.error("File not found: {}", filePath);
+                // DEBUG: List directory contents
+                try {
+                    log.info("Upload directory contents: {}",
+                            Files.list(uploadPath).map(Path::getFileName).collect(Collectors.toList()));
+                } catch (IOException e) {
+                    log.error("Cannot list directory contents: {}", e.getMessage());
+                }
+                return ResponseEntity.notFound().build();
+            }
+
+            if (!Files.isReadable(filePath)) {
+                log.error("File not readable: {}", filePath);
+                // DEBUG: Check file permissions
+                try {
+                    Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(filePath);
+                    log.info("File permissions: {}", permissions);
+                } catch (UnsupportedOperationException e) {
+                    log.info("POSIX permissions not supported on this system");
+                } catch (IOException e) {
+                    log.error("Cannot read file permissions: {}", e.getMessage());
+                }
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("File not readable");
+            }
+
+            // Verify PDF integrity before serving
+            try {
+                verifyStoredPdf(filePath);
+            } catch (IOException e) {
+                log.error("PDF corruption detected during download: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("File appears to be corrupted");
+            }
+
+            // Prepare resource for download
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                log.error("Resource not accessible: exists={}, readable={}",
+                        resource.exists(), resource.isReadable());
+                return ResponseEntity.notFound().build();
+            }
+
+            String originalFilename = extractOriginalFilename(report.getAttachmentPath());
+            long fileSize = Files.size(filePath);
+
+            log.info("Serving file: {} ({}KB)", originalFilename, fileSize / 1024);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .contentLength(fileSize)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + originalFilename + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .header(HttpHeaders.EXPIRES, "0")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .body(resource);
+
+        } catch (RuntimeException e) {
+            log.error("Access denied for employee {}: {}", employeeId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error downloading attachment for report {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping(value = "/{id}/submit-findings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReportResponseDTO> submitFindings(
+            @PathVariable Integer id,
+            @RequestPart("findingsData") String findingsDataJson,
+            @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
+            @RequestHeader("employee_id") String officerId) {
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+            FindingsRequestDTO findingsDTO = objectMapper.readValue(findingsDataJson, FindingsRequestDTO.class);
+            findingsDTO.setAttachments(attachments);
+
+            Report report = reportService.submitFindings(id, findingsDTO, officerId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            System.err.println("Error submitting findings: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            System.err.println("Error submitting findings: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    private String storeAttachment(MultipartFile file) throws Exception {
-        Path uploadDir = Paths.get("uploads");
-        if (!Files.exists(uploadDir)) {
-            Files.createDirectories(uploadDir);
-        }
+    @GetMapping("/{id}/findings-attachments/{attachmentIndex}")
+    public ResponseEntity<?> downloadFindingsAttachment(
+            @PathVariable Integer id,
+            @PathVariable Integer attachmentIndex,
+            @RequestHeader("employee_id") String employeeId) {
 
-        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-        Path filePath = uploadDir.resolve(fileName);
-        Files.copy(file.getInputStream(), filePath);
-        return fileName;
+        try {
+            // Validate report exists and user has access
+            Report report = reportService.getReport(id);
+            validateAttachmentAccess(report, employeeId);
+
+            // Validate attachment index and path
+            if (report.getFindingsAttachmentPaths() == null ||
+                    attachmentIndex < 0 ||
+                    attachmentIndex >= report.getFindingsAttachmentPaths().size()) {
+                log.warn("Invalid attachment index {} for report {}", attachmentIndex, id);
+                return ResponseEntity.notFound().build();
+            }
+
+            String attachmentPath = report.getFindingsAttachmentPaths().get(attachmentIndex);
+            if (attachmentPath == null || attachmentPath.trim().isEmpty()) {
+                log.warn("Empty attachment path for report {}", id);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Resolve and validate file path
+            Path filePath = Paths.get(uploadDir)
+                    .resolve(attachmentPath)
+                    .normalize()
+                    .toAbsolutePath();
+
+            // Security: Prevent path traversal
+            if (!filePath.normalize().startsWith(Paths.get(uploadDir).normalize().toAbsolutePath())) {
+                log.error("Path traversal attempt detected for file: {}", filePath);
+                return ResponseEntity.badRequest().body("Invalid file path");
+            }
+
+            // Verify file exists and is readable
+            if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
+                log.error("File not found or not readable: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            // Verify PDF integrity before serving
+            try {
+                verifyStoredPdf(filePath);
+            } catch (IOException e) {
+                log.error("PDF corruption detected during download: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("File appears to be corrupted");
+            }
+
+            // Prepare resource for download
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            String originalFilename = extractOriginalFilename(attachmentPath);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .contentLength(Files.size(filePath))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + originalFilename + "\"")
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                    .header(HttpHeaders.PRAGMA, "no-cache")
+                    .header(HttpHeaders.EXPIRES, "0")
+                    .body(resource);
+
+        } catch (RuntimeException e) {
+            log.error("Access denied for employee {}: {}", employeeId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error downloading findings attachment for report {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/my-reports")
@@ -376,127 +599,6 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/{id}/attachment")
-    public ResponseEntity<Resource> downloadAttachment(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
-        try {
-            Report report = reportService.getReport(id);
-
-            Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Employee not found"));
-
-            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
-                    (report.getCurrentRecipient() != null &&
-                            report.getCurrentRecipient().getEmployeeId().equals(employeeId));
-
-            if (!hasAccess) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
-            if (report.getAttachmentPath() == null || report.getAttachmentPath().isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Path filePath = Paths.get("uploads").resolve(report.getAttachmentPath()).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String originalFilename = report.getAttachmentPath();
-            if (originalFilename.contains("_")) {
-                originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + originalFilename + "\"")
-                    .body(resource);
-        } catch (Exception e) {
-            System.err.println("Error downloading attachment: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @PostMapping(value = "/{id}/submit-findings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ReportResponseDTO> submitFindings(
-            @PathVariable Integer id,
-            @RequestPart("findingsData") String findingsDataJson,
-            @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
-            @RequestHeader("employee_id") String officerId) {
-        try {
-            ObjectMapper objectMapper = new ObjectMapper();
-            FindingsRequestDTO findingsDTO = objectMapper.readValue(findingsDataJson, FindingsRequestDTO.class);
-            findingsDTO.setAttachments(attachments);
-
-            Report report = reportService.submitFindings(id, findingsDTO, officerId);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
-        } catch (RuntimeException e) {
-            System.err.println("Error submitting findings: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-        } catch (Exception e) {
-            System.err.println("Error submitting findings: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    @GetMapping("/{id}/findings-attachments/{attachmentIndex}")
-    public ResponseEntity<Resource> downloadFindingsAttachment(
-            @PathVariable Integer id,
-            @PathVariable Integer attachmentIndex,
-            @RequestHeader("employee_id") String employeeId) {
-        try {
-            Report report = reportService.getReport(id);
-
-            Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Employee not found"));
-
-            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
-                    (report.getCurrentRecipient() != null &&
-                            report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
-                    reportRepo.DirectorsOfInvestigation().stream()
-                            .anyMatch(d -> d.getEmployeeId().equals(employeeId));
-
-            if (!hasAccess) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
-            if (report.getFindingsAttachmentPaths() == null ||
-                    report.getFindingsAttachmentPaths().isEmpty() ||
-                    attachmentIndex >= report.getFindingsAttachmentPaths().size()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String attachmentPath = report.getFindingsAttachmentPaths().get(attachmentIndex);
-            Path filePath = Paths.get("uploads").resolve(attachmentPath).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String originalFilename = attachmentPath;
-            if (originalFilename.contains("_")) {
-                originalFilename = originalFilename.substring(originalFilename.indexOf("_") + 1);
-            }
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + originalFilename + "\"")
-                    .body(resource);
-        } catch (Exception e) {
-            System.err.println("Error downloading findings attachment: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     @GetMapping("/{id}/findings")
     public ResponseEntity<ReportResponseDTO> getFindings(
             @PathVariable Integer id,
@@ -542,4 +644,265 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    private void validatePdfFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) return;
+
+        // 1. File size validation
+        if (file.getSize() > Long.parseLong(maxFileSize)) {
+            throw new RuntimeException("File size exceeds maximum limit of " + maxFileSize + " bytes");
+        }
+
+        // 2. Filename validation with better sanitization
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.trim().isEmpty()) {
+            throw new RuntimeException("Invalid filename");
+        }
+
+        // Clean and validate filename
+        originalFilename = StringUtils.cleanPath(originalFilename);
+        if (!originalFilename.toLowerCase().endsWith(".pdf")) {
+            throw new RuntimeException("Only PDF files are allowed");
+        }
+
+        // 3. Content type validation (multiple checks)
+        String contentType = file.getContentType();
+        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase())) {
+            throw new RuntimeException("Invalid file content type. Only PDF is allowed");
+        }
+
+        // 4. PDF magic number validation (binary header check)
+        try {
+            byte[] headerBytes = new byte[4];
+            file.getInputStream().read(headerBytes);
+            String header = new String(headerBytes);
+            if (!header.equals("%PDF")) {
+                throw new RuntimeException("File is not a valid PDF - corrupted or invalid format");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to validate PDF file format", e);
+        }
+
+        // 5. Additional PDF structure validation
+        validatePdfStructure(file);
+    }
+
+    private String extractOriginalFilename(String storedFilename) {
+        // Extract original filename from stored UUID_filename.pdf format
+        if (storedFilename == null) return "document.pdf";
+        int underscoreIndex = storedFilename.indexOf('_');
+        return underscoreIndex > 0 ? storedFilename.substring(underscoreIndex + 1) : storedFilename;
+    }
+
+    private void validatePdfStructure(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            // Read first 1024 bytes to check PDF structure
+            byte[] buffer = new byte[1024];
+            int bytesRead = inputStream.read(buffer);
+
+            if (bytesRead < 8) {
+                throw new RuntimeException("File too small to be a valid PDF");
+            }
+
+            String content = new String(buffer, 0, bytesRead);
+
+            // Check for PDF version in header
+            if (!content.startsWith("%PDF-1.")) {
+                throw new RuntimeException("Invalid PDF header");
+            }
+
+            // Check if file appears to be text (might be corrupted PDF saved as text)
+            if (content.contains("endobj") && content.contains("stream") &&
+                    content.length() > 500 && content.matches(".*[\\x00-\\x08\\x0E-\\x1F\\x7F-\\xFF].*")) {
+                throw new RuntimeException("PDF appears to be corrupted or saved as text file");
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException("Error validating PDF structure", e);
+        }
+    }
+
+    private String storePdfAttachment(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) return null;
+
+        // Ensure upload directory exists with proper permissions
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+            // Set proper permissions (readable/writable by application only)
+            try {
+                Files.setPosixFilePermissions(uploadPath,
+                        Set.of(PosixFilePermission.OWNER_READ,
+                                PosixFilePermission.OWNER_WRITE,
+                                PosixFilePermission.OWNER_EXECUTE));
+            } catch (UnsupportedOperationException e) {
+                // Windows doesn't support POSIX permissions
+                log.warn("Unable to set POSIX permissions on Windows");
+            }
+        }
+
+        // Generate secure filename
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+
+        Path filePath = uploadPath.resolve(secureFilename);
+
+        // Path traversal protection
+        if (!filePath.normalize().startsWith(uploadPath)) {
+            throw new IOException("Invalid file path - security violation");
+        }
+
+        // Store file with proper error handling and verification
+        try {
+            // Copy file in binary mode to prevent corruption
+            Files.copy(file.getInputStream(), filePath,
+                    StandardCopyOption.REPLACE_EXISTING);
+
+            // Verify file was written correctly
+            if (!Files.exists(filePath) || Files.size(filePath) != file.getSize()) {
+                throw new IOException("File storage verification failed");
+            }
+
+            // Additional PDF integrity check after storage
+            verifyStoredPdf(filePath);
+
+            return secureFilename;
+
+        } catch (IOException e) {
+            // Clean up failed file if it exists
+            try {
+                Files.deleteIfExists(filePath);
+            } catch (IOException cleanupException) {
+                log.error("Failed to cleanup corrupted file: {}", cleanupException.getMessage());
+            }
+            throw new IOException("Failed to store PDF file: " + e.getMessage(), e);
+        }
+    }
+
+    private void validateAttachmentAccess(Report report, String employeeId) {
+        // 1. Basic validation
+        if (report == null) {
+            throw new RuntimeException("Report not found");
+        }
+
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            throw new RuntimeException("Employee ID is required");
+        }
+
+        // 2. Check if employee is the creator of the report
+        if (report.getCreatedBy() != null &&
+                employeeId.equals(report.getCreatedBy().getEmployeeId())) {
+            return; // Creator has full access
+        }
+
+        // 3. Check if employee is the current recipient
+        if (report.getCurrentRecipient() != null &&
+                employeeId.equals(report.getCurrentRecipient().getEmployeeId())) {
+            return; // Current recipient has access
+        }
+
+        // 4. Check if employee is a director of investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+        if (isDirector) {
+            return; // Directors have access to all reports
+        }
+
+        // 5. Check if employee is an investigation officer assigned to this report
+        if (report.getInvestigationOfficer() != null &&
+                employeeId.equals(report.getInvestigationOfficer().getEmployeeId())) {
+            return; // Assigned investigation officer has access
+        }
+
+        // 6. Check if employee is a director of intelligence
+        List<Employee> intelDirectors = reportRepo.DirectorsOfIntelligence();
+        boolean isIntelDirector = intelDirectors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+        if (isIntelDirector) {
+            return; // Intelligence directors have access
+        }
+
+        // 7. Check if employee is an assistant commissioner
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        boolean isCommissioner = commissioners.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+        if (isCommissioner) {
+            return; // Assistant commissioners have access
+        }
+
+        // If none of the above conditions are met, access is denied
+        throw new RuntimeException("You do not have permission to access this attachment");
+    }
+
+    private void verifyStoredPdf(Path filePath) throws IOException {
+        try (InputStream fileStream = Files.newInputStream(filePath)) {
+            byte[] header = new byte[8];
+            int bytesRead = fileStream.read(header);
+
+            if (bytesRead < 8) {
+                throw new IOException("Stored file is too small");
+            }
+
+            String headerStr = new String(header, 0, 4);
+            if (!headerStr.equals("%PDF")) {
+                throw new IOException("Stored file lost PDF format - corruption detected");
+            }
+
+            if (bytesRead >= 8) {
+                String version = new String(header, 5, 3);
+                try {
+                    float versionNum = Float.parseFloat(version);
+                    if (versionNum < 1.0 || versionNum > 1.7) {
+                        throw new IOException("Unsupported PDF version: " + version);
+                    }
+                } catch (NumberFormatException e) {
+                    throw new IOException("Invalid PDF version format");
+                }
+            }
+        }
+    }
+    @GetMapping("/download/{reportId}/{filename}")
+    public ResponseEntity<Resource> downloadReportAttachment(
+            @PathVariable Integer reportId,
+            @PathVariable String filename,
+            @RequestParam String requesterId) {
+
+        return reportService.downloadReportAttachment(reportId, filename, requesterId);
+    }
+
+    @GetMapping("/by-case")
+    public ResponseEntity<List<ReportResponseDTO>> getReportsByCaseNum(
+            @RequestParam String caseNum,
+            @RequestHeader("employee_id") String employeeId) {
+
+        try {
+            log.info("Fetching reports for case: {}", caseNum);
+
+            // 1. Validate case exists
+            Case relatedCase = caseRepo.findByCaseNum(caseNum)
+                    .orElseThrow(() -> {
+                        log.warn("Case not found: {}", caseNum);
+                        return new RuntimeException("Case not found");
+                    });
+
+            // 3. Get and return reports
+            List<Report> reports = reportService.getReportsByCaseNum(caseNum);
+            List<ReportResponseDTO> response = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+
+            log.info("Found {} reports for case {}", response.size(), caseNum);
+            return ResponseEntity.ok(response);
+
+        } catch (RuntimeException e) {
+            log.error("Error getting reports for case {}: {}", caseNum, e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("System error getting reports for case {}: {}", caseNum, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
 }

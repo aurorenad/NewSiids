@@ -1,6 +1,7 @@
 package org.example.siidsbackend.Repository;
 
 import org.example.siidsbackend.Model.Case;
+import org.example.siidsbackend.Model.WorkflowStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,4 +28,8 @@ public interface CaseRepo extends JpaRepository<Case, Integer> {
     long countByCaseNumStartingWith(@Param("prefix") String prefix);
 
 
+    @Query("SELECT c FROM Case c WHERE c.status = :status AND c.createdBy.employeeId = :employeeId")
+    List<Case> findByStatusAndCreatedBy_EmployeeId(
+            @Param("status") WorkflowStatus status,
+            @Param("employeeId") String employeeId);
 }
