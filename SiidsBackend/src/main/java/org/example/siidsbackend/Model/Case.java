@@ -26,6 +26,9 @@ public class Case {
     private LocalDateTime reportedDate;
     private LocalDateTime updatedAt;
     private String summaryOfInformationCase;
+    @ManyToOne
+    @JoinColumn(name = "referring_officer_id", referencedColumnName = "employee_id")
+    private Employee referringOfficer;
 
     @Enumerated(EnumType.STRING)
     private WorkflowStatus status;

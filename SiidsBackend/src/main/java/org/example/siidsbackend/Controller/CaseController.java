@@ -11,6 +11,7 @@ import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Service.CaseService;
 import org.example.siidsbackend.Service.InformerService;
 import org.example.siidsbackend.Service.TaxPayerService;
+import org.example.siidsbackend.Service.employeeService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -28,12 +29,14 @@ public class CaseController {
     private final CaseService caseService;
     private final TaxPayerService taxPayerService;
     private final InformerService informerService;
+    private final employeeService employeeService;
 
     @PostMapping
     public ResponseEntity<CaseResponseDTO> createCase(
             @RequestBody CaseRequestDTO caseRequestDTO,
             @RequestHeader("employee_id") String employeeId) {
         try {
+            // Handle tax payer information
             TaxPayer taxPayer = taxPayerService.findByTIN(caseRequestDTO.getTin())
                     .orElseGet(() -> {
                         TaxPayer newTaxPayer = new TaxPayer();
@@ -42,8 +45,11 @@ public class CaseController {
                         newTaxPayer.setTaxPayerAddress(caseRequestDTO.getTaxPayerAddress());
                         return taxPayerService.addTaxPayer(newTaxPayer);
                     });
+
+            // Handle informer information (if not anonymous)
             Informer informer = null;
-            if (caseRequestDTO.getInformerNationalId() != null) {
+            if (caseRequestDTO.getInformerNationalId() != null &&
+                    !"anonymous".equalsIgnoreCase(caseRequestDTO.getInformerType())) {
                 informer = informerService.findByNationalId(caseRequestDTO.getInformerNationalId())
                         .orElseGet(() -> {
                             Informer newInformer = new Informer();
@@ -57,8 +63,15 @@ public class CaseController {
                         });
             }
 
-            Case createdCase = caseService.createCase(caseRequestDTO, employeeId, taxPayer, informer);
-            return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(createdCase));
+            Employee referringOfficer = null;
+            if (caseRequestDTO.getReferringOfficerId() != null && !caseRequestDTO.getReferringOfficerId().isEmpty()) {
+                referringOfficer = employeeService.findById(caseRequestDTO.getReferringOfficerId())
+                        .orElseThrow(() -> new RuntimeException("Referring officer not found with ID: " + caseRequestDTO.getReferringOfficerId()));
+            }
+
+            // Create the case with all collected information
+            Case createdCase = caseService.createCase(caseRequestDTO, employeeId, taxPayer, informer, referringOfficer);
+             return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(createdCase));
         } catch (Exception e) {
             log.error("Error creating case", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -156,15 +169,21 @@ public class CaseController {
     private CaseResponseDTO toResponseDTO(Case c) {
         CaseResponseDTO dto = new CaseResponseDTO();
 
+        // Basic case information
         dto.setId(c.getId());
         dto.setCaseNum(c.getCaseNum());
         dto.setTaxPeriod(c.getTaxPeriod());
         dto.setStatus(c.getStatus().name());
-        dto.setCreatedByName(c.getCreatedBy().getGivenName() + " " + c.getCreatedBy().getFamilyName());
         dto.setSummaryOfInformationCase(c.getSummaryOfInformationCase());
         dto.setCreatedAt(c.getReportedDate());
         dto.setUpdatedAt(c.getUpdatedAt());
 
+        // Creator information
+        if (c.getCreatedBy() != null) {
+            dto.setCreatedByName(c.getCreatedBy().getGivenName() + " " + c.getCreatedBy().getFamilyName());
+        }
+
+        // Tax payer information
         if (c.getTin() != null) {
             TaxPayerDTO taxPayerDTO = new TaxPayerDTO();
             taxPayerDTO.setTin(c.getTin().getTaxPayerTIN());
@@ -174,9 +193,9 @@ public class CaseController {
             dto.setTaxPayer(taxPayerDTO);
         }
 
+        // Informer information (if exists)
         if (c.getInformerId() != null) {
             InformerDTO informerDTO = new InformerDTO();
-
             informerDTO.setNationalId(c.getInformerId().getNationalId());
             informerDTO.setInformerId(c.getInformerId().getInformerId());
             informerDTO.setName(c.getInformerId().getInformerName());
@@ -187,6 +206,13 @@ public class CaseController {
             dto.setInformer(informerDTO);
         }
 
+        // Referring officer information (if exists)
+        if (c.getReferringOfficer() != null) {
+            dto.setReferringOfficerName(c.getReferringOfficer().getGivenName() + " " + c.getReferringOfficer().getFamilyName());
+            dto.setReferringOfficerId(c.getReferringOfficer().getEmployeeId());
+        }
+
         return dto;
     }
+
 }

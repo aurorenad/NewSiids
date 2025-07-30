@@ -24,7 +24,7 @@ public class CaseService {
     private final InformerRepository informerRepo;
 
 
-    public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer) {
+    public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer, Employee referringOfficer) {
         log.info("Creating case for employee: {}", employeeId);
 
         Employee creator = employeeRepo.findById(employeeId)
@@ -39,6 +39,11 @@ public class CaseService {
         newCase.setCreatedBy(creator);
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());
+
+        // Use the referringOfficer parameter that was passed in
+        if (referringOfficer != null) {
+            newCase.setReferringOfficer(referringOfficer);
+        }
 
         Case savedCase = caseRepo.save(newCase);
         savedCase.setCaseNum(savedCase.generateCaseNumber());

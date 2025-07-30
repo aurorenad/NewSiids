@@ -15,4 +15,6 @@ public class CaseRequestDTO {
     private String informerPhoneNum;
     private String informerAddress;
     private String informerEmail;
+    private String informerType;
+    private String referringOfficerId;
 }
