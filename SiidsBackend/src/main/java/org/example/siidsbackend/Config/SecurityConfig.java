@@ -44,10 +44,11 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**").permitAll()
-                        .requestMatchers("/api/cases/**").hasAnyAuthority("User", "Surv")
+                        .requestMatchers("/api/cases/**").hasAnyAuthority("User")
                         .requestMatchers("/api/reports/**").hasAnyAuthority("User")
                         .requestMatchers("/api/taxpayers/**").hasAnyAuthority("User")
                         .requestMatchers("/api/informers/**").hasAnyAuthority("User")
+                        .requestMatchers("/api/employees/**").hasAnyAuthority("User")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
