@@ -29,11 +29,15 @@ import {
     Send as SendIcon,
     AttachFile as AttachFileIcon,
     FilterList as FilterListIcon,
-    PictureAsPdf
+    PictureAsPdf,
+    NavigateBefore,
+    NavigateNext
 } from '@mui/icons-material';
-
-import { useNavigate } from 'react-router-dom';
+import { Document, Page } from 'react-pdf';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService, ReportApi } from '../api/Axios/caseApi';
+// import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+// import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 const IntelligenceOfficer = () => {
     const [cases, setCases] = useState([]);
@@ -52,8 +56,16 @@ const IntelligenceOfficer = () => {
         severity: 'info'
     });
     const [showOnlyWithReports, setShowOnlyWithReports] = useState(false);
+    const [reportDialogOpen, setReportDialogOpen] = useState(false);
+    const [currentReport, setCurrentReport] = useState(null);
+    const [reportLoading, setReportLoading] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [numPages, setNumPages] = useState(null);
+    const [pageNumber, setPageNumber] = useState(1);
+    const [pdfLoading, setPdfLoading] = useState(false);
 
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -78,6 +90,21 @@ const IntelligenceOfficer = () => {
     }, []);
 
     useEffect(() => {
+        if (location.state?.newReport) {
+            const { newReport, caseNum } = location.state;
+            setCases(prevCases =>
+                prevCases.map(c =>
+                    c.caseNum === caseNum
+                        ? { ...c, reportId: newReport.id }
+                        : c
+                )
+            );
+            showSnackbar(`Report ${newReport.id} created successfully`, 'success');
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state, navigate, location.pathname]);
+
+    useEffect(() => {
         let results = cases;
         if (searchTerm) {
             results = results.filter(caseItem =>
@@ -92,6 +119,7 @@ const IntelligenceOfficer = () => {
         setFilteredCases(results);
     }, [searchTerm, cases, showOnlyWithReports]);
 
+
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
     };
@@ -99,8 +127,6 @@ const IntelligenceOfficer = () => {
     const handleCloseSnackbar = () => {
         setSnackbar(prev => ({ ...prev, open: false }));
     };
-
-
 
     const confirmSendReport = async () => {
         if (!selectedReport) {
@@ -131,10 +157,6 @@ const IntelligenceOfficer = () => {
         }
     };
 
-    const [reportDialogOpen, setReportDialogOpen] = useState(false);
-    const [currentReport, setCurrentReport] = useState(null);
-    const [reportLoading, setReportLoading] = useState(false);
-
     const handleViewReport = async (caseItem) => {
         try {
             if (!caseItem.reportId) {
@@ -154,16 +176,34 @@ const IntelligenceOfficer = () => {
         }
     };
 
-// Add this function to handle downloading the attachment
-    const handleDownloadAttachment = async (reportId) => {
+    const handleViewPdf = async (reportId) => {
         try {
-            await ReportApi.downloadAttachment(reportId);
+            setPdfLoading(true);
+            const response = await ReportApi.downloadAttachment(reportId);
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            setPdfUrl(url);
+            setReportDialogOpen(true);
         } catch (error) {
-            console.error('Error downloading attachment:', error);
-            showSnackbar(error.response?.data?.message || 'Failed to download attachment', 'error');
+            console.error('Error loading PDF:', error);
+            showSnackbar(error.response?.data?.message || 'Failed to load PDF', 'error');
+        } finally {
+            setPdfLoading(false);
         }
     };
 
+    const onDocumentLoadSuccess = ({ numPages }) => {
+        setNumPages(numPages);
+        setPageNumber(1);
+    };
+
+    const handlePreviousPage = () => {
+        setPageNumber(prev => Math.max(prev - 1, 1));
+    };
+
+    const handleNextPage = () => {
+        setPageNumber(prev => Math.min(prev + 1, numPages));
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -175,8 +215,6 @@ const IntelligenceOfficer = () => {
             default: return '#757575';
         }
     };
-
-
 
     if (loading.cases) {
         return (
@@ -261,7 +299,7 @@ const IntelligenceOfficer = () => {
                                     }}
                                 >
                                     <TableCell>{caseItem.caseNum}</TableCell>
-                                    <TableCell>{caseItem.taxPayer?.tin  || '-'}</TableCell>
+                                    <TableCell>{caseItem.taxPayer?.tin || '-'}</TableCell>
                                     <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
                                     <TableCell>
                                         <Typography
@@ -276,42 +314,42 @@ const IntelligenceOfficer = () => {
                                     </TableCell>
                                     <TableCell>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                                {caseItem.reportId ? (
-                                                    <>
-                                                        <Chip
-                                                            label={caseItem.reportId}
-                                                            size="small"
-                                                            color="primary"
-                                                            variant="outlined"
-                                                        />
-                                                        <IconButton
-                                                            onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
-                                                            title="View Report"
-                                                        >
-                                                            <DescriptionIcon />
-                                                        </IconButton>
-                                                    </>
-                                                ) : (
-                                                    <Button
+                                            {caseItem.reportId ? (
+                                                <>
+                                                    <Chip
+                                                        label={caseItem.reportId}
+                                                        size="small"
+                                                        color="primary"
                                                         variant="outlined"
-                                                        startIcon={<AddIcon />}
-                                                        onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(caseItem.caseNum)}`)}
-                                                        disabled={loading.reports}
+                                                    />
+                                                    <IconButton
+                                                        onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                        title="View Report"
                                                     >
-                                                        Create Report
-                                                    </Button>
-                                                )}
-                                            </Box>
+                                                        <DescriptionIcon />
+                                                    </IconButton>
+                                                </>
+                                            ) : (
+                                                <Button
+                                                    variant="outlined"
+                                                    startIcon={<AddIcon />}
+                                                    onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                    disabled={loading.reports}
+                                                >
+                                                    Create Report
+                                                </Button>
+                                            )}
+                                        </Box>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                            <Tooltip title="View Report">
-    <span>
-        <IconButton
-            onClick={() => handleViewReport(caseItem)}
-            disabled={!caseItem.reportId || reportLoading}
-        >
-            {reportLoading ? <CircularProgress size={24} /> : <PictureAsPdf />}
-        </IconButton>
-    </span>
+                                            <Tooltip title="View Report PDF">
+                                                <span>
+                                                    <IconButton
+                                                        onClick={() => handleViewPdf(caseItem.reportId)}
+                                                        disabled={!caseItem.reportId || pdfLoading}
+                                                    >
+                                                        {pdfLoading ? <CircularProgress size={24} /> : <PictureAsPdf />}
+                                                    </IconButton>
+                                                </span>
                                             </Tooltip>
                                             <IconButton
                                                 onClick={() => navigate(`/intelligence-officer/view-case/${caseItem.caseNum}`)}
@@ -365,15 +403,78 @@ const IntelligenceOfficer = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* PDF Viewer Dialog */}
             <Dialog
                 open={reportDialogOpen}
-                onClose={() => setReportDialogOpen(false)}
+                onClose={() => {
+                    setReportDialogOpen(false);
+                    if (pdfUrl) {
+                        URL.revokeObjectURL(pdfUrl);
+                        setPdfUrl(null);
+                    }
+                }}
                 maxWidth="md"
                 fullWidth
             >
-                <DialogTitle>Report Details</DialogTitle>
+                <DialogTitle>Report PDF Viewer</DialogTitle>
                 <DialogContent>
-                    {currentReport ? (
+                    {pdfUrl ? (
+                        <Box sx={{ mt: 2 }}>
+                            <Document
+                                file={pdfUrl}
+                                onLoadSuccess={onDocumentLoadSuccess}
+                                loading={<CircularProgress />}
+                            >
+                                <Page pageNumber={pageNumber} />
+                            </Document>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mt: 2 }}>
+                                <IconButton
+                                    onClick={handlePreviousPage}
+                                    disabled={pageNumber <= 1}
+                                >
+                                    <NavigateBefore />
+                                </IconButton>
+                                <Typography variant="body2" sx={{ mx: 2 }}>
+                                    Page {pageNumber} of {numPages || '--'}
+                                </Typography>
+                                <IconButton
+                                    onClick={handleNextPage}
+                                    disabled={pageNumber >= (numPages || 1)}
+                                >
+                                    <NavigateNext />
+                                </IconButton>
+                            </Box>
+                        </Box>
+                    ) : (
+                        <Box display="flex" justifyContent="center" py={4}>
+                            <CircularProgress />
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => {
+                        setReportDialogOpen(false);
+                        if (pdfUrl) {
+                            URL.revokeObjectURL(pdfUrl);
+                            setPdfUrl(null);
+                        }
+                    }}>
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Report Details Dialog */}
+            {currentReport && (
+                <Dialog
+                    open={!!currentReport && !pdfUrl}
+                    onClose={() => setCurrentReport(null)}
+                    maxWidth="md"
+                    fullWidth
+                >
+                    <DialogTitle>Report Details</DialogTitle>
+                    <DialogContent>
                         <Box>
                             <Typography variant="h6" gutterBottom>
                                 Case ID: {currentReport.relatedCase.caseNum}
@@ -391,10 +492,10 @@ const IntelligenceOfficer = () => {
                                     <Button
                                         variant="outlined"
                                         startIcon={<PictureAsPdf />}
-                                        onClick={() => handleDownloadAttachment(currentReport.id)}
+                                        onClick={() => handleViewPdf(currentReport.id)}
                                         sx={{ mt: 1 }}
                                     >
-                                        Download PDF
+                                        View PDF
                                     </Button>
                                 </Box>
                             )}
@@ -417,16 +518,12 @@ const IntelligenceOfficer = () => {
                                 </Box>
                             )}
                         </Box>
-                    ) : (
-                        <Box display="flex" justifyContent="center" py={4}>
-                            <CircularProgress />
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setReportDialogOpen(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setCurrentReport(null)}>Close</Button>
+                    </DialogActions>
+                </Dialog>
+            )}
 
             {/* Snackbar */}
             <Snackbar

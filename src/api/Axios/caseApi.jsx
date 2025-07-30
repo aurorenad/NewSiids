@@ -84,6 +84,9 @@ const submitFindings = async (reportId, formData) => {
 };
 
 export const CaseService = {
+    getCasesByStatus: (status) => {
+        return caseApi.get(`/api/cases/status/${status}`);
+    },
     createCase: (caseData) => {
         return caseApi.post('/api/cases', {
             ...caseData,

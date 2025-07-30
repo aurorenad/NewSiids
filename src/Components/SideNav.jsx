@@ -71,7 +71,7 @@ const Sidebar = () => {
                     </li>
                     <li>
                         <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>
-                            History
+                            Report
                         </NavLink>
                     </li>
                 </ul>

@@ -65,6 +65,7 @@ function App() {
                     <Route path="/assistant-commissioner" element={<ProtectedRoute><AssistantCommissioner /></ProtectedRoute>} />
                     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
                     <Route path="/reports/:id" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
+                    <Route path="/reports/:caseNum" element={<ProtectedRoute><ReportView /></ProtectedRoute> } />
                     <Route path="/reports/:id/findings" element={<ProtectedRoute><FindingsViewerPage /></ProtectedRoute>} />
                     <Route path="/view-report/:id" element={<ProtectedRoute><ViewReportDetails /></ProtectedRoute>} />
                 </Routes>
