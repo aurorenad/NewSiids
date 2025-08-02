@@ -1,6 +1,6 @@
 package org.example.siidsbackend.Model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -17,8 +17,9 @@ public class Report {
     private String description;
     private String attachmentPath;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "case_num", referencedColumnName = "caseNum")
+    @JsonBackReference
     private Case relatedCase;
 
     @ManyToOne
@@ -32,48 +33,41 @@ public class Report {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    // Approval/Rejection fields
     @ManyToOne
     @JoinColumn(name = "approved_by_employee_id")
     private Employee approvedBy;
-
-    @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
     @ManyToOne
     @JoinColumn(name = "rejected_by_employee_id")
     private Employee rejectedBy;
-
-    @Column(name = "rejection_reason")
     private String rejectionReason;
-
-    @Column(name = "rejected_at")
     private LocalDateTime rejectedAt;
 
     @ManyToOne
     @JoinColumn(name = "returned_by_employee_id")
     private Employee returnedBy;
-
-    @Column(name = "returned_reason")
     private String returnReason;
-
-    @Column(name = "returned_at")
     private LocalDateTime returnedAt;
+
+    // Role-specific assignments
     @ManyToOne
     @JoinColumn(name = "assistant_commissioner_id")
     private Employee assistantCommissioner;
-
     @ManyToOne
     @JoinColumn(name = "director_investigation_id")
     private Employee directorInvestigation;
-
     @ManyToOne
     @JoinColumn(name = "director_intelligence_id")
     private Employee directorIntelligence;
-
     @ManyToOne
     @JoinColumn(name = "investigation_officer_id")
     private Employee investigationOfficer;
 
+    // Report content
+    @Column(columnDefinition = "TEXT")
+    private String assignmentNotes;
     private String findings;
     private String recommendations;
 
@@ -82,14 +76,19 @@ public class Report {
     @Column(name = "attachment_path")
     private List<String> findingsAttachmentPaths = new ArrayList<>();
 
+    // Financial information
+    private Double principleAmount;
+    private Double penaltiesAmount;
+
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
 
     public WorkflowStatus getStatus() {

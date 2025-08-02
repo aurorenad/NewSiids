@@ -3,22 +3,17 @@ package org.example.siidsbackend.Controller;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.siidsbackend.DTO.InformerDTO;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
-import org.example.siidsbackend.DTO.TaxPayerDTO;
 import org.example.siidsbackend.Model.*;
-import org.example.siidsbackend.Service.CaseService;
-import org.example.siidsbackend.Service.InformerService;
-import org.example.siidsbackend.Service.TaxPayerService;
-import org.example.siidsbackend.Service.employeeService;
+import org.example.siidsbackend.Service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/cases")
@@ -30,6 +25,7 @@ public class CaseController {
     private final TaxPayerService taxPayerService;
     private final InformerService informerService;
     private final employeeService employeeService;
+    private final ReportService reportService;
 
     @PostMapping
     public ResponseEntity<CaseResponseDTO> createCase(
@@ -71,7 +67,7 @@ public class CaseController {
 
             // Create the case with all collected information
             Case createdCase = caseService.createCase(caseRequestDTO, employeeId, taxPayer, informer, referringOfficer);
-             return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(createdCase));
+            return ResponseEntity.status(HttpStatus.CREATED).body(caseService.getCaseResponseById(createdCase.getId()));
         } catch (Exception e) {
             log.error("Error creating case", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -82,10 +78,7 @@ public class CaseController {
     public ResponseEntity<List<CaseResponseDTO>> getMyCases(
             @RequestHeader("employee_id") String employeeId) {
         try {
-            List<CaseResponseDTO> response = caseService.getCasesByCreator(employeeId.trim())
-                    .stream()
-                    .map(this::toResponseDTO)
-                    .collect(Collectors.toList());
+            List<CaseResponseDTO> response = caseService.getCasesByCreator(employeeId.trim());
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Error fetching cases", e);
@@ -98,8 +91,8 @@ public class CaseController {
             @PathVariable Integer id,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            return caseService.getCaseIfCreator(id, employeeId)
-                    .map(this::toResponseDTO)
+            Optional<CaseResponseDTO> caseResponse = caseService.getCaseIfCreator(id, employeeId);
+            return caseResponse
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
@@ -126,12 +119,12 @@ public class CaseController {
                 return ResponseEntity.badRequest().build();
             }
 
-            Case updatedCase = caseService.updateCaseStatus(id, employeeId, workflowStatus);
+            CaseResponseDTO updatedCase = caseService.updateCaseStatus(id, employeeId, workflowStatus);
             if (updatedCase == null) {
                 return ResponseEntity.notFound().build();
             }
 
-            return ResponseEntity.ok(toResponseDTO(updatedCase));
+            return ResponseEntity.ok(updatedCase);
         } catch (Exception e) {
             log.error("Error updating case status", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -151,13 +144,11 @@ public class CaseController {
                 return ResponseEntity.badRequest().build();
             }
 
-            // Extract everything after "/api/cases/caseNum/"
             String caseNum = requestURI.substring(requestURI.indexOf(caseNumPath) + caseNumPath.length());
-
             log.info("Searching for case with number: {}", caseNum);
 
-            return caseService.getCaseByCaseNum(caseNum, employeeId)
-                    .map(this::toResponseDTO)
+            Optional<CaseResponseDTO> caseResponse = caseService.getCaseByCaseNum(caseNum, employeeId);
+            return caseResponse
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
@@ -166,53 +157,23 @@ public class CaseController {
         }
     }
 
-    private CaseResponseDTO toResponseDTO(Case c) {
-        CaseResponseDTO dto = new CaseResponseDTO();
+    @GetMapping("/{caseId}/reports")
+    public ResponseEntity<List<Report>> getCaseReports(
+            @PathVariable Integer caseId,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            // Verify the requester has access to the case
+            Optional<CaseResponseDTO> caseResponse = caseService.getCaseIfCreator(caseId, employeeId);
+            if (caseResponse.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
 
-        // Basic case information
-        dto.setId(c.getId());
-        dto.setCaseNum(c.getCaseNum());
-        dto.setTaxPeriod(c.getTaxPeriod());
-        dto.setStatus(c.getStatus().name());
-        dto.setSummaryOfInformationCase(c.getSummaryOfInformationCase());
-        dto.setCreatedAt(c.getReportedDate());
-        dto.setUpdatedAt(c.getUpdatedAt());
-
-        // Creator information
-        if (c.getCreatedBy() != null) {
-            dto.setCreatedByName(c.getCreatedBy().getGivenName() + " " + c.getCreatedBy().getFamilyName());
+            List<Report> reports = reportService.getReportsByCaseNum(caseResponse.get().getCaseNum());
+            return ResponseEntity.ok(reports);
+        } catch (Exception e) {
+            log.error("Error fetching case reports", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-
-        // Tax payer information
-        if (c.getTin() != null) {
-            TaxPayerDTO taxPayerDTO = new TaxPayerDTO();
-            taxPayerDTO.setTin(c.getTin().getTaxPayerTIN());
-            taxPayerDTO.setName(c.getTin().getTaxPayerName());
-            taxPayerDTO.setAddress(c.getTin().getTaxPayerAddress());
-            taxPayerDTO.setContact(c.getTin().getTaxPayerContact());
-            dto.setTaxPayer(taxPayerDTO);
-        }
-
-        // Informer information (if exists)
-        if (c.getInformerId() != null) {
-            InformerDTO informerDTO = new InformerDTO();
-            informerDTO.setNationalId(c.getInformerId().getNationalId());
-            informerDTO.setInformerId(c.getInformerId().getInformerId());
-            informerDTO.setName(c.getInformerId().getInformerName());
-            informerDTO.setGender(c.getInformerId().getInformerGender());
-            informerDTO.setPhoneNum(c.getInformerId().getInformerPhoneNum());
-            informerDTO.setAddress(c.getInformerId().getInformerAddress());
-            informerDTO.setEmail(c.getInformerId().getInformerEmail());
-            dto.setInformer(informerDTO);
-        }
-
-        // Referring officer information (if exists)
-        if (c.getReferringOfficer() != null) {
-            dto.setReferringOfficerName(c.getReferringOfficer().getGivenName() + " " + c.getReferringOfficer().getFamilyName());
-            dto.setReferringOfficerId(c.getReferringOfficer().getEmployeeId());
-        }
-
-        return dto;
     }
 
     @GetMapping("/status/{status}")
@@ -221,10 +182,7 @@ public class CaseController {
             @RequestHeader("employee_id") String employeeId) {
         try {
             WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status.toUpperCase());
-            List<Case> cases = caseService.getCasesByStatus(workflowStatus, employeeId);
-            List<CaseResponseDTO> response = cases.stream()
-                    .map(this::toResponseDTO)
-                    .collect(Collectors.toList());
+            List<CaseResponseDTO> response = caseService.getCasesByStatus(workflowStatus, employeeId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
@@ -234,4 +192,19 @@ public class CaseController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCase(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            caseService.deleteCase(id, employeeId);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            log.error("Error deleting case", e);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error deleting case", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

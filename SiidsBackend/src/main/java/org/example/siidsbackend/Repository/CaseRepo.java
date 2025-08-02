@@ -32,4 +32,6 @@ public interface CaseRepo extends JpaRepository<Case, Integer> {
     List<Case> findByStatusAndCreatedBy_EmployeeId(
             @Param("status") WorkflowStatus status,
             @Param("employeeId") String employeeId);
+
+
 }

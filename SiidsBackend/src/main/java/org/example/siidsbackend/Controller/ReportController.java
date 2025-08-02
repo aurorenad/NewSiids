@@ -549,19 +549,40 @@ public class ReportController {
         }
     }
 
+//    @PostMapping("/{id}/assign-to-investigation-officer")
+//    public ResponseEntity<ReportResponseDTO> assignToInvestigationOfficer(
+//            @PathVariable Integer id,
+//            @RequestParam(required = false) String specificOfficerId,
+//            @RequestHeader("employee_id") String employeeId) {
+//        try {
+//            Employee assigner = employeeRepo.findByEmployeeId(employeeId)
+//                    .orElseThrow(() -> new RuntimeException("Assigner not found"));
+//
+//            Report report = reportService.assignToInvestigationOfficer(id, specificOfficerId);
+//            return ResponseEntity.ok(reportService.toResponseDTO(report));
+//        } catch (Exception e) {
+//            System.err.println("Error assigning report to investigation officer: " + e.getMessage());
+//            e.printStackTrace();
+//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+//        }
+//    }
+
     @PostMapping("/{id}/assign-to-investigation-officer")
     public ResponseEntity<ReportResponseDTO> assignToInvestigationOfficer(
             @PathVariable Integer id,
-            @RequestParam(required = false) String specificOfficerId,
+            @RequestBody Map<String, String> requestBody,
             @RequestHeader("employee_id") String employeeId) {
         try {
             Employee assigner = employeeRepo.findByEmployeeId(employeeId)
                     .orElseThrow(() -> new RuntimeException("Assigner not found"));
 
-            Report report = reportService.assignToInvestigationOfficer(id, specificOfficerId);
+            String specificOfficerId = requestBody.get("specificOfficerId");
+            String assignmentNotes = requestBody.get("assignmentNotes");
+
+            Report report = reportService.assignToInvestigationOfficer(id, specificOfficerId, assignmentNotes);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
-            System.err.println("Error assigning report to investigation officer: " + e.getMessage());
+            log.error("Error assigning report to investigation officer: {}", e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
@@ -626,24 +647,24 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/director-investigation/all-reports")
-    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
-            @RequestHeader("employee_id") String directorId) {
-        try {
-            List<Report> reports = reportService.getAllReportsForDirectorInvestigation(directorId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
-        } catch (RuntimeException e) {
-            System.err.println("Authorization error: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            System.err.println("Error getting reports: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
+//    @GetMapping("/director-investigation/all-reports")
+//    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
+//            @RequestHeader("employee_id") String directorId) {
+//        try {
+//            List<Report> reports = reportService.getAllReportsForDirectorInvestigation(directorId);
+//            List<ReportResponseDTO> responseList = reports.stream()
+//                    .map(reportService::toResponseDTO)
+//                    .collect(Collectors.toList());
+//            return ResponseEntity.ok(responseList);
+//        } catch (RuntimeException e) {
+//            System.err.println("Authorization error: " + e.getMessage());
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+//        } catch (Exception e) {
+//            System.err.println("Error getting reports: " + e.getMessage());
+//            e.printStackTrace();
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+//        }
+//    }
 
     private void validatePdfFile(MultipartFile file) {
         if (file == null || file.isEmpty()) return;
@@ -879,8 +900,6 @@ public class ReportController {
 
         try {
             log.info("Fetching reports for case: {}", caseNum);
-
-            // 1. Validate case exists
             Case relatedCase = caseRepo.findByCaseNum(caseNum)
                     .orElseThrow(() -> {
                         log.warn("Case not found: {}", caseNum);
@@ -905,4 +924,90 @@ public class ReportController {
         }
     }
 
+    @GetMapping("/director-intelligence/all-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorIntelligence(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<Report> reports = reportService.getAllReportsForDirectorIntelligence(directorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/assistant-commissioner/all-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForAssistantCommissioner(
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            List<Report> reports = reportService.getReportsHandledByAssistantCommissioner(employeeId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/director-investigation/all-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<Report> reports = reportService.getReportsHandledByDirectorInvestigation(directorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PutMapping("/{id}/update-returned-report")
+    public ResponseEntity<ReportResponseDTO> updateReturnedReport(
+            @PathVariable Integer id,
+            @RequestBody ReportRequestDTO reportData,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            // Verify the employee is the creator of the report
+            Report report = reportService.getReport(id);
+            if (!report.getCreatedBy().getEmployeeId().equals(employeeId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Verify the report is in a returned status
+            if (!isReportReturned(report)) {
+                return ResponseEntity.badRequest().body(null);
+            }
+
+            Report updatedReport = reportService.updateReturnedReport(id, reportData);
+            return ResponseEntity.ok(reportService.toResponseDTO(updatedReport));
+        } catch (RuntimeException e) {
+            log.error("Error updating returned report: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            log.error("System error updating returned report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private boolean isReportReturned(Report report) {
+        return report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER ||
+                report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+    }
 }

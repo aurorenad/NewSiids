@@ -29,4 +29,6 @@ public class CaseResponseDTO {
 
     private String referringOfficerName;
     private String referringOfficerId;
+
+    private Integer reportId;
 }

@@ -35,4 +35,7 @@ public class ReportResponseDTO {
     private String directorInvestigation;
     private String directorIntelligence;
     private String investigationOfficer;
+
+    private Double principleAmount;
+    private Double penaltiesAmount;
 }

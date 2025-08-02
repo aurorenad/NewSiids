@@ -10,6 +10,6 @@ import java.time.LocalDateTime;
 public class ReportRequestDTO {
     private String description;
     private String attachmentPath;
-    private Case relatedCase;
+    private String caseNum;
 
 }

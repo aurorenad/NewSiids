@@ -19,13 +19,16 @@ public class Case {
     @ManyToOne
     @JoinColumn(name = "informer_id")
     private Informer informerId;
+
     @ManyToOne
     @JoinColumn(name = "tax_payer_tin")
     private TaxPayer tin;
+
     private String taxPeriod;
     private LocalDateTime reportedDate;
     private LocalDateTime updatedAt;
     private String summaryOfInformationCase;
+
     @ManyToOne
     @JoinColumn(name = "referring_officer_id", referencedColumnName = "employee_id")
     private Employee referringOfficer;
@@ -37,11 +40,15 @@ public class Case {
     @JoinColumn(name = "created_by", referencedColumnName = "employee_id")
     private Employee createdBy;
 
-
-
     @PrePersist
     protected void onCreate() {
         this.reportedDate = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     public String generateCaseNumber() {
@@ -50,5 +57,4 @@ public class Case {
         String month = String.format("%02d", now.getMonthValue());
         return "CS/" + year + "/" + month + "/" + this.id;
     }
-
 }
