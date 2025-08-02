@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Card, ListGroup, Button, Row, Col, Alert, Spinner } from 'react-bootstrap';
+import { Container, Button, Alert, Spinner } from 'react-bootstrap';
 import axios from 'axios';
+import MissionDocumentTable from './MissionDocumentTable';
 
-const FindingsViewerPage = () => {
+const FindingsViewPage = () => {
     const { id } = useParams();
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -101,145 +102,77 @@ const FindingsViewerPage = () => {
         );
     }
 
+    // Prepare data for the table component
+    const reportData = {
+        header: {
+            title: "REPORT FINDINGS DOCUMENT",
+            reference: `Reference: ${report.id}`,
+            date: `Date: ${formatDate(report.createdAt)}`
+        },
+        sections: [
+            {
+                title: "Report Details",
+                rows: [
+                    { label: "Report ID", value: report.id },
+                    { label: "Status", value: report.status },
+                    { label: "Created By", value: report.createdBy },
+                    { label: "Created At", value: formatDate(report.createdAt) },
+                    { label: "Current Recipient", value: report.currentRecipient || 'N/A' },
+                    { label: "Last Updated", value: formatDate(report.updatedAt) },
+                    ...(report.approvedBy ? [
+                        { label: "Approved By", value: `${report.approvedBy} on ${formatDate(report.approvedAt)}` }
+                    ] : []),
+                    ...(report.rejectedBy ? [
+                        { label: "Rejected By", value: `${report.rejectedBy} on ${formatDate(report.rejectedAt)}` },
+                        { label: "Reason", value: report.rejectionReason || 'No reason provided' }
+                    ] : [])
+                ]
+            },
+            ...(report.relatedCase ? [{
+                title: "Related Case",
+                rows: [
+                    { label: "Case Number", value: report.relatedCase.caseNum },
+                    { label: "Case Title", value: report.relatedCase.title },
+                    { label: "Case Status", value: report.relatedCase.status }
+                ]
+            }] : []),
+            {
+                title: "Findings",
+                rows: [
+                    {
+                        label: "Findings Details",
+                        value: report.findings || "No findings submitted yet",
+                        isTextArea: true
+                    }
+                ]
+            },
+            {
+                title: "Recommendations",
+                rows: [
+                    {
+                        label: "Recommendations Details",
+                        value: report.recommendations || "No recommendations submitted yet",
+                        isTextArea: true
+                    }
+                ]
+            }
+        ],
+        footer: {
+            issuedAt: `Issued at Kigali on ${formatDate(report.createdAt)}`,
+            signature: "Signature: ________________________"
+        }
+    };
+
     return (
-        <Container className="mt-4 mb-5">
-            <h2 className="mb-4">Report Findings</h2>
-
-            <Card className="mb-4">
-                <Card.Header as="h5">Report Details</Card.Header>
-                <Card.Body>
-                    <Row>
-                        <Col md={6}>
-                            <ListGroup variant="flush">
-                                <ListGroup.Item>
-                                    <strong>Report ID:</strong> {report.id}
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Status:</strong> {report.status}
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Created By:</strong> {report.createdBy}
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Created At:</strong> {formatDate(report.createdAt)}
-                                </ListGroup.Item>
-                            </ListGroup>
-                        </Col>
-                        <Col md={6}>
-                            <ListGroup variant="flush">
-                                <ListGroup.Item>
-                                    <strong>Current Recipient:</strong> {report.currentRecipient || 'N/A'}
-                                </ListGroup.Item>
-                                <ListGroup.Item>
-                                    <strong>Last Updated:</strong> {formatDate(report.updatedAt)}
-                                </ListGroup.Item>
-                                {report.approvedBy && (
-                                    <ListGroup.Item>
-                                        <strong>Approved By:</strong> {report.approvedBy} on {formatDate(report.approvedAt)}
-                                    </ListGroup.Item>
-                                )}
-                                {report.rejectedBy && (
-                                    <ListGroup.Item>
-                                        <strong>Rejected By:</strong> {report.rejectedBy} on {formatDate(report.rejectedAt)}
-                                        <br />
-                                        <strong>Reason:</strong> {report.rejectionReason || 'No reason provided'}
-                                    </ListGroup.Item>
-                                )}
-                            </ListGroup>
-                        </Col>
-                    </Row>
-                </Card.Body>
-            </Card>
-
-            {report.relatedCase && (
-                <Card className="mb-4">
-                    <Card.Header as="h5">Related Case</Card.Header>
-                    <Card.Body>
-                        <ListGroup variant="flush">
-                            <ListGroup.Item>
-                                <strong>Case Number:</strong> {report.relatedCase.caseNum}
-                            </ListGroup.Item>
-                            <ListGroup.Item>
-                                <strong>Case Title:</strong> {report.relatedCase.title}
-                            </ListGroup.Item>
-                            <ListGroup.Item>
-                                <strong>Case Status:</strong> {report.relatedCase.status}
-                            </ListGroup.Item>
-                        </ListGroup>
-                    </Card.Body>
-                </Card>
-            )}
-
-            <Card className="mb-4">
-                <Card.Header as="h5">Findings</Card.Header>
-                <Card.Body>
-                    {report.findings ? (
-                        <div style={{ whiteSpace: 'pre-line' }}>{report.findings}</div>
-                    ) : (
-                        <Alert variant="info">No findings submitted yet</Alert>
-                    )}
-                </Card.Body>
-            </Card>
-
-            <Card className="mb-4">
-                <Card.Header as="h5">Recommendations</Card.Header>
-                <Card.Body>
-                    {report.recommendations ? (
-                        <div style={{ whiteSpace: 'pre-line' }}>{report.recommendations}</div>
-                    ) : (
-                        <Alert variant="info">No recommendations submitted yet</Alert>
-                    )}
-                </Card.Body>
-            </Card>
-
-            {report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0 && (
-                <Card className="mb-4">
-                    <Card.Header as="h5">Attachments</Card.Header>
-                    <Card.Body>
-                        <ListGroup variant="flush">
-                            {report.findingsAttachmentPaths.map((path, index) => {
-                                const filename = path.includes('_') ? path.substring(path.indexOf('_') + 1) : path;
-                                return (
-                                    <ListGroup.Item key={index} className="d-flex justify-content-between align-items-center">
-                                        <span>{filename}</span>
-                                        <Button
-                                            variant="outline-primary"
-                                            size="sm"
-                                            onClick={() => downloadAttachment(index)}
-                                            disabled={downloading.includes(index)}
-                                        >
-                                            {downloading.includes(index) ? (
-                                                <>
-                                                    <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
-                                                    <span className="visually-hidden">Downloading...</span>
-                                                </>
-                                            ) : (
-                                                'Download'
-                                            )}
-                                        </Button>
-                                    </ListGroup.Item>
-                                );
-                            })}
-                        </ListGroup>
-                    </Card.Body>
-                </Card>
-            )}
-
-            {report.attachmentPath && (
-                <Card className="mb-4">
-                    <Card.Header as="h5">Original Report Attachment</Card.Header>
-                    <Card.Body>
-                        <Button
-                            variant="outline-primary"
-                            onClick={() => window.open(`/api/reports/${id}/attachment`, '_blank')}
-                        >
-                            Download Original Attachment
-                        </Button>
-                    </Card.Body>
-                </Card>
-            )}
+        <Container className="mt-4 mb-5" style={{ maxWidth: '800px' }}>
+            <MissionDocumentTable
+                data={reportData}
+                attachments={report.findingsAttachmentPaths}
+                onDownloadAttachment={downloadAttachment}
+                downloading={downloading}
+            />
         </Container>
     );
 };
 
-export default FindingsViewerPage;
+export default FindingsViewPage;

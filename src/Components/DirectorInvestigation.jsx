@@ -49,6 +49,9 @@ const DirectorInvestigation = () => {
     const [currentReport, setCurrentReport] = useState(null);
     const [downloadLoading, setDownloadLoading] = useState(false);
     const [downloadAttachmentIndex, setDownloadAttachmentIndex] = useState(null);
+    const [assignmentNotes, setAssignmentNotes] = useState('');
+    const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+    const [selectedOfficer, setSelectedOfficer] = useState(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -72,7 +75,8 @@ const DirectorInvestigation = () => {
                     caseId: report.relatedCase?._id,
                     isAssigned: !!report.assignedOfficer,
                     hasFindings: report.findings || report.recommendations ||
-                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0)
+                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0),
+                    assignmentNotes: report.assignmentNotes || ''
                 }));
 
                 const mappedOfficers = officersResponse.data.map(officer => ({
@@ -99,7 +103,7 @@ const DirectorInvestigation = () => {
         fetchData();
     }, []);
 
-    const handleAssignOfficer = async (reportId, officerId) => {
+    const handleAssignOfficer = async (reportId, officerId, notes) => {
         if (!officerId) {
             setSnackbar({
                 open: true,
@@ -111,7 +115,7 @@ const DirectorInvestigation = () => {
 
         try {
             setOfficersLoading(true);
-            await ReportApi.assignToInvestigationOfficer(reportId, officerId);
+            await ReportApi.assignToInvestigationOfficer(reportId, officerId, notes);
 
             const assignedOfficer = officers.find(o => o._id === officerId);
             setCases(prevCases => prevCases.map(c =>
@@ -120,7 +124,8 @@ const DirectorInvestigation = () => {
                     delegate: officerId,
                     delegateName: assignedOfficer?.name || '',
                     isAssigned: true,
-                    status: 'Assigned to Officer'
+                    status: 'Assigned to Officer',
+                    assignmentNotes: notes || ''
                 } : c
             ));
 
@@ -138,6 +143,8 @@ const DirectorInvestigation = () => {
             });
         } finally {
             setOfficersLoading(false);
+            setAssignmentNotes('');
+            setSelectedOfficer(null);
         }
     };
 
@@ -418,9 +425,13 @@ const DirectorInvestigation = () => {
                                             <Check />
                                         </IconButton>
                                         <IconButton
-                                            color="secondary"
+                                            color="primary"
                                             size="small"
-                                            onClick={() => handleAssignOfficer(caseItem.reportId, caseItem.delegate)}
+                                            onClick={() => {
+                                                setSelectedCase(caseItem);
+                                                setSelectedOfficer(caseItem.delegate);
+                                                setAssignDialogOpen(true);
+                                            }}
                                             disabled={!caseItem.delegate ||
                                                 caseItem.status.includes("Approved") ||
                                                 caseItem.status.includes("Rejected") ||
@@ -458,6 +469,59 @@ const DirectorInvestigation = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            {/* Assign Officer Dialog */}
+            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)}>
+                <DialogTitle>Assign Investigation Officer</DialogTitle>
+                <DialogContent>
+                    <Typography gutterBottom>Case ID: {selectedCase?.id}</Typography>
+
+                    <FormControl fullWidth sx={{ mt: 2 }}>
+                        <InputLabel>Select Officer</InputLabel>
+                        <Select
+                            value={selectedOfficer || ''}
+                            onChange={(e) => setSelectedOfficer(e.target.value)}
+                            label="Select Officer"
+                        >
+                            <MenuItem value=""><em>None</em></MenuItem>
+                            {officers.map((officer) => (
+                                <MenuItem key={officer._id} value={officer._id}>
+                                    {officer.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Assignment Instructions"
+                        fullWidth
+                        multiline
+                        rows={4}
+                        value={assignmentNotes}
+                        onChange={(e) => setAssignmentNotes(e.target.value)}
+                        sx={{ mt: 2 }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => {
+                        setAssignDialogOpen(false);
+                        setAssignmentNotes('');
+                        setSelectedOfficer(null);
+                    }}>Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            handleAssignOfficer(selectedCase.reportId, selectedOfficer, assignmentNotes);
+                            setAssignDialogOpen(false);
+                        }}
+                        color="primary"
+                        disabled={!selectedOfficer}
+                    >
+                        Assign
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Reject Dialog */}
             <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
@@ -568,6 +632,20 @@ const DirectorInvestigation = () => {
                         </Box>
                     ) : (
                         <>
+                            {selectedCase?.assignmentNotes && (
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                        Assignment Instructions
+                                    </Typography>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
+                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
+                                            {selectedCase.assignmentNotes}
+                                        </Typography>
+                                    </Paper>
+                                </Box>
+                            )}
+
                             <Box sx={{ mb: 3 }}>
                                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                                     Findings

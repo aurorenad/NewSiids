@@ -76,6 +76,8 @@ const InvestigationOfficer = () => {
                     caseId: report.relatedCase?.caseNum || 'N/A',
                     status: report.relatedCase?.status || 'Pending',
                     reportedDate: report.createdAt || 'N/A',
+                    principleAmount: report.principleAmount || 0,
+                    penaltiesAmount: report.penaltiesAmount || 0,
                     notes: report.notes || '',
                     ...report
                 }));
@@ -214,7 +216,9 @@ const InvestigationOfficer = () => {
             const formData = new FormData();
             formData.append("findingsData", JSON.stringify({
                 findings,
-                recommendations
+                recommendations,
+                principleAmount: selectedReport.principleAmount,
+                penaltiesAmount: selectedReport.penaltiesAmount
             }));
 
             attachments.forEach(file => {
@@ -281,6 +285,10 @@ const InvestigationOfficer = () => {
             .join(' ');
     };
 
+    const formatCurrency = (amount) => {
+        return amount ? `$${amount.toFixed(2)}` : '$0.00';
+    };
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -341,6 +349,9 @@ const InvestigationOfficer = () => {
                             <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Reported Date</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Principle</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Penalties</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -358,6 +369,15 @@ const InvestigationOfficer = () => {
                                     </TableCell>
                                     <TableCell>
                                         {new Date(report.reportedDate).toLocaleDateString()}
+                                    </TableCell>
+                                    <TableCell>
+                                        {formatCurrency(report.principleAmount)}
+                                    </TableCell>
+                                    <TableCell>
+                                        {formatCurrency(report.penaltiesAmount)}
+                                    </TableCell>
+                                    <TableCell>
+                                        {formatCurrency(report.principleAmount + report.penaltiesAmount)}
                                     </TableCell>
                                     <TableCell>
                                         <Box display="flex" gap={1}>
@@ -396,7 +416,7 @@ const InvestigationOfficer = () => {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">
+                                <TableCell colSpan={7} align="center">
                                     No assigned cases found
                                 </TableCell>
                             </TableRow>
@@ -415,6 +435,15 @@ const InvestigationOfficer = () => {
                         <Typography variant="subtitle1">Case ID: {selectedReport?.caseId || 'N/A'}</Typography>
                         <Typography variant="body2" color="text.secondary">
                             Current Status: {selectedReport?.status ? formatStatus(selectedReport.status) : 'N/A'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Principle Amount: {formatCurrency(selectedReport?.principleAmount)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Penalties: {formatCurrency(selectedReport?.penaltiesAmount)}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Total: {formatCurrency((selectedReport?.principleAmount || 0) + (selectedReport?.penaltiesAmount || 0))}
                         </Typography>
                     </Box>
                     <TextField
@@ -470,6 +499,48 @@ const InvestigationOfficer = () => {
                     <DialogContentText sx={{ mb: 2 }}>
                         Case ID: {selectedReport?.caseId || 'N/A'}
                     </DialogContentText>
+
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle2">Financial Details</Typography>
+                        <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                            <TextField
+                                label="Principle Amount"
+                                type="number"
+                                value={selectedReport?.principleAmount || 0}
+                                onChange={(e) => {
+                                    setSelectedReport(prev => ({
+                                        ...prev,
+                                        principleAmount: parseFloat(e.target.value) || 0
+                                    }));
+                                }}
+                                InputProps={{
+                                    startAdornment: '$',
+                                }}
+                            />
+                            <TextField
+                                label="Penalties Amount"
+                                type="number"
+                                value={selectedReport?.penaltiesAmount || 0}
+                                onChange={(e) => {
+                                    setSelectedReport(prev => ({
+                                        ...prev,
+                                        penaltiesAmount: parseFloat(e.target.value) || 0
+                                    }));
+                                }}
+                                InputProps={{
+                                    startAdornment: '$',
+                                }}
+                            />
+                            <TextField
+                                label="Total"
+                                disabled
+                                value={(selectedReport?.principleAmount || 0) + (selectedReport?.penaltiesAmount || 0)}
+                                InputProps={{
+                                    startAdornment: '$',
+                                }}
+                            />
+                        </Box>
+                    </Box>
 
                     <TextField
                         fullWidth

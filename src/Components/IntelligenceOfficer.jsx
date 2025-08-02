@@ -31,13 +31,12 @@ import {
     FilterList as FilterListIcon,
     PictureAsPdf,
     NavigateBefore,
-    NavigateNext
+    NavigateNext,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import { Document, Page } from 'react-pdf';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService, ReportApi } from '../api/Axios/caseApi';
-// import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-// import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 const IntelligenceOfficer = () => {
     const [cases, setCases] = useState([]);
@@ -63,6 +62,12 @@ const IntelligenceOfficer = () => {
     const [numPages, setNumPages] = useState(null);
     const [pageNumber, setPageNumber] = useState(1);
     const [pdfLoading, setPdfLoading] = useState(false);
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editingReport, setEditingReport] = useState(null);
+    const [reportFormData, setReportFormData] = useState({
+        description: '',
+        relatedCase: { caseNum: '' }
+    });
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -118,7 +123,6 @@ const IntelligenceOfficer = () => {
         }
         setFilteredCases(results);
     }, [searchTerm, cases, showOnlyWithReports]);
-
 
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
@@ -192,6 +196,56 @@ const IntelligenceOfficer = () => {
         }
     };
 
+    const handleEditReturnedReport = (caseItem) => {
+        if (!caseItem.reportId) return;
+
+        setReportLoading(true);
+        ReportApi.getReport(caseItem.reportId)
+            .then(response => {
+                setEditingReport(response.data);
+                setReportFormData({
+                    description: response.data.description,
+                    relatedCase: { caseNum: response.data.relatedCase.caseNum }
+                });
+                setEditDialogOpen(true);
+            })
+            .catch(error => {
+                console.error('Error fetching report:', error);
+                showSnackbar(error.response?.data?.message || 'Failed to load report', 'error');
+            })
+            .finally(() => {
+                setReportLoading(false);
+            });
+    };
+
+    const handleUpdateReturnedReport = async () => {
+        if (!editingReport) return;
+
+        try {
+            await ReportApi.updateReturnedReport(editingReport.id, reportFormData);
+
+            // Update local state
+            setCases(prevCases =>
+                prevCases.map(c =>
+                    c.caseNum === editingReport.relatedCase.caseNum
+                        ? {
+                            ...c,
+                            status: 'REPORT_SUBMITTED',
+                            reportId: editingReport.id
+                        }
+                        : c
+                )
+            );
+
+            showSnackbar('Report updated and resubmitted successfully', 'success');
+            setEditDialogOpen(false);
+            setEditingReport(null);
+        } catch (error) {
+            console.error('Error updating report:', error);
+            showSnackbar(error.response?.data?.message || 'Failed to update report', 'error');
+        }
+    };
+
     const onDocumentLoadSuccess = ({ numPages }) => {
         setNumPages(numPages);
         setPageNumber(1);
@@ -210,6 +264,7 @@ const IntelligenceOfficer = () => {
             case 'CASE_CREATED': return '#1976d2';
             case 'REPORT_SUBMITTED': return '#ff9800';
             case 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE': return '#4caf50';
+            case 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': return '#f44336';
             case 'REJECTED': return '#d32f2f';
             case 'APPROVED': return '#2e7d32';
             default: return '#757575';
@@ -282,6 +337,7 @@ const IntelligenceOfficer = () => {
                     <TableHead>
                         <TableRow sx={{ backgroundColor: 'grey.100' }}>
                             <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Report ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
@@ -299,6 +355,7 @@ const IntelligenceOfficer = () => {
                                     }}
                                 >
                                     <TableCell>{caseItem.caseNum}</TableCell>
+                                    <TableCell>{caseItem.reportId || '-'}</TableCell>
                                     <TableCell>{caseItem.taxPayer?.tin || '-'}</TableCell>
                                     <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
                                     <TableCell>
@@ -316,18 +373,24 @@ const IntelligenceOfficer = () => {
                                         <Box display="flex" alignItems="center" gap={1}>
                                             {caseItem.reportId ? (
                                                 <>
-                                                    <Chip
-                                                        label={caseItem.reportId}
-                                                        size="small"
-                                                        color="primary"
-                                                        variant="outlined"
-                                                    />
-                                                    <IconButton
-                                                        onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
-                                                        title="View Report"
-                                                    >
-                                                        <DescriptionIcon />
-                                                    </IconButton>
+                                                    {caseItem.status === 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER' ? (
+                                                        <Button
+                                                            variant="contained"
+                                                            color="warning"
+                                                            startIcon={<EditIcon />}
+                                                            onClick={() => handleEditReturnedReport(caseItem)}
+                                                            disabled={reportLoading}
+                                                        >
+                                                            Update
+                                                        </Button>
+                                                    ) : (
+                                                        <IconButton
+                                                            onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                            title="View Report"
+                                                        >
+                                                            <DescriptionIcon />
+                                                        </IconButton>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <Button
@@ -524,6 +587,55 @@ const IntelligenceOfficer = () => {
                     </DialogActions>
                 </Dialog>
             )}
+
+            {/* Edit Returned Report Dialog */}
+            <Dialog
+                open={editDialogOpen}
+                onClose={() => setEditDialogOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle>Update Returned Report</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 2 }}>
+                        <TextField
+                            fullWidth
+                            label="Description"
+                            multiline
+                            rows={4}
+                            variant="outlined"
+                            value={reportFormData.description}
+                            onChange={(e) => setReportFormData({
+                                ...reportFormData,
+                                description: e.target.value
+                            })}
+                            sx={{ mb: 3 }}
+                        />
+
+                        <Typography variant="subtitle1" gutterBottom>
+                            Case: {reportFormData.relatedCase.caseNum}
+                        </Typography>
+
+                        {editingReport?.returnReason && (
+                            <Alert severity="warning" sx={{ mb: 3 }}>
+                                <Typography variant="subtitle2">Return Reason:</Typography>
+                                {editingReport.returnReason}
+                            </Alert>
+                        )}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        onClick={handleUpdateReturnedReport}
+                        variant="contained"
+                        color="primary"
+                        disabled={!reportFormData.description}
+                    >
+                        Update and Resubmit
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Snackbar */}
             <Snackbar

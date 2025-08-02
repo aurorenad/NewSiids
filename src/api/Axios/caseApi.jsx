@@ -115,6 +115,9 @@ export const CaseService = {
 };
 
 export const ReportApi = {
+    updateReturnedReport: (reportId, reportData) => {
+        return caseApi.put(`/api/reports/${reportId}/update-returned-report`, reportData);
+    },
     submitFindings,
     getFindings: (reportId) => {
         return caseApi.get(`/api/reports/${reportId}/findings`);
@@ -163,15 +166,15 @@ export const ReportApi = {
     },
 
     getReportsForDirectorIntelligence: () => {
-        return caseApi.get('/api/reports/director-intelligence/reports');
+        return caseApi.get('/api/reports/director-intelligence/all-reports');
     },
 
     getReportsForDirectorInvestigation: () => {
-        return caseApi.get('/api/reports/director-investigation/approved-reports');
+        return caseApi.get('/api/reports/director-investigation/all-reports');
     },
 
     getReportsForAssistantCommissioner: () => {
-        return caseApi.get('/api/reports/assistant-commissioner/approved-reports');
+        return caseApi.get('/api/reports/assistant-commissioner/all-reports');
     },
 
     approveReport: (reportId) => {

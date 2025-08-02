@@ -42,10 +42,7 @@ const AssistantCommissioner = () => {
         const fetchReports = async () => {
             try {
                 const response = await ReportApi.getReportsForAssistantCommissioner();
-                const approvedReports = response.data.filter(report =>
-                    report.status === "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE"
-                );
-                setReports(approvedReports);
+                setReports(response.data);
             } catch (err) {
                 console.error('Failed to fetch reports:', err);
                 setError(err.response?.data?.message || 'Failed to fetch reports');
@@ -70,7 +67,6 @@ const AssistantCommissioner = () => {
             showSnackbar("Report approved successfully.");
         } catch (err) {
             console.error('Failed to approve report:', err);
-            setError(err.response?.data?.message || 'Failed to approve report');
             showSnackbar("Approval failed.", "error");
         } finally {
             setActionLoading(prev => ({ ...prev, [reportId]: false }));
@@ -102,7 +98,6 @@ const AssistantCommissioner = () => {
             handleDialogClose();
         } catch (err) {
             console.error('Failed to reject report:', err);
-            setError(err.response?.data?.message || 'Failed to reject report');
             showSnackbar("Rejection failed.", "error");
         } finally {
             setActionLoading(prev => ({ ...prev, [selectedReport.id]: false }));
@@ -160,10 +155,21 @@ const AssistantCommissioner = () => {
     });
 
     const formatStatus = (status) => {
-        if (status === "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE") return "Approved by Director";
-        if (status.startsWith("REPORT_APPROVED")) return "Approved";
-        if (status.startsWith("REPORT_REJECTED")) return "Rejected";
-        if (status === "REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE") return "Returned";
+        const statusMap = {
+            "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER": "Submitted for Review",
+            "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE": "Approved by Director",
+            "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER": "Approved",
+            "REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER": "Rejected",
+            "REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE": "Returned",
+            "REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION": "Approved by Investigation Director",
+            "REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION": "Rejected by Investigation Director"
+        };
+
+        if (statusMap[status]) {
+            return statusMap[status];
+        }
+
+        // Fallback for any unexpected statuses
         return status.replace(/_/g, ' ').toLowerCase();
     };
 
@@ -235,29 +241,33 @@ const AssistantCommissioner = () => {
                                                 </IconButton>
                                             </Tooltip>
 
-                                            <IconButton
-                                                color="success"
-                                                onClick={() => handleApprove(report.id)}
-                                                disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
-                                            >
-                                                <Check />
-                                            </IconButton>
+                                            {report.status === "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE" && (
+                                                <>
+                                                    <IconButton
+                                                        color="success"
+                                                        onClick={() => handleApprove(report.id)}
+                                                        disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
+                                                    >
+                                                        <Check />
+                                                    </IconButton>
 
-                                            <IconButton
-                                                color="warning"
-                                                onClick={() => handleOpenReturnDialog(report)}
-                                                disabled={actionLoading[report.id]}
-                                            >
-                                                <Undo />
-                                            </IconButton>
+                                                    <IconButton
+                                                        color="warning"
+                                                        onClick={() => handleOpenReturnDialog(report)}
+                                                        disabled={actionLoading[report.id]}
+                                                    >
+                                                        <Undo />
+                                                    </IconButton>
 
-                                            <IconButton
-                                                color="error"
-                                                onClick={() => handleReject(report)}
-                                                disabled={report.status.includes("REJECTED") || actionLoading[report.id]}
-                                            >
-                                                <Close />
-                                            </IconButton>
+                                                    <IconButton
+                                                        color="error"
+                                                        onClick={() => handleReject(report)}
+                                                        disabled={report.status.includes("REJECTED") || actionLoading[report.id]}
+                                                    >
+                                                        <Close />
+                                                    </IconButton>
+                                                </>
+                                            )}
                                         </Box>
                                     </TableCell>
                                 </TableRow>
@@ -265,7 +275,7 @@ const AssistantCommissioner = () => {
                         ) : (
                             <TableRow>
                                 <TableCell colSpan={5} align="center">
-                                    No approved reports found
+                                    No reports found
                                 </TableCell>
                             </TableRow>
                         )}

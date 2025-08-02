@@ -41,7 +41,7 @@ export const ClaimForm = () => {
         }
 
         if (!caseNum) {
-            setError('Case ID is required to submit a report');
+            setError('Case number is required to submit a report');
             return;
         }
 
@@ -52,12 +52,10 @@ export const ClaimForm = () => {
         try {
             const formData = new FormData();
 
-            // Create the report data object
+            // Create the report data object with caseNum
             const reportData = {
                 description: text,
-                relatedCase: {
-                    caseNum: caseNum
-                }
+                caseNum: caseNum  // Include caseNum directly in the report data
             };
 
             // Append report data as JSON string
