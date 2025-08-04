@@ -8,4 +8,6 @@ public class FindingsRequestDTO {
     private String findings;
     private String recommendations;
     private MultipartFile[] attachments;
+    private Double principleAmount;
+    private Double penaltiesAmount;
 }

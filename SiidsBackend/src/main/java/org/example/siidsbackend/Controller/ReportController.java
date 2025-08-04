@@ -3,6 +3,8 @@ package org.example.siidsbackend.Controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.siidsbackend.DTO.DirectorIntelligenceReportDTO;
+import org.example.siidsbackend.DTO.FinesReportDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
@@ -34,6 +36,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1009,5 +1012,35 @@ public class ReportController {
     private boolean isReportReturned(Report report) {
         return report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER ||
                 report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+    }
+
+    @GetMapping("/assistant-commissioner/fines-report")
+    public ResponseEntity<FinesReportDTO> getFinesReportForAssistantCommissioner(
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            FinesReportDTO reportDTO = reportService.generateFinesReportForAssistantCommissioner(employeeId);
+            return ResponseEntity.ok(reportDTO);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error generating fines report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/director-intelligence/case-reports")
+    public ResponseEntity<List<DirectorIntelligenceReportDTO>> getDirectorIntelligenceCaseReports(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<DirectorIntelligenceReportDTO> reports = reportService.getDirectorIntelligenceReport(directorId);
+            return ResponseEntity.ok(reports);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error generating director intelligence report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }

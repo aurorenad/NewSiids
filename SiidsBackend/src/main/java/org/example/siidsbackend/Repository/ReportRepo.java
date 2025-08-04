@@ -1,5 +1,6 @@
 package org.example.siidsbackend.Repository;
 
+import org.example.siidsbackend.DTO.DirectorIntelligenceReportDTO;
 import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
@@ -141,4 +142,27 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
     boolean existsByRelatedCase_CaseNum(String caseNum);
 
     Optional<Report> findByRelatedCase_CaseNum(String caseNum);
+
+    // In ReportRepo.java
+    @Query("SELECT r FROM Report r WHERE r.principleAmount IS NOT NULL AND r.principleAmount > 0 " +
+            "AND r.penaltiesAmount IS NOT NULL AND r.penaltiesAmount > 0 " +
+            "AND r.relatedCase.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED")
+    List<Report> findReportsWithFines();
+
+    @Query("SELECT r FROM Report r WHERE (r.principleAmount IS NULL OR r.principleAmount = 0) " +
+            "AND (r.penaltiesAmount IS NULL OR r.penaltiesAmount = 0) " +
+            "AND r.relatedCase.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED")
+    List<Report> findReportsWithoutFines();
+
+    @Query("SELECT " +
+            "c.caseNum, c.status, r.createdAt, c.taxPeriod. " +
+            "FROM Report r " +
+            "JOIN r.relatedCase c " +
+            "WHERE c.status IN (" +
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_CREATED, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE) " +
+            "ORDER BY r.createdAt DESC")
+    List<DirectorIntelligenceReportDTO> findCasesForDirectorIntelligenceReport();
+
 }

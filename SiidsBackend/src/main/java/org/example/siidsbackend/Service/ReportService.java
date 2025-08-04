@@ -2,6 +2,8 @@ package org.example.siidsbackend.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.siidsbackend.DTO.DirectorIntelligenceReportDTO;
+import org.example.siidsbackend.DTO.FinesReportDTO;
 import org.example.siidsbackend.DTO.NotificationDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
@@ -32,6 +34,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -105,6 +108,9 @@ public class ReportService {
         Case relatedCase = report.getRelatedCase();
         relatedCase.setStatus(WorkflowStatus.INVESTIGATION_COMPLETED);
         caseRepo.save(relatedCase);
+
+        report.setPrincipleAmount(findingsDTO.getPrincipleAmount());
+        report.setPenaltiesAmount(findingsDTO.getPenaltiesAmount());
 
         report.setFindings(findingsDTO.getFindings());
         report.setRecommendations(findingsDTO.getRecommendations());
@@ -368,6 +374,7 @@ public class ReportService {
         switch(report.getRelatedCase().getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+            case REPORT_SUBMITTED:
                 newStatus = WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER;
                 break;
             case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
@@ -503,6 +510,7 @@ public class ReportService {
 
         switch(relatedCase.getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+            case  REPORT_SUBMITTED:
                 newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
                 report.setDirectorIntelligence(approver);
 
@@ -1021,5 +1029,64 @@ public class ReportService {
     private boolean isReportReturned(Report report) {
         return report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER ||
                 report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+    }
+
+    public FinesReportDTO generateFinesReportForAssistantCommissioner(String employeeId) {
+        // Verify the employee is an assistant commissioner
+        List<Employee> assistantCommissioners = reportRepo.assistantCommissioner();
+        boolean isAssistantCommissioner = assistantCommissioners.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+        if (!isAssistantCommissioner) {
+            throw new RuntimeException("Employee is not an Assistant Commissioner");
+        }
+
+        // Get reports with and without fines
+        List<Report> reportsWithFines = reportRepo.findReportsWithFines();
+        List<Report> reportsWithoutFines = reportRepo.findReportsWithoutFines();
+
+        // Calculate totals
+        double totalPrinciple = reportsWithFines.stream()
+                .mapToDouble(r -> r.getPrincipleAmount() != null ? r.getPrincipleAmount() : 0)
+                .sum();
+
+        double totalPenalties = reportsWithFines.stream()
+                .mapToDouble(r -> r.getPenaltiesAmount() != null ? r.getPenaltiesAmount() : 0)
+                .sum();
+
+        // Calculate averages
+        double avgPrinciple = reportsWithFines.isEmpty() ? 0 : totalPrinciple / reportsWithFines.size();
+        double avgPenalties = reportsWithFines.isEmpty() ? 0 : totalPenalties / reportsWithFines.size();
+
+        // Build and return the DTO
+        FinesReportDTO reportDTO = new FinesReportDTO();
+        reportDTO.setGeneratedAt(LocalDateTime.now());
+        reportDTO.setReportsWithFinesCount(reportsWithFines.size());
+        reportDTO.setReportsWithoutFinesCount(reportsWithoutFines.size());
+        reportDTO.setTotalPrincipleAmount(totalPrinciple);
+        reportDTO.setTotalPenaltiesAmount(totalPenalties);
+//        reportDTO.setAveragePrincipleAmount(avgPrinciple);
+//        reportDTO.setAveragePenaltiesAmount(avgPenalties);
+        reportDTO.setReportsWithFines(reportsWithFines.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList()));
+        reportDTO.setReportsWithoutFines(reportsWithoutFines.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList()));
+
+        return reportDTO;
+    }
+
+    public List<DirectorIntelligenceReportDTO> getDirectorIntelligenceReport(String directorId) {
+        // Verify the employee is a Director of Intelligence
+        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(directorId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Employee is not a Director of Intelligence");
+        }
+
+        return reportRepo.findCasesForDirectorIntelligenceReport();
     }
 }
