@@ -22,6 +22,8 @@ import SurveillanceCaseView from "./Components/SurveillenceOffice/SurveillanceCa
 import ReportView from "./Components/ReportView.jsx";
 import FindingsViewerPage from "./Components/FindingsViewerPage.jsx";
 import ViewReportDetails from "./Components/ViewReportDetails.jsx";
+import FinesReport from "./Components/FinesReport.jsx";
+import DirectorIntelligenceCaseReports from "./Components/DirectorIntelligenceCaseReports.jsx";
 
 const ProtectedRoute = ({ children }) => {
     const { authState } = useContext(AuthContext);
@@ -68,6 +70,8 @@ function App() {
                     <Route path="/reports/:caseNum" element={<ProtectedRoute><ReportView /></ProtectedRoute> } />
                     <Route path="/reports/:id/findings" element={<ProtectedRoute><FindingsViewerPage /></ProtectedRoute>} />
                     <Route path="/view-report/:id" element={<ProtectedRoute><ViewReportDetails /></ProtectedRoute>} />
+                    <Route path="/assistant-commissioner/fines-report" element={<ProtectedRoute><FinesReport /></ProtectedRoute>} />
+                    <Route path="/director-intelligence/case-reports" element={<ProtectedRoute><DirectorIntelligenceCaseReports /></ProtectedRoute>}/>
                 </Routes>
             </Router>
         </AuthProvider>

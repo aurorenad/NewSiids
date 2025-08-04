@@ -371,7 +371,7 @@ const DirectorInvestigation = () => {
                                     {caseItem.isAssigned ? (
                                         <Typography color="success.main">{caseItem.delegateName}</Typography>
                                     ) : (
-                                        <Typography color="text.secondary">Not Assigned</Typography>
+                                        <Typography color="text.secondary">{caseItem.investigationOfficer}</Typography>
                                     )}
                                 </TableCell>
                                 <TableCell>{caseItem.reportedDate}</TableCell>

@@ -115,6 +115,9 @@ export const CaseService = {
 };
 
 export const ReportApi = {
+    getFinesReportForAssistantCommissioner: () => {
+        return caseApi.get('/api/reports/assistant-commissioner/fines-report');
+    },
     updateReturnedReport: (reportId, reportData) => {
         return caseApi.put(`/api/reports/${reportId}/update-returned-report`, reportData);
     },

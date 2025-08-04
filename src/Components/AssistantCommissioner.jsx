@@ -20,8 +20,8 @@ import {
     Snackbar,
     Tooltip
 } from "@mui/material";
-import { Search, Description, Check, Close, Undo } from "@mui/icons-material";
-import { useNavigate } from 'react-router-dom';
+import { Search, Description, Check, Close, Undo, Visibility, Article } from "@mui/icons-material";
+import { useNavigate, Link } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 
 const AssistantCommissioner = () => {
@@ -42,7 +42,12 @@ const AssistantCommissioner = () => {
         const fetchReports = async () => {
             try {
                 const response = await ReportApi.getReportsForAssistantCommissioner();
-                setReports(response.data);
+                const mappedReports = response.data.map(report => ({
+                    ...report,
+                    hasFindings: report.findings || report.recommendations ||
+                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0)
+                }));
+                setReports(mappedReports);
             } catch (err) {
                 console.error('Failed to fetch reports:', err);
                 setError(err.response?.data?.message || 'Failed to fetch reports');
@@ -202,6 +207,14 @@ const AssistantCommissioner = () => {
                         if (e.key === 'Enter') e.preventDefault();
                     }}
                 />
+                <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<Article />}
+                    onClick={() => navigate('/assistant-commissioner/fines-report')}
+                >
+                    View Fines Report
+                </Button>
             </Box>
 
             <TableContainer component={Paper}>
@@ -240,6 +253,22 @@ const AssistantCommissioner = () => {
                                                     <Description />
                                                 </IconButton>
                                             </Tooltip>
+
+                                            {report.hasFindings && (
+                                                <Tooltip title="View Full Findings">
+                                                    <IconButton
+                                                        color="info"
+                                                        size="small"
+                                                        component={Link}
+                                                        to={{
+                                                            pathname: `/reports/${report.id}/findings`,
+                                                            state: { employeeId: localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') }
+                                                        }}
+                                                    >
+                                                        <Visibility />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
 
                                             {report.status === "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE" && (
                                                 <>

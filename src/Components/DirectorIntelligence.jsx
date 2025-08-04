@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import {
     Description, Check, Close, Search, Reply,
-    Person, Assignment, Info
+    Person, Assignment, Info, ListAlt
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
@@ -293,6 +293,15 @@ const DirectorIntelligence = () => {
                         }}
                         sx={{ minWidth: 300 }}
                     />
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<ListAlt />}
+                        onClick={() => navigate('/director-intelligence/case-reports')}
+                        sx={{ ml: 1 }}
+                    >
+                        Case Reports
+                    </Button>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
                     {sortedReports.length} report{sortedReports.length !== 1 ? 's' : ''} found
@@ -389,15 +398,6 @@ const DirectorIntelligence = () => {
                                                     </IconButton>
                                                 </span>
                                             </Tooltip>
-
-                                            {/*<Tooltip title="Info">*/}
-                                            {/*    <IconButton*/}
-                                            {/*        onClick={() => handleOpenInfoDialog(report)}*/}
-                                            {/*        size="small"*/}
-                                            {/*    >*/}
-                                            {/*        <Info fontSize="small" />*/}
-                                            {/*    </IconButton>*/}
-                                            {/*</Tooltip>*/}
                                         </Box>
                                     </TableCell>
                                 </TableRow>
