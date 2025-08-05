@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.DirectorIntelligenceReportDTO;
 import org.example.siidsbackend.DTO.FinesReportDTO;
 import org.example.siidsbackend.DTO.NotificationDTO;
+import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
@@ -1088,5 +1089,25 @@ public class ReportService {
         }
 
         return reportRepo.findCasesForDirectorIntelligenceReport();
+    }
+
+    public List<OfficerReportsDTO> getReportsByT3Officers() {
+        List<Employee> officers = reportRepo.findAvailableT3Officers();
+        List<OfficerReportsDTO> result = new ArrayList<>();
+
+        for (Employee officer : officers) {
+            List<Report> reports = reportRepo.findByCreatedByOrderByCreatedAtDesc(officer);
+            List<ReportResponseDTO> reportDTOs = reports.stream()
+                    .map(this::toResponseDTO)
+                    .collect(Collectors.toList());
+
+            OfficerReportsDTO dto = new OfficerReportsDTO();
+            dto.setOfficerId(officer.getEmployeeId());
+            dto.setOfficerName(officer.getGivenName() + " " + officer.getFamilyName());
+            dto.setReports(reportDTOs);
+
+            result.add(dto);
+        }
+        return result;
     }
 }

@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.DirectorIntelligenceReportDTO;
 import org.example.siidsbackend.DTO.FinesReportDTO;
+import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
@@ -637,7 +638,9 @@ public class ReportController {
                     (report.getCurrentRecipient() != null &&
                             report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
                     reportRepo.DirectorsOfInvestigation().stream()
-                            .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+                            .anyMatch(d -> d.getEmployeeId().equals(employeeId))||
+                    reportRepo.assistantCommissioner().stream()
+                            .anyMatch(d-> d.getEmployeeId().equals(employeeId));
 
             if (!hasAccess) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -1040,6 +1043,17 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             log.error("Error generating director intelligence report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/t3-officers-reports")
+    public ResponseEntity<List<OfficerReportsDTO>> getReportsByT3Officers() {
+        try {
+            List<OfficerReportsDTO> reports = reportService.getReportsByT3Officers();
+            return ResponseEntity.ok(reports);
+        } catch (Exception e) {
+            log.error("Error getting T3 officers reports: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
