@@ -247,7 +247,7 @@ const AssistantCommissioner = () => {
                                         <Box display="flex" gap={1}>
                                             <Tooltip title="View Report">
                                                 <IconButton
-                                                    onClick={() => navigate(`/reports/${report.id}`)}
+                                                    onClick={() => navigate(`/reports/${report.id}/findings`)}
                                                     color="primary"
                                                 >
                                                     <Description />

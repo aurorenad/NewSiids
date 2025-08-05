@@ -115,6 +115,9 @@ export const CaseService = {
 };
 
 export const ReportApi = {
+    getReportsByT3Officers: () => {
+        return caseApi.get('/api/reports/t3-officers-reports');
+    },
     getFinesReportForAssistantCommissioner: () => {
         return caseApi.get('/api/reports/assistant-commissioner/fines-report');
     },

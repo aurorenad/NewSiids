@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Button, Alert, Spinner } from 'react-bootstrap';
-import axios from 'axios';
+import { ReportApi } from '../api/Axios/caseApi'; // Use the configured API instead of raw axios
 import MissionDocumentTable from './MissionDocumentTable';
 
 const FindingsViewPage = () => {
@@ -14,13 +14,11 @@ const FindingsViewPage = () => {
     useEffect(() => {
         const fetchReport = async () => {
             try {
-                const response = await axios.get(`/api/reports/${id}/findings`, {
-                    headers: {
-                        'employee_id': localStorage.getItem('employeeId')
-                    }
-                });
+                // Use the ReportApi which has proper authentication headers
+                const response = await ReportApi.getFindings(id);
                 setReport(response.data);
             } catch (err) {
+                console.error('Error fetching findings:', err);
                 setError(err.response?.data?.message || 'Failed to fetch report findings');
             } finally {
                 setLoading(false);
@@ -33,12 +31,8 @@ const FindingsViewPage = () => {
     const downloadAttachment = async (attachmentIndex) => {
         try {
             setDownloading(prev => [...prev, attachmentIndex]);
-            const response = await axios.get(`/api/reports/${id}/findings-attachments/${attachmentIndex}`, {
-                headers: {
-                    'employee_id': localStorage.getItem('employeeId')
-                },
-                responseType: 'blob'
-            });
+            // Use the ReportApi method for downloading attachments
+            const response = await ReportApi.downloadFindingsAttachment(id, attachmentIndex);
 
             // Extract filename from content-disposition header
             const contentDisposition = response.headers['content-disposition'];
@@ -58,6 +52,7 @@ const FindingsViewPage = () => {
             document.body.appendChild(link);
             link.click();
             link.remove();
+            window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error('Download failed:', err);
             alert('Failed to download attachment');

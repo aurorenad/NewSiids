@@ -383,14 +383,7 @@ const IntelligenceOfficer = () => {
                                                         >
                                                             Update
                                                         </Button>
-                                                    ) : (
-                                                        <IconButton
-                                                            onClick={() => navigate(`/reports/${encodeURIComponent(caseItem.caseNum)}`)}
-                                                            title="View Report"
-                                                        >
-                                                            <DescriptionIcon />
-                                                        </IconButton>
-                                                    )}
+                                                    ) : null}
                                                 </>
                                             ) : (
                                                 <Button

@@ -323,6 +323,7 @@ const InvestigationOfficer = () => {
                         Assigned Cases
                     </Typography>
                 </Box>
+
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <TextField
                         label="Search cases"
@@ -339,6 +340,19 @@ const InvestigationOfficer = () => {
                         color="primary"
                         variant="outlined"
                     />
+                </Box>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                {/* ... existing code ... */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {/* ... existing search field ... */}
+                    <Button
+                        variant="contained"
+                        startIcon={<Description />}
+                        onClick={() => navigate('/reports/t3-officers')}
+                    >
+                        T3 Reports
+                    </Button>
                 </Box>
             </Box>
 
