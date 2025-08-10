@@ -128,11 +128,12 @@ const DirectorIntelligenceCaseReports = () => {
                         label="Status"
                     >
                         <MenuItem value="all">All Statuses</MenuItem>
-                        <MenuItem value="CASE_CREATED">Case Created</MenuItem>
                         <MenuItem value="INVESTIGATION_COMPLETED">Investigation Completed</MenuItem>
                         <MenuItem value="REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE">Approved</MenuItem>
                         <MenuItem value="REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE">Rejected</MenuItem>
                         <MenuItem value="REPORT_RETURNED_TO_INTELLIGENCE_OFFICER">Returned</MenuItem>
+                        <MenuItem value="REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE">Submitted</MenuItem>
+                        <MenuItem value="REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER">REPORT ASSIGNED TO INVESTIGATION OFFICER</MenuItem>
                     </Select>
                 </FormControl>
 
@@ -201,14 +202,14 @@ const DirectorIntelligenceCaseReports = () => {
                                                     <Description fontSize="small" />
                                                 </IconButton>
                                             </Tooltip>
-                                            <Tooltip title="More Info">
-                                                <IconButton
-                                                    onClick={() => navigate(`/reports/${report.id}`)}
-                                                    size="small"
-                                                >
-                                                    <Info fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
+                                            {/*<Tooltip title="More Info">*/}
+                                            {/*    <IconButton*/}
+                                            {/*        onClick={() => navigate(`/reports/${report.id}`)}*/}
+                                            {/*        size="small"*/}
+                                            {/*    >*/}
+                                            {/*        <Info fontSize="small" />*/}
+                                            {/*    </IconButton>*/}
+                                            {/*</Tooltip>*/}
                                         </Box>
                                     </TableCell>
                                 </TableRow>

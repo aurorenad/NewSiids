@@ -210,9 +210,8 @@ const DirectorIntelligence = () => {
             'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE': 'Approved by Director Intelligence',
             'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': 'Rejected by Director',
             'REPORT_RETURNED_ASSISTANT_COMMISSIONER': 'Returned to Assistant Commissioner',
-            'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Director',
-            'REPORT_PENDING_DIRECTOR_INTELLIGENCE': 'Pending Director Review',
-            'REPORT_DRAFT': 'Draft',
+            'REPORT_RETURNED_INTELLIGENCE_OFFICER': 'Returned to intelligent officer',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Director intelligence',
             'REPORT_SUBMITTED': 'Submitted'
         };
         return statusMap[status] || status.replace(/_/g, ' ').toLowerCase();

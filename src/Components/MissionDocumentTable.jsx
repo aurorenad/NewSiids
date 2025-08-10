@@ -89,11 +89,11 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                                     <Button
                                         variant="outline-primary"
                                         size="sm"
-                                        onClick={() => onDownloadAttachment(index)}
-                                        disabled={downloading.includes(index)}
+                                        onClick={() => onDownloadAttachment(path)}
+                                        disabled={downloading.includes(path)}
                                         style={{ minWidth: '100px' }}
                                     >
-                                        {downloading.includes(index) ? (
+                                        {downloading.includes(path) ? (
                                             <>
                                                 <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
                                                 <span style={{ marginLeft: '5px' }}>Downloading...</span>

@@ -129,12 +129,28 @@ export const ReportApi = {
         return caseApi.get(`/api/reports/${reportId}/findings`);
     },
 
-    downloadFindingsAttachment: (reportId, attachmentIndex) => {
-        return caseApi.get(
-            `/api/reports/${reportId}/findings-attachments/${attachmentIndex}`,
-            { responseType: 'blob' }
-        );
+    downloadFindingsAttachment: async (reportId, filename) => {
+        try {
+            const response = await caseApi.get(
+                `/api/reports/${reportId}/findings-attachments/by-name/${encodeURIComponent(filename)}`,
+                { responseType: 'blob' }
+            );
+
+            // trigger download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("Error downloading findings file by name", err);
+            throw err;
+        }
     },
+
     submitReport: async (formData, employeeId) => {
         try {
             const response = await caseApi.post(
@@ -210,48 +226,54 @@ export const ReportApi = {
         });
     },
 
-    downloadAttachment: async (reportId) => {
+    downloadAttachment: async (reportId, storedFilename) => {
         try {
+            const requesterId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+
             const response = await caseApi.get(
-                `/api/reports/${reportId}/attachment`,
+                `/api/reports/download/${reportId}/${storedFilename}`,
                 {
-                    responseType: 'blob' // Important for file downloads
+                    params: { requesterId },
+                    responseType: 'blob'
                 }
             );
 
-            // Create a download link
+            // Create a link to trigger browser download
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
 
-            // Get filename from response headers or use default
-            const contentDisposition = response.headers['content-disposition'];
-            let filename = 'attachment';
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch) {
-                    filename = filenameMatch[1];
+            // Extract filename from header
+            let filename = 'attachment.pdf';
+            const disposition = response.headers['content-disposition'];
+            if (disposition) {
+                const match = disposition.match(/filename="?(.+)"?/);
+                if (match) {
+                    filename = match[1];
                 }
             }
 
             link.setAttribute('download', filename);
             document.body.appendChild(link);
             link.click();
-            link.remove();
+            document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
-
-            return response;
         } catch (error) {
-            console.error('Error downloading attachment:', error);
+            console.error("Error downloading attachment", error);
             throw error;
         }
-    },
+    }
 };
 
 export const InvestigationApi = {
     getAvailableOfficers: () => {
         return caseApi.get('/api/reports/investigation-officers');
     },
+};
+export const AuditApi = {
+    getAuditLogs: () => {
+        return caseApi.get('/api/audit/audit-logs');
+    }
 };
 
 export default caseApi;

@@ -1,118 +1,82 @@
-import React, { useEffect, useState } from 'react';
-import { CaseService } from '../api/Axios/caseApi.jsx';
-// import * as XLSX from 'xlsx';
-// import { saveAs } from 'file-saver';
+import { useEffect, useState } from 'react';
+import './../Styles/History.css';
+import {AuditApi} from "../api/Axios/caseApi.jsx";
 
 const History = () => {
-    const [rejectedCases, setRejectedCases] = useState([]);
-    const [investigationCases, setInvestigationCases] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [auditLogs, setAuditLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchCases = async () => {
-            setLoading(true);
+        const fetchAuditLogs = async () => {
             try {
-                const rejectedResponse = await CaseService.getCasesByStatus('REPORT_REJECTED');
-                setRejectedCases(rejectedResponse.data);
-
-                // Pending statuses
-                const pendingStatuses = [
-                    'CASE_CREATED',
-                    'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE',
-                    'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER',
-                    'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER'
-                ];
-
-                // Fetch all in parallel
-                const pendingPromises = pendingStatuses.map(status => CaseService.getCasesByStatus(status));
-                const pendingResponses = await Promise.all(pendingPromises);
-
-                // Combine all responses into one array
-                const combinedPendingCases = pendingResponses.flatMap(response => response.data);
-                setInvestigationCases(combinedPendingCases);
-
+                const response = await AuditApi.getAuditLogs();
+                setAuditLogs(response.data);
+                setLoading(false);
             } catch (err) {
-                setError(err.message);
-            } finally {
+                console.error('Failed to fetch audit logs:', err);
+                setError(err.response?.data?.message || 'Failed to fetch audit logs');
                 setLoading(false);
             }
         };
-        fetchCases();
+
+        fetchAuditLogs();
     }, []);
 
-    const exportToExcel = (data, filename) => {
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Cases");
-        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-        const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
-        saveAs(fileData, `${filename}.xlsx`);
+    const formatDateTime = (dateTimeString) => {
+        const options = {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        };
+        return new Date(dateTimeString).toLocaleDateString(undefined, options);
     };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div>Error: {error}</div>;
+    if (loading) {
+        return <div className="page-container">Loading audit logs...</div>;
+    }
+
+    if (error) {
+        return <div className="page-container">Error: {error}</div>;
+    }
 
     return (
         <div className="page-container">
-            <h2>Case Work Report</h2>
+            <h2>Audit Logs</h2>
 
             <section>
-                <h3>Rejected Cases</h3>
-                <button onClick={() => exportToExcel(rejectedCases, 'Rejected_Cases')}>
-                    Export Rejected Cases to Excel
-                </button>
-                <table border="1" cellPadding="8" style={{ marginTop: '10px', width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                    <tr>
-                        <th>Case Number</th>
-                        <th>Summary</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {rejectedCases.length > 0 ? (
-                        rejectedCases.map((item) => (
-                            <tr key={item.id}>
-                                <td>{item.caseNum}</td>
-                                <td>{item.summaryOfInformationCase}</td>
+                {auditLogs.length === 0 ? (
+                    <p>No audit logs found.</p>
+                ) : (
+                    <div className="table-responsive">
+                        <table className="table table-striped">
+                            <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>Performed By</th>
                             </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan="2">No rejected cases found.</td>
-                        </tr>
-                    )}
-                    </tbody>
-                </table>
-            </section>
-
-            <section style={{ marginTop: '40px' }}>
-                <h3>Cases Under Investigation</h3>
-                <button onClick={() => exportToExcel(investigationCases, 'Investigation_Cases')}>
-                    Export Investigation Cases to Excel
-                </button>
-                <table border="1" cellPadding="8" style={{ marginTop: '10px', width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                    <tr>
-                        <th>Case Number</th>
-                        <th>Summary</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {investigationCases.length > 0 ? (
-                        investigationCases.map((item) => (
-                            <tr key={item.id}>
-                                <td>{item.caseNum}</td>
-                                <td>{item.summaryOfInformationCase}</td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan="2">No cases under investigation.</td>
-                        </tr>
-                    )}
-                    </tbody>
-                </table>
+                            </thead>
+                            <tbody>
+                            {auditLogs.map((log) => (
+                                <tr key={log.id}>
+                                    <td>{formatDateTime(log.timestamp)}</td>
+                                    <td>{log.action}</td>
+                                    <td>{log.description}</td>
+                                    <td>
+                                        {log.performedBy?.firstName} {log.performedBy?.lastName}
+                                        {log.performedBy?.employeeId && ` (${log.performedBy.employeeId})`}
+                                    </td>
+                                </tr>
+                            ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </section>
         </div>
     );

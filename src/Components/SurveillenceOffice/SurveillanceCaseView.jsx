@@ -1,25 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Box, Card, CardContent, Typography, Divider, Grid,
-    CircularProgress, Alert, Button, Chip, Avatar,
-    List, ListItem, ListItemAvatar, ListItemText, Paper
+    Paper,
+    Typography,
+    Grid,
+    Button,
+    Chip,
+    Divider,
+    Box,
+    CircularProgress,
+    Alert,
+    Table,
+    TableBody,
+    TableCell,
+    TableRow
 } from '@mui/material';
-import {
-    ArrowBack, Person, Assignment, DateRange,
-    Business, Home // Added missing icons
-} from '@mui/icons-material';
+import { ArrowBack, Edit, Send } from '@mui/icons-material';
 import { CaseService } from '../../api/Axios/caseApi.jsx';
 
 const STATUS_MAP = {
     CASE_CREATED: { label: 'Case Created', color: 'primary' },
     SENT_TO_INVESTIGATION: { label: 'Sent to Investigation', color: 'secondary' },
     IN_PROGRESS: { label: 'In Progress', color: 'warning' },
-    CLOSED: { label: 'Closed', color: 'success' }
+    CLOSED: { label: 'Closed', color: 'success' },
+    SENT_TO_DIRECTOR: { label: 'Sent to Director', color: 'secondary' }
+};
+
+const getStatusProps = (status) => {
+    return STATUS_MAP[status] || { label: status || 'Unknown', color: 'default' };
 };
 
 const formatDate = (dateString) => {
-    if (!dateString) return 'Not specified';
+    if (!dateString) return 'N/A';
     try {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -27,18 +39,9 @@ const formatDate = (dateString) => {
             day: 'numeric'
         });
     } catch {
-        return 'Invalid date';
+        return dateString;
     }
 };
-
-const CaseDetailItem = ({ icon, label, value }) => (
-    <ListItem>
-        <ListItemAvatar>
-            <Avatar sx={{ bgcolor: 'primary.main' }}>{icon}</Avatar>
-        </ListItemAvatar>
-        <ListItemText primary={label} secondary={value || 'Not specified'} />
-    </ListItem>
-);
 
 const SurveillanceCaseView = () => {
     const { id } = useParams();
@@ -55,6 +58,8 @@ const SurveillanceCaseView = () => {
             return;
         }
         try {
+            setLoading(true);
+            setError('');
             const response = await CaseService.getCase(caseId);
             console.log('API Response:', response); // Debug log
 
@@ -66,8 +71,13 @@ const SurveillanceCaseView = () => {
             const mappedData = {
                 ...response.data,
                 // Ensure all required fields have fallbacks
+                caseNum: response.data.caseNum || response.data.id,
+                surveillanceOfficer: response.data.createdByName || 'N/A',
                 taxPayerAddress: response.data.taxPayerAddress || 'Not available',
-                summaryOfInformationCase: response.data.summaryOfInformationCase || 'No summary provided'
+                summaryOfInformationCase: response.data.summaryOfInformationCase || 'No summary provided',
+                taxPayerName: response.data.taxPayerName || 'N/A',
+                tin: response.data.tin || 'N/A',
+                taxPayerType: response.data.taxPayerType || 'N/A'
             };
 
             setCaseData(mappedData);
@@ -77,6 +87,26 @@ const SurveillanceCaseView = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSendToDirector = async () => {
+        try {
+            await CaseService.updateCaseStatus(caseData.id || caseData.caseNum, 'SENT_TO_DIRECTOR');
+            setCaseData(prev => ({
+                ...prev,
+                status: 'SENT_TO_DIRECTOR'
+            }));
+            navigate('/surveillence-officer');
+        } catch (err) {
+            console.error('Error sending case to director:', err);
+            setError('Failed to send case to director');
+        }
+    };
+
+    const handleEdit = () => {
+        navigate('/surveillence-officer/edit-case', {
+            state: { caseData }
+        });
     };
 
     useEffect(() => {
@@ -90,8 +120,9 @@ const SurveillanceCaseView = () => {
 
     if (loading) {
         return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
                 <CircularProgress />
+                <Typography variant="h6" sx={{ ml: 2 }}>Loading case details...</Typography>
             </Box>
         );
     }
@@ -99,14 +130,21 @@ const SurveillanceCaseView = () => {
     if (error) {
         return (
             <Box sx={{ p: 3 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
-                <Button
-                    variant="contained"
-                    startIcon={<ArrowBack />}
-                    onClick={() => navigate('/surveillence-officer')}
-                >
-                    Back to Cases
-                </Button>
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+                <Box display="flex" gap={2}>
+                    <Button
+                        variant="contained"
+                        startIcon={<ArrowBack />}
+                        onClick={() => navigate('/surveillence-officer')}
+                    >
+                        Back to Cases
+                    </Button>
+                    <Button variant="outlined" onClick={fetchCase}>
+                        Retry
+                    </Button>
+                </Box>
             </Box>
         );
     }
@@ -114,7 +152,9 @@ const SurveillanceCaseView = () => {
     if (!caseData) {
         return (
             <Box sx={{ p: 3 }}>
-                <Alert severity="warning">Case not found</Alert>
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                    Case not found
+                </Alert>
                 <Button
                     variant="contained"
                     startIcon={<ArrowBack />}
@@ -126,90 +166,146 @@ const SurveillanceCaseView = () => {
         );
     }
 
-    const statusInfo = STATUS_MAP[caseData.status] || { label: caseData.status, color: 'default' };
+    const { label: statusLabel, color: statusColor } = getStatusProps(caseData.status);
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Button
-                    variant="outlined"
-                    startIcon={<ArrowBack />}
-                    onClick={() => navigate('/surveillence-officer')}
-                >
-                    Back to Cases
-                </Button>
-                <Typography variant="h4">Case Details</Typography>
-                <Chip label={statusInfo.label} color={statusInfo.color} />
+        <Paper elevation={3} sx={{ p: 3, maxWidth: 1000, margin: 'auto' }}>
+            {/* Header */}
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+                <Typography variant="h6" fontWeight="bold">
+                    RWANDA REVENUE AUTHORITY
+                </Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    TAXES FOR GROWTH AND DEVELOPMENT
+                </Typography>
+                <Typography variant="subtitle2" sx={{
+                    backgroundColor: 'grey.200',
+                    p: 0.5,
+                    display: 'inline-block',
+                    fontWeight: 'bold'
+                }}>
+                    INTERNAL
+                </Typography>
             </Box>
 
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>Case Summary</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <List>
-                                <CaseDetailItem
-                                    icon={<Person />}
-                                    label="Created By"
-                                    value={caseData.createdByName}
-                                />
-                                <CaseDetailItem
-                                    icon={<DateRange />}
-                                    label="Reported Date"
-                                    value={formatDate(caseData.reportedDate)}
-                                />
-                            </List>
-                        </CardContent>
-                    </Card>
+            {/* Case Reference */}
+            <Grid container justifyContent="space-between" sx={{ mb: 3 }}>
+                <Grid item>
+                    <Typography variant="body2">
+                        <strong>Case Reference:</strong> {caseData.caseNum || 'N/A'}
+                    </Typography>
                 </Grid>
-
-                <Grid item xs={12} md={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>Taxpayer Information</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <List>
-                                <CaseDetailItem
-                                    icon={<Person />}
-                                    label="Name"
-                                    value={caseData.taxPayerName}
-                                />
-                                <CaseDetailItem
-                                    icon={<Assignment />}
-                                    label="TIN"
-                                    value={caseData.tin}
-                                />
-                                <CaseDetailItem
-                                    icon={<Business />}
-                                    label="Type"
-                                    value={caseData.taxPayerType}
-                                />
-                                <CaseDetailItem
-                                    icon={<Home />}
-                                    label="Address"
-                                    value={caseData.taxPayerAddress}
-                                />
-                            </List>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>Summary of Information</Typography>
-                            <Divider sx={{ mb: 2 }} />
-                            <Paper elevation={0} sx={{ p: 2, bgcolor: 'grey.50' }}>
-                                <Typography>
-                                    {caseData.summaryOfInformationCase}
-                                </Typography>
-                            </Paper>
-                        </CardContent>
-                    </Card>
+                <Grid item>
+                    <Typography variant="body2">
+                        <strong>Date:</strong> {formatDate(caseData.reportedDate)}
+                    </Typography>
                 </Grid>
             </Grid>
-        </Box>
+
+            {/* Title */}
+            <Typography variant="h5" align="center" sx={{ mb: 3, fontWeight: 'bold' }}>
+                Surveillance Case Report
+            </Typography>
+
+            {/* Action Buttons */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
+                <Button
+                    variant="outlined"
+                    startIcon={<Edit />}
+                    onClick={handleEdit}
+                    disabled={caseData.status === 'SENT_TO_DIRECTOR'}
+                >
+                    Edit Case
+                </Button>
+                <Button
+                    variant="contained"
+                    startIcon={<Send />}
+                    onClick={handleSendToDirector}
+                    disabled={caseData.status === 'SENT_TO_DIRECTOR'}
+                >
+                    {caseData.status === 'SENT_TO_DIRECTOR' ? 'Sent to Director' : 'Send to Director'}
+                </Button>
+            </Box>
+
+            {/* Case Details Table */}
+            <Table sx={{ mb: 3 }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Case Status</TableCell>
+                        <TableCell>
+                            <Chip label={statusLabel} color={statusColor} size="small" />
+                        </TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Surveillance Officer</TableCell>
+                        <TableCell>{caseData.surveillanceOfficer}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            {/* Taxpayer Information Section */}
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Taxpayer Information
+            </Typography>
+            <Table sx={{ mb: 3 }}>
+                <TableBody>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Taxpayer Name</TableCell>
+                        <TableCell>{caseData.taxPayerName}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
+                        <TableCell>{caseData.tin}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
+                        <TableCell>{caseData.taxPayerType}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                        <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
+                        <TableCell>{caseData.taxPayerAddress}</TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+
+            {/* Case Summary Section */}
+            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                Case Summary
+            </Typography>
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 2,
+                    backgroundColor: 'grey.50',
+                    border: '1px solid',
+                    borderColor: 'grey.200',
+                    mb: 3
+                }}
+            >
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                    {caseData.summaryOfInformationCase}
+                </Typography>
+            </Paper>
+
+            {/* Footer */}
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Prepared by:</strong> {caseData.surveillanceOfficer}
+            </Typography>
+            <Typography variant="body2" sx={{ mb: 1 }}>
+                <strong>Date Prepared:</strong> {formatDate(caseData.reportedDate)}
+            </Typography>
+
+            <Typography variant="h6" align="center" sx={{ mb: 1, fontWeight: 'bold' }}>
+                HEREFOR YOU TO SERVE
+            </Typography>
+            <Typography variant="body2" align="center" sx={{ fontStyle: 'italic' }}>
+                Kicukiro-Sonatube-Silverback Mall, P.O.Box 3987 Kigali, Rwanda
+            </Typography>
+            <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+                3004 www.rra.gov.tw @rainfo
+            </Typography>
+        </Paper>
     );
 };
 

@@ -65,6 +65,7 @@ const IntelligenceOfficer = () => {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingReport, setEditingReport] = useState(null);
     const [reportFormData, setReportFormData] = useState({
+        returnReason: '',
         description: '',
         relatedCase: { caseNum: '' }
     });
@@ -590,6 +591,19 @@ const IntelligenceOfficer = () => {
             >
                 <DialogTitle>Update Returned Report</DialogTitle>
                 <DialogContent>
+                    <TextField
+                        fullWidth
+                        label="Response to Return "
+                        multiline
+                        rows={2}
+                        variant="outlined"
+                        value={reportFormData.returnReason || ''}
+                        onChange={(e) => setReportFormData({
+                            ...reportFormData,
+                            returnReason: e.target.value
+                        })}
+                        sx={{ mb: 3 }}
+                    />
                     <Box sx={{ mt: 2 }}>
                         <TextField
                             fullWidth

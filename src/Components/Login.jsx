@@ -29,11 +29,10 @@ const Login = () => {
             const data = response.data;
             console.log('Login response:', data);
 
-            // Check if we have the required data (token is required, employeeId might come from user data)
             if (data?.token) {
                 try {
-                    // Use employeeId from response or fallback to userId
                     const employeeId = data.employeeId || data.employee_id || userId.trim();
+                    const name = data.name || ''; // Make sure name is defined
 
                     console.log('Login data:', {
                         token: !!data.token,
@@ -45,11 +44,10 @@ const Login = () => {
 
                     login(userId.trim(), data.token, employeeId, name, rememberMe);
 
-                    console.log('Login successful, navigating to /intelligence-officer');
+                    console.log('Login successful, navigating to /home');
 
-                    // Add a small delay to ensure context updates
                     setTimeout(() => {
-                        navigate('/intelligence-officer', { replace: true });
+                        navigate('/home', { replace: true });
                     }, 100);
 
                 } catch (loginError) {
@@ -66,21 +64,16 @@ const Login = () => {
             }
         } catch (err) {
             console.error('Login error:', err);
-
             let errorMessage = 'Login failed. Please try again.';
             if (err.response) {
-                // Server responded with error status
                 errorMessage = err.response.data?.error ||
                     err.response.data?.message ||
                     `Server error: ${err.response.status}`;
             } else if (err.request) {
-                // Request was made but no response received
                 errorMessage = 'No response from server. Check your connection.';
             } else {
-                // Something else happened
                 errorMessage = err.message || 'Unexpected error occurred';
             }
-
             setError(errorMessage);
         } finally {
             setLoading(false);

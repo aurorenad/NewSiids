@@ -57,7 +57,12 @@ const ViewReportDetails = () => {
 
     const handleDownloadAttachment = async () => {
         try {
-            await ReportApi.downloadAttachment(id);
+            if (!report?.attachmentPath) {
+                setError('No attachment available');
+                return;
+            }
+
+            await ReportApi.downloadAttachment(id, report.attachmentPath);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to download attachment');
         }
@@ -143,7 +148,7 @@ const ViewReportDetails = () => {
                             <ListItemText
                                 primary="Attachment"
                                 secondary={
-                                    report.attachmentPath ? (
+                                    report.attachmentPath? (
                                         <Button
                                             variant="outlined"
                                             startIcon={<Description />}

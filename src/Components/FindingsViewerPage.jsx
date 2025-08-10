@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Container, Button, Alert, Spinner } from 'react-bootstrap';
-import { ReportApi } from '../api/Axios/caseApi'; // Use the configured API instead of raw axios
+import { ReportApi } from '../api/Axios/caseApi';
 import MissionDocumentTable from './MissionDocumentTable';
 
 const FindingsViewPage = () => {
@@ -14,7 +14,6 @@ const FindingsViewPage = () => {
     useEffect(() => {
         const fetchReport = async () => {
             try {
-                // Use the ReportApi which has proper authentication headers
                 const response = await ReportApi.getFindings(id);
                 setReport(response.data);
             } catch (err) {
@@ -28,17 +27,19 @@ const FindingsViewPage = () => {
         fetchReport();
     }, [id]);
 
-    const downloadAttachment = async (attachmentIndex) => {
+
+    const downloadAttachment = async (attachmentPath) => {
         try {
-            setDownloading(prev => [...prev, attachmentIndex]);
+            setDownloading(prev => [...prev, attachmentPath]);
+
             // Use the ReportApi method for downloading attachments
-            const response = await ReportApi.downloadFindingsAttachment(id, attachmentIndex);
+            const response = await ReportApi.downloadFindingsAttachment(id, attachmentPath);
 
             // Extract filename from content-disposition header
             const contentDisposition = response.headers['content-disposition'];
-            let filename = 'attachment';
+            let filename = 'attachment.pdf';
             if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
                 if (filenameMatch && filenameMatch.length === 2) {
                     filename = filenameMatch[1];
                 }
@@ -57,7 +58,7 @@ const FindingsViewPage = () => {
             console.error('Download failed:', err);
             alert('Failed to download attachment');
         } finally {
-            setDownloading(prev => prev.filter(item => item !== attachmentIndex));
+            setDownloading(prev => prev.filter(item => item !== attachmentPath));
         }
     };
 
@@ -97,7 +98,6 @@ const FindingsViewPage = () => {
         );
     }
 
-    // Prepare data for the table component
     const reportData = {
         header: {
             title: "REPORT FINDINGS DOCUMENT",
@@ -150,6 +150,23 @@ const FindingsViewPage = () => {
                         isTextArea: true
                     }
                 ]
+            },
+            {
+                title: "Tax fines",
+                rows: [
+                    {
+                        label: "Principle Tax",
+                        value: report.principleAmount || 'N/A',
+                    },
+                    {
+                        label: "Tax fines",
+                        value: report.penaltiesAmount || 'N/A',
+                    },
+                    {
+                        label: "Total Tax",
+                        value: (report.principleAmount + report.penaltiesAmount) || 'N/A',
+                    }
+                ]
             }
         ],
         footer: {
@@ -162,7 +179,7 @@ const FindingsViewPage = () => {
         <Container className="mt-4 mb-5" style={{ maxWidth: '800px' }}>
             <MissionDocumentTable
                 data={reportData}
-                attachments={report.findingsAttachmentPaths}
+                attachments={report.findingsAttachmentPaths || []}
                 onDownloadAttachment={downloadAttachment}
                 downloading={downloading}
             />
