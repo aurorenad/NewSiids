@@ -13,6 +13,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -38,16 +40,19 @@ public class UserService {
         return user;
     }
 
-    public String verify(User user) {
+    public Map<String, String> verify(User user) {
         System.out.println("=== Login Attempt ===");
         System.out.println("Username: " + user.getUsername());
         System.out.println("Password provided: " + (user.getPassword() != null ? "Yes" : "No"));
+
+        Map<String, String> response = new HashMap<>();
 
         // Check if employee exists
         Optional<Employee> employee = employeeRepo.findByEmployeeId(user.getUsername());
         if (employee.isEmpty()) {
             System.out.println("Employee not found: " + user.getUsername());
-            return "Employee not found";
+            response.put("error", "Employee not found");
+            return response;
         }
 
         System.out.println("Employee found: " + employee.get().getEmployeeId());
@@ -61,23 +66,35 @@ public class UserService {
                 String token = jwtService.generateToken(user.getUsername());
                 System.out.println("Login request received for user: " + user.getUsername());
                 System.out.println("Token generated: " + token);
-//                (token != null ? "Yes" : "No")+
 
-                return token;
+
+                User dbUser = repo.findByUsername(user.getUsername());
+                if (dbUser != null) {
+                    response.put("token", token);
+                    response.put("role", dbUser.getRole());
+                } else {
+                    response.put("error", "User not found");
+                }
+
+                return response;
             } else {
                 System.out.println("Authentication failed - not authenticated");
-                return "Authentication failed";
+                response.put("error", "Authentication failed");
+                return response;
             }
         } catch (BadCredentialsException e) {
             System.out.println("Bad credentials: " + e.getMessage());
-            return "Authentication failed";
+            response.put("error", "Authentication failed");
+            return response;
         } catch (AuthenticationException e) {
             System.out.println("Authentication exception: " + e.getMessage());
-            return "Authentication failed";
+            response.put("error", "Authentication failed");
+            return response;
         } catch (Exception e) {
             System.out.println("Unexpected error during authentication: " + e.getMessage());
             e.printStackTrace();
-            return "Authentication failed";
+            response.put("error", "Authentication failed");
+            return response;
         }
     }
 }

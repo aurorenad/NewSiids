@@ -42,27 +42,26 @@ public class UserController {
         try {
             System.out.println("Login request received for user: " + user.getUsername());
 
-            String result = service.verify(user);
+            Map<String, String> result = service.verify(user);
 
-            if (result.equals("Employee not found")) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Employee not found");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
-            }
-
-            if (result.equals("Authentication failed")) {
-                Map<String, String> error = new HashMap<>();
-                error.put("error", "Invalid credentials");
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            if (result.containsKey("error")) {
+                String error = result.get("error");
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", error);
+                return ResponseEntity.status(
+                        error.equals("Employee not found") ? HttpStatus.NOT_FOUND : HttpStatus.UNAUTHORIZED
+                ).body(errorResponse);
             }
 
             // Get the employee details
             Optional<Employee> employee = employeeRepo.findByEmployeeId(user.getUsername());
 
             Map<String, String> response = new HashMap<>();
-            response.put("token", result);
+            response.put("token", result.get("token"));
             response.put("username", user.getUsername());
+            response.put("role", result.get("role"));
             response.put("message", "Login successful");
+
             // Add the employee name to the response
             if (employee.isPresent()) {
                 response.put("name", employee.get().getGivenName() + " " + employee.get().getFamilyName());

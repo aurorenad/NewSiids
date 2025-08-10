@@ -44,8 +44,8 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**").permitAll()
-                        .requestMatchers("/api/cases/**").hasAnyAuthority("User")
-                        .requestMatchers("/api/reports/**").hasAnyAuthority("User")
+                        .requestMatchers("/api/cases/**").hasAnyAuthority("User","Surveillance")
+                        .requestMatchers("/api/reports/**").hasAnyAuthority("User","Surveillance")
                         .requestMatchers("/api/taxpayers/**").hasAnyAuthority("User")
                         .requestMatchers("/api/informers/**").hasAnyAuthority("User")
                         .requestMatchers("/api/employees/**").hasAnyAuthority("User")
