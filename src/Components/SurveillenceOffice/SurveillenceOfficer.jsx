@@ -176,6 +176,7 @@ const SurveillanceOfficer = () => {
             <TableHead>
               <TableRow sx={{ backgroundColor: 'grey.100' }}>
                 <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Report ID</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Taxpayer Name</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
@@ -194,6 +195,7 @@ const SurveillanceOfficer = () => {
                           }}
                       >
                         <TableCell>{caseItem.caseNum}</TableCell>
+                        <TableCell>{caseItem.reportId || '-'}</TableCell>
                         <TableCell>{caseItem.taxPayer?.tin || caseItem.tin || '-'}</TableCell>
                         <TableCell>{caseItem.taxPayer?.name || caseItem.taxPayerName || '-'}</TableCell>
                         <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
@@ -213,12 +215,12 @@ const SurveillanceOfficer = () => {
                             <Button
                                 variant="outlined"
                                 color="primary"
-                                onClick={() => navigate(`/surveillence-officer/claim-form/${caseItem.caseNum}`)}
+                                onClick={() => navigate(`/surveillence-officer/sclaim-form/${encodeURIComponent(caseItem.caseNum)}`)}
                             >
                               Create Report
                             </Button>
                             <IconButton
-                                onClick={() => navigate(`/surveillence-officer/view/${caseItem.caseNum}`)}
+                                onClick={() => navigate(`/surveillence-officer/view/${encodeURIComponent(caseItem.caseNum)}`)}
                                 title="View Details"
                             >
                               <DescriptionIcon />

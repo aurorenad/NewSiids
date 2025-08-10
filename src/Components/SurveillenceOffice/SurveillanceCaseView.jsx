@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
     Paper,
     Typography,
@@ -44,40 +44,36 @@ const formatDate = (dateString) => {
 };
 
 const SurveillanceCaseView = () => {
-    const { id } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const [caseData, setCaseData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
+    const caseNum = location.pathname.split('/view/')[1];
+
     const fetchCase = async () => {
-        const caseId = parseInt(id);
-        if (isNaN(caseId)) {
-            setError('Invalid case ID');
-            setLoading(false);
-            return;
-        }
         try {
             setLoading(true);
             setError('');
-            const response = await CaseService.getCase(caseId);
-            console.log('API Response:', response); // Debug log
+            const decodedCaseNum = decodeURIComponent(caseNum);
+            const response = await CaseService.getCase(decodedCaseNum);
+            console.log('API Response:', response);
 
             if (!response?.data) {
                 throw new Error('Case not found');
             }
 
-            // Map API response to expected frontend structure
             const mappedData = {
                 ...response.data,
-                // Ensure all required fields have fallbacks
-                caseNum: response.data.caseNum || response.data.id,
+                caseNum: response.data.caseNum || caseNum,
                 surveillanceOfficer: response.data.createdByName || 'N/A',
                 taxPayerAddress: response.data.taxPayerAddress || 'Not available',
                 summaryOfInformationCase: response.data.summaryOfInformationCase || 'No summary provided',
                 taxPayerName: response.data.taxPayerName || 'N/A',
                 tin: response.data.tin || 'N/A',
-                taxPayerType: response.data.taxPayerType || 'N/A'
+                taxPayerType: response.data.taxPayerType || 'N/A',
+                reportedDate: response.data.createdAt || 'N/A'
             };
 
             setCaseData(mappedData);
@@ -89,19 +85,7 @@ const SurveillanceCaseView = () => {
         }
     };
 
-    const handleSendToDirector = async () => {
-        try {
-            await CaseService.updateCaseStatus(caseData.id || caseData.caseNum, 'SENT_TO_DIRECTOR');
-            setCaseData(prev => ({
-                ...prev,
-                status: 'SENT_TO_DIRECTOR'
-            }));
-            navigate('/surveillence-officer');
-        } catch (err) {
-            console.error('Error sending case to director:', err);
-            setError('Failed to send case to director');
-        }
-    };
+
 
     const handleEdit = () => {
         navigate('/surveillence-officer/edit-case', {
@@ -110,13 +94,10 @@ const SurveillanceCaseView = () => {
     };
 
     useEffect(() => {
-        if (!id || isNaN(Number(id))) {
-            setError('Invalid case ID');
-            setLoading(false);
-            return;
+        if (caseNum) {
+            fetchCase();
         }
-        fetchCase();
-    }, [id]);
+    }, [caseNum]);
 
     if (loading) {
         return (
@@ -217,14 +198,7 @@ const SurveillanceCaseView = () => {
                 >
                     Edit Case
                 </Button>
-                <Button
-                    variant="contained"
-                    startIcon={<Send />}
-                    onClick={handleSendToDirector}
-                    disabled={caseData.status === 'SENT_TO_DIRECTOR'}
-                >
-                    {caseData.status === 'SENT_TO_DIRECTOR' ? 'Sent to Director' : 'Send to Director'}
-                </Button>
+
             </Box>
 
             {/* Case Details Table */}
