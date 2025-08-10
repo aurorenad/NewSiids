@@ -25,6 +25,7 @@ public class Case {
     private TaxPayer tin;
 
     private String taxPeriod;
+    private String taxType;
     private LocalDateTime reportedDate;
     private LocalDateTime updatedAt;
     private String summaryOfInformationCase;

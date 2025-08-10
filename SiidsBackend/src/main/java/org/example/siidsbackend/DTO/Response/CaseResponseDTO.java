@@ -18,6 +18,7 @@ public class CaseResponseDTO {
     private TaxPayerDTO taxPayer;
 
     private String taxPeriod;
+    private String taxType;
     private String status;
     private String createdByName;
     private String summaryOfInformationCase;

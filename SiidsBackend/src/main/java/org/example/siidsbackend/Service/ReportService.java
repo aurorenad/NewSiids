@@ -46,6 +46,7 @@ public class ReportService {
     private final CaseRepo caseRepo;
     private final NotificationRepo notificationRepo;
     private final WebSocketNotificationService webSocketNotificationService;
+    private final AuditService auditService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -73,7 +74,14 @@ public class ReportService {
         relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED);
         caseRepo.save(relatedCase);
 
-        return reportRepo.save(report);
+        Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                WorkflowStatus.REPORT_SUBMITTED,
+                "Report " + savedReport.getId() + " created by " + creator.getEmployeeId() + " for case " + relatedCase.getCaseNum(),
+                creator
+        );
+
+        return savedReport;
     }
 
     private void validateAttachment(String attachmentPath) {
@@ -126,6 +134,12 @@ public class ReportService {
         }
 
         Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                WorkflowStatus.INVESTIGATION_COMPLETED,
+                "Findings submitted for report #" + savedReport.getId() + " by officer " + officerId,
+                report.getCurrentRecipient()
+        );
+
 
         String message = String.format("Investigation findings submitted for report #%d by %s %s",
                 savedReport.getId(),
@@ -287,6 +301,11 @@ public class ReportService {
         report.setUpdatedAt(LocalDateTime.now());
 
         Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE,
+                "Report #" + savedReport.getId() + " sent to Director of Intelligence",
+                report.getCreatedBy()
+        );
         String message = String.format("New report #%d submitted for your review by %s %s",
                 savedReport.getId(),
                 savedReport.getCreatedBy().getGivenName(),
@@ -317,6 +336,11 @@ public class ReportService {
 
         report.setUpdatedAt(LocalDateTime.now());
         Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION,
+                "Report #" + savedReport.getId() + " sent to Director of Investigation",
+                report.getCreatedBy()
+        );
 
         String message = String.format("New investigation report #%d submitted for your review by %s %s",
                 savedReport.getId(),
@@ -359,6 +383,11 @@ public class ReportService {
                 .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
         broadcastNotification.setNotificationType("NEW_REPORT_ASSISTANT_COMMISSIONER");
         webSocketNotificationService.sendNotificationToAssistantCommissioners(broadcastNotification);
+        auditService.logAction(
+                WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER,
+                "Report #" + savedReport.getId() + " sent to Assistant Commissioner",
+                report.getCreatedBy()
+        );
 
         return savedReport;
     }
@@ -400,7 +429,12 @@ public class ReportService {
                 returner.getFamilyName(),
                 returnReason);
         createNotification(savedReport, message);
-
+        auditService.logAction(
+                newStatus,
+                "Report #" + savedReport.getId() + " returned by " + returner.getEmployeeId() +
+                        " to " + returnTo.getEmployeeId() + ". Reason: " + returnReason,
+                returner
+        );
         return savedReport;
     }
 
@@ -559,6 +593,12 @@ public class ReportService {
                 approver.getFamilyName());
         createNotification(savedReport, message);
 
+        auditService.logAction(
+                newStatus,
+                "Report " + savedReport.getId() + " approved by " + approver.getEmployeeId(),
+                approver
+        );
+
         return savedReport;
     }
 
@@ -603,7 +643,12 @@ public class ReportService {
                 rejector.getFamilyName(),
                 rejectionReason != null ? rejectionReason : "No reason provided");
         createNotification(savedReport, message);
-
+        auditService.logAction(
+                newStatus,
+                "Report " + savedReport.getId() + " rejected by " + rejector.getEmployeeId() +
+                        (rejectionReason != null ? ". Reason: " + rejectionReason : ""),
+                rejector
+        );
         return savedReport;
     }
 
@@ -677,6 +722,12 @@ public class ReportService {
         webSocketNotificationService.sendNotificationToUser(
                 assignedOfficer.getEmployeeId(),
                 notificationDTO
+        );
+        auditService.logAction(
+                WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER,
+                "Report #" + savedReport.getId() + " assigned to investigation officer " +
+                        assignedOfficer.getEmployeeId() + " with notes: " + assignmentNotes,
+                report.getCurrentRecipient() // or get the assigner from context
         );
 
         return savedReport;
@@ -851,6 +902,11 @@ public class ReportService {
             if (!isValidAttachment) {
                 throw new RuntimeException("Attachment not found in this report");
             }
+            auditService.logAction(
+                    WorkflowStatus.ATTACHMENT_DOWNLOADED,
+                    "Attachment '" + filename + "' downloaded from report #" + reportId + " by " + requesterId,
+                    requester
+            );
 
             return downloadAttachment(filename);
 
@@ -1017,6 +1073,12 @@ public class ReportService {
         }
 
         Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                newStatus,
+                "Returned report #" + savedReport.getId() + " updated and resubmitted by " +
+                        savedReport.getCreatedBy().getEmployeeId(),
+                savedReport.getCreatedBy()
+        );
 
         String message = String.format("Returned report #%d has been updated and resubmitted by %s %s",
                 savedReport.getId(),

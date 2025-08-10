@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/taxpayers/**").hasAnyAuthority("User")
                         .requestMatchers("/api/informers/**").hasAnyAuthority("User")
                         .requestMatchers("/api/employees/**").hasAnyAuthority("User")
+                        .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

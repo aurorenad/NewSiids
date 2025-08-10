@@ -51,7 +51,7 @@ public class ReportController {
     private final ReportRepo reportRepo;
     private final CaseRepo caseRepo;
     private final CaseService caseService;
-    private final ObjectMapper objectMapper; // Added missing ObjectMapper field
+    private final ObjectMapper objectMapper;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -222,84 +222,47 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/{id}/findings-attachments/{attachmentIndex}")
-    public ResponseEntity<?> downloadFindingsAttachment(
+    @GetMapping("/{id}/findings-attachments/by-name/{filename}")
+    public ResponseEntity<?> downloadFindingsAttachmentByName(
             @PathVariable Integer id,
-            @PathVariable Integer attachmentIndex,
+            @PathVariable String filename,
             @RequestHeader("employee_id") String employeeId) {
-
         try {
-            // Validate report exists and user has access
+            // Get report and verify access
             Report report = reportService.getReport(id);
             validateAttachmentAccess(report, employeeId);
 
-            // Validate attachment index and path
+            // Ensure filename exists in the list
             if (report.getFindingsAttachmentPaths() == null ||
-                    attachmentIndex < 0 ||
-                    attachmentIndex >= report.getFindingsAttachmentPaths().size()) {
-                log.warn("Invalid attachment index {} for report {}", attachmentIndex, id);
+                    !report.getFindingsAttachmentPaths().contains(filename)) {
                 return ResponseEntity.notFound().build();
             }
 
-            String attachmentPath = report.getFindingsAttachmentPaths().get(attachmentIndex);
-            if (attachmentPath == null || attachmentPath.trim().isEmpty()) {
-                log.warn("Empty attachment path for report {}", id);
-                return ResponseEntity.notFound().build();
+            // Resolve full path
+            Path filePath = Paths.get(uploadDir).resolve(filename).normalize().toAbsolutePath();
+
+            if (!filePath.startsWith(Paths.get(uploadDir).normalize().toAbsolutePath())) {
+                return ResponseEntity.badRequest().body("Invalid path");
             }
-
-            // Resolve and validate file path
-            Path filePath = Paths.get(uploadDir)
-                    .resolve(attachmentPath)
-                    .normalize()
-                    .toAbsolutePath();
-
-            // Security: Prevent path traversal
-            if (!filePath.normalize().startsWith(Paths.get(uploadDir).normalize().toAbsolutePath())) {
-                log.error("Path traversal attempt detected for file: {}", filePath);
-                return ResponseEntity.badRequest().body("Invalid file path");
-            }
-
-            // Verify file exists and is readable
             if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
-                log.error("File not found or not readable: {}", filePath);
                 return ResponseEntity.notFound().build();
             }
 
-            // Verify PDF integrity before serving
-            try {
-                verifyStoredPdf(filePath);
-            } catch (IOException e) {
-                log.error("PDF corruption detected during download: {}", e.getMessage());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("File appears to be corrupted");
-            }
-
-            // Prepare resource for download
+            verifyStoredPdf(filePath);
             Resource resource = new UrlResource(filePath.toUri());
-            if (!resource.exists()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String originalFilename = extractOriginalFilename(attachmentPath);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
-                    .contentLength(Files.size(filePath))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + originalFilename + "\"")
-                    .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
-                    .header(HttpHeaders.PRAGMA, "no-cache")
-                    .header(HttpHeaders.EXPIRES, "0")
+                            "attachment; filename=\"" + extractOriginalFilename(filename) + "\"")
                     .body(resource);
 
-        } catch (RuntimeException e) {
-            log.error("Access denied for employee {}: {}", employeeId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
-            log.error("Error downloading findings attachment for report {}: {}", id, e.getMessage(), e);
+            log.error("Error:", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
 
     @GetMapping("/my-reports")
     public ResponseEntity<List<ReportResponseDTO>> getMyReports(

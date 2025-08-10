@@ -26,9 +26,8 @@ import java.util.stream.Collectors;
 public class CaseService {
     private final CaseRepo caseRepo;
     private final EmployeeRepo employeeRepo;
-    private final TaxPayerRepository taxPayerRepo;
-    private final InformerRepository informerRepo;
     private final ReportRepo reportRepo;
+    private final AuditService auditService;
 
     @Transactional
     public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer, Employee referringOfficer) {
@@ -46,6 +45,7 @@ public class CaseService {
         newCase.setTin(taxPayer);
         newCase.setSummaryOfInformationCase(dto.getSummaryOfInformationCase());
         newCase.setStatus(WorkflowStatus.CASE_CREATED);
+        newCase.setTaxType(dto.getTaxType());
         newCase.setTaxPeriod(dto.getTaxPeriod());
         newCase.setCreatedBy(creator);
         newCase.setReportedDate(LocalDateTime.now());
@@ -57,7 +57,15 @@ public class CaseService {
 
         Case savedCase = caseRepo.save(newCase);
         savedCase.setCaseNum(savedCase.generateCaseNumber());
-        return caseRepo.save(savedCase);
+        Case finalCase = caseRepo.save(savedCase);
+
+        auditService.logAction(
+                WorkflowStatus.CASE_CREATED,
+                "Case " + finalCase.getCaseNum() + " created by " + creator.getEmployeeId(),
+                creator
+        );
+
+        return finalCase;
     }
 
     public CaseResponseDTO getCaseResponseById(Integer id) {
@@ -69,12 +77,6 @@ public class CaseService {
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
 
         return mapToCaseResponseDTO(caseEntity);
-    }
-
-    public List<CaseResponseDTO> getAllCases() {
-        return caseRepo.findAll().stream()
-                .map(this::mapToCaseResponseDTO)
-                .collect(Collectors.toList());
     }
 
     public List<CaseResponseDTO> getCasesByCreator(String employeeId) {
@@ -116,6 +118,13 @@ public class CaseService {
         existingCase.setUpdatedAt(LocalDateTime.now());
 
         Case updatedCase = caseRepo.save(existingCase);
+
+        auditService.logAction(
+                newStatus,
+                "Case " + updatedCase.getCaseNum() + " status changed to " + newStatus + " by " + employeeId,
+                existingCase.getCreatedBy()
+        );
+
         return mapToCaseResponseDTO(updatedCase);
     }
 
@@ -173,6 +182,7 @@ public class CaseService {
         responseDTO.setId(caseEntity.getId());
         responseDTO.setCaseNum(caseEntity.getCaseNum());
         responseDTO.setTaxPeriod(caseEntity.getTaxPeriod());
+        responseDTO.setTaxType(caseEntity.getTaxType());
         responseDTO.setStatus(caseEntity.getStatus() != null ? caseEntity.getStatus().toString() : null);
         responseDTO.setSummaryOfInformationCase(caseEntity.getSummaryOfInformationCase());
         responseDTO.setCreatedAt(caseEntity.getReportedDate());
@@ -245,5 +255,10 @@ public class CaseService {
         }
 
         caseRepo.delete(caseEntity);
+        auditService.logAction(
+                WorkflowStatus.CASE_DELETED,
+                "Case " + caseEntity.getCaseNum() + " deleted by " + employeeId,
+                caseEntity.getCreatedBy()
+        );
     }
 }

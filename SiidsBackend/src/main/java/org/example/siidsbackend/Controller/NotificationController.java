@@ -25,9 +25,6 @@ public class NotificationController {
     private final NotificationRepo notificationRepo;
     private final EmployeeRepo employeeRepo;
 
-    /**
-     * Handle WebSocket connection messages
-     */
     @MessageMapping("/connect")
     public void handleConnection(@Payload String employeeId, SimpMessageHeaderAccessor headerAccessor) {
         // Store employee ID in session attributes for user-specific messaging
