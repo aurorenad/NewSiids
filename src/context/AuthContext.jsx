@@ -7,7 +7,8 @@ export const AuthProvider = ({ children }) => {
         token: null,
         userId: null,
         employeeId: null,
-        name: null  // Add name to the auth state
+        name: null,
+        role: null,
     });
 
     useEffect(() => {
@@ -15,30 +16,33 @@ export const AuthProvider = ({ children }) => {
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const name = localStorage.getItem('name') || sessionStorage.getItem('name');  // Get name from storage
-
+        const role = localStorage.getItem('role') || sessionStorage.getItem('role');
         if (token && employeeId) {
             setAuthState({
                 token,
                 userId,
                 employeeId,
-                name  // Include name in the state
+                name,
+                role,
             });
         }
     }, []);
 
-    const login = (userId, token, employeeId, name, remember) => {  // Add name parameter
+    const login = (userId, token, employeeId, name, remember, role) => {
         if (remember) {
             localStorage.setItem('token', token);
             localStorage.setItem('employeeId', employeeId);
             localStorage.setItem('userId', userId);
-            localStorage.setItem('name', name);  // Store name
+            localStorage.setItem('name', name);
+            localStorage.setItem('role', role);
         } else {
             sessionStorage.setItem('token', token);
             sessionStorage.setItem('employeeId', employeeId);
             sessionStorage.setItem('userId', userId);
-            sessionStorage.setItem('name', name);  // Store name
+            sessionStorage.setItem('name', name);
+            sessionStorage.setItem('role', role);
         }
-        setAuthState({ token, userId, employeeId, name });  // Include name in state
+        setAuthState({ token, userId, employeeId, name, role });
     };
 
     const logout = () => {
@@ -61,7 +65,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             authState,
-            currentUser: authState,  // Add currentUser alias for easier access
+            currentUser: authState,
             login,
             logout
         }}>

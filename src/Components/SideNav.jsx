@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, {useContext, useState} from 'react';
 import { NavLink } from 'react-router-dom';
 import '../styles/Sidebar.css';
+import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = () => {
     const [isIntelligenceOpen, setIntelligenceOpen] = useState(false);
     const [isInvestigationOpen, setInvestigationOpen] = useState(false);
+    const { authState } = useContext(AuthContext);
 
     const toggleIntelligence = () => {
         setIntelligenceOpen(!isIntelligenceOpen);
@@ -32,16 +34,19 @@ const Sidebar = () => {
                                         Director Intelligence
                                     </NavLink>
                                 </li>
+                                {authState.role === 'User' && (
                                 <li>
                                     <NavLink to="/intelligence-officer" className={({ isActive }) => isActive ? 'active' : ''}>
                                         Intelligence Officer
                                     </NavLink>
-                                </li>
+                                </li>)}
+                                {authState.role === 'Surveillance' && (
                                 <li>
                                     <NavLink to='/surveillence-officer' className={({isActive}) => isActive ? 'active': ''}>
                                         Surveillence Officer
                                     </NavLink>
                                 </li>
+                                    )}
                             </ul>
                         )}
                     </li>
@@ -65,15 +70,17 @@ const Sidebar = () => {
                         )}
                     </li>
                     <li>
-                            <NavLink to="/assistant-commissioner" className={({ isActive }) => isActive ? 'active' : ''}>
-                                Assistant Commissioner
-                            </NavLink>
-                    </li>
-                    <li>
-                        <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>
-                            Report
+                        <NavLink to="/assistant-commissioner" className={({ isActive }) => isActive ? 'active' : ''}>
+                            Assistant Commissioner
                         </NavLink>
                     </li>
+                    {authState.role === 'ROLE_AUDITOR' && (
+                        <li>
+                            <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>
+                                Report
+                            </NavLink>
+                        </li>
+                    )}
                 </ul>
             </nav>
         </div>

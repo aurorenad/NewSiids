@@ -32,7 +32,8 @@ const Login = () => {
             if (data?.token) {
                 try {
                     const employeeId = data.employeeId || data.employee_id || userId.trim();
-                    const name = data.name || ''; // Make sure name is defined
+                    const name = data.name || '';
+                    const role = data.role || '';
 
                     console.log('Login data:', {
                         token: !!data.token,
@@ -42,7 +43,7 @@ const Login = () => {
                         fullResponse: data
                     });
 
-                    login(userId.trim(), data.token, employeeId, name, rememberMe);
+                    login(userId.trim(), data.token, employeeId, name, rememberMe, role);
 
                     console.log('Login successful, navigating to /home');
 
