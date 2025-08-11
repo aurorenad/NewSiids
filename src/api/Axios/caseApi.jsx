@@ -115,6 +115,12 @@ export const CaseService = {
 };
 
 export const ReportApi = {
+    getReportsAssignedToInvestigationOfficers: () => {
+        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+        return caseApi.get('/api/reports/investigation-officers/assigned-reports', {
+            params: { employeeId }
+        });
+    },
     getReportsByT3Officers: () => {
         return caseApi.get('/api/reports/t3-officers-reports');
     },

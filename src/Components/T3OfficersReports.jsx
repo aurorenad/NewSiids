@@ -1,4 +1,3 @@
-// src/components/T3OfficersReports.jsx
 import React, { useState, useEffect } from "react";
 import {
     Table,
@@ -16,14 +15,14 @@ import {
     Button,
     Chip,
     TextField,
-    IconButton
+    Tooltip
 } from "@mui/material";
 import { ArrowBack, Search } from "@mui/icons-material";
 import { ReportApi } from "./../api/Axios/caseApi";
 import { useNavigate } from "react-router-dom";
 
 const T3OfficersReports = () => {
-    const [officersReports, setOfficersReports] = useState([]);
+    const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [snackbar, setSnackbar] = useState({
@@ -38,14 +37,17 @@ const T3OfficersReports = () => {
         const fetchReports = async () => {
             try {
                 setLoading(true);
-                const response = await ReportApi.getReportsByT3Officers();
-                setOfficersReports(response.data);
+                const response = await ReportApi.getReportsAssignedToInvestigationOfficers();
+                setReports(response.data);
             } catch (err) {
-                console.error("Error fetching T3 officers reports:", err);
-                setError(err.message);
+                if (err.response?.status === 403) {
+                    setError("You don't have permission to view these reports");
+                } else {
+                    setError(err.message);
+                }
                 setSnackbar({
                     open: true,
-                    message: "Failed to fetch T3 officers reports",
+                    message: "Failed to fetch reports",
                     severity: "error"
                 });
             } finally {
@@ -56,22 +58,40 @@ const T3OfficersReports = () => {
         fetchReports();
     }, []);
 
-    const filteredReports = officersReports.filter(officer => {
+    const filteredReports = reports.filter(report => {
         const searchTerm = searchQuery.toLowerCase();
         return (
-            officer.officerName.toLowerCase().includes(searchTerm) ||
-            officer.officerId.toLowerCase().includes(searchTerm) ||
-            officer.reports.some(report =>
-                report.caseNum.toLowerCase().includes(searchTerm))
+            report.investigationOfficer?.givenName?.toLowerCase().includes(searchTerm) ||
+            report.investigationOfficer?.familyName?.toLowerCase().includes(searchTerm) ||
+            report.relatedCase?.caseNum?.toLowerCase().includes(searchTerm) ||
+            report.status?.toLowerCase().includes(searchTerm)
         );
     });
 
     const formatDate = (dateString) => {
-        return new Date(dateString).toLocaleDateString();
+        return dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
     };
 
     const formatCurrency = (amount) => {
         return amount ? `$${amount.toFixed(2)}` : '$0.00';
+    };
+
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'INVESTIGATION_COMPLETED': return 'success';
+            case 'REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER':
+            case 'INVESTIGATION_IN_PROGRESS': return 'warning';
+            case 'INVESTIGATION_ON_HOLD': return 'error';
+            default: return 'default';
+        }
+    };
+
+    const formatStatus = (status) => {
+        if (!status) return 'Unknown';
+        return status
+            .split('_')
+            .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+            .join(' ');
     };
 
     if (loading) {
@@ -105,12 +125,12 @@ const T3OfficersReports = () => {
                         T3 Officers Reports
                     </Typography>
                     <Typography variant="subtitle1" color="text.secondary">
-                        Reports created by investigation officers
+                        All reports assigned to investigation officers
                     </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <TextField
-                        label="Search officers or cases"
+                        label="Search reports"
                         variant="outlined"
                         size="small"
                         value={searchQuery}
@@ -120,7 +140,7 @@ const T3OfficersReports = () => {
                         }}
                     />
                     <Chip
-                        label={`${filteredReports.length} officers`}
+                        label={`${filteredReports.length} reports`}
                         color="primary"
                         variant="outlined"
                     />
@@ -134,76 +154,62 @@ const T3OfficersReports = () => {
                 </Box>
             </Box>
 
-            {filteredReports.length > 0 ? (
-                filteredReports.map((officer) => (
-                    <Box key={officer.officerId} sx={{ mb: 4 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h6" sx={{ mr: 2 }}>
-                                {officer.officerName}
-                            </Typography>
-                            <Chip
-                                label={`ID: ${officer.officerId}`}
-                                size="small"
-                                variant="outlined"
-                                sx={{ mr: 2 }}
-                            />
-                            <Chip
-                                label={`${officer.reports.length} reports`}
-                                color="primary"
-                                size="small"
-                            />
-                        </Box>
-
-                        <TableContainer component={Paper} elevation={2} sx={{ mb: 3 }}>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Report Date</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Principle</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Penalties</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {officer.reports.map((report) => (
-                                        <TableRow key={report.id}>
-                                            <TableCell>{report.caseNum}</TableCell>
-                                            <TableCell>{formatDate(report.createdAt)}</TableCell>
-                                            <TableCell>{formatCurrency(report.principleAmount)}</TableCell>
-                                            <TableCell>{formatCurrency(report.penaltiesAmount)}</TableCell>
-                                            <TableCell>
-                                                {formatCurrency(
-                                                    (report.principleAmount || 0) +
-                                                    (report.penaltiesAmount || 0)
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Chip
-                                                    label={report.status}
-                                                    color={
-                                                        report.status === 'INVESTIGATION_COMPLETED'
-                                                            ? 'success'
-                                                            : 'default'
-                                                    }
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                ))
-            ) : (
-                <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <Typography variant="body1">
-                        No reports found for T3 investigation officers
-                    </Typography>
-                </Box>
+            {searchQuery && filteredReports.length === 0 && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    No reports match your search.
+                </Alert>
             )}
+
+            <TableContainer component={Paper} elevation={3}>
+                <Table>
+                    <TableHead>
+                        <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Report Date</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Principle</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Penalties</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {filteredReports.length > 0 ? (
+                            filteredReports.map((report) => (
+                                <TableRow key={report.id}>
+                                    <TableCell>
+                                        <Tooltip title={report.relatedCase?.caseNum || 'N/A'}>
+                                            <span>{report.relatedCase?.caseNum || 'N/A'}</span>
+                                        </Tooltip>
+                                    </TableCell>
+
+                                    <TableCell>{formatDate(report.createdAt)}</TableCell>
+                                    <TableCell>{formatCurrency(report.principleAmount)}</TableCell>
+                                    <TableCell>{formatCurrency(report.penaltiesAmount)}</TableCell>
+                                    <TableCell>
+                                        {formatCurrency(
+                                            (report.principleAmount || 0) + (report.penaltiesAmount || 0)
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={formatStatus(report.status)}
+                                            color={getStatusColor(report.status)}
+                                            size="small"
+                                        />
+                                    </TableCell>
+
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={7} align="center">
+                                    No reports found
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
             <Snackbar
                 open={snackbar.open}
