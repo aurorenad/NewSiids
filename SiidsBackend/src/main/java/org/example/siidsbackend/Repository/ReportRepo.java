@@ -165,11 +165,16 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "ORDER BY r.createdAt DESC")
     List<DirectorIntelligenceReportDTO> findCasesForDirectorIntelligenceReport();
 
-//    @Query(value = "SELECT r.*, c.* FROM siids.report r \n" +
-//            "JOIN siids.case c ON c.case_num = r.case_num\n" +
-//            "WHERE r.investigation_officer_id = :officerId OR\n" +
-//            "r.current_recipient = :officerId\n" +  // Fixed typo in "recipient"?
-//            "ORDER BY r.created_at DESC",  // Changed to created_at if it's snake_case in DB
-//            nativeQuery = true)
-//    List<Report> findReportsAssignedToInvestigationOfficer(@Param("officerId") String officerId);
+    @Query(value = "SELECT " +
+            "r.*,"+
+            "c.status, " +
+            "c.reported_date, " +
+            "c.tax_period " +
+            "FROM siids.report r " +
+            "JOIN siids.case c ON c.case_num = r.case_num " +
+            "WHERE r.investigation_officer_id = :officerId " +
+            "OR r.current_recipient = :officerId " +
+            "ORDER BY r.created_at DESC",
+            nativeQuery = true)
+    List<Report> findReportsAssignedToInvestigationOfficers(@Param("officerId") String officerId);
 }

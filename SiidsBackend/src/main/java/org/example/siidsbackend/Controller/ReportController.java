@@ -1020,4 +1020,28 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    @GetMapping("/investigation-officers/assigned-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getReportsAssignedToInvestigationOfficers(
+            @RequestParam String employeeId) {
+        try {
+            // First verify the employee is a T3 officer
+            List<Employee> t3Officers = reportRepo.findAvailableT3Officers();
+            boolean isT3Officer = t3Officers.stream()
+                    .anyMatch(o -> o.getEmployeeId().equals(employeeId));
+
+            if (!isT3Officer) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficers(employeeId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (Exception e) {
+            log.error("Error getting assigned reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }

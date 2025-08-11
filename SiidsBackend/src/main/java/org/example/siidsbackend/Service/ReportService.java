@@ -1172,4 +1172,8 @@ public class ReportService {
         }
         return result;
     }
+
+    public List<Report> getReportsAssignedToInvestigationOfficers(String officerId) {
+        return reportRepo.findReportsAssignedToInvestigationOfficers(officerId);
+    }
 }
