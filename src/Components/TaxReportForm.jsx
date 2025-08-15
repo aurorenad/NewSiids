@@ -134,7 +134,7 @@ const TaxReportForm = () => {
         }
     };
 
-    // Referring officer lookup by ID - FIXED VERSION
+
     const handleReferringOfficerChange = async (e) => {
         const { value } = e.target;
 

@@ -106,7 +106,7 @@ const NewSurveillenceCase = () => {
         }
     };
 
-    // Informer lookup by ID
+
     const handleInformerIdChange = async (e) => {
         const { value } = e.target;
         handleChange(e);
