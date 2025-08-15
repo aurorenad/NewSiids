@@ -48,7 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/reports/**").hasAnyAuthority("User","Surveillance")
                         .requestMatchers("/api/taxpayers/**").hasAnyAuthority("User","Surveillance")
                         .requestMatchers("/api/informers/**").hasAnyAuthority("User", "Surveillance")
-                        .requestMatchers("/api/employees/**").hasAnyAuthority("User")
+                        .requestMatchers("/api/employees/**").hasAnyAuthority("User", "Surveillance")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
