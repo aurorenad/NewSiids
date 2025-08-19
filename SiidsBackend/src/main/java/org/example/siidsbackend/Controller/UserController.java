@@ -1,5 +1,6 @@
 package org.example.siidsbackend.Controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Service.JWTService;
@@ -18,6 +19,7 @@ import java.util.Optional;
 
 @RestController
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173"})
+@Slf4j
 public class UserController {
 
     @Autowired
@@ -79,5 +81,66 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        try {
+            String username = request.get("username");
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Username is required"));
+            }
 
+            Map<String, String> result = service.generateOtp(username.trim());
+
+            if (result.containsKey("error")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Forgot password error", e);
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Failed to process forgot password request"));
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String otp = request.get("otp");
+
+        try {
+            Map<String, String> result = service.verifyOtp(username, otp);
+
+            if (result.containsKey("error")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to verify OTP");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String otp = request.get("otp");
+        String newPassword = request.get("newPassword");
+
+        try {
+            Map<String, String> result = service.resetPassword(username, otp, newPassword);
+
+            if (result.containsKey("error")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to reset password");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
 }
