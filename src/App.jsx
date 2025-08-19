@@ -15,6 +15,7 @@ import NewSurveillenceCase from "./Components/SurveillenceOffice/NewSurveillence
 import TaxReportView from "./Components/TaxReportView.jsx";
 import History from './components/History';
 import NewCase from './Components/TaxReportForm.jsx';
+import Register from './components/Register';
 import './App.css';
 import { ClaimForm as ClaimForm } from "./Components/ClaimForm.jsx";
 import { SClaimForm as SClaimForm } from "./Components/SClaimForm.jsx";
@@ -25,6 +26,7 @@ import ViewReportDetails from "./Components/ViewReportDetails.jsx";
 import FinesReport from "./Components/FinesReport.jsx";
 import DirectorIntelligenceCaseReports from "./Components/DirectorIntelligenceCaseReports.jsx";
 import T3OfficersReports from "./Components/T3OfficersReports.jsx";
+import ForgotPassword from "./Components/ForgotPassword.jsx";
 
 const ProtectedRoute = ({ children }) => {
     const { authState } = useContext(AuthContext);
@@ -47,6 +49,8 @@ const ProtectedRoute = ({ children }) => {
 const AppRoutes = () => {
     return (
         <Routes>
+            <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/" element={<Login />} />
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/director-intelligence" element={<ProtectedRoute><DirectorIntelligence /></ProtectedRoute>} />

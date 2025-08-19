@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from '../api/axios.jsx';
 import '../styles/Login.css';
+import { Grid, Link } from '@mui/material';
 
 const Login = () => {
     const [userId, setUserId] = useState('');
@@ -140,7 +141,18 @@ const Login = () => {
                     </button>
 
                     <div className="forgot-password">
-                        <a href="/forgot-password">Forgot Password</a>
+                        <Grid container justifyContent="space-between">
+                            <Grid item>
+                                <Link href="/forgot-password" variant="body2">
+                                    Forgot password?
+                                </Link>
+                            </Grid>
+                            <Grid item>
+                                <Link href="/register" variant="body2">
+                                    Don't have an account? Register
+                                </Link>
+                            </Grid>
+                        </Grid>
                     </div>
                 </form>
             </div>
