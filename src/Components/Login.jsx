@@ -147,11 +147,11 @@ const Login = () => {
                                     Forgot password?
                                 </Link>
                             </Grid>
-                            <Grid item>
-                                <Link href="/register" variant="body2">
-                                    Don't have an account? Register
-                                </Link>
-                            </Grid>
+                            {/*<Grid item>*/}
+                            {/*    <Link href="/register" variant="body2">*/}
+                            {/*        Don't have an account? Register*/}
+                            {/*    </Link>*/}
+                            {/*</Grid>*/}
                         </Grid>
                     </div>
                 </form>

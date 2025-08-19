@@ -110,12 +110,12 @@ body, h1, h2, ul, li, button {
     background: none;
     border: none;
     font-size: 18px;
-    color: #496073;
+    color: #ffff;
     cursor: pointer;
 }
 
 .logout-btn:hover {
-    color: #FFF;
+    color: #000;
 }
 
 /* Responsive Design */
@@ -165,4 +165,12 @@ body, h1, h2, ul, li, button {
 
 .notification-item:last-child {
     border-bottom: none;
+}
+.fa{
+    color: #fff;
+    display: inline-block;
+    font: normal normal normal 14px / 1 FontAwesome;
+    font-size: inherit;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
 }

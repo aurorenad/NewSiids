@@ -56,7 +56,6 @@ const FindingsViewPage = () => {
             window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error('Download failed:', err);
-            alert('Failed to download attachment');
         } finally {
             setDownloading(prev => prev.filter(item => item !== attachmentPath));
         }
@@ -176,7 +175,7 @@ const FindingsViewPage = () => {
     };
 
     return (
-        <Container className="mt-4 mb-5" style={{ maxWidth: '800px' }}>
+        <Container className="mt-4 mb-5" style={{ Width: '100%' }}>
             <MissionDocumentTable
                 data={reportData}
                 attachments={report.findingsAttachmentPaths || []}

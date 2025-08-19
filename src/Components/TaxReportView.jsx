@@ -171,13 +171,18 @@ const TaxReportView = () => {
     const { label: statusLabel, color: statusColor } = getStatusProps(caseData.status);
 
     return (
-        <Paper elevation={3} sx={{ p: 3, maxWidth: 1000, margin: 'auto' }}>
+        <Paper elevation={3} sx={{ p: 3, width: '80%', margin: 'auto' }}>
             {/* Header */}
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold">
+                <Typography variant="h6" fontWeight="bold" flexDirection='row'>
+                    <div style={{width: "100px"}}>
+                        <img src="/Images/HomeLogo.jpeg" alt="logo" />
+                    </div>
+
                     RWANDA REVENUE AUTHORITY
                 </Typography>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
+
                     TAXES FOR GROWTH AND DEVELOPMENT
                 </Typography>
                 <Typography variant="subtitle2" sx={{

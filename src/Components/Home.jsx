@@ -1,6 +1,8 @@
+import './../Styles/Home.css'
 const Home = () => {
     return(
-        <h3> Welcome to home </h3>
+
+        <h3 className="home"> Welcome to Strategic Intelligence & Investigation Division System (SIIDS)</h3>
     );
 }
 export  default Home

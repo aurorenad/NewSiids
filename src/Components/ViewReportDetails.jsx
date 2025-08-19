@@ -1,4 +1,3 @@
-// ViewReportDetails.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
@@ -64,7 +63,7 @@ const ViewReportDetails = () => {
 
             await ReportApi.downloadAttachment(id, report.attachmentPath);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to download attachment');
+            setError(err.response?.data?.message || ' download attachment successfully');
         }
     };
 
@@ -95,7 +94,7 @@ const ViewReportDetails = () => {
             )}
 
             {report && (
-                <Paper sx={{ p: 3 }}>
+                <Paper sx={{ p: 3, width: "80%"}}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                         <Typography variant="h4">Report Details</Typography>
                         <Chip

@@ -137,19 +137,19 @@ const DirectorIntelligenceCaseReports = () => {
                     </Select>
                 </FormControl>
 
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                    <InputLabel>Tax Type</InputLabel>
-                    <Select
-                        value={taxTypeFilter}
-                        onChange={(e) => setTaxTypeFilter(e.target.value)}
-                        label="Tax Type"
-                    >
-                        <MenuItem value="all">All Tax Types</MenuItem>
-                        {uniqueTaxTypes.map(type => (
-                            <MenuItem key={type} value={type}>{type}</MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                {/*<FormControl size="small" sx={{ minWidth: 200 }}>*/}
+                {/*    <InputLabel>Tax Type</InputLabel>*/}
+                {/*    <Select*/}
+                {/*        value={taxTypeFilter}*/}
+                {/*        onChange={(e) => setTaxTypeFilter(e.target.value)}*/}
+                {/*        label="Tax Type"*/}
+                {/*    >*/}
+                {/*        <MenuItem value="all">All Tax Types</MenuItem>*/}
+                {/*        {uniqueTaxTypes.map(type => (*/}
+                {/*            <MenuItem key={type} value={type}>{type}</MenuItem>*/}
+                {/*        ))}*/}
+                {/*    </Select>*/}
+                {/*</FormControl>*/}
             </Box>
 
             <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>

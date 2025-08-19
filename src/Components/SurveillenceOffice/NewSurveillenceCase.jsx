@@ -33,7 +33,8 @@ const NewSurveillenceCase = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const taxPayerTypes = ['Individual', 'Company', 'Partnership', 'Trust', 'PAYEE'];
+    const taxPayerTypes = ['None','PAYEE','VAT','Income Tax','Corporate Tax','Withholding Tax','Property Tax',
+        'Capital gains','Consumption Tax','Immovable Property Tax', 'Payroll Tax', 'Trading Tax'];
 
     const caseSources = [
         { value: 'anonymous', label: 'Anonymous' },
@@ -326,7 +327,7 @@ const NewSurveillenceCase = () => {
 
                         {/* Tax Payer Type */}
                         <div className="form-group">
-                            <label className="tax-report-form-label">Tax Payer Type</label>
+                            <label className="tax-report-form-label">Tax Type</label>
                             <select
                                 name="taxPayerType"
                                 value={formData.taxPayerType}

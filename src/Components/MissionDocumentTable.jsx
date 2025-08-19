@@ -4,10 +4,15 @@ import { Button, ListGroup, Spinner } from 'react-bootstrap';
 const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloading }) => {
     return (
         <div style={{
+            height: '100%',
             border: '1px solid #ddd',
             padding: '20px',
             fontFamily: 'Arial, sans-serif',
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            overflow: 'auto',
+            marginInline:'auto',
+            width:'80%'
+
         }}>
             {/* Header */}
             <div style={{
@@ -25,7 +30,6 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                 </div>
             </div>
 
-            {/* Sections */}
             {data.sections.map((section, sectionIndex) => (
                 <div key={sectionIndex} style={{ marginBottom: '25px' }}>
                     <h5 style={{

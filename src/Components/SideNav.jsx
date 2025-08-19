@@ -19,6 +19,9 @@ const Sidebar = () => {
     return (
         <div className="sidebar">
             <div className="sidebar-header">
+                <div className="sidebar-logo">
+                    <img src="../../public/Images/HomeLogo.jpeg"/>
+                </div>
                 <h3>SIID</h3>
             </div>
             <nav className="sidebar-nav">
