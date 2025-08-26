@@ -27,15 +27,12 @@ const FindingsViewPage = () => {
         fetchReport();
     }, [id]);
 
-
     const downloadAttachment = async (attachmentPath) => {
         try {
             setDownloading(prev => [...prev, attachmentPath]);
 
-            // Use the ReportApi method for downloading attachments
             const response = await ReportApi.downloadFindingsAttachment(id, attachmentPath);
 
-            // Extract filename from content-disposition header
             const contentDisposition = response.headers['content-disposition'];
             let filename = 'attachment.pdf';
             if (contentDisposition) {
@@ -45,7 +42,6 @@ const FindingsViewPage = () => {
                 }
             }
 
-            // Create download link
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
             link.href = url;
@@ -99,15 +95,16 @@ const FindingsViewPage = () => {
 
     const reportData = {
         header: {
+            header1: "RWANDA REVENUE AUTHORITY",
+            header2: "TAXES FOR GROWTH AND DEVELOPMENT",
             title: "REPORT FINDINGS DOCUMENT",
-            reference: `Reference: ${report.id}`,
+            reference: `ReferenceID : ${report.id}`,
             date: `Date: ${formatDate(report.createdAt)}`
         },
         sections: [
             {
                 title: "Report Details",
                 rows: [
-                    { label: "Report ID", value: report.id },
                     { label: "Status", value: report.status },
                     { label: "Created By", value: report.createdBy },
                     { label: "Created At", value: formatDate(report.createdAt) },
@@ -126,7 +123,6 @@ const FindingsViewPage = () => {
                 title: "Related Case",
                 rows: [
                     { label: "Case Number", value: report.relatedCase.caseNum },
-                    { label: "Case Title", value: report.relatedCase.title },
                     { label: "Case Status", value: report.relatedCase.status }
                 ]
             }] : []),
@@ -175,13 +171,13 @@ const FindingsViewPage = () => {
     };
 
     return (
-        <Container className="mt-4 mb-5" style={{ Width: '100%' }}>
-            <MissionDocumentTable
-                data={reportData}
-                attachments={report.findingsAttachmentPaths || []}
-                onDownloadAttachment={downloadAttachment}
-                downloading={downloading}
-            />
+        <Container className="mt-4 mb-5" style={{ Width: '100%'}}>
+                <MissionDocumentTable
+                    data={reportData}
+                    attachments={report.findingsAttachmentPaths || []}
+                    onDownloadAttachment={downloadAttachment}
+                    downloading={downloading}
+                />
         </Container>
     );
 };

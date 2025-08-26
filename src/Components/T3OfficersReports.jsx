@@ -20,6 +20,8 @@ import {
 import { ArrowBack, Search } from "@mui/icons-material";
 import { ReportApi } from "./../api/Axios/caseApi";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const T3OfficersReports = () => {
     const [reports, setReports] = useState([]);
@@ -94,6 +96,30 @@ const T3OfficersReports = () => {
             .join(' ');
     };
 
+    // ✅ Export to Excel function
+    const exportToExcel = () => {
+        const dataToExport = filteredReports.map((report) => ({
+            "Case ID": report.relatedCase?.caseNum || "N/A",
+            "Report Date": formatDate(report.createdAt),
+            "Principle": report.principleAmount || 0,
+            "Penalties": report.penaltiesAmount || 0,
+            "Total": (report.principleAmount || 0) + (report.penaltiesAmount || 0),
+            "Status": formatStatus(report.status)
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "T3_Reports");
+
+        const excelBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "array"
+        });
+
+        const fileData = new Blob([excelBuffer], { type: "application/octet-stream" });
+        saveAs(fileData, `T3_Officer_Reports_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -119,15 +145,36 @@ const T3OfficersReports = () => {
 
     return (
         <Box sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 3 , flexDirection: 'Column'}}>
+
+                    <Button
+                        variant="outlined"
+                        startIcon={<ArrowBack />}
+                        onClick={() => navigate(-1)}
+                        style={{marginBottom: "20px"}}
+                    >
+                        Back to Dashboard
+                    </Button>
+
+
                 <Box>
                     <Typography variant="h4" gutterBottom>
-                        T3 Officers Reports
+                        Investigation Officers Reports
+                        <Button
+                            variant="contained"
+                            color="success"
+                            onClick={exportToExcel}
+                            style={{ marginLeft:'100px'}}
+                        >
+                            Export to Excel
+                        </Button>
                     </Typography>
-                    <Typography variant="subtitle1" color="text.secondary">
+
+                    <Typography variant="subtitle1" color="text.secondary" style={{marginBottom: "20px"}}>
                         All reports assigned to investigation officers
                     </Typography>
                 </Box>
+
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <TextField
                         label="Search reports"
@@ -144,13 +191,6 @@ const T3OfficersReports = () => {
                         color="primary"
                         variant="outlined"
                     />
-                    <Button
-                        variant="outlined"
-                        startIcon={<ArrowBack />}
-                        onClick={() => navigate(-1)}
-                    >
-                        Back to Dashboard
-                    </Button>
                 </Box>
             </Box>
 
@@ -181,7 +221,6 @@ const T3OfficersReports = () => {
                                             <span>{report.relatedCase?.caseNum || 'N/A'}</span>
                                         </Tooltip>
                                     </TableCell>
-
                                     <TableCell>{formatDate(report.createdAt)}</TableCell>
                                     <TableCell>{formatCurrency(report.principleAmount)}</TableCell>
                                     <TableCell>{formatCurrency(report.penaltiesAmount)}</TableCell>
@@ -197,12 +236,11 @@ const T3OfficersReports = () => {
                                             size="small"
                                         />
                                     </TableCell>
-
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={7} align="center">
+                                <TableCell colSpan={6} align="center">
                                     No reports found
                                 </TableCell>
                             </TableRow>

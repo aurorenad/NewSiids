@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import LogoImage from '../../public/Images/HomeLogo.jpeg'
 import {
     Paper,
     Typography,
@@ -15,8 +16,10 @@ import {
     TableCell,
     TableRow
 } from '@mui/material';
-import { ArrowBack, Edit, Send } from '@mui/icons-material';
+import { ArrowBack, Edit, Send, PictureAsPdf } from '@mui/icons-material';
 import { CaseService } from '../api/Axios/caseApi.jsx';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 const STATUS_MAP = {
     case_created: { label: 'Case Created', color: 'primary' },
@@ -51,6 +54,7 @@ const TaxReportView = () => {
     const [caseData, setCaseData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const reportRef = useRef();
 
     const getCaseIdFromPath = () => {
         const pathname = location.pathname;
@@ -116,6 +120,21 @@ const TaxReportView = () => {
         });
     };
 
+    // ✅ Export to PDF
+    const handleDownloadPDF = async () => {
+        const input = reportRef.current;
+        const canvas = await html2canvas(input, { scale: 2 });
+        const imgData = canvas.toDataURL('image/png');
+
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const imgProps = pdf.getImageProperties(imgData);
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Tax_Report_${caseData.caseNum}.pdf`);
+    };
+
     useEffect(() => {
         fetchCaseDetails();
     }, [caseId]);
@@ -132,15 +151,9 @@ const TaxReportView = () => {
     if (error) {
         return (
             <Box sx={{ p: 3 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                </Alert>
+                <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
                 <Box display="flex" gap={2}>
-                    <Button
-                        variant="contained"
-                        startIcon={<ArrowBack />}
-                        onClick={() => navigate('/intelligence-officer')}
-                    >
+                    <Button variant="contained" startIcon={<ArrowBack />} onClick={() => navigate('/intelligence-officer')}>
                         Back to Cases
                     </Button>
                     <Button variant="outlined" onClick={fetchCaseDetails}>
@@ -157,11 +170,7 @@ const TaxReportView = () => {
                 <Alert severity="warning" sx={{ mb: 2 }}>
                     Case not found
                 </Alert>
-                <Button
-                    variant="contained"
-                    startIcon={<ArrowBack />}
-                    onClick={() => navigate('/intelligence-officer')}
-                >
+                <Button variant="contained" startIcon={<ArrowBack />} onClick={() => navigate('/intelligence-officer')}>
                     Back to Cases
                 </Button>
             </Box>
@@ -171,169 +180,113 @@ const TaxReportView = () => {
     const { label: statusLabel, color: statusColor } = getStatusProps(caseData.status);
 
     return (
-        <Paper elevation={3} sx={{ p: 3, width: '80%', margin: 'auto' }}>
-            {/* Header */}
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
-                <Typography variant="h6" fontWeight="bold" flexDirection='row'>
-                    <div style={{width: "100px"}}>
-                        <img src="/Images/HomeLogo.jpeg" alt="logo" />
-                    </div>
-
-                    RWANDA REVENUE AUTHORITY
-                </Typography>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-
-                    TAXES FOR GROWTH AND DEVELOPMENT
-                </Typography>
-                <Typography variant="subtitle2" sx={{
-                    backgroundColor: 'grey.200',
-                    p: 0.5,
-                    display: 'inline-block',
-                    fontWeight: 'bold'
-                }}>
-                    INTERNAL
-                </Typography>
-            </Box>
-
-            {/* Case Reference */}
-            <Grid container justifyContent="space-between" sx={{ mb: 3 }}>
-                <Grid item>
-                    <Typography variant="body2">
-                        <strong>Case Reference:</strong> {caseData.caseNum || 'N/A'}
-                    </Typography>
-                </Grid>
-                <Grid item>
-                    <Typography variant="body2">
-                        <strong>Date:</strong> {formatDate(caseData.reportedDate)}
-                    </Typography>
-                </Grid>
-            </Grid>
-
-            {/* Title */}
-            <Typography variant="h5" align="center" sx={{ mb: 3, fontWeight: 'bold' }}>
-                Tax Case Report
-            </Typography>
-
-            {/* Action Buttons */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 3 }}>
-                <Button
-                    variant="outlined"
-                    startIcon={<Edit />}
-                    onClick={handleEdit}
-                    disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
-                >
-                    Edit Case
-                </Button>
+        <div>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 2, mr: 5 }}>
                 <Button
                     variant="contained"
-                    startIcon={<Send />}
-                    onClick={handleSendToDirector}
-                    disabled={caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'}
+                    color="#3BDEDE"
+                    startIcon={<PictureAsPdf />}
+                    onClick={handleDownloadPDF}
                 >
-                    {caseData.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE' ? 'Sent to Director' : 'Send to Director'}
+                    Download PDF
                 </Button>
             </Box>
 
-            {/* Case Details Table */}
-            <Table sx={{ mb: 3 }}>
-                <TableBody>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Case Status</TableCell>
-                        <TableCell>
-                            <Chip label={statusLabel} color={statusColor} size="small" />
-                        </TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Intelligence Officer</TableCell>
-                        <TableCell>{caseData.intelligenceOfficer}</TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+            <Paper elevation={3} sx={{
+                p: 3,
+                width: '80%',
+                margin: 'auto',
+                backgroundImage: `url(${LogoImage})`,
 
-            {/* Taxpayer Information Section */}
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Taxpayer Information
-            </Typography>
-            <Table sx={{ mb: 3 }}>
-                <TableBody>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Taxpayer Name</TableCell>
-                        <TableCell>{caseData.taxPayerName}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
-                        <TableCell>{caseData.taxPayerTIN}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
-                        <TableCell>{caseData.taxPayerType}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
-                        <TableCell>{caseData.taxPayerAddress}</TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+                backgroundSize: 'cover', // optional
+                backgroundPosition: 'center',
+            }}
+                   ref={reportRef}>
+                <Box sx={{ textAlign: 'center', mb: 3 }}>
+                    <Typography variant="h6" fontWeight="bold">
+                        <div style={{ width: "100px", margin: "auto" }}>
+                            <img src="/Images/HomeLogo.jpeg" alt="logo" style={{ width: '100%' }} />
+                        </div>
+                        RWANDA REVENUE AUTHORITY
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        TAXES FOR GROWTH AND DEVELOPMENT
+                    </Typography>
+                    <Typography variant="subtitle2" sx={{
+                        backgroundColor: 'grey.200',
+                        p: 0.5,
+                        display: 'inline-block',
+                        fontWeight: 'bold'
+                    }}>
+                        INTERNAL
+                    </Typography>
+                </Box>
 
-            {/* Informer Information Section */}
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Informer Information
-            </Typography>
-            <Table sx={{ mb: 3 }}>
-                <TableBody>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Informer Name</TableCell>
-                        <TableCell>{caseData.informerName}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Informer ID</TableCell>
-                        <TableCell>{caseData.informerId}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>National ID</TableCell>
-                        <TableCell>{caseData.informerNationalId}</TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+                <Grid container justifyContent="space-between" sx={{ mb: 3 }}>
+                    <Grid item>
+                        <Typography variant="body2"><strong>Case Reference:</strong> {caseData.caseNum || 'N/A'}</Typography>
+                    </Grid>
+                    <Grid item>
+                        <Typography variant="body2"><strong>Date:</strong> {formatDate(caseData.reportedDate)}</Typography>
+                    </Grid>
+                </Grid>
 
-            {/* Case Summary Section */}
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                Case Summary
-            </Typography>
-            <Paper
-                elevation={0}
-                sx={{
-                    p: 2,
-                    backgroundColor: 'grey.50',
-                    border: '1px solid',
-                    borderColor: 'grey.200',
-                    mb: 3
-                }}
-            >
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                    {caseData.summaryOfInformationCase || 'No summary provided'}
+                <Typography variant="h5" align="center" sx={{ mb: 3, fontWeight: 'bold' }}>
+                    Tax Case Report
+                </Typography>
+
+                <Table sx={{ mb: 3 }}>
+                    <TableBody>
+                        <TableRow>
+                            <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Case Status</TableCell>
+                            <TableCell><Chip label={statusLabel} color={statusColor} size="small" /></TableCell>
+                        </TableRow>
+                        <TableRow>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Intelligence Officer</TableCell>
+                            <TableCell>{caseData.intelligenceOfficer}</TableCell>
+                        </TableRow>
+                    </TableBody>
+                </Table>
+
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Taxpayer Information</Typography>
+                <Table sx={{ mb: 3 }}>
+                    <TableBody>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Taxpayer Name</TableCell><TableCell>{caseData.taxPayerName}</TableCell></TableRow>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell><TableCell>{caseData.taxPayerTIN}</TableCell></TableRow>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell><TableCell>{caseData.taxPayerType}</TableCell></TableRow>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell><TableCell>{caseData.taxPayerAddress}</TableCell></TableRow>
+                    </TableBody>
+                </Table>
+
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Informer Information</Typography>
+                <Table sx={{ mb: 3 }}>
+                    <TableBody>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Informer Name</TableCell><TableCell>{caseData.informerName}</TableCell></TableRow>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Informer ID</TableCell><TableCell>{caseData.informerId}</TableCell></TableRow>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>National ID</TableCell><TableCell>{caseData.informerNationalId}</TableCell></TableRow>
+                    </TableBody>
+                </Table>
+
+                <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Case Summary</Typography>
+                <Paper elevation={0} sx={{ p: 2, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.200', mb: 3 }}>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        {caseData.summaryOfInformationCase || 'No summary provided'}
+                    </Typography>
+                </Paper>
+
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="body2" sx={{ mb: 1 }}><strong>Prepared by:</strong> {caseData.intelligenceOfficer}</Typography>
+                <Typography variant="body2" sx={{ mb: 1 }}><strong>Date Prepared:</strong> {formatDate(caseData.reportedDate)}</Typography>
+
+                <Typography variant="h6" align="center" sx={{ mb: 1, fontWeight: 'bold' }}>HEREFOR YOU TO SERVE</Typography>
+                <Typography variant="body2" align="center" sx={{ fontStyle: 'italic' }}>
+                    Kicukiro-Sonatube-Silverback Mall, P.O.Box 3987 Kigali, Rwanda
+                </Typography>
+                <Typography variant="body2" align="center" sx={{ mt: 1 }}>
+                    3004 www.rra.gov.tw @rainfo
                 </Typography>
             </Paper>
-
-            {/* Footer */}
-            <Divider sx={{ my: 2 }} />
-            <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>Prepared by:</strong> {caseData.intelligenceOfficer}
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 1 }}>
-                <strong>Date Prepared:</strong> {formatDate(caseData.reportedDate)}
-            </Typography>
-
-            <Typography variant="h6" align="center" sx={{ mb: 1, fontWeight: 'bold' }}>
-                HEREFOR YOU TO SERVE
-            </Typography>
-            <Typography variant="body2" align="center" sx={{ fontStyle: 'italic' }}>
-                Kicukiro-Sonatube-Silverback Mall, P.O.Box 3987 Kigali, Rwanda
-            </Typography>
-            <Typography variant="body2" align="center" sx={{ mt: 1 }}>
-                3004 www.rra.gov.tw @rainfo
-            </Typography>
-        </Paper>
+        </div>
     );
 };
 

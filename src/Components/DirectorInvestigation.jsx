@@ -617,7 +617,6 @@ const DirectorInvestigation = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Findings Dialog */}
             <Dialog
                 open={viewFindingsDialogOpen}
                 onClose={() => setViewFindingsDialogOpen(false)}

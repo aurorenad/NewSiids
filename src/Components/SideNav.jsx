@@ -80,7 +80,7 @@ const Sidebar = () => {
                     {authState.role === 'ROLE_AUDITOR' && (
                         <li>
                             <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>
-                                Report
+                                Audit Logs
                             </NavLink>
                         </li>
                     )}
