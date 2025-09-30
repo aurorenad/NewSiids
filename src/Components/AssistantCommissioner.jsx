@@ -18,14 +18,29 @@ import {
     CircularProgress,
     Alert,
     Snackbar,
-    Tooltip
+    Tooltip,
+    Menu,
+    MenuItem
 } from "@mui/material";
-import { Search, Description, Check, Close, Undo, Visibility, Article } from "@mui/icons-material";
+import {
+    Search,
+    Description,
+    Check,
+    Close,
+    Undo,
+    Visibility,
+    Article,
+    Send,
+    ForwardToInbox,
+    Gavel as GavelIcon
+} from "@mui/icons-material";
+
 import { useNavigate, Link } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 
 const AssistantCommissioner = () => {
     const [reports, setReports] = useState([]);
+    const [departments, setDepartments] = useState([]);
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [returnReason, setReturnReason] = useState('');
     const [loading, setLoading] = useState(true);
@@ -36,8 +51,11 @@ const AssistantCommissioner = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [actionLoading, setActionLoading] = useState({});
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [menuReport, setMenuReport] = useState(null);
     const navigate = useNavigate();
 
+    // Fetch reports
     useEffect(() => {
         const fetchReports = async () => {
             try {
@@ -58,6 +76,21 @@ const AssistantCommissioner = () => {
         fetchReports();
     }, []);
 
+    useEffect(() => {
+        const fetchDepartments = async () => {
+            try {
+                const response = await ReportApi.getDepartments();
+                console.log('Departments response:', response.data);
+                setDepartments(response.data);
+            } catch (err) {
+                console.error("Failed to load departments:", err);
+                console.error("Error details:", err.response?.data);
+                setDepartments([]);
+            }
+        };
+        fetchDepartments();
+    }, []);
+
     const showSnackbar = (message, severity = "success") => {
         setSnackbar({ open: true, message, severity });
     };
@@ -72,7 +105,7 @@ const AssistantCommissioner = () => {
             showSnackbar("Report approved successfully.");
         } catch (err) {
             console.error('Failed to approve report:', err);
-            showSnackbar("Approval failed.", "error");
+            showSnackbar(err.response?.data?.message || "Approval failed.", "error");
         } finally {
             setActionLoading(prev => ({ ...prev, [reportId]: false }));
         }
@@ -103,7 +136,7 @@ const AssistantCommissioner = () => {
             handleDialogClose();
         } catch (err) {
             console.error('Failed to reject report:', err);
-            showSnackbar("Rejection failed.", "error");
+            showSnackbar(err.response?.data?.message || "Rejection failed.", "error");
         } finally {
             setActionLoading(prev => ({ ...prev, [selectedReport.id]: false }));
         }
@@ -150,6 +183,73 @@ const AssistantCommissioner = () => {
         }
     };
 
+    const handleSendToLegalAdvisor = async (report) => {
+        try {
+            setActionLoading(prev => ({ ...prev, [report.id]: true }));
+
+            await ReportApi.sendReportToLegalAdvisor(report.id);
+
+            setReports(prev => prev.map(r =>
+                r.id === report.id ? {
+                    ...r,
+                    status: "REPORT_SENT_TO_LEGAL_TEAM"
+                } : r
+            ));
+
+            showSnackbar("Report sent to Legal Advisor successfully");
+        } catch (err) {
+            console.error('Failed to send report to Legal Advisor:', err);
+            showSnackbar(err.response?.data?.message || 'Failed to send report to Legal Advisor', "error");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [report.id]: false }));
+        }
+    };
+
+    const handleViewFinesReport = async () => {
+        try {
+            const response = await ReportApi.getFinesReportForAssistantCommissioner();
+            console.log('Fines report:', response.data);
+            showSnackbar("Fines report loaded successfully");
+        } catch (err) {
+            console.error('Failed to fetch fines report:', err);
+            showSnackbar("Failed to load fines report", "error");
+        }
+    };
+
+    const handleMenuOpen = (event, report) => {
+        setAnchorEl(event.currentTarget);
+        setMenuReport(report);
+    };
+
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+        setMenuReport(null);
+    };
+
+    const handleSendToDepartment = async (departmentName) => {
+        try {
+            setActionLoading(prev => ({ ...prev, [menuReport.id]: true }));
+            console.log('Sending to department:', departmentName);
+
+            await ReportApi.sendReport(menuReport.id, departmentName);
+
+            setReports(prev => prev.map(r =>
+                r.id === menuReport.id ? {
+                    ...r,
+                    status: `REPORT_SENT_TO_${departmentName.toUpperCase().replace(/\s+/g, '_')}`
+                } : r
+            ));
+            showSnackbar(`Report sent to ${departmentName} successfully`);
+        } catch (err) {
+            console.error("Failed to send report:", err);
+            console.error("Error response:", err.response?.data);
+            showSnackbar(err.response?.data?.message || "Failed to send report", "error");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [menuReport.id]: false }));
+            handleMenuClose();
+        }
+    };
+
     const filteredReports = reports.filter(report => {
         const searchLower = searchQuery.toLowerCase();
         return (
@@ -166,16 +266,15 @@ const AssistantCommissioner = () => {
             "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER": "Approved",
             "REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER": "Rejected",
             "REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE": "Returned",
-            "REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION": "Approved by Investigation Director",
-            "REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION": "Rejected by Investigation Director"
+            "REPORT_SENT_TO_LEGAL_SERVICES_AND_BOARD_AFFAIRS": "Sent to Legal Services",
+            "REPORT_SENT_TO_CUSTOMS_SERVICES": "Sent to Customs",
+            "REPORT_SENT_TO_FINANCE": "Sent to Finance",
+            "REPORT_SENT_TO_STRATEGIC_AND_RISK_ANALYSIS": "Sent to Strategic and Risk Analysis",
+            "REPORT_SENT_TO_INTERNAL_AUDIT_AND_INTEGRITY": "Sent to Internal Audit",
+            "REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION": "Sent to IT",
+            "REPORT_SENT_TO_LEGAL_TEAM": "Sent to Legal Advisor",
         };
-
-        if (statusMap[status]) {
-            return statusMap[status];
-        }
-
-        // Fallback for any unexpected statuses
-        return status.replace(/_/g, ' ').toLowerCase();
+        return statusMap[status] || status.replace(/_/g, ' ').toLowerCase();
     };
 
     if (loading) {
@@ -203,15 +302,12 @@ const AssistantCommissioner = () => {
                     variant="outlined"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') e.preventDefault();
-                    }}
                 />
                 <Button
                     variant="contained"
                     color="primary"
                     startIcon={<Article />}
-                    onClick={() => navigate('/assistant-commissioner/fines-report')}
+                    onClick={handleViewFinesReport}
                 >
                     View Fines Report
                 </Button>
@@ -260,41 +356,63 @@ const AssistantCommissioner = () => {
                                                         color="info"
                                                         size="small"
                                                         component={Link}
-                                                        to={{
-                                                            pathname: `/reports/${report.id}/findings`,
-                                                            state: { employeeId: localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') }
-                                                        }}
+                                                        to={`/reports/${report.id}/findings`}
                                                     >
                                                         <Visibility />
                                                     </IconButton>
                                                 </Tooltip>
                                             )}
 
-                                            {report.status === "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE" && (
+                                            {["REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE", "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER", "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER"].includes(report.status) && (
                                                 <>
-                                                    <IconButton
-                                                        color="success"
-                                                        onClick={() => handleApprove(report.id)}
-                                                        disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
-                                                    >
-                                                        <Check />
-                                                    </IconButton>
+                                                    <Tooltip title="Approve">
+                                                        <IconButton
+                                                            color="success"
+                                                            onClick={() => handleApprove(report.id)}
+                                                            disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
+                                                        >
+                                                            {actionLoading[report.id] ? <CircularProgress size={24} /> : <Check />}
+                                                        </IconButton>
+                                                    </Tooltip>
 
-                                                    <IconButton
-                                                        color="warning"
-                                                        onClick={() => handleOpenReturnDialog(report)}
-                                                        disabled={actionLoading[report.id]}
-                                                    >
-                                                        <Undo />
-                                                    </IconButton>
+                                                    <Tooltip title="Return">
+                                                        <IconButton
+                                                            color="warning"
+                                                            onClick={() => handleOpenReturnDialog(report)}
+                                                            disabled={actionLoading[report.id]}
+                                                        >
+                                                            <Undo />
+                                                        </IconButton>
+                                                    </Tooltip>
 
-                                                    <IconButton
-                                                        color="error"
-                                                        onClick={() => handleReject(report)}
-                                                        disabled={report.status.includes("REJECTED") || actionLoading[report.id]}
-                                                    >
-                                                        <Close />
-                                                    </IconButton>
+                                                    <Tooltip title="Reject">
+                                                        <IconButton
+                                                            color="error"
+                                                            onClick={() => handleReject(report)}
+                                                            disabled={report.status.includes("REJECTED") || actionLoading[report.id]}
+                                                        >
+                                                            <Close />
+                                                        </IconButton>
+                                                    </Tooltip>
+
+                                                    <Tooltip title="Send to Legal Advisor">
+                                                        <IconButton
+                                                            color="primary"
+                                                            onClick={() => handleSendToLegalAdvisor(report)}
+                                                            disabled={actionLoading[report.id]}
+                                                        >
+                                                            <GavelIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+
+                                                    <Tooltip title="Send to Department">
+                                                        <IconButton
+                                                            color="secondary"
+                                                            onClick={(e) => handleMenuOpen(e, report)}
+                                                        >
+                                                            <Send />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                 </>
                                             )}
                                         </Box>
@@ -311,6 +429,27 @@ const AssistantCommissioner = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleMenuClose}
+            >
+                {departments.length > 0 ? (
+                    departments.map(dept => (
+                        <MenuItem
+                            key={dept.id || dept.structureId || dept.departmentId}
+                            onClick={() => handleSendToDepartment(
+                                dept.name || dept.structureName || dept.departmentName
+                            )}
+                        >
+                            {dept.name || dept.structureName || dept.departmentName}
+                        </MenuItem>
+                    ))
+                ) : (
+                    <MenuItem disabled>No departments available</MenuItem>
+                )}
+            </Menu>
 
             <Dialog open={returnDialogOpen} onClose={handleCloseReturnDialog}>
                 <DialogTitle>Return Report to Director of Intelligence</DialogTitle>
@@ -335,7 +474,7 @@ const AssistantCommissioner = () => {
                         color="warning"
                         disabled={!returnReason.trim() || actionLoading[selectedReport?.id]}
                     >
-                        Confirm Return
+                        {actionLoading[selectedReport?.id] ? <CircularProgress size={24} /> : "Confirm Return"}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -363,7 +502,7 @@ const AssistantCommissioner = () => {
                         color="primary"
                         disabled={!closeReason.trim() || actionLoading[selectedReport?.id]}
                     >
-                        Confirm Rejection
+                        {actionLoading[selectedReport?.id] ? <CircularProgress size={24} /> : "Confirm Rejection"}
                     </Button>
                 </DialogActions>
             </Dialog>

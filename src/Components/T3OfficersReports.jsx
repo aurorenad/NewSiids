@@ -75,7 +75,7 @@ const T3OfficersReports = () => {
     };
 
     const formatCurrency = (amount) => {
-        return amount ? `$${amount.toFixed(2)}` : '$0.00';
+        return amount ? `${amount.toFixed(2)}` : '0.00';
     };
 
     const getStatusColor = (status) => {
@@ -96,7 +96,6 @@ const T3OfficersReports = () => {
             .join(' ');
     };
 
-    // ✅ Export to Excel function
     const exportToExcel = () => {
         const dataToExport = filteredReports.map((report) => ({
             "Case ID": report.relatedCase?.caseNum || "N/A",
@@ -104,6 +103,8 @@ const T3OfficersReports = () => {
             "Principle": report.principleAmount || 0,
             "Penalties": report.penaltiesAmount || 0,
             "Total": (report.principleAmount || 0) + (report.penaltiesAmount || 0),
+            "Tax Type":(report.relatedCase?.taxType),
+            "Tax Period":(report.relatedCase?.taxPeriod),
             "Status": formatStatus(report.status)
         }));
 
@@ -206,9 +207,11 @@ const T3OfficersReports = () => {
                         <TableRow sx={{ backgroundColor: 'grey.100' }}>
                             <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Report Date</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Principle</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Penalties</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Principle( FRW )</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Penalties( FRW )</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Total( FRW )</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                         </TableRow>
                     </TableHead>
@@ -222,6 +225,16 @@ const T3OfficersReports = () => {
                                         </Tooltip>
                                     </TableCell>
                                     <TableCell>{formatDate(report.createdAt)}</TableCell>
+                                    <TableCell>
+                                        <Tooltip title={report.relatedCase?.taxType || '_'}>
+                                            <span>{report.relatedCase?.taxType}</span>
+                                        </Tooltip>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Tooltip title={report.relatedCase?.taxPeriod || '_'}>
+                                            <span>{report.relatedCase?.taxPeriod}</span>
+                                        </Tooltip>
+                                    </TableCell>
                                     <TableCell>{formatCurrency(report.principleAmount)}</TableCell>
                                     <TableCell>{formatCurrency(report.penaltiesAmount)}</TableCell>
                                     <TableCell>

@@ -150,15 +150,15 @@ const FindingsViewPage = () => {
                 title: "Tax fines",
                 rows: [
                     {
-                        label: "Principle Tax",
+                        label: "Principle Tax( FRW ): ",
                         value: report.principleAmount || 'N/A',
                     },
                     {
-                        label: "Tax fines",
+                        label: "Tax fines( FRW ): ",
                         value: report.penaltiesAmount || 'N/A',
                     },
                     {
-                        label: "Total Tax",
+                        label: "Total Tax( FRW ): ",
                         value: (report.principleAmount + report.penaltiesAmount) || 'N/A',
                     }
                 ]

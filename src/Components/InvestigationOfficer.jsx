@@ -286,7 +286,7 @@ const InvestigationOfficer = () => {
     };
 
     const formatCurrency = (amount) => {
-        return amount ? `$${amount.toFixed(2)}` : '$0.00';
+        return amount ? `$${amount.toFixed(2)}` : 'FRW 0.00';
     };
 
     if (loading) {
@@ -439,7 +439,6 @@ const InvestigationOfficer = () => {
                 </Table>
             </TableContainer>
 
-            {/* Status Update Dialog */}
             <Dialog open={statusDialogOpen} onClose={handleCloseStatusDialog} fullWidth maxWidth="sm">
                 <DialogTitle>
                     Update Investigation Status
@@ -500,8 +499,6 @@ const InvestigationOfficer = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-
-            {/* Findings Submission Dialog */}
             <Dialog
                 open={findingsDialogOpen}
                 onClose={handleCloseFindingsDialog}
@@ -518,21 +515,18 @@ const InvestigationOfficer = () => {
                         <Typography variant="subtitle2">Financial Details</Typography>
                         <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                             <TextField
-                                label="Principle Amount"
+                                label="Principle Amount(FRW )"
                                 type="number"
-                                value={selectedReport?.principleAmount || 0}
+                                value={selectedReport?.principleAmount}
                                 onChange={(e) => {
                                     setSelectedReport(prev => ({
                                         ...prev,
                                         principleAmount: parseFloat(e.target.value) || 0
                                     }));
                                 }}
-                                InputProps={{
-                                    startAdornment: '$',
-                                }}
                             />
                             <TextField
-                                label="Penalties Amount"
+                                label="Penalties Amount(Frw )"
                                 type="number"
                                 value={selectedReport?.penaltiesAmount || 0}
                                 onChange={(e) => {
@@ -541,17 +535,11 @@ const InvestigationOfficer = () => {
                                         penaltiesAmount: parseFloat(e.target.value) || 0
                                     }));
                                 }}
-                                InputProps={{
-                                    startAdornment: '$',
-                                }}
                             />
                             <TextField
-                                label="Total"
+                                label="Total(FRW )"
                                 disabled
                                 value={(selectedReport?.principleAmount || 0) + (selectedReport?.penaltiesAmount || 0)}
-                                InputProps={{
-                                    startAdornment: '$',
-                                }}
                             />
                         </Box>
                     </Box>
@@ -652,7 +640,6 @@ const InvestigationOfficer = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Snackbar for notifications */}
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={6000}

@@ -172,9 +172,9 @@ const FinesReport = () => {
                             <TableRow>
                                 <TableCell>Report ID</TableCell>
                                 <TableCell>Case Number</TableCell>
-                                <TableCell>Principle Amount</TableCell>
-                                <TableCell>Penalties Amount</TableCell>
-                                <TableCell>Total</TableCell>
+                                <TableCell>Principle Amount(FRW)</TableCell>
+                                <TableCell>Penalties Amount(FRW)</TableCell>
+                                <TableCell>Total(FRW)</TableCell>
                                 <TableCell>Created At</TableCell>
                             </TableRow>
                         </TableHead>

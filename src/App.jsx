@@ -27,6 +27,7 @@ import FinesReport from "./Components/FinesReport.jsx";
 import DirectorIntelligenceCaseReports from "./Components/DirectorIntelligenceCaseReports.jsx";
 import T3OfficersReports from "./Components/T3OfficersReports.jsx";
 import ForgotPassword from "./Components/ForgotPassword.jsx";
+import LegalAdvisor from "./Components/LegalAdvisor.jsx"
 
 const ProtectedRoute = ({ children }) => {
     const { authState } = useContext(AuthContext);
@@ -73,6 +74,8 @@ const AppRoutes = () => {
             <Route path="/assistant-commissioner/fines-report" element={<ProtectedRoute><FinesReport /></ProtectedRoute>} />
             <Route path="/director-intelligence/case-reports" element={<ProtectedRoute><DirectorIntelligenceCaseReports /></ProtectedRoute>}/>
             <Route path="/reports/t3-officers" element={<ProtectedRoute><T3OfficersReports /></ProtectedRoute>} />
+            <Route path="/legal-advisor" element={<ProtectedRoute><LegalAdvisor /></ProtectedRoute>} />
+
         </Routes>
     );
 };

@@ -114,162 +114,182 @@ export const CaseService = {
     }
 };
 
-export const ReportApi = {
-    getReportsAssignedToInvestigationOfficers: () => {
-        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-        return caseApi.get('/api/reports/investigation-officers/assigned-reports', {
-            params: { employeeId }
-        });
-    },
-    getReportsByT3Officers: () => {
-        return caseApi.get('/api/reports/t3-officers-reports');
-    },
-    getFinesReportForAssistantCommissioner: () => {
-        return caseApi.get('/api/reports/assistant-commissioner/fines-report');
-    },
-    updateReturnedReport: (reportId, reportData) => {
-        return caseApi.put(`/api/reports/${reportId}/update-returned-report`, reportData);
-    },
-    submitFindings,
-    getFindings: (reportId) => {
-        return caseApi.get(`/api/reports/${reportId}/findings`);
-    },
+    export const ReportApi = {
+        getReportsAssignedToInvestigationOfficers: () => {
+            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+            return caseApi.get('/api/reports/investigation-officers/assigned-reports', {
+                params: { employeeId }
+            });
+        },
+        getReportsByT3Officers: () => {
+            return caseApi.get('/api/reports/t3-officers-reports');
+        },
+        getFinesReportForAssistantCommissioner: () => {
+            return caseApi.get('/api/reports/assistant-commissioner/fines-report');
+        },
+        updateReturnedReport: (reportId, reportData) => {
+            return caseApi.put(`/api/reports/${reportId}/update-returned-report`, reportData);
+        },
+        submitFindings,
+        getFindings: (reportId) => {
+            return caseApi.get(`/api/reports/${reportId}/findings`);
+        },
 
-    downloadFindingsAttachment: async (reportId, filename) => {
-        try {
-            const response = await caseApi.get(
-                `/api/reports/${reportId}/findings-attachments/by-name/${encodeURIComponent(filename)}`,
-                { responseType: 'blob' }
-            );
+        downloadFindingsAttachment: async (reportId, filename) => {
+            try {
+                const response = await caseApi.get(
+                    `/api/reports/${reportId}/findings-attachments/by-name/${encodeURIComponent(filename)}`,
+                    { responseType: 'blob' }
+                );
 
-            // trigger download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error("Error downloading findings file by name", err);
-            throw err;
-        }
-    },
+                // trigger download
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error("Error downloading findings file by name", err);
+                throw err;
+            }
+        },
 
-    submitReport: async (formData, employeeId) => {
-        try {
-            const response = await caseApi.post(
-                '/api/reports',
-                formData,
-                {
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'employee_id': employeeId
+        submitReport: async (formData, employeeId) => {
+            try {
+                const response = await caseApi.post(
+                    '/api/reports',
+                    formData,
+                    {
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                            'employee_id': employeeId
+                        }
+                    }
+                );
+                return response.data;
+            } catch (error) {
+                console.error('Error submitting report:', error);
+                throw error;
+            }
+        },
+
+        getReport: (id) => {
+            return caseApi.get(`/api/reports/${id}`);
+        },
+
+        sendToDirectorIntelligence: (reportId) => {
+            return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {});
+        },
+
+        returnReport: (id, returnToEmployeeId, returnReason) => {
+            return caseApi.post(`/api/reports/${id}/return`, null, {
+                params: {
+                    returnToEmployeeId,
+                    returnReason
+                }
+            });
+        },
+
+        getReportsForDirectorIntelligence: () => {
+            return caseApi.get('/api/reports/director-intelligence/all-reports');
+        },
+
+        getReportsForDirectorInvestigation: () => {
+            return caseApi.get('/api/reports/director-investigation/all-reports');
+        },
+
+        getReportsForAssistantCommissioner: () => {
+            return caseApi.get('/api/reports/assistant-commissioner/all-reports');
+        },
+
+        approveReport: (reportId) => {
+            return caseApi.post(`/api/reports/${reportId}/approve`, {});
+        },
+
+        rejectReport: (reportId, rejectionReason) => {
+            return caseApi.post(`/api/reports/${reportId}/reject`, null, {
+                params: { rejectionReason }
+            });
+        },
+
+        assignToInvestigationOfficer: (reportId, officerId) => {
+            return caseApi.post(`/api/reports/${reportId}/assign-to-investigation-officer`, {
+                specificOfficerId: officerId
+            });
+        },
+
+        getAssignedReportsForInvestigationOfficer: () => {
+            return caseApi.get('/api/reports/investigation-officer/assigned-reports');
+        },
+
+        updateInvestigationStatus: (caseId, status, notes) => {
+            return caseApi.patch(`/api/investigation/cases/${caseId}/status`, {
+                status,
+                notes
+            });
+        },
+
+        downloadAttachment: async (reportId, storedFilename) => {
+            try {
+                const requesterId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+
+                const response = await caseApi.get(
+                    `/api/reports/download/${reportId}/${storedFilename}`,
+                    {
+                        params: { requesterId },
+                        responseType: 'blob'
+                    }
+                );
+
+                // Create a link to trigger browser download
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+
+                // Extract filename from header
+                let filename = 'attachment.pdf';
+                const disposition = response.headers['content-disposition'];
+                if (disposition) {
+                    const match = disposition.match(/filename="?(.+)"?/);
+                    if (match) {
+                        filename = match[1];
                     }
                 }
-            );
-            return response.data;
-        } catch (error) {
-            console.error('Error submitting report:', error);
-            throw error;
-        }
-    },
 
-    getReport: (id) => {
-        return caseApi.get(`/api/reports/${id}`);
-    },
-
-    sendToDirectorIntelligence: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/send-to-director-intelligence`, {});
-    },
-
-    returnReport: (id, returnToEmployeeId, returnReason) => {
-        return caseApi.post(`/api/reports/${id}/return`, null, {
-            params: {
-                returnToEmployeeId,
-                returnReason
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Error downloading attachment", error);
+                throw error;
             }
-        });
-    },
-
-    getReportsForDirectorIntelligence: () => {
-        return caseApi.get('/api/reports/director-intelligence/all-reports');
-    },
-
-    getReportsForDirectorInvestigation: () => {
-        return caseApi.get('/api/reports/director-investigation/all-reports');
-    },
-
-    getReportsForAssistantCommissioner: () => {
-        return caseApi.get('/api/reports/assistant-commissioner/all-reports');
-    },
-
-    approveReport: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/approve`, {});
-    },
-
-    rejectReport: (reportId, rejectionReason) => {
-        return caseApi.post(`/api/reports/${reportId}/reject`, null, {
-            params: { rejectionReason }
-        });
-    },
-
-    assignToInvestigationOfficer: (reportId, officerId) => {
-        return caseApi.post(`/api/reports/${reportId}/assign-to-investigation-officer`, {
-            specificOfficerId: officerId
-        });
-    },
-
-    getAssignedReportsForInvestigationOfficer: () => {
-        return caseApi.get('/api/reports/investigation-officer/assigned-reports');
-    },
-
-    updateInvestigationStatus: (caseId, status, notes) => {
-        return caseApi.patch(`/api/investigation/cases/${caseId}/status`, {
-            status,
-            notes
-        });
-    },
-
-    downloadAttachment: async (reportId, storedFilename) => {
-        try {
-            const requesterId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            const response = await caseApi.get(
-                `/api/reports/download/${reportId}/${storedFilename}`,
-                {
-                    params: { requesterId },
-                    responseType: 'blob'
-                }
-            );
-
-            // Create a link to trigger browser download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-
-            // Extract filename from header
-            let filename = 'attachment.pdf';
-            const disposition = response.headers['content-disposition'];
-            if (disposition) {
-                const match = disposition.match(/filename="?(.+)"?/);
-                if (match) {
-                    filename = match[1];
-                }
-            }
-
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Error downloading attachment", error);
-            throw error;
-        }
-    }
-};
+        },
+        getDepartments: () => {
+            return caseApi.get('/api/departments');
+        },
+        sendReport: (reportId, departmentName) => {
+            return caseApi.post(`/api/reports/${reportId}/send`, {
+                Department: departmentName
+            });
+        },
+        sendReportToLegalAdvisor: (reportId) => {
+            return caseApi.post(`/api/reports/${reportId}/send-to-legal-advisor`, {});
+        },
+        getReportsForLegalAdvisor: () => {
+            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+            return caseApi.get('/api/reports/legal-advisor/my-reports', {
+                headers: { 'employee_id': employeeId }
+            });
+        },
+        getAllReportsWithLegalAdvisors: () => {
+            return caseApi.get('/api/reports/legal-advisor/all-reports');
+        },
+    };
 
 export const InvestigationApi = {
     getAvailableOfficers: () => {

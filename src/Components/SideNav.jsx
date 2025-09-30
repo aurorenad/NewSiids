@@ -84,6 +84,13 @@ const Sidebar = () => {
                             </NavLink>
                         </li>
                     )}
+                    {authState.role === 'legalAdvisor' && (
+                        <li>
+                            <NavLink to="/legal-advisor" className={({ isActive }) => isActive ? 'active' : ''}>
+                                Legal Advisor
+                            </NavLink>
+                        </li>
+                    )}
                 </ul>
             </nav>
         </div>
