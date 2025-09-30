@@ -51,7 +51,6 @@ public class Report {
     private String returnReason;
     private LocalDateTime returnedAt;
 
-    // Role-specific assignments
     @ManyToOne
     @JoinColumn(name = "assistant_commissioner_id")
     private Employee assistantCommissioner;

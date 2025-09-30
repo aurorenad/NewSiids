@@ -99,11 +99,9 @@ public class ReportController {
             @RequestHeader("employee_id") String employeeId) {
 
         try {
-            // Validate report exists and user has access
             Report report = reportService.getReport(id);
             validateAttachmentAccess(report, employeeId);
 
-            // Validate attachment path
             if (report.getAttachmentPath() == null || report.getAttachmentPath().trim().isEmpty()) {
                 log.warn("Empty attachment path for report {}", id);
                 return ResponseEntity.notFound().build();
@@ -130,10 +128,8 @@ public class ReportController {
                 return ResponseEntity.badRequest().body("Invalid file path");
             }
 
-            // Verify file exists and is readable
             if (!Files.exists(filePath)) {
                 log.error("File not found: {}", filePath);
-                // DEBUG: List directory contents
                 try {
                     log.info("Upload directory contents: {}",
                             Files.list(uploadPath).map(Path::getFileName).collect(Collectors.toList()));
@@ -228,17 +224,14 @@ public class ReportController {
             @PathVariable String filename,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            // Get report and verify access
             Report report = reportService.getReport(id);
             validateAttachmentAccess(report, employeeId);
 
-            // Ensure filename exists in the list
             if (report.getFindingsAttachmentPaths() == null ||
                     !report.getFindingsAttachmentPaths().contains(filename)) {
                 return ResponseEntity.notFound().build();
             }
 
-            // Resolve full path
             Path filePath = Paths.get(uploadDir).resolve(filename).normalize().toAbsolutePath();
 
             if (!filePath.startsWith(Paths.get(uploadDir).normalize().toAbsolutePath())) {
@@ -1041,6 +1034,66 @@ public class ReportController {
             return ResponseEntity.ok(responseList);
         } catch (Exception e) {
             log.error("Error getting assigned reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @PostMapping("/{id}/send")
+    public ResponseEntity<?> sendReportToDepartment(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> request) {
+
+        try {
+            String department = request.get("Department");
+            reportService.sendReportToDepartment(id, department);
+            return ResponseEntity.ok("Report sent to " + department);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to send report: " + e.getMessage());
+        }
+    }
+    @PostMapping("/{id}/send-to-legal-advisor")
+    public ResponseEntity<ReportResponseDTO> sendToLegalAdvisor(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.sendToLegalAdvisor(id);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            log.error("Error sending to Legal Advisor: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    @GetMapping("/legal-advisor/my-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getReportsForLegalAdvisor(
+            @RequestHeader("employee_id") String legalAdvisorId) {
+        try {
+            List<Report> reports = reportService.getReportsForLegalAdvisor(legalAdvisorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting legal advisor reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/legal-advisor/all-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAllReportsWithLegalAdvisors() {
+        try {
+            List<Report> reports = reportService.getAllReportsWithLegalAdvisors();
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (Exception e) {
+            log.error("Error getting all legal advisor reports: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

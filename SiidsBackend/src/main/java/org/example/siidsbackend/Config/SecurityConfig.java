@@ -45,9 +45,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(request -> request
                         .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**", "/reset-password", "/verify-otp", "/forgot-password").permitAll()
                         .requestMatchers("/api/cases/**").hasAnyAuthority("User","Surveillance")
-                        .requestMatchers("/api/reports/**").hasAnyAuthority("User","Surveillance")
+                        .requestMatchers("/api/reports/**").hasAnyAuthority("User","Surveillance", "legalAdvisor")
                         .requestMatchers("/api/taxpayers/**").hasAnyAuthority("User","Surveillance")
                         .requestMatchers("/api/informers/**").hasAnyAuthority("User", "Surveillance")
+                        .requestMatchers("/api/departments").hasAnyAuthority("User", "Surveillance")
                         .requestMatchers("/api/employees/**").hasAnyAuthority("User", "Surveillance")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .anyRequest().authenticated())

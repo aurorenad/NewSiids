@@ -177,4 +177,23 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "ORDER BY r.created_at DESC",
             nativeQuery = true)
     List<Report> findReportsAssignedToInvestigationOfficers(@Param("officerId") String officerId);
+    @Query(value = "SELECT e FROM Employee e " +
+            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
+            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
+            "INNER JOIN structures s ON s.structureId = j.structureId " +
+            "WHERE j.jobMasterId = 118")
+    List<Employee> findLegalAdvisors();
+    @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
+            "WHERE c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM " +
+            "AND r.currentRecipient.employeeId IN " +
+            "(SELECT e.employeeId FROM Employee e " +
+            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
+            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
+            "WHERE j.jobMasterId = 118)")
+    List<Report> findReportsWithLegalAdvisors();
+    @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
+            "WHERE c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM " +
+            "AND r.currentRecipient.employeeId = :legalAdvisorId")
+    List<Report> findReportsAssignedToLegalAdvisor(@Param("legalAdvisorId") String legalAdvisorId);
+
 }

@@ -20,7 +20,6 @@ public class WebSocketNotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationRepo notificationRepo;
 
-
     public void sendNotificationToUser(String employeeId, NotificationDTO notification) {
         try {
             String destination = "/user/" + employeeId + "/notifications";
@@ -31,9 +30,6 @@ public class WebSocketNotificationService {
         }
     }
 
-    /**
-     * Send notification to all directors of intelligence
-     */
     public void sendNotificationToDirectorsIntelligence(NotificationDTO notification) {
         try {
             String destination = "/topic/directors/intelligence";
@@ -44,9 +40,6 @@ public class WebSocketNotificationService {
         }
     }
 
-    /**
-     * Send notification to all directors of investigation
-     */
     public void sendNotificationToDirectorsInvestigation(NotificationDTO notification) {
         try {
             String destination = "/topic/directors/investigation";
@@ -57,9 +50,6 @@ public class WebSocketNotificationService {
         }
     }
 
-    /**
-     * Send notification to all assistant commissioners
-     */
     public void sendNotificationToAssistantCommissioners(NotificationDTO notification) {
         try {
             String destination = "/topic/assistant-commissioners";
@@ -70,9 +60,27 @@ public class WebSocketNotificationService {
         }
     }
 
-    /**
-     * Create and save notification in database, then send real-time notification
-     */
+    public void sendNotificationToLegalAdvisors(NotificationDTO notification) {
+        try {
+            String destination = "/topic/legal-advisors";
+            messagingTemplate.convertAndSend(destination, notification);
+            log.info("Notification sent to all Legal Advisors");
+        } catch (Exception e) {
+            log.error("Failed to send notification to Legal Advisors: {}", e.getMessage());
+        }
+    }
+
+    // NEW METHOD: Send notification to specific department
+    public void sendNotificationToDepartment(String department, NotificationDTO notification) {
+        try {
+            String destination = "/topic/departments/" + department.toLowerCase().replace(" ", "-");
+            messagingTemplate.convertAndSend(destination, notification);
+            log.info("Notification sent to department: {}", department);
+        } catch (Exception e) {
+            log.error("Failed to send notification to department {}: {}", department, e.getMessage());
+        }
+    }
+
     public void createAndSendNotification(Report report, String message, Employee recipient) {
         try {
             // Save notification in database
@@ -96,9 +104,6 @@ public class WebSocketNotificationService {
         }
     }
 
-    /**
-     * Create notification DTO from notification entity
-     */
     private NotificationDTO createNotificationDTO(Notification notification) {
         NotificationDTO dto = new NotificationDTO();
         dto.setId(notification.getId());
@@ -126,6 +131,23 @@ public class WebSocketNotificationService {
         dto.setReportDescription(report.getDescription());
         dto.setSenderName(report.getCreatedBy().getGivenName() + " " +
                 report.getCreatedBy().getFamilyName());
+        return dto;
+    }
+
+    // NEW METHOD: Create notification for department
+    public NotificationDTO createDepartmentNotificationDTO(Report report, String message, String department) {
+        NotificationDTO dto = new NotificationDTO();
+        dto.setMessage(message);
+        dto.setReportId(report.getId());
+        dto.setRecipientId(null);
+        dto.setRecipientName(department);
+        dto.setCreatedAt(LocalDateTime.now());
+        dto.setRead(false);
+        dto.setReportStatus(report.getStatus());
+        dto.setReportDescription(report.getDescription());
+        dto.setSenderName(report.getCreatedBy().getGivenName() + " " +
+                report.getCreatedBy().getFamilyName());
+        dto.setNotificationType("DEPARTMENT_NOTIFICATION");
         return dto;
     }
 }

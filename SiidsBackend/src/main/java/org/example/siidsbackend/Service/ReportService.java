@@ -10,10 +10,7 @@ import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
-import org.example.siidsbackend.Repository.CaseRepo;
-import org.example.siidsbackend.Repository.NotificationRepo;
-import org.example.siidsbackend.Repository.ReportRepo;
-import org.example.siidsbackend.Repository.EmployeeRepo;
+import org.example.siidsbackend.Repository.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +42,7 @@ public class ReportService {
     private final EmployeeRepo employeeRepo;
     private final CaseRepo caseRepo;
     private final NotificationRepo notificationRepo;
+    private final StructureRepository structureRepo;
     private final WebSocketNotificationService webSocketNotificationService;
     private final AuditService auditService;
 
@@ -410,6 +408,9 @@ public class ReportService {
             case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
                 newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
                 break;
+            case REPORT_SENT_TO_LEGAL_TEAM:
+                newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+                break;
             default:
                 throw new IllegalStateException("Cannot return report in current status");
         }
@@ -448,6 +449,8 @@ public class ReportService {
                 return "NEW_REPORT_ASSISTANT_COMMISSIONER";
             case REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER:
                 return "REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER";
+            case REPORT_SENT_TO_LEGAL_TEAM:
+                return "NEW_REPORT_LEGAL_ADVISOR";
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
             case REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
             case REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER:
@@ -1175,5 +1178,105 @@ public class ReportService {
 
     public List<Report> getReportsAssignedToInvestigationOfficers(String officerId) {
         return reportRepo.findReportsAssignedToInvestigationOfficers(officerId);
+    }
+    @Transactional
+    public void sendReportToDepartment(Integer id, String department) {
+        log.info("Received department: '{}' for report ID: {}", department, id);
+        Report report = getReport(id);
+
+        String normalizedDept = department.trim();
+        Map<String, WorkflowStatus> deptWorkflowMap = Map.of(
+                "Legal Services and Board Affairs", WorkflowStatus.REPORT_SENT_TO_LEGAL_SERVICES_AND_BOARD_AFFAIRS,
+                "Customs Services", WorkflowStatus.REPORT_SENT_TO_CUSTOMS_SERVICES,
+                "Finance", WorkflowStatus.REPORT_SENT_TO_FINANCE,
+                "Strategy and Risk Analysis", WorkflowStatus.REPORT_SENT_TO_STRATEGIC_AND_RISK_ANALYSIS,
+                "Internal Audit and Integrity", WorkflowStatus.REPORT_SENT_TO_INTERNAL_AUDIT_AND_INTEGRITY,
+                "IT and Digital Transformation", WorkflowStatus.REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION
+        );
+        List<structures> departments = structureRepo.findByStructureType("department");
+        boolean validDepartment = departments.stream()
+                .anyMatch(d -> d.getStructureName().equalsIgnoreCase(normalizedDept));
+
+        if (!validDepartment) {
+            throw new IllegalArgumentException("Invalid department: " + department);
+        }
+
+        // Pick workflow status
+        WorkflowStatus status = deptWorkflowMap.get(normalizedDept);
+        if (status == null) {
+            throw new IllegalArgumentException("No workflow mapping found for department: " + department);
+        }
+
+        // Update report case status
+        report.getRelatedCase().setStatus(status);
+
+        save(report);
+    }
+
+    public void save(Report report) {
+        reportRepo.save(report);
+    }
+
+    public List<structures> getAllDepartments() {
+        return structureRepo.findByStructureType("Department");
+    }
+
+    public List<Employee> getLegalAdvisors() {
+        return reportRepo.findLegalAdvisors();
+    }
+    @Transactional
+    public Report sendToLegalAdvisor(Integer reportId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
+
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM);
+        caseRepo.save(relatedCase);
+
+        if (!legalAdvisors.isEmpty()) {
+            report.setCurrentRecipient(legalAdvisors.get(0));
+        } else {
+            throw new IllegalStateException("No Legal Advisor found.");
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+
+        Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM,
+                "Report #" + savedReport.getId() + " sent to Legal Advisor",
+                report.getCreatedBy()
+        );
+
+        String message = String.format("Report #%d requires legal review from %s %s",
+                savedReport.getId(),
+                savedReport.getCreatedBy().getGivenName(),
+                savedReport.getCreatedBy().getFamilyName());
+        createNotification(savedReport, message);
+
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("NEW_REPORT_LEGAL_ADVISOR");
+        webSocketNotificationService.sendNotificationToLegalAdvisors(broadcastNotification);
+
+        return savedReport;
+    }
+    public List<Report> getReportsForLegalAdvisor(String legalAdvisorId) {
+        // Verify the employee is a legal advisor
+        List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
+        boolean isLegalAdvisor = legalAdvisors.stream()
+                .anyMatch(la -> la.getEmployeeId().equals(legalAdvisorId));
+
+        if (!isLegalAdvisor) {
+            throw new RuntimeException("Employee is not a Legal Advisor");
+        }
+
+        return reportRepo.findReportsAssignedToLegalAdvisor(legalAdvisorId);
+    }
+
+    public List<Report> getAllReportsWithLegalAdvisors() {
+        return reportRepo.findReportsWithLegalAdvisors();
     }
 }
