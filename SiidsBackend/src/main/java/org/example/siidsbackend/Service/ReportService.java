@@ -505,9 +505,11 @@ public class ReportService {
         dto.setUpdatedAt(report.getUpdatedAt());
         dto.setCreatedByEmployeeId(report.getCreatedBy().getEmployeeId());
         dto.setRelatedCase(report.getRelatedCase());
-
-        // ... rest of the mapping ...
-
+        dto.setPrincipleAmount(report.getPrincipleAmount());
+        dto.setPenaltiesAmount(report.getPenaltiesAmount());
+        dto.setFindings(report.getFindings());
+        dto.setRecommendations(report.getRecommendations());
+        dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths());
         return dto;
     }
 

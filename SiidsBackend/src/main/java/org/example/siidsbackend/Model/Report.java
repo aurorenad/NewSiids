@@ -80,7 +80,6 @@ public class Report {
     @Column(name = "attachment_path")
     private List<String> findingsAttachmentPaths = new ArrayList<>();
 
-    // Financial information
     private Double principleAmount;
     private Double penaltiesAmount;
 
