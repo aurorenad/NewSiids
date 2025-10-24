@@ -15,6 +15,15 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                 throw new Error('Content element not found');
             }
 
+            // Create a clone of the element to modify for PDF
+            const elementClone = element.cloneNode(true);
+
+            // Remove attachments section from the clone
+            const attachmentsSection = elementClone.querySelector('#attachments-section');
+            if (attachmentsSection) {
+                attachmentsSection.remove();
+            }
+
             const filename = `Report_Findings_${data?.header?.reference || 'Unknown'}_${new Date().toISOString().split('T')[0]}.pdf`;
 
             const options = {
@@ -42,7 +51,7 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                 }
             };
 
-            await html2pdf().set(options).from(element).save();
+            await html2pdf().set(options).from(elementClone).save();
         } catch (error) {
             console.error('PDF generation failed:', error);
         } finally {
@@ -133,8 +142,9 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                     </div>
                 ))}
 
+                {/* Add ID to attachments section for easy removal */}
                 {attachments && attachments.length > 0 && (
-                    <div style={{ marginBottom: '25px' }}>
+                    <div id="attachments-section" style={{ marginBottom: '25px' }}>
                         <h5 style={{
                             backgroundColor: '#f5f5f5',
                             padding: '8px',
