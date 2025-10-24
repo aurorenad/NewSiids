@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Data
 public class ReportRequestDTO {
     private String description;
-    private String attachmentPath;
+//    private String attachmentPath;
     private String caseNum;
 
 }

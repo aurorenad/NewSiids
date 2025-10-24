@@ -17,6 +17,11 @@ public class Report {
     private String description;
     private String attachmentPath;
 
+    @ElementCollection
+    @CollectionTable(name = "report_attachments", joinColumns = @JoinColumn(name = "report_id"))
+    @Column(name = "attachment_path")
+    private List<String> attachmentPaths = new ArrayList<>();
+
     @ManyToOne
     @JoinColumn(name = "case_num", referencedColumnName = "caseNum")
     @JsonBackReference

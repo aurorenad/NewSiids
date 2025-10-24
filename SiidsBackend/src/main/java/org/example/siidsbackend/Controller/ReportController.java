@@ -65,7 +65,7 @@ public class ReportController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReportResponseDTO> createReport(
             @RequestPart("reportData") String reportDataJson,
-            @RequestPart(value = "attachment", required = false) MultipartFile attachment,
+            @RequestPart(value = "attachments", required = false) MultipartFile[] attachments, // Change to array
             @RequestHeader("employee_id") String employeeId) {
 
         try {
@@ -75,14 +75,18 @@ public class ReportController {
                 return ResponseEntity.badRequest().build();
             }
 
-            String attachmentPath = null;
-            if (attachment != null && !attachment.isEmpty()) {
-                validatePdfFile(attachment);
-                attachmentPath = storePdfAttachment(attachment);
+            List<String> attachmentPaths = new ArrayList<>();
+            if (attachments != null && attachments.length > 0) {
+                for (MultipartFile attachment : attachments) {
+                    if (!attachment.isEmpty()) {
+                        validatePdfFile(attachment);
+                        String attachmentPath = storePdfAttachment(attachment);
+                        attachmentPaths.add(attachmentPath);
+                    }
+                }
             }
 
-            reportData.setAttachmentPath(attachmentPath);
-            Report report = reportService.createReport(reportData, employeeId);
+            Report report = reportService.createReport(reportData, attachmentPaths, employeeId); // Pass list
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Validation error creating report: {}", e.getMessage());
@@ -508,25 +512,6 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-//    @PostMapping("/{id}/assign-to-investigation-officer")
-//    public ResponseEntity<ReportResponseDTO> assignToInvestigationOfficer(
-//            @PathVariable Integer id,
-//            @RequestParam(required = false) String specificOfficerId,
-//            @RequestHeader("employee_id") String employeeId) {
-//        try {
-//            Employee assigner = employeeRepo.findByEmployeeId(employeeId)
-//                    .orElseThrow(() -> new RuntimeException("Assigner not found"));
-//
-//            Report report = reportService.assignToInvestigationOfficer(id, specificOfficerId);
-//            return ResponseEntity.ok(reportService.toResponseDTO(report));
-//        } catch (Exception e) {
-//            System.err.println("Error assigning report to investigation officer: " + e.getMessage());
-//            e.printStackTrace();
-//            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-//        }
-//    }
-
     @PostMapping("/{id}/assign-to-investigation-officer")
     public ResponseEntity<ReportResponseDTO> assignToInvestigationOfficer(
             @PathVariable Integer id,

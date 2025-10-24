@@ -11,14 +11,14 @@ import java.util.List;
 public class ReportResponseDTO {
     private Integer id;
     private String description;
-    private String attachmentPath;
+    private List<String> attachmentPaths;
     private WorkflowStatus status;
     private String createdBy;
     private String currentRecipient;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Case relatedCase;
-
+    private String assignmentNotes;
     private String approvedBy;
     private LocalDateTime approvedAt;
     private String rejectedBy;
