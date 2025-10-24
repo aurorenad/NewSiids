@@ -215,9 +215,10 @@ export const CaseService = {
             });
         },
 
-        assignToInvestigationOfficer: (reportId, officerId) => {
+        assignToInvestigationOfficer: (reportId, officerId, assignmentNotes) => {
             return caseApi.post(`/api/reports/${reportId}/assign-to-investigation-officer`, {
-                specificOfficerId: officerId
+                specificOfficerId: officerId,
+                assignmentNotes: assignmentNotes
             });
         },
 

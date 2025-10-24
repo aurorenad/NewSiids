@@ -30,7 +30,8 @@ import {
     ListItem,
     ListItemText,
     ListItemIcon,
-    Divider
+    Divider,
+    Collapse
 } from "@mui/material";
 import {
     Search,
@@ -40,7 +41,9 @@ import {
     ArrowBack,
     AttachFile,
     Delete,
-    NoteAdd
+    NoteAdd,
+    ExpandMore,
+    ExpandLess
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { ReportApi } from "./../api/Axios/caseApi";
@@ -64,6 +67,7 @@ const InvestigationOfficer = () => {
     const [recommendations, setRecommendations] = useState("");
     const [attachments, setAttachments] = useState([]);
     const [attachmentPreviews, setAttachmentPreviews] = useState([]);
+    const [expandedRows, setExpandedRows] = useState({});
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -79,6 +83,7 @@ const InvestigationOfficer = () => {
                     principleAmount: report.principleAmount || 0,
                     penaltiesAmount: report.penaltiesAmount || 0,
                     notes: report.notes || '',
+                    assignmentNotes: report.assignmentNotes || 'No assignment instructions provided',
                     ...report
                 }));
                 setReports(formattedReports);
@@ -260,11 +265,19 @@ const InvestigationOfficer = () => {
         }
     };
 
+    const toggleRowExpansion = (reportId) => {
+        setExpandedRows(prev => ({
+            ...prev,
+            [reportId]: !prev[reportId]
+        }));
+    };
+
     const filteredReports = reports.filter(report => {
         const searchTerm = searchQuery.toLowerCase();
         return (
             (report.caseId?.toString().toLowerCase() || '').includes(searchTerm) ||
-            (report.status?.toString().toLowerCase() || '').includes(searchTerm)
+            (report.status?.toString().toLowerCase() || '').includes(searchTerm) ||
+            (report.assignmentNotes?.toLowerCase() || '').includes(searchTerm)
         );
     });
 
@@ -286,7 +299,13 @@ const InvestigationOfficer = () => {
     };
 
     const formatCurrency = (amount) => {
-        return amount ? `$${amount.toFixed(2)}` : 'FRW 0.00';
+        return amount ? `FRW ${amount.toFixed(2)}` : 'FRW 0.00';
+    };
+
+    const truncateText = (text, maxLength = 50) => {
+        if (!text) return 'No instructions';
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
     };
 
     if (loading) {
@@ -326,7 +345,7 @@ const InvestigationOfficer = () => {
 
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <TextField
-                        label="Search cases"
+                        label="Search cases, status, or instructions"
                         variant="outlined"
                         size="small"
                         value={searchQuery}
@@ -340,12 +359,6 @@ const InvestigationOfficer = () => {
                         color="primary"
                         variant="outlined"
                     />
-                </Box>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                {/* ... existing code ... */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    {/* ... existing search field ... */}
                     <Button
                         variant="contained"
                         startIcon={<Description />}
@@ -363,6 +376,7 @@ const InvestigationOfficer = () => {
                             <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Reported Date</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold' }}>Assignment Instructions</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Principle</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Penalties</TableCell>
                             <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
@@ -372,65 +386,100 @@ const InvestigationOfficer = () => {
                     <TableBody>
                         {filteredReports.length > 0 ? (
                             filteredReports.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>{report.caseId}</TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={formatStatus(report.status)}
-                                            color={getStatusColor(report.status)}
-                                            variant="outlined"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        {new Date(report.reportedDate).toLocaleDateString()}
-                                    </TableCell>
-                                    <TableCell>
-                                        {formatCurrency(report.principleAmount)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {formatCurrency(report.penaltiesAmount)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {formatCurrency(report.principleAmount + report.penaltiesAmount)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box display="flex" gap={1}>
-                                            <Tooltip title="View Report">
-                                                <IconButton
-                                                    onClick={() => navigate(`/reports/${report.id}`)}
-                                                    color="primary"
-                                                >
-                                                    <Description />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Update Status">
-                                                <IconButton
-                                                    color="secondary"
-                                                    onClick={() => {
-                                                        setSelectedReport(report);
-                                                        setStatusUpdate(report.status || "");
-                                                        setNotes(report.notes || "");
-                                                        setStatusDialogOpen(true);
-                                                    }}
-                                                >
-                                                    <Send />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Submit Findings">
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() => handleOpenFindingsDialog(report)}
-                                                >
-                                                    <NoteAdd />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
+                                <React.Fragment key={report.id}>
+                                    <TableRow>
+                                        <TableCell>{report.caseId}</TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={formatStatus(report.status)}
+                                                color={getStatusColor(report.status)}
+                                                variant="outlined"
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            {new Date(report.reportedDate).toLocaleDateString()}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Typography variant="body2">
+                                                    {truncateText(report.assignmentNotes, 60)}
+                                                </Typography>
+                                                {report.assignmentNotes && report.assignmentNotes.length > 60 && (
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => toggleRowExpansion(report.id)}
+                                                    >
+                                                        {expandedRows[report.id] ? <ExpandLess /> : <ExpandMore />}
+                                                    </IconButton>
+                                                )}
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            {formatCurrency(report.principleAmount)}
+                                        </TableCell>
+                                        <TableCell>
+                                            {formatCurrency(report.penaltiesAmount)}
+                                        </TableCell>
+                                        <TableCell>
+                                            {formatCurrency(report.principleAmount + report.penaltiesAmount)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box display="flex" gap={1}>
+                                                <Tooltip title="View Report">
+                                                    <IconButton
+                                                        onClick={() => navigate(`/reports/${report.id}`)}
+                                                        color="primary"
+                                                    >
+                                                        <Description />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Update Status">
+                                                    <IconButton
+                                                        color="secondary"
+                                                        onClick={() => {
+                                                            setSelectedReport(report);
+                                                            setStatusUpdate(report.status || "");
+                                                            setNotes(report.notes || "");
+                                                            setStatusDialogOpen(true);
+                                                        }}
+                                                    >
+                                                        <Send />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Submit Findings">
+                                                    <IconButton
+                                                        color="primary"
+                                                        onClick={() => handleOpenFindingsDialog(report)}
+                                                    >
+                                                        <NoteAdd />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+
+                                    {/* Expanded row for full assignment notes */}
+                                    {expandedRows[report.id] && (
+                                        <TableRow>
+                                            <TableCell colSpan={8} sx={{ backgroundColor: 'grey.50', py: 2 }}>
+                                                <Box sx={{ pl: 2 }}>
+                                                    <Typography variant="subtitle2" color="primary" gutterBottom>
+                                                        Full Assignment Instructions:
+                                                    </Typography>
+                                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: 'white', borderRadius: 1 }}>
+                                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                                            {report.assignmentNotes}
+                                                        </Typography>
+                                                    </Paper>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </React.Fragment>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={7} align="center">
+                                <TableCell colSpan={8} align="center">
                                     No assigned cases found
                                 </TableCell>
                             </TableRow>
@@ -449,6 +498,21 @@ const InvestigationOfficer = () => {
                         <Typography variant="body2" color="text.secondary">
                             Current Status: {selectedReport?.status ? formatStatus(selectedReport.status) : 'N/A'}
                         </Typography>
+
+                        {/* Show Assignment Instructions in Status Dialog */}
+                        {selectedReport?.assignmentNotes && (
+                            <Box sx={{ mt: 2, mb: 2 }}>
+                                <Typography variant="subtitle2" color="primary" gutterBottom>
+                                    Assignment Instructions:
+                                </Typography>
+                                <Paper elevation={0} sx={{ p: 2, backgroundColor: 'grey.50', borderRadius: 1 }}>
+                                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                        {selectedReport.assignmentNotes}
+                                    </Typography>
+                                </Paper>
+                            </Box>
+                        )}
+
                         <Typography variant="body2" color="text.secondary">
                             Principle Amount: {formatCurrency(selectedReport?.principleAmount)}
                         </Typography>
@@ -499,6 +563,7 @@ const InvestigationOfficer = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
             <Dialog
                 open={findingsDialogOpen}
                 onClose={handleCloseFindingsDialog}
@@ -511,13 +576,27 @@ const InvestigationOfficer = () => {
                         Case ID: {selectedReport?.caseId || 'N/A'}
                     </DialogContentText>
 
+                    {/* Show Assignment Instructions in Findings Dialog */}
+                    {selectedReport?.assignmentNotes && (
+                        <Box sx={{ mb: 3 }}>
+                            <Typography variant="subtitle2" color="primary" gutterBottom>
+                                Assignment Instructions:
+                            </Typography>
+                            <Paper elevation={1} sx={{ p: 2, backgroundColor: '#f0f7ff', borderRadius: 1 }}>
+                                <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                                    {selectedReport.assignmentNotes}
+                                </Typography>
+                            </Paper>
+                        </Box>
+                    )}
+
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="subtitle2">Financial Details</Typography>
                         <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
                             <TextField
-                                label="Principle Amount(FRW )"
+                                label="Principle Amount (FRW)"
                                 type="number"
-                                value={selectedReport?.principleAmount}
+                                value={selectedReport?.principleAmount || 0}
                                 onChange={(e) => {
                                     setSelectedReport(prev => ({
                                         ...prev,
@@ -526,7 +605,7 @@ const InvestigationOfficer = () => {
                                 }}
                             />
                             <TextField
-                                label="Penalties Amount(Frw )"
+                                label="Penalties Amount (FRW)"
                                 type="number"
                                 value={selectedReport?.penaltiesAmount || 0}
                                 onChange={(e) => {
@@ -537,7 +616,7 @@ const InvestigationOfficer = () => {
                                 }}
                             />
                             <TextField
-                                label="Total(FRW )"
+                                label="Total (FRW)"
                                 disabled
                                 value={(selectedReport?.principleAmount || 0) + (selectedReport?.penaltiesAmount || 0)}
                             />

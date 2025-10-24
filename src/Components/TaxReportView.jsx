@@ -120,7 +120,6 @@ const TaxReportView = () => {
         });
     };
 
-    // ✅ Export to PDF
     const handleDownloadPDF = async () => {
         const input = reportRef.current;
         const canvas = await html2canvas(input, { scale: 2 });
@@ -196,9 +195,7 @@ const TaxReportView = () => {
                 p: 3,
                 width: '80%',
                 margin: 'auto',
-                backgroundImage: `url(${LogoImage})`,
-
-                backgroundSize: 'cover', // optional
+                backgroundSize: 'cover',
                 backgroundPosition: 'center',
             }}
                    ref={reportRef}>

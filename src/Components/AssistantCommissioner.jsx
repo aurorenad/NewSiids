@@ -20,7 +20,8 @@ import {
     Snackbar,
     Tooltip,
     Menu,
-    MenuItem
+    MenuItem,
+    TablePagination
 } from "@mui/material";
 import {
     Search,
@@ -32,7 +33,9 @@ import {
     Article,
     Send,
     ForwardToInbox,
-    Gavel as GavelIcon
+    Gavel as GavelIcon,
+    ArrowUpward,
+    ArrowDownward
 } from "@mui/icons-material";
 
 import { useNavigate, Link } from 'react-router-dom';
@@ -53,6 +56,15 @@ const AssistantCommissioner = () => {
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
     const [anchorEl, setAnchorEl] = useState(null);
     const [menuReport, setMenuReport] = useState(null);
+
+    // ✅ Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    // ✅ Sorting state
+    const [sortBy, setSortBy] = useState('createdAt');
+    const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+
     const navigate = useNavigate();
 
     // Fetch reports
@@ -63,7 +75,9 @@ const AssistantCommissioner = () => {
                 const mappedReports = response.data.map(report => ({
                     ...report,
                     hasFindings: report.findings || report.recommendations ||
-                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0)
+                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0),
+                    // Ensure we have a createdAt field for sorting
+                    createdAt: report.createdAt || report.createdDate || report.dateCreated || new Date().toISOString()
                 }));
                 setReports(mappedReports);
             } catch (err) {
@@ -93,6 +107,49 @@ const AssistantCommissioner = () => {
 
     const showSnackbar = (message, severity = "success") => {
         setSnackbar({ open: true, message, severity });
+    };
+
+    // ✅ Sort handler
+    const handleSortByDate = () => {
+        const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+        setSortOrder(newSortOrder);
+        setSortBy('createdAt');
+    };
+
+    // ✅ Filter and sort reports
+    const filteredAndSortedReports = React.useMemo(() => {
+        let results = reports.filter(report => {
+            const searchLower = searchQuery.toLowerCase();
+            return (
+                report.id.toString().includes(searchLower) ||
+                (report.relatedCase?.caseNum?.toLowerCase().includes(searchLower)) ||
+                (report.createdBy?.toLowerCase().includes(searchLower))
+            );
+        });
+
+        // Apply sorting by date
+        results.sort((a, b) => {
+            const dateA = new Date(a.createdAt);
+            const dateB = new Date(b.createdAt);
+
+            if (sortOrder === 'desc') {
+                return dateB - dateA; // newest first
+            } else {
+                return dateA - dateB; // oldest first
+            }
+        });
+
+        return results;
+    }, [reports, searchQuery, sortOrder]);
+
+    // ✅ Pagination handlers
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
     };
 
     const handleApprove = async (reportId) => {
@@ -250,15 +307,6 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const filteredReports = reports.filter(report => {
-        const searchLower = searchQuery.toLowerCase();
-        return (
-            report.id.toString().includes(searchLower) ||
-            (report.relatedCase?.caseNum?.toLowerCase().includes(searchLower)) ||
-            (report.createdBy?.toLowerCase().includes(searchLower))
-        );
-    });
-
     const formatStatus = (status) => {
         const statusMap = {
             "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER": "Submitted for Review",
@@ -275,6 +323,22 @@ const AssistantCommissioner = () => {
             "REPORT_SENT_TO_LEGAL_TEAM": "Sent to Legal Advisor",
         };
         return statusMap[status] || status.replace(/_/g, ' ').toLowerCase();
+    };
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return '-';
+        }
     };
 
     if (loading) {
@@ -295,14 +359,28 @@ const AssistantCommissioner = () => {
 
     return (
         <div style={{ padding: "20px" }}>
-            <Box display="flex" justifyContent="space-between" mb={2}>
-                <TextField
-                    size="small"
-                    placeholder="Search reports..."
-                    variant="outlined"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                />
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2}>
+                <Box display="flex" alignItems="center" gap={2} flex={1}>
+                    <TextField
+                        size="small"
+                        placeholder="Search reports..."
+                        variant="outlined"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+
+                    {/* Sort by Date Button */}
+                    <Tooltip title={`Sort by creation date (${sortOrder === 'desc' ? 'newest first' : 'oldest first'})`}>
+                        <Button
+                            variant="outlined"
+                            onClick={handleSortByDate}
+                            startIcon={sortOrder === 'desc' ? <ArrowDownward /> : <ArrowUpward />}
+                        >
+                            Created Date {sortOrder === 'desc' ? '↓' : '↑'}
+                        </Button>
+                    </Tooltip>
+                </Box>
+
                 <Button
                     variant="contained"
                     color="primary"
@@ -320,114 +398,142 @@ const AssistantCommissioner = () => {
                             <TableCell>Report ID</TableCell>
                             <TableCell>Case Number</TableCell>
                             <TableCell>Created By</TableCell>
+                            <TableCell
+                                style={{
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                                onClick={handleSortByDate}
+                            >
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    Created Date
+                                    {sortOrder === 'desc' ? <ArrowDownward fontSize="small" /> : <ArrowUpward fontSize="small" />}
+                                </Box>
+                            </TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell>Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {filteredReports.length > 0 ? (
-                            filteredReports.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>{report.id}</TableCell>
-                                    <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
-                                    <TableCell>{report.createdBy}</TableCell>
-                                    <TableCell style={{
-                                        color: report.status.includes("APPROVED") ? "green" :
-                                            report.status.includes("REJECTED") ? "red" :
-                                                report.status.includes("RETURNED") ? "orange" : "#555",
-                                        fontWeight: "bold"
-                                    }}>
-                                        {formatStatus(report.status)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box display="flex" gap={1}>
-                                            <Tooltip title="View Report">
-                                                <IconButton
-                                                    onClick={() => navigate(`/reports/${report.id}/findings`)}
-                                                    color="primary"
-                                                >
-                                                    <Description />
-                                                </IconButton>
-                                            </Tooltip>
-
-                                            {report.hasFindings && (
-                                                <Tooltip title="View Full Findings">
+                        {filteredAndSortedReports.length > 0 ? (
+                            filteredAndSortedReports
+                                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                .map((report) => (
+                                    <TableRow key={report.id}>
+                                        <TableCell>{report.id}</TableCell>
+                                        <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
+                                        <TableCell>{report.createdBy}</TableCell>
+                                        <TableCell>
+                                            {formatDate(report.createdAt)}
+                                        </TableCell>
+                                        <TableCell style={{
+                                            color: report.status.includes("APPROVED") ? "green" :
+                                                report.status.includes("REJECTED") ? "red" :
+                                                    report.status.includes("RETURNED") ? "orange" : "#555",
+                                            fontWeight: "bold"
+                                        }}>
+                                            {formatStatus(report.status)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box display="flex" gap={1}>
+                                                <Tooltip title="View Report">
                                                     <IconButton
-                                                        color="info"
-                                                        size="small"
-                                                        component={Link}
-                                                        to={`/reports/${report.id}/findings`}
+                                                        onClick={() => navigate(`/reports/${report.id}/findings`)}
+                                                        color="primary"
                                                     >
-                                                        <Visibility />
+                                                        <Description />
                                                     </IconButton>
                                                 </Tooltip>
-                                            )}
 
-                                            {["REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE", "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER", "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER"].includes(report.status) && (
-                                                <>
-                                                    <Tooltip title="Approve">
+                                                {report.hasFindings && (
+                                                    <Tooltip title="View Full Findings">
                                                         <IconButton
-                                                            color="success"
-                                                            onClick={() => handleApprove(report.id)}
-                                                            disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
+                                                            color="info"
+                                                            size="small"
+                                                            component={Link}
+                                                            to={`/reports/${report.id}/findings`}
                                                         >
-                                                            {actionLoading[report.id] ? <CircularProgress size={24} /> : <Check />}
+                                                            <Visibility />
                                                         </IconButton>
                                                     </Tooltip>
+                                                )}
 
-                                                    <Tooltip title="Return">
-                                                        <IconButton
-                                                            color="warning"
-                                                            onClick={() => handleOpenReturnDialog(report)}
-                                                            disabled={actionLoading[report.id]}
-                                                        >
-                                                            <Undo />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                {["REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE", "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER", "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER"].includes(report.status) && (
+                                                    <>
+                                                        <Tooltip title="Approve">
+                                                            <IconButton
+                                                                color="success"
+                                                                onClick={() => handleApprove(report.id)}
+                                                                disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
+                                                            >
+                                                                {actionLoading[report.id] ? <CircularProgress size={24} /> : <Check />}
+                                                            </IconButton>
+                                                        </Tooltip>
 
-                                                    <Tooltip title="Reject">
-                                                        <IconButton
-                                                            color="error"
-                                                            onClick={() => handleReject(report)}
-                                                            disabled={report.status.includes("REJECTED") || actionLoading[report.id]}
-                                                        >
-                                                            <Close />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                        <Tooltip title="Return">
+                                                            <IconButton
+                                                                color="warning"
+                                                                onClick={() => handleOpenReturnDialog(report)}
+                                                                disabled={actionLoading[report.id]}
+                                                            >
+                                                                <Undo />
+                                                            </IconButton>
+                                                        </Tooltip>
 
-                                                    <Tooltip title="Send to Legal Advisor">
-                                                        <IconButton
-                                                            color="primary"
-                                                            onClick={() => handleSendToLegalAdvisor(report)}
-                                                            disabled={actionLoading[report.id]}
-                                                        >
-                                                            <GavelIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                        <Tooltip title="Reject">
+                                                            <IconButton
+                                                                color="error"
+                                                                onClick={() => handleReject(report)}
+                                                                disabled={report.status.includes("REJECTED") || actionLoading[report.id]}
+                                                            >
+                                                                <Close />
+                                                            </IconButton>
+                                                        </Tooltip>
 
-                                                    <Tooltip title="Send to Department">
-                                                        <IconButton
-                                                            color="secondary"
-                                                            onClick={(e) => handleMenuOpen(e, report)}
-                                                        >
-                                                            <Send />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </>
-                                            )}
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                                        <Tooltip title="Send to Legal Advisor">
+                                                            <IconButton
+                                                                color="primary"
+                                                                onClick={() => handleSendToLegalAdvisor(report)}
+                                                                disabled={actionLoading[report.id]}
+                                                            >
+                                                                <GavelIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+
+                                                        <Tooltip title="Send to Department">
+                                                            <IconButton
+                                                                color="secondary"
+                                                                onClick={(e) => handleMenuOpen(e, report)}
+                                                            >
+                                                                <Send />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </>
+                                                )}
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} align="center">
+                                <TableCell colSpan={6} align="center">
                                     No reports found
                                 </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
                 </Table>
+
+                {/* ✅ Pagination */}
+                <TablePagination
+                    component="div"
+                    count={filteredAndSortedReports.length}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                />
             </TableContainer>
 
             <Menu

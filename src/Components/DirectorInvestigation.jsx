@@ -65,18 +65,20 @@ const DirectorInvestigation = () => {
 
                 const mappedCases = reportsResponse.data.map(report => ({
                     id: report.relatedCase?.caseNum || `CS${report.id}`,
-                    delegate: report.assignedOfficer?.employeeId || '',
-                    delegateName: report.assignedOfficer ?
-                        `${report.assignedOfficer.givenName} ${report.assignedOfficer.familyName}` : '',
+                    delegate: report.investigationOfficer?.employeeId || '',
+                    delegateName: report.investigationOfficer ?
+                        `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : '',
                     reportedDate: new Date(report.createdAt).toLocaleDateString(),
                     status: report.status || 'Approved by Assistant Commissioner',
                     reason: report.rejectionReason || '',
                     reportId: report.id,
                     caseId: report.relatedCase?._id,
-                    isAssigned: !!report.assignedOfficer,
+                    isAssigned: !!report.investigationOfficer,
                     hasFindings: report.findings || report.recommendations ||
                         (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0),
-                    assignmentNotes: report.assignmentNotes || ''
+                    assignmentNotes: report.assignmentNotes || '',
+                    investigationOfficer: report.investigationOfficer,
+                    currentRecipient: report.currentRecipient
                 }));
 
                 const mappedOfficers = officersResponse.data.map(officer => ({
@@ -115,6 +117,8 @@ const DirectorInvestigation = () => {
 
         try {
             setOfficersLoading(true);
+
+            // Updated API call to include assignment notes
             await ReportApi.assignToInvestigationOfficer(reportId, officerId, notes);
 
             const assignedOfficer = officers.find(o => o._id === officerId);
@@ -125,13 +129,14 @@ const DirectorInvestigation = () => {
                     delegateName: assignedOfficer?.name || '',
                     isAssigned: true,
                     status: 'Assigned to Officer',
-                    assignmentNotes: notes || ''
+                    assignmentNotes: notes || '',
+                    investigationOfficer: assignedOfficer
                 } : c
             ));
 
             setSnackbar({
                 open: true,
-                message: 'Officer assigned successfully',
+                message: 'Officer assigned successfully with instructions',
                 severity: 'success'
             });
         } catch (err) {
@@ -145,6 +150,7 @@ const DirectorInvestigation = () => {
             setOfficersLoading(false);
             setAssignmentNotes('');
             setSelectedOfficer(null);
+            setAssignDialogOpen(false);
         }
     };
 
@@ -198,6 +204,7 @@ const DirectorInvestigation = () => {
                 severity: 'success'
             });
             setRejectDialogOpen(false);
+            setRejectionReason('');
         } catch (err) {
             console.error('Error:', err);
             setSnackbar({
@@ -219,7 +226,8 @@ const DirectorInvestigation = () => {
             setCurrentFindings({
                 findings: response.data.findings,
                 recommendations: response.data.recommendations,
-                attachments: response.data.findingsAttachmentPaths || []
+                attachments: response.data.findingsAttachmentPaths || [],
+                assignmentNotes: caseItem.assignmentNotes || response.data.assignmentNotes
             });
             setSelectedCase(caseItem);
             setViewFindingsDialogOpen(true);
@@ -281,17 +289,29 @@ const DirectorInvestigation = () => {
             window.URL.revokeObjectURL(url);
         } catch (err) {
             console.error('Error downloading attachment:', err);
-
+            setSnackbar({
+                open: true,
+                message: 'Failed to download attachment',
+                severity: 'error'
+            });
         } finally {
             setDownloadLoading(false);
             setDownloadAttachmentIndex(null);
         }
     };
 
+    const handleOpenAssignDialog = (caseItem) => {
+        setSelectedCase(caseItem);
+        setSelectedOfficer(caseItem.delegate || '');
+        setAssignmentNotes(caseItem.assignmentNotes || '');
+        setAssignDialogOpen(true);
+    };
+
     const filteredCases = cases.filter(caseItem =>
         caseItem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         caseItem.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        caseItem.delegateName.toLowerCase().includes(searchQuery.toLowerCase())
+        caseItem.delegateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (caseItem.assignmentNotes && caseItem.assignmentNotes.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     if (loading && !viewFindingsDialogOpen && !viewReportDialogOpen) {
@@ -310,7 +330,7 @@ const DirectorInvestigation = () => {
 
             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
-                    label="Search cases"
+                    label="Search cases, officers, or instructions"
                     variant="outlined"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -333,6 +353,7 @@ const DirectorInvestigation = () => {
                             <TableCell><strong>Current Officer</strong></TableCell>
                             <TableCell><strong>Reported Date</strong></TableCell>
                             <TableCell><strong>Status</strong></TableCell>
+                            <TableCell><strong>Assignment Notes</strong></TableCell>
                             <TableCell><strong>Actions</strong></TableCell>
                         </TableRow>
                     </TableHead>
@@ -344,7 +365,7 @@ const DirectorInvestigation = () => {
                                     <FormControl fullWidth size="small">
                                         <InputLabel>Select Officer</InputLabel>
                                         <Select
-                                            value={caseItem.delegate}
+                                            value={caseItem.delegate || ''}
                                             onChange={(e) => {
                                                 setCases(prev => prev.map(c =>
                                                     c.reportId === caseItem.reportId ? {
@@ -368,9 +389,11 @@ const DirectorInvestigation = () => {
                                 </TableCell>
                                 <TableCell>
                                     {caseItem.isAssigned ? (
-                                        <Typography color="success.main">{caseItem.delegateName}</Typography>
+                                        <Typography color="success.main" fontWeight="bold">
+                                            {caseItem.delegateName}
+                                        </Typography>
                                     ) : (
-                                        <Typography color="text.secondary">{caseItem.investigationOfficer}</Typography>
+                                        <Typography color="text.secondary">Not assigned</Typography>
                                     )}
                                 </TableCell>
                                 <TableCell>{caseItem.reportedDate}</TableCell>
@@ -379,7 +402,8 @@ const DirectorInvestigation = () => {
                                         sx={{
                                             color: caseItem.status.includes("Approved") ? "green" :
                                                 caseItem.status.includes("Rejected") ? "red" :
-                                                    caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" : "inherit",
+                                                    caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" :
+                                                        caseItem.status.includes("Assigned") ? "orange" : "inherit",
                                             fontWeight: 'bold'
                                         }}
                                     >
@@ -392,7 +416,28 @@ const DirectorInvestigation = () => {
                                     )}
                                 </TableCell>
                                 <TableCell>
-                                    <Box display="flex" gap={1}>
+                                    {caseItem.assignmentNotes ? (
+                                        <Tooltip title={caseItem.assignmentNotes}>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    maxWidth: 200,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                {caseItem.assignmentNotes}
+                                            </Typography>
+                                        </Tooltip>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary">
+                                            No instructions
+                                        </Typography>
+                                    )}
+                                </TableCell>
+                                <TableCell>
+                                    <Box display="flex" gap={1} flexWrap="wrap">
                                         <Tooltip title="View Report">
                                             <IconButton
                                                 color="primary"
@@ -413,44 +458,46 @@ const DirectorInvestigation = () => {
                                                 </IconButton>
                                             </Tooltip>
                                         )}
-                                        <IconButton
-                                            color="success"
-                                            size="small"
-                                            onClick={() => handleApprove(caseItem.reportId)}
-                                            disabled={caseItem.status.includes("Approved") ||
-                                                caseItem.status.includes("Rejected") ||
-                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
-                                        >
-                                            <Check />
-                                        </IconButton>
-                                        <IconButton
-                                            color="primary"
-                                            size="small"
-                                            onClick={() => {
-                                                setSelectedCase(caseItem);
-                                                setSelectedOfficer(caseItem.delegate);
-                                                setAssignDialogOpen(true);
-                                            }}
-                                            disabled={!caseItem.delegate ||
-                                                caseItem.status.includes("Approved") ||
-                                                caseItem.status.includes("Rejected") ||
-                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
-                                        >
-                                            Assign
-                                        </IconButton>
-                                        <IconButton
-                                            color="error"
-                                            size="small"
-                                            onClick={() => {
-                                                setSelectedCase(caseItem);
-                                                setRejectDialogOpen(true);
-                                            }}
-                                            disabled={caseItem.status.includes("Approved") ||
-                                                caseItem.status.includes("Rejected") ||
-                                                caseItem.status.includes("INVESTIGATION_COMPLETED")}
-                                        >
-                                            <Close />
-                                        </IconButton>
+                                        <Tooltip title="Approve Report">
+                                            <IconButton
+                                                color="success"
+                                                size="small"
+                                                onClick={() => handleApprove(caseItem.reportId)}
+                                                disabled={caseItem.status.includes("Approved") ||
+                                                    caseItem.status.includes("Rejected") ||
+                                                    caseItem.status.includes("INVESTIGATION_COMPLETED")}
+                                            >
+                                                <Check />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Assign Officer">
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                onClick={() => handleOpenAssignDialog(caseItem)}
+                                                disabled={!caseItem.delegate ||
+                                                    caseItem.status.includes("Approved") ||
+                                                    caseItem.status.includes("Rejected") ||
+                                                    caseItem.status.includes("INVESTIGATION_COMPLETED")}
+                                            >
+                                                Assign
+                                            </Button>
+                                        </Tooltip>
+                                        <Tooltip title="Reject Report">
+                                            <IconButton
+                                                color="error"
+                                                size="small"
+                                                onClick={() => {
+                                                    setSelectedCase(caseItem);
+                                                    setRejectDialogOpen(true);
+                                                }}
+                                                disabled={caseItem.status.includes("Approved") ||
+                                                    caseItem.status.includes("Rejected") ||
+                                                    caseItem.status.includes("INVESTIGATION_COMPLETED")}
+                                            >
+                                                <Close />
+                                            </IconButton>
+                                        </Tooltip>
                                         <Tooltip title="View Full Findings">
                                             <IconButton
                                                 color="info"
@@ -470,22 +517,26 @@ const DirectorInvestigation = () => {
             </TableContainer>
 
             {/* Assign Officer Dialog */}
-            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)}>
-                <DialogTitle>Assign Investigation Officer</DialogTitle>
+            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle>
+                    Assign Investigation Officer - Case {selectedCase?.id}
+                </DialogTitle>
                 <DialogContent>
-                    <Typography gutterBottom>Case ID: {selectedCase?.id}</Typography>
+                    <Typography gutterBottom variant="h6" color="primary">
+                        Selected Officer: {officers.find(o => o._id === selectedOfficer)?.name || 'None selected'}
+                    </Typography>
 
                     <FormControl fullWidth sx={{ mt: 2 }}>
-                        <InputLabel>Select Officer</InputLabel>
+                        <InputLabel>Select Investigation Officer</InputLabel>
                         <Select
                             value={selectedOfficer || ''}
                             onChange={(e) => setSelectedOfficer(e.target.value)}
-                            label="Select Officer"
+                            label="Select Investigation Officer"
                         >
                             <MenuItem value=""><em>None</em></MenuItem>
                             {officers.map((officer) => (
                                 <MenuItem key={officer._id} value={officer._id}>
-                                    {officer.name}
+                                    {officer.name} ({officer.email})
                                 </MenuItem>
                             ))}
                         </Select>
@@ -495,29 +546,35 @@ const DirectorInvestigation = () => {
                         autoFocus
                         margin="dense"
                         label="Assignment Instructions"
+                        placeholder="Provide detailed instructions for the investigation officer..."
                         fullWidth
                         multiline
-                        rows={4}
+                        rows={6}
                         value={assignmentNotes}
                         onChange={(e) => setAssignmentNotes(e.target.value)}
-                        sx={{ mt: 2 }}
+                        sx={{ mt: 3 }}
+                        helperText="These instructions will be saved and visible to the assigned investigation officer"
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => {
-                        setAssignDialogOpen(false);
-                        setAssignmentNotes('');
-                        setSelectedOfficer(null);
-                    }}>Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            setAssignDialogOpen(false);
+                            setAssignmentNotes('');
+                            setSelectedOfficer(null);
+                        }}
+                    >
+                        Cancel
+                    </Button>
                     <Button
                         onClick={() => {
                             handleAssignOfficer(selectedCase.reportId, selectedOfficer, assignmentNotes);
-                            setAssignDialogOpen(false);
                         }}
                         color="primary"
-                        disabled={!selectedOfficer}
+                        variant="contained"
+                        disabled={!selectedOfficer || officersLoading}
                     >
-                        Assign
+                        {officersLoading ? <CircularProgress size={24} /> : 'Assign Officer'}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -531,21 +588,29 @@ const DirectorInvestigation = () => {
                         autoFocus
                         margin="dense"
                         label="Rejection Reason"
+                        placeholder="Provide detailed reason for rejection..."
                         fullWidth
                         multiline
                         rows={4}
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
+                        sx={{ mt: 2 }}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={() => {
+                        setRejectDialogOpen(false);
+                        setRejectionReason('');
+                    }}>
+                        Cancel
+                    </Button>
                     <Button
                         onClick={handleReject}
                         color="error"
+                        variant="contained"
                         disabled={!rejectionReason.trim()}
                     >
-                        Reject
+                        Reject Report
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -593,20 +658,23 @@ const DirectorInvestigation = () => {
                                 </Typography>
                             </Box>
 
-                            {currentReport?.attachmentPath && (
+                            {currentReport?.attachmentPaths && currentReport.attachmentPaths.length > 0 && (
                                 <Box sx={{ mb: 2 }}>
-                                    <Typography variant="h6" gutterBottom>Attachment:</Typography>
-                                    <Button
-                                        variant="outlined"
-                                        startIcon={<Download />}
-                                        onClick={() => {
-                                            const filename = currentReport.attachmentPath.split('/').pop();
-                                            ReportApi.downloadAttachment(currentReport.id, filename);
-                                        }}
-                                        disabled={downloadLoading}
-                                    >
-                                        {downloadLoading ? 'Downloading...' : 'Download Attachment'}
-                                    </Button>
+                                    <Typography variant="h6" gutterBottom>Attachments:</Typography>
+                                    {currentReport.attachmentPaths.map((attachment, index) => (
+                                        <Button
+                                            key={index}
+                                            variant="outlined"
+                                            startIcon={<Download />}
+                                            onClick={() => {
+                                                ReportApi.downloadAttachment(currentReport.id, attachment);
+                                            }}
+                                            disabled={downloadLoading}
+                                            sx={{ mr: 1, mb: 1 }}
+                                        >
+                                            Download {index + 1}
+                                        </Button>
+                                    ))}
                                 </Box>
                             )}
                         </>
@@ -617,11 +685,12 @@ const DirectorInvestigation = () => {
                 </DialogActions>
             </Dialog>
 
+            {/* Findings Dialog */}
             <Dialog
                 open={viewFindingsDialogOpen}
                 onClose={() => setViewFindingsDialogOpen(false)}
                 fullWidth
-                maxWidth="md"
+                maxWidth="lg"
             >
                 <DialogTitle>
                     Investigation Findings - Case {selectedCase?.id}
@@ -633,15 +702,15 @@ const DirectorInvestigation = () => {
                         </Box>
                     ) : (
                         <>
-                            {selectedCase?.assignmentNotes && (
+                            {currentFindings?.assignmentNotes && (
                                 <Box sx={{ mb: 3 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                                         Assignment Instructions
                                     </Typography>
                                     <Divider sx={{ mb: 2 }} />
-                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
+                                    <Paper elevation={1} sx={{ p: 2, backgroundColor: '#f0f7ff', borderRadius: 2 }}>
                                         <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {selectedCase.assignmentNotes}
+                                            {currentFindings.assignmentNotes}
                                         </Typography>
                                     </Paper>
                                 </Box>
@@ -649,7 +718,7 @@ const DirectorInvestigation = () => {
 
                             <Box sx={{ mb: 3 }}>
                                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    Findings
+                                    Investigation Findings
                                 </Typography>
                                 <Divider sx={{ mb: 2 }} />
                                 {currentFindings?.findings ? (
@@ -686,7 +755,7 @@ const DirectorInvestigation = () => {
                             {currentFindings?.attachments?.length > 0 && (
                                 <Box sx={{ mb: 2 }}>
                                     <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                        Attachments ({currentFindings.attachments.length})
+                                        Supporting Attachments ({currentFindings.attachments.length})
                                     </Typography>
                                     <Divider sx={{ mb: 2 }} />
                                     <List>
@@ -702,7 +771,7 @@ const DirectorInvestigation = () => {
                                                     }
                                                 }}
                                                 secondaryAction={
-                                                    <Tooltip title="Download">
+                                                    <Tooltip title="Download Attachment">
                                                         <IconButton
                                                             edge="end"
                                                             onClick={() => handleDownloadAttachment(selectedCase.reportId, index)}
@@ -738,7 +807,7 @@ const DirectorInvestigation = () => {
                         variant="contained"
                         color="primary"
                     >
-                        Close
+                        Close Findings
                     </Button>
                 </DialogActions>
             </Dialog>

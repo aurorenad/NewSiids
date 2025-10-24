@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 export const ClaimForm = () => {
     const [text, setText] = useState('');
-    const [attachment, setAttachment] = useState(null);
+    const [attachments, setAttachments] = useState([]); // Changed to array for multiple files
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -13,25 +13,47 @@ export const ClaimForm = () => {
     const { caseNum } = useParams();
 
     const handleFileChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
+        const files = Array.from(event.target.files);
+        const validFiles = [];
+        let fileError = '';
+
+        for (const file of files) {
             // Check file size (5MB limit)
             if (file.size > 5 * 1024 * 1024) {
-                setError('File size must be less than 5MB');
-                return;
+                fileError = `File "${file.name}" exceeds 5MB limit`;
+                continue;
             }
-            setAttachment(file);
+
+            // Check file type
+            const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png'];
+            const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+            if (!allowedTypes.includes(fileExtension)) {
+                fileError = `File "${file.name}" has unsupported format. Allowed: ${allowedTypes.join(', ')}`;
+                continue;
+            }
+
+            validFiles.push(file);
+        }
+
+        if (validFiles.length > 0) {
+            setAttachments(prev => [...prev, ...validFiles]);
             setError('');
         }
+
+        if (fileError) {
+            setError(fileError);
+        }
+
+        // Reset the file input to allow selecting same files again
+        event.target.value = '';
     };
 
-    const removeAttachment = () => {
-        setAttachment(null);
-        // Reset the file input
-        const fileInput = document.getElementById('file-input');
-        if (fileInput) {
-            fileInput.value = '';
-        }
+    const removeAttachment = (indexToRemove) => {
+        setAttachments(prev => prev.filter((_, index) => index !== indexToRemove));
+    };
+
+    const clearAllAttachments = () => {
+        setAttachments([]);
     };
 
     const handleSubmit = async () => {
@@ -61,10 +83,10 @@ export const ClaimForm = () => {
             // Append report data as JSON string
             formData.append('reportData', JSON.stringify(reportData));
 
-            // Add attachment if present
-            if (attachment) {
-                formData.append('attachment', attachment);
-            }
+            // Add all attachments if present
+            attachments.forEach((attachment) => {
+                formData.append('attachments', attachment); // Note: plural 'attachments'
+            });
 
             // Get employee ID from storage with fallback
             const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
@@ -90,7 +112,7 @@ export const ClaimForm = () => {
 
             // Reset form
             setText('');
-            setAttachment(null);
+            setAttachments([]);
             // Reset file input
             const fileInput = document.getElementById('file-input');
             if (fileInput) {
@@ -118,7 +140,7 @@ export const ClaimForm = () => {
             } else if (err.response?.status === 404) {
                 setError('Case not found. Please verify the case number.');
             } else if (err.response?.status === 413) {
-                setError('File too large. Please use a smaller file.');
+                setError('File too large. Please use smaller files.');
             } else if (err.response?.status === 500) {
                 setError('Server error. Please try again later.');
             } else if (err.message === 'Employee ID not found. Please log in again.') {
@@ -134,10 +156,18 @@ export const ClaimForm = () => {
     const handleCancel = () => {
         // Clear form data before navigating
         setText('');
-        setAttachment(null);
+        setAttachments([]);
         setError('');
         setSuccess('');
         navigate('/intelligence-officer');
+    };
+
+    const formatFileSize = (bytes) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
     return (
@@ -189,7 +219,7 @@ export const ClaimForm = () => {
                         aria-label="Report description"
                     />
                     <div className="character-count">
-                        {text.length} characters
+                        {text.length}/5000 characters
                     </div>
                 </div>
 
@@ -201,29 +231,58 @@ export const ClaimForm = () => {
                         onChange={handleFileChange}
                         accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                         disabled={isSubmitting}
-                        aria-label="File attachment"
+                        aria-label="File attachments"
+                        multiple
                     />
 
                     <label htmlFor="file-input" className="file-label">
                         <span className="attach-icon">📎</span>
-                        <span>Add attachment</span>
+                        <span>Add attachments</span>
                     </label>
 
-                    {attachment && (
-                        <div className="attachment-preview">
-                            <span className="attachment-name">{attachment.name}</span>
-                            <span className="attachment-size">
-                                ({(attachment.size / 1024).toFixed(1)} KB)
-                            </span>
+                    <div className="attachment-info">
+                        <p className="attachment-hint">
+                            You can select multiple files. Maximum 5MB per file. Allowed formats: PDF, DOC, DOCX, TXT, JPG, JPEG, PNG
+                        </p>
+                    </div>
+
+                    {attachments.length > 0 && (
+                        <div className="attachments-header">
+                            <h4 className="attachments-title">
+                                Attachments ({attachments.length})
+                            </h4>
                             <button
-                                className="remove-attachment"
-                                onClick={removeAttachment}
+                                className="clear-all-button"
+                                onClick={clearAllAttachments}
                                 disabled={isSubmitting}
-                                aria-label="Remove attachment"
                                 type="button"
                             >
-                                ✕
+                                Clear All
                             </button>
+                        </div>
+                    )}
+
+                    {attachments.length > 0 && (
+                        <div className="attachments-list">
+                            {attachments.map((attachment, index) => (
+                                <div key={index} className="attachment-preview">
+                                    <div className="attachment-info">
+                                        <span className="attachment-name">{attachment.name}</span>
+                                        <span className="attachment-details">
+                                            {formatFileSize(attachment.size)} • {attachment.type || 'Unknown type'}
+                                        </span>
+                                    </div>
+                                    <button
+                                        className="remove-attachment"
+                                        onClick={() => removeAttachment(index)}
+                                        disabled={isSubmitting}
+                                        aria-label={`Remove ${attachment.name}`}
+                                        type="button"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -414,6 +473,7 @@ export const ClaimForm = () => {
                     font-weight: 600;
                     font-size: 16px;
                     transition: color 0.2s ease;
+                    margin-bottom: 12px;
                 }
 
                 .file-label:hover {
@@ -425,28 +485,92 @@ export const ClaimForm = () => {
                     transform: rotate(-45deg);
                 }
 
+                .attachment-info {
+                    margin-bottom: 16px;
+                }
+
+                .attachment-hint {
+                    font-size: 14px;
+                    color: #65676b;
+                    margin: 0;
+                    line-height: 1.4;
+                }
+
+                .attachments-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 16px;
+                    padding-top: 16px;
+                    border-top: 1px solid #e4e6ea;
+                }
+
+                .attachments-title {
+                    margin: 0;
+                    color: #1c1e21;
+                    font-size: 16px;
+                    font-weight: 600;
+                }
+
+                .clear-all-button {
+                    background: none;
+                    border: none;
+                    color: #ff5722;
+                    font-size: 14px;
+                    cursor: pointer;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    transition: background-color 0.2s ease;
+                }
+
+                .clear-all-button:hover:not(:disabled) {
+                    background-color: #ffebee;
+                }
+
+                .clear-all-button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                .attachments-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
                 .attachment-preview {
-                    margin-top: 16px;
                     padding: 16px 20px;
                     background: white;
                     border-radius: 8px;
                     border: 1px solid #e4e6ea;
                     display: flex;
                     align-items: center;
+                    justify-content: space-between;
                     gap: 12px;
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                    transition: box-shadow 0.2s ease;
+                }
+
+                .attachment-preview:hover {
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }
+
+                .attachment-info {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
                 }
 
                 .attachment-name {
-                    flex: 1;
                     font-weight: 600;
                     color: #1c1e21;
                     word-break: break-word;
                 }
 
-                .attachment-size {
+                .attachment-details {
                     color: #8a8d91;
-                    font-size: 14px;
+                    font-size: 13px;
                     font-weight: 500;
                 }
 
@@ -455,18 +579,26 @@ export const ClaimForm = () => {
                     color: white;
                     border: none;
                     border-radius: 50%;
-                    width: 24px;
-                    height: 24px;
+                    width: 28px;
+                    height: 28px;
                     cursor: pointer;
-                    font-size: 12px;
+                    font-size: 14px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    transition: background 0.2s ease;
+                    transition: all 0.2s ease;
+                    flex-shrink: 0;
                 }
 
                 .remove-attachment:hover:not(:disabled) {
                     background: #e64a19;
+                    transform: scale(1.1);
+                }
+
+                .remove-attachment:disabled {
+                    background: #bdc3c7;
+                    cursor: not-allowed;
+                    transform: none;
                 }
 
                 .form-buttons {
@@ -567,6 +699,16 @@ export const ClaimForm = () => {
                     .send-button, .discard-button {
                         width: 100%;
                         justify-content: center;
+                    }
+
+                    .attachment-preview {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 8px;
+                    }
+
+                    .remove-attachment {
+                        align-self: flex-end;
                     }
                 }
             `}</style>

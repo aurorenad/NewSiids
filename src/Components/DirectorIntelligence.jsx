@@ -5,11 +5,13 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, CircularProgress, Alert, Box,
     Tooltip, MenuItem, Select, FormControl, InputLabel,
-    Typography, Chip
+    Typography, Chip,
+    TablePagination
 } from "@mui/material";
 import {
     Description, Check, Close, Search, Reply,
-    Person, Assignment, Info, ListAlt
+    Person, Assignment, Info, ListAlt,
+    ArrowUpward, ArrowDownward
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
@@ -33,6 +35,14 @@ const DirectorIntelligence = () => {
     const [returnReason, setReturnReason] = useState('');
     const [returnType, setReturnType] = useState('creator');
 
+    // ✅ Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    // ✅ Sorting state
+    const [sortBy, setSortBy] = useState('createdAt');
+    const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -43,7 +53,12 @@ const DirectorIntelligence = () => {
         try {
             setLoading(true);
             const response = await ReportApi.getReportsForDirectorIntelligence();
-            setReports(response.data);
+            // Ensure all reports have createdAt field for sorting
+            const reportsWithDate = response.data.map(report => ({
+                ...report,
+                createdAt: report.createdAt || report.createdDate || report.dateCreated || new Date().toISOString()
+            }));
+            setReports(reportsWithDate);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to fetch reports');
         } finally {
@@ -61,6 +76,23 @@ const DirectorIntelligence = () => {
             }
             return newSet;
         });
+    };
+
+    // ✅ Sort handler
+    const handleSortByDate = () => {
+        const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+        setSortOrder(newSortOrder);
+        setSortBy('createdAt');
+    };
+
+    // ✅ Pagination handlers
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
     };
 
     const handleApprove = async (report) => {
@@ -230,32 +262,63 @@ const DirectorIntelligence = () => {
         return actionLoadingReports.has(reportId);
     };
 
-    const searchString = searchQuery.toLowerCase();
+    // ✅ Filter, sort and paginate reports
+    const filteredAndSortedReports = useMemo(() => {
+        let results = reports;
 
-    const filteredReports = useMemo(() => {
-        if (!searchString) return reports;
+        // Apply search filter
+        if (searchQuery) {
+            const searchString = searchQuery.toLowerCase();
+            results = results.filter((report) => {
+                const id = report.id?.toString().toLowerCase() || '';
+                const caseNum = report.relatedCase?.caseNum?.toLowerCase() || '';
+                const createdBy = report.createdBy?.toLowerCase() || '';
+                const createdByEmployeeId = report.createdByEmployeeId?.toLowerCase() || '';
 
-        return reports.filter((report) => {
-            const id = report.id?.toString().toLowerCase() || '';
-            const caseNum = report.relatedCase?.caseNum?.toLowerCase() || '';
-            const createdBy = report.createdBy?.toLowerCase() || '';
-            const createdByEmployeeId = report.createdByEmployeeId?.toLowerCase() || '';
+                return id.includes(searchString) ||
+                    caseNum.includes(searchString) ||
+                    createdBy.includes(searchString) ||
+                    createdByEmployeeId.includes(searchString);
+            });
+        }
 
-            return id.includes(searchString) ||
-                caseNum.includes(searchString) ||
-                createdBy.includes(searchString) ||
-                createdByEmployeeId.includes(searchString);
-        });
-    }, [searchString, reports]);
-
-    const sortedReports = useMemo(() => {
-        return [...filteredReports].sort((a, b) => {
-            // Sort by creation date (newest first)
+        // Apply sorting by date
+        results.sort((a, b) => {
             const dateA = new Date(a.createdAt);
             const dateB = new Date(b.createdAt);
-            return dateB - dateA;
+
+            if (sortOrder === 'desc') {
+                return dateB - dateA; // newest first
+            } else {
+                return dateA - dateB; // oldest first
+            }
         });
-    }, [filteredReports]);
+
+        return results;
+    }, [reports, searchQuery, sortOrder]);
+
+    // ✅ Get current page reports for display
+    const currentPageReports = useMemo(() => {
+        const startIndex = page * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        return filteredAndSortedReports.slice(startIndex, endIndex);
+    }, [filteredAndSortedReports, page, rowsPerPage]);
+
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return '-';
+        }
+    };
 
     if (loading) {
         return (
@@ -280,7 +343,7 @@ const DirectorIntelligence = () => {
             )}
 
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Box display="flex" gap={1}>
+                <Box display="flex" gap={1} alignItems="center">
                     <TextField
                         size="small"
                         variant="outlined"
@@ -292,6 +355,18 @@ const DirectorIntelligence = () => {
                         }}
                         sx={{ minWidth: 300 }}
                     />
+
+                    {/* Sort by Date Button */}
+                    <Tooltip title={`Sort by creation date (${sortOrder === 'desc' ? 'newest first' : 'oldest first'})`}>
+                        <Button
+                            variant="outlined"
+                            onClick={handleSortByDate}
+                            startIcon={sortOrder === 'desc' ? <ArrowDownward /> : <ArrowUpward />}
+                        >
+                            Date {sortOrder === 'desc' ? '↓' : '↑'}
+                        </Button>
+                    </Tooltip>
+
                     <Button
                         variant="contained"
                         color="primary"
@@ -303,7 +378,7 @@ const DirectorIntelligence = () => {
                     </Button>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
-                    {sortedReports.length} report{sortedReports.length !== 1 ? 's' : ''} found
+                    {filteredAndSortedReports.length} report{filteredAndSortedReports.length !== 1 ? 's' : ''} found
                 </Typography>
             </Box>
 
@@ -314,13 +389,24 @@ const DirectorIntelligence = () => {
                             <TableCell>Report ID</TableCell>
                             <TableCell>Case Number</TableCell>
                             <TableCell>Created By</TableCell>
-                            <TableCell>Created Date</TableCell>
+                            <TableCell
+                                sx={{
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold'
+                                }}
+                                onClick={handleSortByDate}
+                            >
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    Created Date
+                                    {sortOrder === 'desc' ? <ArrowDownward fontSize="small" /> : <ArrowUpward fontSize="small" />}
+                                </Box>
+                            </TableCell>
                             <TableCell>Status</TableCell>
                             <TableCell align="center">Actions</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {sortedReports.length === 0 ? (
+                        {currentPageReports.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} align="center">
                                     <Typography variant="body2" color="text.secondary">
@@ -329,13 +415,13 @@ const DirectorIntelligence = () => {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            sortedReports.map((report) => (
+                            currentPageReports.map((report) => (
                                 <TableRow key={report.id}>
                                     <TableCell>{report.id}</TableCell>
                                     <TableCell>{report.relatedCase?.caseNum || '-'}</TableCell>
                                     <TableCell>{report.createdBy || '-'}</TableCell>
                                     <TableCell>
-                                        {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : '-'}
+                                        {formatDate(report.createdAt)}
                                     </TableCell>
                                     <TableCell>
                                         <Chip
@@ -404,6 +490,17 @@ const DirectorIntelligence = () => {
                         )}
                     </TableBody>
                 </Table>
+
+                {/* ✅ Pagination */}
+                <TablePagination
+                    component="div"
+                    count={filteredAndSortedReports.length}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                />
             </TableContainer>
 
             {/* Reject Dialog */}
@@ -529,19 +626,19 @@ const DirectorIntelligence = () => {
                             <strong>Employee ID:</strong> {selectedReport?.createdByEmployeeId || '-'}
                         </Typography>
                         <Typography variant="body2">
-                            <strong>Created Date:</strong> {selectedReport?.createdAt ? new Date(selectedReport.createdAt).toLocaleString() : '-'}
+                            <strong>Created Date:</strong> {selectedReport?.createdAt ? formatDate(selectedReport.createdAt) : '-'}
                         </Typography>
                         <Typography variant="body2">
                             <strong>Status:</strong> {selectedReport ? getStatusText(selectedReport.status) : '-'}
                         </Typography>
                         {selectedReport?.approvedBy && (
                             <Typography variant="body2">
-                                <strong>Approved By:</strong> {selectedReport.approvedBy} on {new Date(selectedReport.approvedAt).toLocaleString()}
+                                <strong>Approved By:</strong> {selectedReport.approvedBy} on {formatDate(selectedReport.approvedAt)}
                             </Typography>
                         )}
                         {selectedReport?.rejectedBy && (
                             <Typography variant="body2">
-                                <strong>Rejected By:</strong> {selectedReport.rejectedBy} on {new Date(selectedReport.rejectedAt).toLocaleString()}
+                                <strong>Rejected By:</strong> {selectedReport.rejectedBy} on {formatDate(selectedReport.rejectedAt)}
                             </Typography>
                         )}
                         {selectedReport?.rejectionReason && (
@@ -551,7 +648,7 @@ const DirectorIntelligence = () => {
                         )}
                         {selectedReport?.returnedBy && (
                             <Typography variant="body2">
-                                <strong>Returned By:</strong> {selectedReport.returnedBy} on {new Date(selectedReport.returnedAt).toLocaleString()}
+                                <strong>Returned By:</strong> {selectedReport.returnedBy} on {formatDate(selectedReport.returnedAt)}
                             </Typography>
                         )}
                         {selectedReport?.returnReason && (
