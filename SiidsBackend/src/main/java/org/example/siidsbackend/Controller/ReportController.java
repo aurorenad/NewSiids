@@ -1082,4 +1082,298 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+    @PostMapping("/{id}/return-to-investigation-officer")
+    public ResponseEntity<ReportResponseDTO> returnToInvestigationOfficer(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> requestBody,
+            @RequestHeader("employee_id") String legalAdvisorId) {
+        try {
+            // Verify the user is a legal advisor
+            List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
+            boolean isLegalAdvisor = legalAdvisors.stream()
+                    .anyMatch(la -> la.getEmployeeId().equals(legalAdvisorId));
+
+            if (!isLegalAdvisor) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            String investigationOfficerId = requestBody.get("investigationOfficerId");
+            String returnReason = requestBody.get("returnReason");
+
+            if (investigationOfficerId == null || returnReason == null || returnReason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            Report report = reportService.returnToInvestigationOfficer(
+                    id, returnReason, legalAdvisorId, investigationOfficerId);
+
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error returning report to investigation officer: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("System error returning report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping(value = "/{id}/return-with-document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReportResponseDTO> returnReportWithDocument(
+            @PathVariable Integer id,
+            @RequestParam String returnToEmployeeId,
+            @RequestParam(required = false) String returnReason,
+            @RequestPart(value = "returnDocument", required = false) MultipartFile returnDocument,
+            @RequestHeader("employee_id") String employeeId) {
+
+        try {
+            Employee returner = employeeRepo.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new RuntimeException("Returner not found"));
+            Employee returnTarget = employeeRepo.findByEmployeeId(returnToEmployeeId)
+                    .orElseThrow(() -> new RuntimeException("Return target employee not found"));
+
+            // Validate at least one reason is provided
+            if ((returnReason == null || returnReason.trim().isEmpty()) && returnDocument == null) {
+                return ResponseEntity.badRequest().body(null);
+            }
+
+            // Store document if provided
+            String documentPath = null;
+            if (returnDocument != null && !returnDocument.isEmpty()) {
+                // Validate document type
+                String contentType = returnDocument.getContentType();
+                String originalFilename = returnDocument.getOriginalFilename();
+
+                if (originalFilename != null) {
+                    String lowerFilename = originalFilename.toLowerCase();
+                    if (!lowerFilename.endsWith(".doc") &&
+                            !lowerFilename.endsWith(".docx") &&
+                            !lowerFilename.endsWith(".pdf")) {
+                        return ResponseEntity.badRequest().body(null);
+                    }
+                }
+
+                documentPath = storeReturnDocument(returnDocument);
+            }
+
+            // Create combined reason
+            String combinedReason = returnReason != null ? returnReason : "Document attached";
+            if (documentPath != null) {
+                combinedReason += " [Document: " + documentPath + "]";
+            }
+
+            Report report = reportService.returnReport(id, combinedReason, returnToEmployeeId, employeeId);
+
+            // Store document path separately if needed
+            if (documentPath != null) {
+                // You might want to add a field to Report entity for returnDocumentPath
+                report.setReturnDocumentPath(documentPath);
+                reportRepo.save(report);
+            }
+
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error returning report with document: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } catch (Exception e) {
+            log.error("Error returning report with document: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    private String storeReturnDocument(MultipartFile file) throws IOException {
+        Path uploadPath = Paths.get(uploadDir).resolve("return-documents").toAbsolutePath().normalize();
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+        }
+
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+
+        Path filePath = uploadPath.resolve(secureFilename);
+
+        if (!filePath.normalize().startsWith(uploadPath)) {
+            throw new IOException("Invalid file path");
+        }
+
+        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+        return "return-documents/" + secureFilename;
+    }
+    @GetMapping("/{id}/return-document")
+    public ResponseEntity<Resource> downloadReturnDocument(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+
+        try {
+            Report report = reportService.getReport(id);
+
+            // Check access
+            if (!report.getCreatedBy().getEmployeeId().equals(employeeId) &&
+                    !report.getCurrentRecipient().getEmployeeId().equals(employeeId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(null);
+            }
+
+            if (report.getReturnDocumentPath() == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Path filePath = Paths.get(uploadDir).resolve(report.getReturnDocumentPath()).normalize();
+
+            if (!Files.exists(filePath)) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Determine content type
+            String contentType = Files.probeContentType(filePath);
+            if (contentType == null) {
+                String filename = report.getReturnDocumentPath();
+                if (filename.endsWith(".doc")) {
+                    contentType = "application/msword";
+                } else if (filename.endsWith(".docx")) {
+                    contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                } else if (filename.endsWith(".pdf")) {
+                    contentType = "application/pdf";
+                } else {
+                    contentType = "application/octet-stream";
+                }
+            }
+
+            String filename = report.getReturnDocumentOriginalName() != null ?
+                    report.getReturnDocumentOriginalName() :
+                    "return-document" + getFileExtension(report.getReturnDocumentPath());
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + filename + "\"")
+                    .body(resource);
+
+        } catch (Exception e) {
+            log.error("Error downloading return document: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+
+    private String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int lastDot = filename.lastIndexOf('.');
+        return lastDot > 0 ? filename.substring(lastDot) : "";
+    }
+
+    @PutMapping("/{id}/edit")
+    public ResponseEntity<ReportResponseDTO> editReport(
+            @PathVariable Integer id,
+            @RequestPart("reportData") String reportDataJson,
+            @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
+            @RequestHeader("employee_id") String employeeId) {
+
+        try {
+            ReportRequestDTO reportData = objectMapper.readValue(reportDataJson, ReportRequestDTO.class);
+
+            // Validate input
+            if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(null);
+            }
+
+            // Check if editing is allowed (report must be in returned status)
+            Report existingReport = reportService.getReport(id);
+            if (!reportService.canEditReport(existingReport, employeeId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(null);
+            }
+
+            // Process new attachments if provided
+            List<String> newAttachmentPaths = new ArrayList<>();
+            if (attachments != null && attachments.length > 0) {
+                for (MultipartFile attachment : attachments) {
+                    if (!attachment.isEmpty()) {
+                        validatePdfFile(attachment);
+                        String attachmentPath = storePdfAttachment(attachment);
+                        newAttachmentPaths.add(attachmentPath);
+                    }
+                }
+            }
+
+            // Edit the report
+            Report updatedReport = reportService.editReport(
+                    id,
+                    reportData,
+                    newAttachmentPaths,
+                    employeeId,
+                    existingReport.getReturnReason() // Pass the return reason for context
+            );
+
+            return ResponseEntity.ok(reportService.toResponseDTO(updatedReport));
+
+        } catch (RuntimeException e) {
+            log.error("Validation error editing report: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        } catch (Exception e) {
+            log.error("Error editing report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/{id}/edit-permission")
+    public ResponseEntity<Map<String, Object>> checkEditPermission(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+
+        try {
+            Report report = reportService.getReport(id);
+            Map<String, Object> response = new HashMap<>();
+
+            boolean canEdit = reportService.canEditReport(report, employeeId);
+            response.put("canEdit", canEdit);
+
+            if (canEdit) {
+                response.put("returnReason", report.getReturnReason());
+                response.put("returnedBy", report.getReturnedBy() != null ?
+                        report.getReturnedBy().getGivenName() + " " + report.getReturnedBy().getFamilyName() : null);
+                response.put("returnedAt", report.getReturnedAt());
+
+                // Provide guidance based on return reason
+                if (report.getReturnReason() != null && !report.getReturnReason().trim().isEmpty()) {
+                    response.put("editGuidance", generateEditGuidance(report.getReturnReason()));
+                }
+            }
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error checking edit permission: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    private String generateEditGuidance(String returnReason) {
+        // Generate helpful guidance based on common return reasons
+        String lowerReason = returnReason.toLowerCase();
+
+        if (lowerReason.contains("insufficient") || lowerReason.contains("inadequate")) {
+            return "Please provide more detailed information and evidence.";
+        } else if (lowerReason.contains("incorrect") || lowerReason.contains("wrong")) {
+            return "Please review and correct the factual information.";
+        } else if (lowerReason.contains("missing") || lowerReason.contains("lack")) {
+            return "Please add the missing information or attachments.";
+        } else if (lowerReason.contains("format") || lowerReason.contains("structure")) {
+            return "Please reformat the report according to the required structure.";
+        } else if (lowerReason.contains("clarity") || lowerReason.contains("unclear")) {
+            return "Please clarify the language and make the report more understandable.";
+        } else if (lowerReason.contains("attachment") || lowerReason.contains("document")) {
+            return "Please add or update the required attachments.";
+        } else if (lowerReason.contains("evidence") || lowerReason.contains("proof")) {
+            return "Please provide stronger supporting evidence.";
+        }
+
+        return "Please address the issues mentioned in the return reason.";
+    }
 }

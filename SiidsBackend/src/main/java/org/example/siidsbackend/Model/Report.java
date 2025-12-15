@@ -55,6 +55,10 @@ public class Report {
     private Employee returnedBy;
     private String returnReason;
     private LocalDateTime returnedAt;
+    @Column(name = "return_document_path")
+    private String returnDocumentPath;
+    @Column(name = "return_document_original_name")
+    private String returnDocumentOriginalName;
 
     @ManyToOne
     @JoinColumn(name = "assistant_commissioner_id")
