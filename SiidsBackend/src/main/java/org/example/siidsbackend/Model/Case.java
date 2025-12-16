@@ -30,9 +30,8 @@ public class Case {
     private LocalDateTime updatedAt;
     private String summaryOfInformationCase;
 
-    @ManyToOne
-    @JoinColumn(name = "referring_officer_id", referencedColumnName = "employee_id")
-    private Employee referringOfficer;
+    @Column(name = "referring_department")
+    private String referringDepartment;
 
     @Enumerated(EnumType.STRING)
     private WorkflowStatus status;

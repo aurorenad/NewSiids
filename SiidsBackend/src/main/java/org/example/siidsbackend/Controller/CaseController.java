@@ -59,14 +59,8 @@ public class CaseController {
                         });
             }
 
-            Employee referringOfficer = null;
-            if (caseRequestDTO.getReferringOfficerId() != null && !caseRequestDTO.getReferringOfficerId().isEmpty()) {
-                referringOfficer = employeeService.findById(caseRequestDTO.getReferringOfficerId())
-                        .orElseThrow(() -> new RuntimeException("Referring officer not found with ID: " + caseRequestDTO.getReferringOfficerId()));
-            }
-
             // Create the case with all collected information
-            Case createdCase = caseService.createCase(caseRequestDTO, employeeId, taxPayer, informer, referringOfficer);
+            Case createdCase = caseService.createCase(caseRequestDTO, employeeId, taxPayer, informer);
             return ResponseEntity.status(HttpStatus.CREATED).body(caseService.getCaseResponseById(createdCase.getId()));
         } catch (Exception e) {
             log.error("Error creating case", e);

@@ -30,7 +30,7 @@ public class CaseService {
     private final AuditService auditService;
 
     @Transactional
-    public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer, Employee referringOfficer) {
+    public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer) {
         log.info("Creating case for employee: {}", employeeId);
 
         if (dto == null || employeeId == null) {
@@ -51,8 +51,9 @@ public class CaseService {
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());
 
-        if (referringOfficer != null) {
-            newCase.setReferringOfficer(referringOfficer);
+        // Set referring department from DTO
+        if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
+            newCase.setReferringDepartment(dto.getReferringDepartment().trim());
         }
 
         Case savedCase = caseRepo.save(newCase);
@@ -216,16 +217,8 @@ public class CaseService {
             );
         }
 
-        // Set referring officer info
-        if (caseEntity.getReferringOfficer() != null) {
-            responseDTO.setReferringOfficerName(
-                    (caseEntity.getReferringOfficer().getGivenName() != null ? caseEntity.getReferringOfficer().getGivenName() : "") + " " +
-                            (caseEntity.getReferringOfficer().getFamilyName() != null ? caseEntity.getReferringOfficer().getFamilyName() : "")
-            );
-            responseDTO.setReferringOfficerId(caseEntity.getReferringOfficer().getEmployeeId());
-        }
+        responseDTO.setReferringDepartment(caseEntity.getReferringDepartment());
 
-        // Set report ID if exists
         if (caseEntity.getCaseNum() != null) {
             reportRepo.findByRelatedCase_CaseNum(caseEntity.getCaseNum())
                     .ifPresent(report -> responseDTO.setReportId(report.getId()));
