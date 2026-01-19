@@ -177,6 +177,24 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "ORDER BY r.created_at DESC",
             nativeQuery = true)
     List<Report> findReportsAssignedToInvestigationOfficers(@Param("officerId") String officerId);
+    @Query("SELECT r FROM Report r WHERE r.relatedCase.status = :status " +
+            "AND (r.currentRecipient.employeeId = :employeeId OR " +
+            "r.directorInvestigation IS NOT NULL)")
+    List<Report> findCasePlansForAssistantCommissioner(
+            @Param("status") WorkflowStatus status,
+            @Param("employeeId") String employeeId);
+
+    @Query("SELECT r FROM Report r WHERE r.investigationOfficer.employeeId = :officerId")
+    List<Report> findReportsByInvestigationOfficer(@Param("officerId") String officerId);
+
+    @Query("SELECT r FROM Report r " +
+            "WHERE r.investigationOfficer.employeeId = :officerId " +
+            "AND r.relatedCase.status IN :activeStatuses " +
+            "ORDER BY r.createdAt DESC")
+    List<Report> findActiveReportsForInvestigationOfficer(
+            @Param("officerId") String officerId,
+            @Param("activeStatuses") List<WorkflowStatus> activeStatuses);
+
     @Query(value = "SELECT e FROM Employee e " +
             "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
             "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
@@ -195,5 +213,12 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "WHERE c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM " +
             "AND r.currentRecipient.employeeId = :legalAdvisorId")
     List<Report> findReportsAssignedToLegalAdvisor(@Param("legalAdvisorId") String legalAdvisorId);
+
+    @Query("SELECT r FROM Report r WHERE r.relatedCase.status = :status " +
+            "AND (r.casePlan IS NOT NULL OR SIZE(r.findingsAttachmentPaths) > 0) " +
+            "AND r.currentRecipient.employeeId = :directorId")
+    List<Report> findCasePlansForDirectorInvestigation(
+            @Param("status") WorkflowStatus status,
+            @Param("directorId") String directorId);
 
 }

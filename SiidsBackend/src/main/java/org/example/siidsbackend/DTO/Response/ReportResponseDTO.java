@@ -1,6 +1,7 @@
 package org.example.siidsbackend.DTO.Response;
 
 import lombok.Data;
+import org.example.siidsbackend.DTO.InformerDTO;
 import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.WorkflowStatus;
 
@@ -35,7 +36,7 @@ public class ReportResponseDTO {
     private String directorInvestigation;
     private String directorIntelligence;
     private String investigationOfficer;
-
+    private InformerDTO informer;
     private Double principleAmount;
     private Double penaltiesAmount;
 }

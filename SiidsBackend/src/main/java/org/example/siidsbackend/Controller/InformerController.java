@@ -22,7 +22,7 @@ public class InformerController {
     }
 
     @GetMapping("/{nationalId}")
-    public ResponseEntity<Informer> getInformerById(@PathVariable Integer nationalId) {
+    public ResponseEntity<Informer> getInformerById(@PathVariable String nationalId) {
         return informerService.findByNationalId(nationalId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -32,4 +32,6 @@ public class InformerController {
     public List<Informer> getAllInformers() {
         return informerService.getAllInformers();
     }
+
+
 }

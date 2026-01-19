@@ -565,34 +565,41 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/{id}/findings")
-    public ResponseEntity<ReportResponseDTO> getFindings(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
-        try {
-            Report report = reportService.getReport(id);
+//
+@GetMapping("/{id}/findings")
+public ResponseEntity<ReportResponseDTO> getFindings(
+        @PathVariable Integer id,
+        @RequestHeader("employee_id") String employeeId) {
+    try {
+        Report report = reportService.getReport(id);
 
-            Employee currentUser = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Employee not found"));
+        // Check access permissions
+        boolean hasAccess =
+                // Creator has access
+                report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+                        // Current recipient has access
+                        (report.getCurrentRecipient() != null &&
+                                report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
+                        // Director of Investigation has access
+                        reportRepo.DirectorsOfInvestigation().stream()
+                                .anyMatch(d -> d.getEmployeeId().equals(employeeId)) ||
+                        // Assistant Commissioner has access
+                        reportRepo.assistantCommissioner().stream()
+                                .anyMatch(d-> d.getEmployeeId().equals(employeeId)) ||
+                        // Investigation officer (current or former) has access
+                        (report.getInvestigationOfficer() != null &&
+                                report.getInvestigationOfficer().getEmployeeId().equals(employeeId));
 
-            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
-                    (report.getCurrentRecipient() != null &&
-                            report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
-                    reportRepo.DirectorsOfInvestigation().stream()
-                            .anyMatch(d -> d.getEmployeeId().equals(employeeId))||
-                    reportRepo.assistantCommissioner().stream()
-                            .anyMatch(d-> d.getEmployeeId().equals(employeeId));
-
-            if (!hasAccess) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
-
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
-        } catch (Exception e) {
-            System.err.println("Error getting findings: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        if (!hasAccess) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+
+        return ResponseEntity.ok(reportService.toResponseDTO(report));
+    } catch (Exception e) {
+        log.error("Error getting findings: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
+}
 
 //    @GetMapping("/director-investigation/all-reports")
 //    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
@@ -999,6 +1006,77 @@ public class ReportController {
         }
     }
 
+//    @GetMapping("/investigation-officer/active-reports")
+//    public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
+//            @RequestHeader("employee_id") String officerId) {
+//        try {
+//            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
+//            List<ReportResponseDTO> responseList = reports.stream()
+//                    .map(reportService::toResponseDTO)
+//                    .collect(Collectors.toList());
+//            return ResponseEntity.ok(responseList);
+//        } catch (RuntimeException e) {
+//            log.error("Error getting active reports: {}", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+//        } catch (Exception e) {
+//            log.error("Error getting reports: {}", e.getMessage(), e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+//        }
+//    }
+@GetMapping("/investigation-officer/active-reports")
+public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
+        @RequestHeader("employee_id") String officerId) {
+    try {
+        List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
+        List<ReportResponseDTO> responseList = reports.stream()
+                .map(reportService::toResponseDTO)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responseList);
+    } catch (RuntimeException e) {
+        log.error("Error getting active reports: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    } catch (Exception e) {
+        log.error("Error getting reports: {}", e.getMessage(), e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+}
+
+    @GetMapping("/investigation-officer/all-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
+            @RequestHeader("employee_id") String officerId) {
+        try {
+            List<Report> reports = reportService.getHistoricalReportsForInvestigationOfficer(officerId); // Updated method name
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Error getting all reports: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+//    @GetMapping("/investigation-officer/all-reports")
+//    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
+//            @RequestHeader("employee_id") String officerId) {
+//        try {
+//            List<Report> reports = reportService.getAllReportsForInvestigationOfficer(officerId);
+//            List<ReportResponseDTO> responseList = reports.stream()
+//                    .map(reportService::toResponseDTO)
+//                    .collect(Collectors.toList());
+//            return ResponseEntity.ok(responseList);
+//        } catch (RuntimeException e) {
+//            log.error("Error getting all reports: {}", e.getMessage());
+//            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+//        } catch (Exception e) {
+//            log.error("Error getting reports: {}", e.getMessage(), e);
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+//        }
+//    }
+
     @GetMapping("/investigation-officers/assigned-reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsAssignedToInvestigationOfficers(
             @RequestParam String employeeId) {
@@ -1376,4 +1454,179 @@ public class ReportController {
 
         return "Please address the issues mentioned in the return reason.";
     }
+
+    @PostMapping(value = "/{id}/submit-case-plan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ReportResponseDTO> submitCasePlan(
+            @PathVariable Integer id,
+            @RequestPart(value = "casePlanText", required = false) String casePlanText,
+            @RequestPart(value = "casePlanAttachment", required = false) MultipartFile casePlanAttachment,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.submitCasePlan(id, casePlanText, casePlanAttachment, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error submitting case plan: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error submitting case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/send-case-plan-to-director-investigation")
+    public ResponseEntity<ReportResponseDTO> sendCasePlanToDirectorInvestigation(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.sendCasePlanToDirectorInvestigation(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error sending case plan to Director of Investigation: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error sending case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/director-investigation/case-plans")
+    public ResponseEntity<List<ReportResponseDTO>> getCasePlansForDirectorInvestigation(
+            @RequestHeader("employee_id") String directorId) {
+        try {
+            List<Report> reports = reportService.getCasePlansForDirectorInvestigation(directorId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting case plans: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @GetMapping("/{id}/case-plan")
+    public ResponseEntity<ReportResponseDTO> getCasePlan(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.getReport(id);
+
+            // Check access - Director of Investigation should have access
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            boolean hasAccess = directors.stream()
+                    .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            log.error("Error getting case plan: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @PostMapping("/{id}/approve-case-plan")
+    public ResponseEntity<ReportResponseDTO> approveCasePlan(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.approveCasePlan(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error approving case plan: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error approving case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/reject-case-plan")
+    public ResponseEntity<ReportResponseDTO> rejectCasePlan(
+            @PathVariable Integer id,
+            @RequestParam String rejectionReason,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.rejectCasePlan(id, rejectionReason, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error rejecting case plan: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error rejecting case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/assistant-commissioner/case-plans")
+    public ResponseEntity<List<ReportResponseDTO>> getCasePlansForAssistantCommissioner(
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            List<Report> reports = reportService.getCasePlansForAssistantCommissioner(employeeId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting case plans: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/send-case-plan-to-assistant-commissioner")
+    public ResponseEntity<ReportResponseDTO> sendCasePlanToAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.sendCasePlanToAssistantCommissioner(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error sending case plan to Assistant Commissioner: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error sending case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/approve-case-plan-assistant-commissioner")
+    public ResponseEntity<ReportResponseDTO> approveCasePlanByAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.approveCasePlanByAssistantCommissioner(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error approving case plan as Assistant Commissioner: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error approving case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/reject-case-plan-assistant-commissioner")
+    public ResponseEntity<ReportResponseDTO> rejectCasePlanByAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestParam String rejectionReason,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.rejectCasePlanByAssistantCommissioner(id, rejectionReason, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error rejecting case plan as Assistant Commissioner: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error rejecting case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
 }

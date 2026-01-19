@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
+import org.example.siidsbackend.DTO.Request.InformerRegistrationDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Service.*;
@@ -32,11 +33,16 @@ public class CaseController {
             @RequestBody CaseRequestDTO caseRequestDTO,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            // Handle tax payer information
-            TaxPayer taxPayer = taxPayerService.findByTIN(caseRequestDTO.getTin())
+            log.info("Creating case for employee: {}, with TIN: {}", employeeId, caseRequestDTO.getTin());
+
+            if (caseRequestDTO.getTin() == null || caseRequestDTO.getTin().trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            TaxPayer taxPayer = taxPayerService.findByTIN(caseRequestDTO.getTin().trim())
                     .orElseGet(() -> {
                         TaxPayer newTaxPayer = new TaxPayer();
-                        newTaxPayer.setTaxPayerTIN(caseRequestDTO.getTin());
+                        newTaxPayer.setTaxPayerTIN(caseRequestDTO.getTin().trim());
                         newTaxPayer.setTaxPayerName(caseRequestDTO.getTaxPayerName());
                         newTaxPayer.setTaxPayerAddress(caseRequestDTO.getTaxPayerAddress());
                         return taxPayerService.addTaxPayer(newTaxPayer);
@@ -44,24 +50,56 @@ public class CaseController {
 
             // Handle informer information (if not anonymous)
             Informer informer = null;
-            if (caseRequestDTO.getInformerNationalId() != null &&
-                    !"anonymous".equalsIgnoreCase(caseRequestDTO.getInformerType())) {
-                informer = informerService.findByNationalId(caseRequestDTO.getInformerNationalId())
-                        .orElseGet(() -> {
-                            Informer newInformer = new Informer();
-                            newInformer.setNationalId(caseRequestDTO.getInformerNationalId());
-                            newInformer.setInformerName(caseRequestDTO.getInformerName());
-                            newInformer.setInformerPhoneNum(caseRequestDTO.getInformerPhoneNum());
-                            newInformer.setInformerAddress(caseRequestDTO.getInformerAddress());
-                            newInformer.setInformerEmail(caseRequestDTO.getInformerEmail());
-                            newInformer.setInformerId(newInformer.generateInformerNumber());
-                            return informerService.addInformer(newInformer);
-                        });
+            String informerNationalId = caseRequestDTO.getInformerNationalId();
+            String informerType = caseRequestDTO.getInformerType();
+
+            log.info("Informer type: {}, National ID: {}", informerType, informerNationalId);
+
+            if (informerNationalId != null && !informerNationalId.trim().isEmpty() &&
+                    !"anonymous".equalsIgnoreCase(informerType)) {
+
+                Optional<Informer> existingInformer = informerService.findByNationalId(informerNationalId.trim());
+
+                if (existingInformer.isPresent()) {
+                    informer = existingInformer.get();
+                    log.info("Found existing informer with ID: {}", informer.getInformerId());
+                } else {
+                    // Create new informer
+                    Informer newInformer = new Informer();
+                    newInformer.setNationalId(informerNationalId.trim());
+                    newInformer.setInformerName(caseRequestDTO.getInformerName());
+                    newInformer.setInformerPhoneNum(caseRequestDTO.getInformerPhoneNum());
+                    newInformer.setInformerAddress(caseRequestDTO.getInformerAddress());
+                    newInformer.setInformerEmail(caseRequestDTO.getInformerEmail());
+
+                    if (caseRequestDTO.getInformerGender() != null) {
+                        newInformer.setInformerGender(caseRequestDTO.getInformerGender());
+                    }
+                    String informerId = newInformer.getInformerId();
+                    newInformer.setInformerId(informerId);
+
+                    informer = informerService.addInformer(newInformer);
+                    log.info("Created new informer with ID: {}", informerId);
+                }
+            } else {
+                log.info("No informer or anonymous informer for this case");
             }
 
             // Create the case with all collected information
             Case createdCase = caseService.createCase(caseRequestDTO, employeeId, taxPayer, informer);
-            return ResponseEntity.status(HttpStatus.CREATED).body(caseService.getCaseResponseById(createdCase.getId()));
+
+            if (createdCase == null) {
+                log.error("Failed to create case");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+
+            log.info("Case created successfully with ID: {}", createdCase.getId());
+
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(caseService.getCaseResponseById(createdCase.getId()));
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid argument when creating case", e);
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             log.error("Error creating case", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -198,6 +236,38 @@ public class CaseController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             log.error("Error deleting case", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/informers/register")
+    public ResponseEntity<Informer> registerInformer(
+            @RequestBody InformerRegistrationDTO registrationDTO,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            // Check if informer already exists
+            Optional<Informer> existingInformer = informerService.findByNationalId(registrationDTO.getNationalId());
+
+            if (existingInformer.isPresent()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(existingInformer.get());
+            }
+
+            // Create new informer
+            Informer newInformer = new Informer();
+            newInformer.setNationalId(registrationDTO.getNationalId());
+            newInformer.setInformerName(registrationDTO.getInformerName());
+            newInformer.setInformerGender(registrationDTO.getInformerGender());
+            newInformer.setInformerPhoneNum(registrationDTO.getInformerPhoneNum());
+            newInformer.setInformerAddress(registrationDTO.getInformerAddress());
+            newInformer.setInformerEmail(registrationDTO.getInformerEmail());
+            newInformer.setInformerId(newInformer.generateInformerNumber());
+
+            Informer savedInformer = informerService.addInformer(newInformer);
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedInformer);
+
+        } catch (Exception e) {
+            log.error("Error registering informer", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

@@ -51,7 +51,6 @@ public class CaseService {
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());
 
-        // Set referring department from DTO
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             newCase.setReferringDepartment(dto.getReferringDepartment().trim());
         }
@@ -60,11 +59,6 @@ public class CaseService {
         savedCase.setCaseNum(savedCase.generateCaseNumber());
         Case finalCase = caseRepo.save(savedCase);
 
-        auditService.logAction(
-                WorkflowStatus.CASE_CREATED,
-                "Case " + finalCase.getCaseNum() + " created by " + creator.getEmployeeId(),
-                creator
-        );
 
         return finalCase;
     }
@@ -198,7 +192,6 @@ public class CaseService {
             responseDTO.setTaxPayer(taxPayerDTO);
         }
 
-        // Set informer info
         if (caseEntity.getInformerId() != null) {
             InformerDTO informerDTO = new InformerDTO();
             informerDTO.setNationalId(caseEntity.getInformerId().getNationalId());
@@ -208,8 +201,6 @@ public class CaseService {
             informerDTO.setEmail(caseEntity.getInformerId().getInformerEmail());
             responseDTO.setInformer(informerDTO);
         }
-
-        // Set creator name
         if (caseEntity.getCreatedBy() != null) {
             responseDTO.setCreatedByName(
                     (caseEntity.getCreatedBy().getGivenName() != null ? caseEntity.getCreatedBy().getGivenName() : "") + " " +

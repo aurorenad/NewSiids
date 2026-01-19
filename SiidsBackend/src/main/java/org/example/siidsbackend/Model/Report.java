@@ -38,7 +38,6 @@ public class Report {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // Approval/Rejection fields
     @ManyToOne
     @JoinColumn(name = "approved_by_employee_id")
     private Employee approvedBy;
@@ -73,7 +72,6 @@ public class Report {
     @JoinColumn(name = "investigation_officer_id")
     private Employee investigationOfficer;
 
-    // Report content
     @Column(columnDefinition = "TEXT")
     private String assignmentNotes;
     private String findings;
@@ -86,6 +84,10 @@ public class Report {
 
     private Double principleAmount;
     private Double penaltiesAmount;
+
+    //investigation report description and attachments && report plan
+    @Column(name="CasePlan")
+    private String casePlan;
 
     @PrePersist
     protected void onCreate() {

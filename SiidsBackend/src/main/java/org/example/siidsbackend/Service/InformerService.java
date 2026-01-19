@@ -17,7 +17,7 @@ public class InformerService {
         return informerRepository.save(informer);
     }
 
-    public Optional<Informer> findByNationalId(Integer nationalId) {
+    public Optional<Informer> findByNationalId(String nationalId) {
         return informerRepository.findInformerByNationalId(nationalId);
     }
 

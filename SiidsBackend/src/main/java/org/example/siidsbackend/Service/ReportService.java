@@ -2,10 +2,7 @@ package org.example.siidsbackend.Service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.example.siidsbackend.DTO.DirectorIntelligenceReportDTO;
-import org.example.siidsbackend.DTO.FinesReportDTO;
-import org.example.siidsbackend.DTO.NotificationDTO;
-import org.example.siidsbackend.DTO.OfficerReportsDTO;
+import org.example.siidsbackend.DTO.*;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
@@ -364,15 +361,14 @@ public class ReportService {
         WorkflowStatus newStatus;
         switch(report.getRelatedCase().getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
-            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+            case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_SUBMITTED:
                 newStatus = WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER;
                 break;
-            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
-                newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
-                break;
-            case REPORT_SENT_TO_LEGAL_TEAM:
-                newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+            case REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION:
+            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
+                newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE;
                 break;
             default:
                 throw new IllegalStateException("Cannot return report in current status");
@@ -502,7 +498,6 @@ public class ReportService {
         dto.setId(report.getId());
         dto.setDescription(report.getDescription());
 
-        // Handle both single and multiple attachments
         if (report.getAttachmentPaths() != null && !report.getAttachmentPaths().isEmpty()) {
             dto.setAttachmentPaths(report.getAttachmentPaths());
         } else if (report.getAttachmentPath() != null) {
@@ -524,6 +519,24 @@ public class ReportService {
         dto.setFindings(report.getFindings());
         dto.setRecommendations(report.getRecommendations());
         dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths());
+
+        if (report.getRelatedCase() != null && report.getRelatedCase().getInformerId() != null) {
+            dto.setInformer(convertToInformerDTO(report.getRelatedCase().getInformerId()));
+        }
+        return dto;
+    }
+    private InformerDTO convertToInformerDTO(Informer informer) {
+        if (informer == null) return null;
+
+        InformerDTO dto = new InformerDTO();
+        dto.setInformerId(informer.getInformerId());
+        dto.setNationalId(informer.getNationalId());
+        dto.setName(informer.getInformerName());
+        dto.setGender(informer.getInformerGender());
+        dto.setPhoneNum(informer.getInformerPhoneNum());
+        dto.setAddress(informer.getInformerAddress());
+        dto.setEmail(informer.getInformerEmail());
+
         return dto;
     }
 
@@ -790,18 +803,6 @@ public class ReportService {
 
     public List<Employee> getAvailableInvestigationOfficers() {
         return reportRepo.findAvailableT3Officers();
-    }
-
-    public List<Report> getReportsAssignedToInvestigationOfficer(String officerId) {
-        List<Employee> officers = reportRepo.findAvailableT3Officers();
-        boolean isValidOfficer = officers.stream()
-                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
-
-        if (!isValidOfficer) {
-            throw new RuntimeException("Employee is not a T3 Investigation Officer");
-        }
-
-        return reportRepo.findReportsAssignedToInvestigationOfficer(officerId);
     }
 
     public List<Report> getAllReportsForDirectorInvestigation(String directorId) {
@@ -1186,8 +1187,62 @@ public class ReportService {
         return result;
     }
 
+    // Keep only one method with proper logic
+    public List<Report> getReportsAssignedToInvestigationOfficer(String officerId) {
+        List<Employee> officers = reportRepo.findAvailableT3Officers();
+        boolean isValidOfficer = officers.stream()
+                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
+
+        if (!isValidOfficer) {
+            throw new RuntimeException("Employee is not a T3 Investigation Officer");
+        }
+
+        // Define statuses where investigation officer should still have access
+        List<WorkflowStatus> activeStatuses = Arrays.asList(
+                WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER,
+                WorkflowStatus.INVESTIGATION_IN_PROGRESS,
+                WorkflowStatus.CASE_PLAN_SUBMITTED,
+                WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION,
+                WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION,
+                WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION,
+                WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER,
+                WorkflowStatus.INVESTIGATION_COMPLETED
+        );
+
+        return reportRepo.findActiveReportsForInvestigationOfficer(officerId, activeStatuses);
+    }
     public List<Report> getReportsAssignedToInvestigationOfficers(String officerId) {
-        return reportRepo.findReportsAssignedToInvestigationOfficers(officerId);
+        List<Employee> t3Officers = reportRepo.findAvailableT3Officers();
+        boolean isT3Officer = t3Officers.stream()
+                .anyMatch(o -> o.getEmployeeId().equals(officerId));
+
+        if (!isT3Officer) {
+            throw new RuntimeException("Employee is not a T3 Investigation Officer");
+        }
+
+        return reportRepo.findReportsAssignedToInvestigationOfficer(officerId);
+    }
+    public List<Report> getHistoricalReportsForInvestigationOfficer(String officerId) {
+        List<Employee> officers = reportRepo.findAvailableT3Officers();
+        boolean isValidOfficer = officers.stream()
+                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
+
+        if (!isValidOfficer) {
+            throw new RuntimeException("Employee is not a T3 Investigation Officer");
+        }
+
+        return reportRepo.findReportsByInvestigationOfficer(officerId);
+    }
+    public List<Report> getAllReportsForInvestigationOfficer(String officerId) {
+        List<Employee> officers = reportRepo.findAvailableT3Officers();
+        boolean isValidOfficer = officers.stream()
+                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
+
+        if (!isValidOfficer) {
+            throw new RuntimeException("Employee is not a T3 Investigation Officer");
+        }
+
+        return reportRepo.findReportsByInvestigationOfficer(officerId);
     }
 
     @Transactional
@@ -1524,6 +1579,598 @@ public class ReportService {
                 return WorkflowStatus.REPORT_SUBMITTED;
         }
     }
+    @Transactional
+    public Report submitCasePlan(Integer reportId, String casePlanText, MultipartFile casePlanAttachment, String employeeId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
+        Employee submitter = employeeRepo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
 
+        // Check if the submitter is the investigation officer assigned to this report
+        if (report.getInvestigationOfficer() == null ||
+                !report.getInvestigationOfficer().getEmployeeId().equals(employeeId)) {
+            throw new RuntimeException("You are not the assigned investigation officer for this report");
+        }
+
+        // Set case plan text
+        if (casePlanText != null && !casePlanText.trim().isEmpty()) {
+            report.setCasePlan(casePlanText);
+        }
+
+        // Store case plan attachment if provided
+        String casePlanAttachmentPath = null;
+        if (casePlanAttachment != null && !casePlanAttachment.isEmpty()) {
+            try {
+                validateCasePlanAttachment(casePlanAttachment);
+                casePlanAttachmentPath = storeCasePlanAttachment(casePlanAttachment);
+                // Store the attachment path - you might want to add a new field for this
+                // For now, we can store it in findingsAttachmentPaths or create a separate list
+                if (report.getFindingsAttachmentPaths() == null) {
+                    report.setFindingsAttachmentPaths(new ArrayList<>());
+                }
+                report.getFindingsAttachmentPaths().add(casePlanAttachmentPath);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to store case plan attachment: " + e.getMessage());
+            }
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SUBMITTED);
+        caseRepo.save(relatedCase);
+
+        // Set next recipient - Director of Investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        if (!directors.isEmpty()) {
+            report.setCurrentRecipient(directors.get(0));
+        } else {
+            throw new IllegalStateException("No Director of Investigation found.");
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_SUBMITTED,
+                "Case plan submitted for report #" + savedReport.getId() + " by investigation officer " + employeeId,
+                submitter
+        );
+
+        // Create notification
+        String message = String.format("Case plan submitted for report #%d by investigation officer %s %s",
+                savedReport.getId(),
+                submitter.getGivenName(),
+                submitter.getFamilyName());
+        createNotification(savedReport, message);
+
+        // Send websocket notification to Director of Investigation
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("CASE_PLAN_SUBMITTED");
+        webSocketNotificationService.sendNotificationToDirectorsInvestigation(broadcastNotification);
+
+        return savedReport;
+    }
+
+    @Transactional
+    public Report sendCasePlanToDirectorInvestigation(Integer reportId, String employeeId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee sender = employeeRepo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        // Check if sender is the investigation officer or has permission
+        if (report.getInvestigationOfficer() == null ||
+                (!report.getInvestigationOfficer().getEmployeeId().equals(employeeId) &&
+                        !isDirectorIntelligence(employeeId))) {
+            throw new RuntimeException("You are not authorized to send case plan");
+        }
+
+        // Verify case plan exists
+        if ((report.getCasePlan() == null || report.getCasePlan().trim().isEmpty()) &&
+                (report.getFindingsAttachmentPaths() == null || report.getFindingsAttachmentPaths().isEmpty())) {
+            throw new RuntimeException("No case plan or attachments found to send");
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION);
+        caseRepo.save(relatedCase);
+
+        // Set recipient - Director of Investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        if (!directors.isEmpty()) {
+            report.setCurrentRecipient(directors.get(0));
+        } else {
+            throw new IllegalStateException("No Director of Investigation found.");
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION,
+                "Case plan sent to Director of Investigation for report #" + savedReport.getId() +
+                        " by " + employeeId,
+                sender
+        );
+
+        // Create notification
+        String message = String.format("Case plan sent for report #%d by %s %s",
+                savedReport.getId(),
+                sender.getGivenName(),
+                sender.getFamilyName());
+        createNotification(savedReport, message);
+
+        // Send websocket notification
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION");
+        webSocketNotificationService.sendNotificationToDirectorsInvestigation(broadcastNotification);
+
+        return savedReport;
+    }
+
+    private void validateCasePlanAttachment(MultipartFile file) {
+        if (file == null || file.isEmpty()) return;
+
+        // Validate file size
+        if (file.getSize() > maxFileSize) {
+            throw new RuntimeException("File size exceeds maximum limit of " + maxFileSize + " bytes");
+        }
+
+        // Validate file type - allow PDF and Word documents for case plans
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        String lowerFilename = originalFilename.toLowerCase();
+
+        if (!lowerFilename.endsWith(".pdf") &&
+                !lowerFilename.endsWith(".doc") &&
+                !lowerFilename.endsWith(".docx")) {
+            throw new RuntimeException("Only PDF, DOC, and DOCX files are allowed for case plans");
+        }
+    }
+
+    private String storeCasePlanAttachment(MultipartFile file) throws Exception {
+        if (file == null || file.isEmpty()) return null;
+
+        // Create case-plans subdirectory
+        Path uploadPath = Paths.get(uploadDir).resolve("case-plans").toAbsolutePath().normalize();
+        if (!Files.exists(uploadPath)) {
+            Files.createDirectories(uploadPath);
+            try {
+                Files.setPosixFilePermissions(uploadPath,
+                        Set.of(PosixFilePermission.OWNER_READ,
+                                PosixFilePermission.OWNER_WRITE,
+                                PosixFilePermission.OWNER_EXECUTE));
+            } catch (UnsupportedOperationException e) {
+                log.warn("Unable to set POSIX permissions on Windows");
+            }
+        }
+
+        // Generate secure filename
+        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
+        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
+        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+
+        Path filePath = uploadPath.resolve(secureFilename);
+
+        // Security check
+        if (!filePath.normalize().startsWith(uploadPath)) {
+            throw new IOException("Invalid file path - security violation");
+        }
+
+        try {
+            // Store the file
+            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+
+            // Verify file was written correctly
+            if (!Files.exists(filePath) || Files.size(filePath) != file.getSize()) {
+                throw new IOException("File storage verification failed");
+            }
+
+            return "case-plans/" + secureFilename;
+
+        } catch (IOException e) {
+            // Clean up failed file
+            try {
+                Files.deleteIfExists(filePath);
+            } catch (IOException cleanupException) {
+                log.error("Failed to cleanup corrupted file: {}", cleanupException.getMessage());
+            }
+            throw new IOException("Failed to store case plan file: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean isDirectorIntelligence(String employeeId) {
+        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
+        return directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+    }
+    public List<Report> getCasePlansForDirectorInvestigation(String directorId) {
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(directorId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Employee is not a Director of Investigation");
+        }
+
+        return reportRepo.findCasePlansForDirectorInvestigation(
+                WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION,
+                directorId
+        );
+    }
+    @Transactional
+    public Report approveCasePlan(Integer reportId, String approverId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        // Verify the approver is a Director of Investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(approverId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Only Director of Investigation can approve case plans");
+        }
+
+        // Verify the report has a case plan
+        if ((report.getCasePlan() == null || report.getCasePlan().trim().isEmpty()) &&
+                (report.getFindingsAttachmentPaths() == null || report.getFindingsAttachmentPaths().isEmpty())) {
+            throw new RuntimeException("No case plan found to approve");
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION);
+        caseRepo.save(relatedCase);
+
+        report.setDirectorInvestigation(approver);
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Set next recipient - investigation officer can now proceed with investigation
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION,
+                "Case plan approved for report #" + savedReport.getId() + " by Director of Investigation " + approverId,
+                approver
+        );
+
+        // Create notification
+        String message = String.format("Case plan for report #%d has been approved by Director of Investigation %s %s",
+                savedReport.getId(),
+                approver.getGivenName(),
+                approver.getFamilyName());
+        createNotification(savedReport, message);
+
+        // Send websocket notification to investigation officer
+        if (report.getInvestigationOfficer() != null) {
+            NotificationDTO broadcastNotification = webSocketNotificationService
+                    .createNotificationDTO(savedReport, message, report.getInvestigationOfficer());
+            broadcastNotification.setNotificationType("CASE_PLAN_APPROVED");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getInvestigationOfficer().getEmployeeId(),
+                    broadcastNotification
+            );
+        }
+
+        return savedReport;
+    }
+
+    @Transactional
+    public Report rejectCasePlan(Integer reportId, String rejectionReason, String rejectorId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
+                .orElseThrow(() -> new RuntimeException("Rejector not found"));
+
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(rejectorId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Only Director of Investigation can reject case plans");
+        }
+
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION);
+        caseRepo.save(relatedCase);
+
+        report.setDirectorInvestigation(rejector);
+        report.setRejectedBy(rejector);
+        report.setRejectionReason(rejectionReason);
+        report.setRejectedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Return to investigation officer for revision
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+            report.setReturnedBy(rejector);
+            report.setReturnReason(rejectionReason);
+            report.setReturnedAt(LocalDateTime.now());
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION,
+                "Case plan rejected for report #" + savedReport.getId() + " by Director of Investigation " +
+                        rejectorId + ". Reason: " + rejectionReason,
+                rejector
+        );
+
+        // Create notification
+        String message = String.format("Case plan for report #%d has been rejected by Director of Investigation %s %s. Reason: %s",
+                savedReport.getId(),
+                rejector.getGivenName(),
+                rejector.getFamilyName(),
+                rejectionReason);
+        createNotification(savedReport, message);
+
+        // Send websocket notification to investigation officer
+        if (report.getInvestigationOfficer() != null) {
+            NotificationDTO broadcastNotification = webSocketNotificationService
+                    .createNotificationDTO(savedReport, message, report.getInvestigationOfficer());
+            broadcastNotification.setNotificationType("CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getInvestigationOfficer().getEmployeeId(),
+                    broadcastNotification
+            );
+        }
+
+        return savedReport;
+    }
+    @Transactional
+    public Report approveCasePlanByAssistantCommissioner(Integer reportId, String approverId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        // Verify the approver is an Assistant Commissioner
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        boolean isCommissioner = commissioners.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(approverId));
+
+        if (!isCommissioner) {
+            throw new RuntimeException("Only Assistant Commissioner can approve case plans");
+        }
+
+        // Verify the report is in correct status
+        if (report.getRelatedCase().getStatus() != WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER) {
+            throw new RuntimeException("Case plan not pending Assistant Commissioner approval");
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER);
+        caseRepo.save(relatedCase);
+
+        report.setAssistantCommissioner(approver);
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Set next recipient - investigation officer can proceed
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER,
+                "Case plan approved by Assistant Commissioner for report #" + savedReport.getId(),
+                approver
+        );
+
+        // Create notification
+        String message = String.format("Case plan for report #%d has been approved by Assistant Commissioner %s %s",
+                savedReport.getId(),
+                approver.getGivenName(),
+                approver.getFamilyName());
+        createNotification(savedReport, message);
+
+        // Send websocket notifications
+        if (report.getInvestigationOfficer() != null) {
+            NotificationDTO notification = webSocketNotificationService
+                    .createNotificationDTO(savedReport, message, report.getInvestigationOfficer());
+            notification.setNotificationType("CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getInvestigationOfficer().getEmployeeId(),
+                    notification
+            );
+        }
+
+        // Notify Director of Investigation
+        if (report.getDirectorInvestigation() != null) {
+            String diMessage = String.format("Case plan for report #%d has been approved by Assistant Commissioner",
+                    savedReport.getId());
+            NotificationDTO diNotification = webSocketNotificationService
+                    .createNotificationDTO(savedReport, diMessage, report.getDirectorInvestigation());
+            diNotification.setNotificationType("CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getDirectorInvestigation().getEmployeeId(),
+                    diNotification
+            );
+        }
+
+        return savedReport;
+    }
+
+    @Transactional
+    public Report rejectCasePlanByAssistantCommissioner(Integer reportId, String rejectionReason, String rejectorId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
+                .orElseThrow(() -> new RuntimeException("Rejector not found"));
+
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        boolean isCommissioner = commissioners.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(rejectorId));
+
+        if (!isCommissioner) {
+            throw new RuntimeException("Only Assistant Commissioner can reject case plans");
+        }
+
+        if (report.getRelatedCase().getStatus() != WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER) {
+            throw new RuntimeException("Case plan not pending Assistant Commissioner approval");
+        }
+
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER);
+        caseRepo.save(relatedCase);
+
+        report.setAssistantCommissioner(rejector);
+        report.setRejectedBy(rejector);
+        report.setRejectionReason(rejectionReason);
+        report.setRejectedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Return to investigation officer for revision
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+            report.setReturnedBy(rejector);
+            report.setReturnReason(rejectionReason);
+            report.setReturnedAt(LocalDateTime.now());
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER,
+                "Case plan rejected by Assistant Commissioner for report #" + savedReport.getId() +
+                        ". Reason: " + rejectionReason,
+                rejector
+        );
+
+        // Create notification
+        String message = String.format("Case plan for report #%d has been rejected by Assistant Commissioner. Reason: %s",
+                savedReport.getId(),
+                rejectionReason);
+        createNotification(savedReport, message);
+
+        // Send websocket notifications
+        if (report.getInvestigationOfficer() != null) {
+            NotificationDTO notification = webSocketNotificationService
+                    .createNotificationDTO(savedReport, message, report.getInvestigationOfficer());
+            notification.setNotificationType("CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getInvestigationOfficer().getEmployeeId(),
+                    notification
+            );
+        }
+
+        // Notify Director of Investigation
+        if (report.getDirectorInvestigation() != null) {
+            String diMessage = String.format("Case plan for report #%d has been rejected by Assistant Commissioner. Reason: %s",
+                    savedReport.getId(),
+                    rejectionReason);
+            NotificationDTO diNotification = webSocketNotificationService
+                    .createNotificationDTO(savedReport, diMessage, report.getDirectorInvestigation());
+            diNotification.setNotificationType("CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getDirectorInvestigation().getEmployeeId(),
+                    diNotification
+            );
+        }
+
+        return savedReport;
+    }
+    @Transactional
+    public Report sendCasePlanToAssistantCommissioner(Integer reportId, String senderId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee sender = employeeRepo.findByEmployeeId(senderId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        // Verify sender is Director of Investigation
+        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+        boolean isDirector = directors.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(senderId));
+
+        if (!isDirector) {
+            throw new RuntimeException("Only Director of Investigation can send case plan to Assistant Commissioner");
+        }
+
+        // Verify case plan is approved by Director of Investigation
+        if (report.getRelatedCase().getStatus() != WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION) {
+            throw new RuntimeException("Case plan must be approved by Director of Investigation first");
+        }
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER);
+        caseRepo.save(relatedCase);
+
+        // Set recipient - Assistant Commissioner
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        if (!commissioners.isEmpty()) {
+            report.setCurrentRecipient(commissioners.get(0));
+        } else {
+            throw new IllegalStateException("No Assistant Commissioner found.");
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        Report savedReport = reportRepo.save(report);
+
+        // Log action
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER,
+                "Case plan sent to Assistant Commissioner for report #" + savedReport.getId() +
+                        " by Director of Investigation " + senderId,
+                sender
+        );
+
+        // Create notification
+        String message = String.format("Case plan for report #%d requires your approval",
+                savedReport.getId());
+        createNotification(savedReport, message);
+
+        // Send websocket notification
+        NotificationDTO broadcastNotification = webSocketNotificationService
+                .createNotificationDTO(savedReport, message, savedReport.getCurrentRecipient());
+        broadcastNotification.setNotificationType("CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER");
+        webSocketNotificationService.sendNotificationToAssistantCommissioners(broadcastNotification);
+
+        return savedReport;
+    }
+    public List<Report> getCasePlansForAssistantCommissioner(String employeeId) {
+        // Verify the employee is an Assistant Commissioner
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        boolean isCommissioner = commissioners.stream()
+                .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+        if (!isCommissioner) {
+            throw new RuntimeException("Employee is not an Assistant Commissioner");
+        }
+
+        // Find case plans pending Assistant Commissioner approval
+        return reportRepo.findCasePlansForAssistantCommissioner(
+                WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER,
+                employeeId
+        );
+    }
 }

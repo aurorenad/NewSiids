@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class InformerDTO {
-    private Integer nationalId;
+    private String nationalId;
     private String informerId;
     private String name;
     private String gender;

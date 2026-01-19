@@ -12,7 +12,7 @@ import java.util.Random;
 @Data
 public class Informer {
     @Id
-    private Integer nationalId;
+    private String nationalId;
 
     @Column(unique = true)
     private String informerId;
@@ -26,6 +26,6 @@ public class Informer {
     public String generateInformerNumber() {
         String datePart = new SimpleDateFormat("yyMMdd").format(new Date());
         int randomSeq = new Random().nextInt(900) + 100;
-        return "INF/" + datePart + "/" + randomSeq + "/" + this.nationalId;
+        return "INF/" + datePart + "/" + this.nationalId;
     }
 }
