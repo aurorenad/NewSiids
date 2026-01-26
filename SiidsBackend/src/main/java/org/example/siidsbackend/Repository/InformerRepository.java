@@ -9,6 +9,6 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface InformerRepository extends JpaRepository<Informer, Integer> {
+public interface InformerRepository extends JpaRepository<Informer, String> {
     Optional<Informer> findInformerByNationalId(String nationalId);
 }

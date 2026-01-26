@@ -1,0 +1,141 @@
+/* General Reset */
+body, h1, h2, h3, p, ul, li, table, input, button {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* Main Dashboard */
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background-color: #f8f8f8;
+    height: 100vh;
+}
+
+/* Search Bar */
+.search-container {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 15px;
+}
+.search-container .new-case-btn{
+    padding: 10px;
+}
+.search-container form {
+    display: flex;
+    align-items: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    overflow: hidden;
+}
+
+.search-container input {
+    padding: 8px;
+    border: none;
+    outline: none;
+    width: 200px;
+}
+
+.search-container button {
+    background-color: white;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+}
+
+.search-container button i {
+    font-size: 16px;
+}
+
+/* Table Container */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.cases-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.cases-table th, .cases-table td {
+    padding: 10px;
+    text-align: left;
+    border: 1px solid #ddd;
+}
+
+.cases-table th {
+    background: #dbe3f5;
+    font-weight: bold;
+}
+
+/* Status Badge */
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    color: white;
+}
+
+.status-badge.active {
+    background: #4CAF50;
+}
+
+.status-badge.completed {
+    background: #2196F3;
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+.action-btn {
+    border: none;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.view-btn {
+    background: #4CAF50;
+    color: white;
+}
+
+.edit-btn {
+    background: #ffc107;
+    color: white;
+}
+
+.delete-btn {
+    background: #f44336;
+    color: white;
+}
+
+/* New Case Button */
+.new-case-btn {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.new-case-btn button {
+    background: #3b82f6;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.new-case-btn button:hover {
+    background: #2563eb;
+}

@@ -1,0 +1,68 @@
+.page-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.table-responsive {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+.page-container {
+    padding: 24px;
+    background-color: #f5f5f5;
+    min-height: 100vh;
+}
+
+/* Custom scrollbar for table */
+.MuiTableContainer-root {
+    max-height: 600px;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar {
+    width: 8px;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .page-container {
+        padding: 16px;
+    }
+
+    .MuiTableCell-root {
+        padding: 8px;
+        font-size: 0.875rem;
+    }
+}

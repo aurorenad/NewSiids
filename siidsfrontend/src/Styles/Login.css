@@ -1,0 +1,131 @@
+/* src/styles/Login.css */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #f0f5fa;
+}
+
+.login-card {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.logo {
+    width: 40px;
+    height: 40px;
+    background-color: #e0f4ea;
+    border-radius: 50%;
+    margin-right: 10px;
+    position: relative;
+}
+
+.logo::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 20px;
+    height: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2348a87a' d='M12,2L4,5v6c0,5.55,3.84,10.74,8,12c4.16-1.26,8-6.45,8-12V5L12,2z'/%3E%3C/svg%3E");
+    background-size: contain;
+}
+
+.org-name {
+    color: #496073;
+    margin: 0;
+    font-size: 14px;
+}
+
+.system-title {
+    color: #496073;
+    font-size: 18px;
+    margin: 0 0 5px;
+}
+
+.system-subtitle {
+    color: #496073;
+    font-size: 16px;
+    margin: 0 0 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #496073;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+    border-color: #48a87a;
+    outline: none;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #496073;
+}
+
+.remember-me input {
+    margin-right: 8px;
+}
+
+.login-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 0;
+    width: 100%;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.login-btn:hover {
+    background-color: #2980b9;
+}
+
+.forgot-password {
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+.forgot-password a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.forgot-password a:hover {
+    text-decoration: underline;
+}

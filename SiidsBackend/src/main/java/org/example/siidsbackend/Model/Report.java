@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 @Entity
@@ -85,9 +86,18 @@ public class Report {
     private Double principleAmount;
     private Double penaltiesAmount;
 
-    //investigation report description and attachments && report plan
+
     @Column(name="CasePlan")
     private String casePlan;
+    @Column(name = "CasePlan_description")
+    private String casePlanDescription;
+
+    private String investigationReportApprovedBy;
+    private LocalDateTime investigationReportApprovedAt;
+
+    private String investigationReportRejectedBy;
+     private String investigationReportRejectionReason;
+    private LocalDateTime investigationReportRejectedAt;
 
     @PrePersist
     protected void onCreate() {

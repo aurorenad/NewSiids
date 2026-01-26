@@ -135,6 +135,13 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "WHERE j.gradeId.gradeId = 5 AND s.structureId = 161) " +
             "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER) " +
             "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER) " +
+            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER) " +
             "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED)) " +
             "ORDER BY r.updatedAt DESC")
     List<Report> findReportsHandledByDirectorInvestigation();
@@ -143,7 +150,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     Optional<Report> findByRelatedCase_CaseNum(String caseNum);
 
-    // In ReportRepo.java
+
     @Query("SELECT r FROM Report r WHERE r.principleAmount IS NOT NULL AND r.principleAmount > 0 " +
             "AND r.penaltiesAmount IS NOT NULL AND r.penaltiesAmount > 0 " +
             "AND r.relatedCase.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED")
@@ -161,6 +168,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "WHERE c.status IN (" +
             "org.example.siidsbackend.Model.WorkflowStatus.CASE_CREATED, " +
             "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION, " +
             "org.example.siidsbackend.Model.WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE) " +
             "ORDER BY r.createdAt DESC")
     List<DirectorIntelligenceReportDTO> findCasesForDirectorIntelligenceReport();
