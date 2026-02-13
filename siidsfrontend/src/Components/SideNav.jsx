@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, { useContext, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import '../styles/Sidebar.css';
 import { AuthContext } from '../context/AuthContext';
@@ -20,7 +20,7 @@ const Sidebar = () => {
         <div className="sidebar">
             <div className="sidebar-header">
                 <div className="sidebar-logo">
-                    <img src="../../public/Images/HomeLogo.jpeg"/>
+                    <img src="/Images/HomeLogo.jpeg" />
                 </div>
                 <h3>SIID</h3>
             </div>
@@ -38,18 +38,18 @@ const Sidebar = () => {
                                     </NavLink>
                                 </li>
                                 {authState.role === 'User' && (
-                                <li>
-                                    <NavLink to="/intelligence-officer" className={({ isActive }) => isActive ? 'active' : ''}>
-                                        Intelligence Officer
-                                    </NavLink>
-                                </li>)}
+                                    <li>
+                                        <NavLink to="/intelligence-officer" className={({ isActive }) => isActive ? 'active' : ''}>
+                                            Intelligence Officer
+                                        </NavLink>
+                                    </li>)}
                                 {authState.role === 'Surveillance' && (
-                                <li>
-                                    <NavLink to='/surveillence-officer' className={({isActive}) => isActive ? 'active': ''}>
-                                        Surveillence Officer
-                                    </NavLink>
-                                </li>
-                                    )}
+                                    <li>
+                                        <NavLink to='/surveillence-officer' className={({ isActive }) => isActive ? 'active' : ''}>
+                                            Surveillence Officer
+                                        </NavLink>
+                                    </li>
+                                )}
                             </ul>
                         )}
                     </li>
@@ -91,6 +91,11 @@ const Sidebar = () => {
                             </NavLink>
                         </li>
                     )}
+                    <li>
+                        <NavLink to="/stock-management" className={({ isActive }) => isActive ? 'active' : ''}>
+                            Stock Management
+                        </NavLink>
+                    </li>
                 </ul>
             </nav>
         </div>

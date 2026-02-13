@@ -76,7 +76,11 @@ const DirectorIntelligence = () => {
             }));
             setReports(reportsWithDate);
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to fetch reports');
+            if (err.response && err.response.status === 403) {
+                setError('You do not have permission to access these reports. Please contact your administrator if you believe this is a mistake.');
+            } else {
+                setError(err.response?.data?.message || 'Failed to fetch reports');
+            }
         } finally {
             setLoading(false);
         }

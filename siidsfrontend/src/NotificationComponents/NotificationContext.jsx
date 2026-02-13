@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { connectWebSocket, disconnectWebSocket } from '../../websocket.js';
+import { connectWebSocket, disconnectWebSocket } from '../websocket.js';
+import caseApi from '../api/Axios/caseApi';
 
 export const NotificationContext = createContext();
 
@@ -10,20 +11,10 @@ export const NotificationProvider = ({ children, employeeId }) => {
     useEffect(() => {
         // Fetch initial notifications with better error handling
         const fetchNotifications = async () => {
+            if (!employeeId) return;
             try {
-                const response = await fetch(`/api/notifications/employee/${employeeId}`);
-
-                // Check if response is ok and content-type is JSON
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    throw new Error('Response is not JSON');
-                }
-
-                const data = await response.json();
+                const response = await caseApi.get(`/api/notifications/employee/${employeeId}`);
+                const data = response.data;
                 setNotifications(data);
                 setUnreadCount(data.filter(n => !n.read).length);
             } catch (err) {
@@ -51,17 +42,11 @@ export const NotificationProvider = ({ children, employeeId }) => {
 
     const markAsRead = async (id) => {
         try {
-            const response = await fetch(`/api/notifications/${id}/read`, {
-                method: 'PUT',
+            await caseApi.put(`/api/notifications/${id}/read`, {}, {
                 headers: {
-                    'employee_id': employeeId,
-                    'Content-Type': 'application/json'
+                    'employee_id': employeeId
                 }
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
 
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, read: true } : n)
@@ -74,17 +59,11 @@ export const NotificationProvider = ({ children, employeeId }) => {
 
     const markAllAsRead = async () => {
         try {
-            const response = await fetch(`/api/notifications/employee/${employeeId}/read-all`, {
-                method: 'PUT',
+            await caseApi.put(`/api/notifications/employee/${employeeId}/read-all`, {}, {
                 headers: {
-                    'employee_id': employeeId,
-                    'Content-Type': 'application/json'
+                    'employee_id': employeeId
                 }
             });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
 
             setNotifications(prev =>
                 prev.map(n => ({ ...n, read: true }))

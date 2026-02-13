@@ -3,7 +3,6 @@ package org.example.siidsbackend.Controller;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
-import org.example.siidsbackend.Service.JWTService;
 import org.example.siidsbackend.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,8 +24,6 @@ public class UserController {
     @Autowired
     private UserService service;
 
-    @Autowired
-    private JWTService jwtService;
 
     @Autowired
     private org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;

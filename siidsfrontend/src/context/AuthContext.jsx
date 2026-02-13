@@ -11,12 +11,15 @@ export const AuthProvider = ({ children }) => {
         role: null,
     });
 
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
-        const name = localStorage.getItem('name') || sessionStorage.getItem('name');  // Get name from storage
+        const name = localStorage.getItem('name') || sessionStorage.getItem('name');
         const role = localStorage.getItem('role') || sessionStorage.getItem('role');
+
         if (token && employeeId) {
             setAuthState({
                 token,
@@ -26,6 +29,7 @@ export const AuthProvider = ({ children }) => {
                 role,
             });
         }
+        setLoading(false);
     }, []);
 
     const login = (userId, token, employeeId, name, remember, role) => {
@@ -67,7 +71,8 @@ export const AuthProvider = ({ children }) => {
             authState,
             currentUser: authState,
             login,
-            logout
+            logout,
+            loading
         }}>
             {children}
         </AuthContext.Provider>

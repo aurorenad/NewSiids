@@ -125,7 +125,11 @@ const AssistantCommissioner = () => {
                 setReports(mappedReports);
             } catch (err) {
                 console.error('Failed to fetch reports:', err);
-                setError(err.response?.data?.message || 'Failed to fetch reports');
+                if (err.response && err.response.status === 403) {
+                    setError('You do not have permission to access these reports. Please contact your administrator if you believe this is a mistake.');
+                } else {
+                    setError(err.response?.data?.message || 'Failed to fetch reports');
+                }
             } finally {
                 setLoading(false);
             }
@@ -1415,8 +1419,8 @@ const AssistantCommissioner = () => {
                     </Typography>
                     <Typography variant="body2" gutterBottom>
                         Created By: {typeof selectedCasePlan?.createdBy === 'string'
-                        ? selectedCasePlan.createdBy
-                        : `${selectedCasePlan?.createdBy?.givenName || ''} ${selectedCasePlan?.createdBy?.familyName || ''}`.trim() || 'Unknown'}
+                            ? selectedCasePlan.createdBy
+                            : `${selectedCasePlan?.createdBy?.givenName || ''} ${selectedCasePlan?.createdBy?.familyName || ''}`.trim() || 'Unknown'}
                     </Typography>
                     <Typography variant="body2" gutterBottom>
                         Current Status: {formatStatus(selectedCasePlan?.status)}
@@ -1424,8 +1428,8 @@ const AssistantCommissioner = () => {
                     {selectedCasePlan?.description && (
                         <Typography variant="body2" gutterBottom>
                             Description: {selectedCasePlan.description.length > 100
-                            ? selectedCasePlan.description.substring(0, 100) + '...'
-                            : selectedCasePlan.description}
+                                ? selectedCasePlan.description.substring(0, 100) + '...'
+                                : selectedCasePlan.description}
                         </Typography>
                     )}
                     <TextField

@@ -1067,13 +1067,13 @@ const IntelligenceOfficer = () => {
                     <Alert severity="info" variant="outlined">
                         <Typography variant="body2">
                             Showing <strong>{filteredCases.length}</strong> cases in <strong>
-                            {activeTab === 'all' ? 'All Cases' :
-                                activeTab === 'created' ? 'Created Cases' :
-                                    activeTab === 'pending' ? 'Pending Review' :
-                                        activeTab === 'returned' ? 'Returned Cases' :
-                                            activeTab === 'approved' ? 'Approved Cases' :
-                                                activeTab === 'closed' ? 'Closed Cases' :
-                                                    'Cases with Reports'}</strong> category
+                                {activeTab === 'all' ? 'All Cases' :
+                                    activeTab === 'created' ? 'Created Cases' :
+                                        activeTab === 'pending' ? 'Pending Review' :
+                                            activeTab === 'returned' ? 'Returned Cases' :
+                                                activeTab === 'approved' ? 'Approved Cases' :
+                                                    activeTab === 'closed' ? 'Closed Cases' :
+                                                        'Cases with Reports'}</strong> category
                         </Typography>
                     </Alert>
                 </Box>

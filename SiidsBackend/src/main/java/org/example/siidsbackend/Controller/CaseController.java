@@ -25,7 +25,6 @@ public class CaseController {
     private final CaseService caseService;
     private final TaxPayerService taxPayerService;
     private final InformerService informerService;
-    private final employeeService employeeService;
     private final ReportService reportService;
 
     @PostMapping

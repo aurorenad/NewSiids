@@ -141,9 +141,12 @@ const DirectorInvestigation = () => {
                 setOfficers(mappedOfficers);
             } catch (err) {
                 console.error('Error:', err);
+                const message = (err.response && err.response.status === 403)
+                    ? 'You do not have permission to access these investigations.'
+                    : (err.response?.data?.message || 'Failed to load data');
                 setSnackbar({
                     open: true,
-                    message: err.response?.data?.message || 'Failed to load data',
+                    message: message,
                     severity: 'error'
                 });
             } finally {
@@ -1849,11 +1852,11 @@ const DirectorInvestigation = () => {
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={6000}
-                onClose={() => setSnackbar({...snackbar, open: false})}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
             >
                 <Alert
                     severity={snackbar.severity}
-                    onClose={() => setSnackbar({...snackbar, open: false})}
+                    onClose={() => setSnackbar({ ...snackbar, open: false })}
                 >
                     {snackbar.message}
                 </Alert>

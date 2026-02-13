@@ -94,7 +94,7 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                     borderBottom: '1px solid #ddd',
                     paddingBottom: '10px'
                 }}>
-                    <img src="./../../public/Images/HomeLogo.jpeg" style={{width:"100px"}}/>
+                    <img src="/Images/HomeLogo.jpeg" style={{ width: "100px" }} />
                     <h3 style={{ marginBottom: '5px' }}>
 
                         {data.header.header1}</h3>
@@ -119,24 +119,24 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
 
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <tbody>
-                            {section.rows.map((row, rowIndex) => (
-                                <tr key={rowIndex} style={{ borderBottom: '1px solid #eee' }}>
-                                    <td style={{
-                                        width: '30%',
-                                        padding: '10px',
-                                        fontWeight: 'bold',
-                                        verticalAlign: 'top'
-                                    }}>
-                                        {row.label}
-                                    </td>
-                                    <td style={{
-                                        padding: '10px',
-                                        whiteSpace: row.isTextArea ? 'pre-line' : 'normal'
-                                    }}>
-                                        {row.value}
-                                    </td>
-                                </tr>
-                            ))}
+                                {section.rows.map((row, rowIndex) => (
+                                    <tr key={rowIndex} style={{ borderBottom: '1px solid #eee' }}>
+                                        <td style={{
+                                            width: '30%',
+                                            padding: '10px',
+                                            fontWeight: 'bold',
+                                            verticalAlign: 'top'
+                                        }}>
+                                            {row.label}
+                                        </td>
+                                        <td style={{
+                                            padding: '10px',
+                                            whiteSpace: row.isTextArea ? 'pre-line' : 'normal'
+                                        }}>
+                                            {row.value}
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
                     </div>

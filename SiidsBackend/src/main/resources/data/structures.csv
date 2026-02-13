@@ -1,0 +1,24 @@
+structure_id,structure_name,structure_type,level,created_at,created_by,reference_id
+1,RRA,Institution,1,2021-06-06 03:14:18,1,0
+2,Board of Directors,Team,2,2021-06-08 11:12:08,1,1
+3,Commissioner General,Office,3,2021-06-08 11:12:56,1,2
+4,Deputy Commissioner General,Office,4,2021-06-08 11:16:01,1,3
+5,Customs Services,Department,4,2021-06-08 11:17:34,1,3
+6,Domestic Taxes,Department,4,2021-06-08 11:17:53,1,3
+7,Legal Services and Board Affairs,Department,4,2021-06-08 11:18:16,1,3
+8,Internal Audit and Integrity,Department,4,2021-06-08 11:19:03,1,3
+10,Strategic Intelligence and Investigation,Division,4,2021-06-08 11:19:38,1,3
+11,Taxpayer Services and Communication,Division,4,2021-06-08 11:19:51,1,3
+12,Single Project Implementation Unit,Office,4,2021-06-08 11:20:31,1,3
+13,IT and Digital Transformation,Department,5,2021-06-08 11:21:50,1,4
+14,Strategy and Risk Analysis,Department,5,2021-06-08 11:22:09,1,4
+15,Finance,Department,5,2021-06-08 11:22:24,1,4
+16,Human Resource,Division,5,2021-06-08 11:22:46,1,4
+17,Administration and Logistics,Division,5,2021-06-08 11:23:06,1,4
+18,Customs Operations,Division,5,2021-06-08 11:24:19,1,5
+19,Operations Support,Division,5,2021-06-08 11:24:46,1,5
+20,Taxpayer audit,Division,5,2021-06-08 11:27:08,1,6
+21,"Registration, Filing and Payment",Division,5,2021-06-08 11:27:25,1,6
+22,Debt Management,Division,5,2021-06-08 11:27:53,1,6
+23,Provincial and Decentralized Revenue,Division,5,2021-06-08 11:28:27,1,6
+24,Tax Control and Operational Support,Division,5,2021-06-08 11:28:46,1,6

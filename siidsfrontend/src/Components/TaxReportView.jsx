@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import LogoImage from '../../public/Images/HomeLogo.jpeg'
+
 import {
     Paper,
     Typography,
@@ -198,7 +198,7 @@ const TaxReportView = () => {
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
             }}
-                   ref={reportRef}>
+                ref={reportRef}>
                 <Box sx={{ textAlign: 'center', mb: 3 }}>
                     <Typography variant="h6" fontWeight="bold">
                         <div style={{ width: "100px", margin: "auto" }}>

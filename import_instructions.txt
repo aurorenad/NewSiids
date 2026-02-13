@@ -1,0 +1,9 @@
+﻿-- Save your complete SQL data to this file
+-- Then run: psql -U postgres -d siidsDB -f import_siids_data.sql
+
+-- Step 1: Copy all the SQL you provided in the chat
+-- Step 2: Remove all backticks ()
+-- Step 3: Replace 'int(11)' with 'INTEGER'
+-- Step 4: Save and import
+
+-- I'll create a simpler approach for you...

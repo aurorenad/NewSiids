@@ -1,7 +1,5 @@
 package org.example.siidsbackend.Controller;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Service.employeeService;

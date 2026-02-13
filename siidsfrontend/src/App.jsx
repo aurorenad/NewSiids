@@ -2,20 +2,20 @@ import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import Home from './Components/Home.jsx';
-import Login from './components/Login';
-import Sidebar from './components/SideNav.jsx';
-import Header from './components/Header';
-import DirectorIntelligence from './components/DirectorIntelligence';
-import IntelligenceOfficer from './components/IntelligenceOfficer';
+import Login from './Components/Login';
+import Sidebar from './Components/SideNav.jsx';
+import Header from './Components/Header';
+import DirectorIntelligence from './Components/DirectorIntelligence';
+import IntelligenceOfficer from './Components/IntelligenceOfficer';
 import InvestigationOfficer from "./Components/InvestigationOfficer";
 import DirectorInvestigation from "./Components/DirectorInvestigation";
-import AssistantCommissioner from './components/AssistantCommissioner';
+import AssistantCommissioner from './Components/AssistantCommissioner';
 import SurveillenceOfficer from "./Components/SurveillenceOffice/SurveillenceOfficer.jsx";
 import NewSurveillenceCase from "./Components/SurveillenceOffice/NewSurveillenceCase.jsx";
 import TaxReportView from "./Components/TaxReportView.jsx";
-import History from './components/History';
+import History from './Components/History';
 import NewCase from './Components/TaxReportForm.jsx';
-import Register from './components/Register';
+import Register from './Components/Register';
 import './App.css';
 import { ClaimForm as ClaimForm } from "./Components/ClaimForm.jsx";
 import { SClaimForm as SClaimForm } from "./Components/SClaimForm.jsx";
@@ -29,9 +29,14 @@ import T3OfficersReports from "./Components/T3OfficersReports.jsx";
 import ForgotPassword from "./Components/ForgotPassword.jsx";
 import LegalAdvisor from "./Components/LegalAdvisor.jsx"
 import EditReport from "./Components/EditReport.jsx";
+import StockManagement from "./Components/StockManagement.jsx";
 
 const ProtectedRoute = ({ children }) => {
-    const { authState } = useContext(AuthContext);
+    const { authState, loading } = useContext(AuthContext);
+
+    if (loading) {
+        return <div>Loading...</div>; // Or a proper loading spinner
+    }
 
     if (!authState?.token || !authState?.employeeId) {
         return <Navigate to="/" replace />;
@@ -60,20 +65,20 @@ const AppRoutes = () => {
             <Route path="/intelligence-officer/newCase" element={<ProtectedRoute><NewCase /></ProtectedRoute>} />
             <Route path="/intelligence-officer/view-case/*" element={<ProtectedRoute><TaxReportView /></ProtectedRoute>} />
             <Route path="/intelligence-officer/claim-form/:caseNum" element={<ProtectedRoute><ClaimForm /></ProtectedRoute>} />
-            <Route path="/investigation-officer" element={<ProtectedRoute><InvestigationOfficer/></ProtectedRoute>} />
-            <Route path="/surveillence-officer" element={<ProtectedRoute><SurveillenceOfficer/></ProtectedRoute>} />
-            <Route path="/surveillence-officer/New" element={<ProtectedRoute><NewSurveillenceCase/></ProtectedRoute>} />
-            <Route path="/surveillence-officer/view/*" element={<ProtectedRoute><SurveillanceCaseView /></ProtectedRoute>}/>
+            <Route path="/investigation-officer" element={<ProtectedRoute><InvestigationOfficer /></ProtectedRoute>} />
+            <Route path="/surveillence-officer" element={<ProtectedRoute><SurveillenceOfficer /></ProtectedRoute>} />
+            <Route path="/surveillence-officer/New" element={<ProtectedRoute><NewSurveillenceCase /></ProtectedRoute>} />
+            <Route path="/surveillence-officer/view/*" element={<ProtectedRoute><SurveillanceCaseView /></ProtectedRoute>} />
             <Route path="/surveillence-officer/sclaim-form/:caseNum" element={<ProtectedRoute><SClaimForm /></ProtectedRoute>} />
-            <Route path="/Director-Investigation" element={<ProtectedRoute><DirectorInvestigation/></ProtectedRoute>} />
+            <Route path="/Director-Investigation" element={<ProtectedRoute><DirectorInvestigation /></ProtectedRoute>} />
             <Route path="/assistant-commissioner" element={<ProtectedRoute><AssistantCommissioner /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/reports/:id" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
-            <Route path="/reports/:caseNum" element={<ProtectedRoute><ReportView /></ProtectedRoute> } />
+            <Route path="/reports/:caseNum" element={<ProtectedRoute><ReportView /></ProtectedRoute>} />
             <Route path="/reports/:id/findings" element={<ProtectedRoute><FindingsViewerPage /></ProtectedRoute>} />
             <Route path="/view-report/:id" element={<ProtectedRoute><ViewReportDetails /></ProtectedRoute>} />
             <Route path="/assistant-commissioner/fines-report" element={<ProtectedRoute><FinesReport /></ProtectedRoute>} />
-            <Route path="/director-intelligence/case-reports" element={<ProtectedRoute><DirectorIntelligenceCaseReports /></ProtectedRoute>}/>
+            <Route path="/director-intelligence/case-reports" element={<ProtectedRoute><DirectorIntelligenceCaseReports /></ProtectedRoute>} />
             <Route path="/reports/t3-officers" element={<ProtectedRoute><T3OfficersReports /></ProtectedRoute>} />
             <Route path="/legal-advisor" element={<ProtectedRoute><LegalAdvisor /></ProtectedRoute>} />
             <Route
@@ -84,7 +89,19 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 }
             />
-        </Routes>
+            <Route path="/stock-management" element={<ProtectedRoute><StockManagement /></ProtectedRoute>} />
+        </Routes >
+    );
+};
+
+import { NotificationProvider } from './NotificationComponents/NotificationContext';
+
+const NotificationWrapper = ({ children }) => {
+    const { authState } = useContext(AuthContext);
+    return (
+        <NotificationProvider employeeId={authState?.employeeId}>
+            {children}
+        </NotificationProvider>
     );
 };
 
@@ -92,7 +109,9 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <AppRoutes />
+                <NotificationWrapper>
+                    <AppRoutes />
+                </NotificationWrapper>
             </AuthProvider>
         </Router>
     );

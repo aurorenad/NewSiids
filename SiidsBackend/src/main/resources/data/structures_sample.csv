@@ -1,0 +1,4 @@
+structure_id,structure_name,structure_type,level,created_at,created_by,reference_id
+1,RRA,Institution,1,2021-06-06 03:14:18,1,0
+2,Board of Directors,Team,2,2021-06-08 11:12:08,1,1
+3,Commissioner General,Office,3,2021-06-08 11:12:56,1,2

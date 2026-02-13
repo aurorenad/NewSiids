@@ -76,7 +76,6 @@ public class UserService {
                 System.out.println("Login request received for user: " + user.getUsername());
                 System.out.println("Token generated: " + token);
 
-
                 User dbUser = repo.findByUsername(user.getUsername());
                 if (dbUser != null) {
                     response.put("token", token);
@@ -92,20 +91,22 @@ public class UserService {
                 return response;
             }
         } catch (BadCredentialsException e) {
-            System.out.println("Bad credentials: " + e.getMessage());
+            System.err.println("Bad credentials for user " + user.getUsername() + ": " + e.getMessage());
             response.put("error", "Authentication failed");
             return response;
         } catch (AuthenticationException e) {
-            System.out.println("Authentication exception: " + e.getMessage());
+            System.err.println("Authentication exception for user " + user.getUsername() + ": " + e.getMessage());
             response.put("error", "Authentication failed");
             return response;
         } catch (Exception e) {
-            System.out.println("Unexpected error during authentication: " + e.getMessage());
+            System.err.println(
+                    "Unexpected error during authentication for user " + user.getUsername() + ": " + e.getMessage());
             e.printStackTrace();
             response.put("error", "Authentication failed");
             return response;
         }
     }
+
     public Map<String, String> generateOtp(String username) {
         Map<String, String> response = new HashMap<>();
 

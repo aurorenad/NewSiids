@@ -9,8 +9,6 @@ import org.example.siidsbackend.DTO.TaxPayerDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.EmployeeRepo;
-import org.example.siidsbackend.Repository.InformerRepository;
-import org.example.siidsbackend.Repository.TaxPayerRepository;
 import org.example.siidsbackend.Repository.ReportRepo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

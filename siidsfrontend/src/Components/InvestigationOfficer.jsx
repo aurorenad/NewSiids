@@ -884,23 +884,23 @@ const InvestigationOfficer = () => {
                                                         (report.relatedCase?.status === 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION') ||
                                                         (report.relatedCase?.status === 'CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION') ||
                                                         (!casePlanStatus && (report.casePlan || report.casePlanDescription))) && (
-                                                        <Tooltip title={
-                                                            report.relatedCase?.status === 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION' ?
-                                                                "Revise Rejected Plan" :
-                                                                "Edit Case Plan"
-                                                        }>
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => handleOpenCasePlanDialog(report)}
-                                                                color={
-                                                                    report.relatedCase?.status === 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION' ?
-                                                                        "error" : "secondary"
-                                                                }
-                                                            >
-                                                                <Edit fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    )}
+                                                            <Tooltip title={
+                                                                report.relatedCase?.status === 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION' ?
+                                                                    "Revise Rejected Plan" :
+                                                                    "Edit Case Plan"
+                                                            }>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => handleOpenCasePlanDialog(report)}
+                                                                    color={
+                                                                        report.relatedCase?.status === 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION' ?
+                                                                            "error" : "secondary"
+                                                                    }
+                                                                >
+                                                                    <Edit fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
 
                                                     {/* Send to Director Button - Only show for submitted but not sent */}
                                                     {report.relatedCase?.status === 'CASE_PLAN_SUBMITTED' && (
@@ -1022,16 +1022,16 @@ const InvestigationOfficer = () => {
                                                             {/* Revise Rejected Case Plan */}
                                                             {(report.needsRevision ||
                                                                 report.relatedCase?.status === 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION') && (
-                                                                <Tooltip title="Revise Case Plan">
-                                                                    <IconButton
-                                                                        color="error"
-                                                                        size="small"
-                                                                        onClick={() => handleOpenCasePlanDialog(report)}
-                                                                    >
-                                                                        <Edit fontSize="small" />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            )}
+                                                                    <Tooltip title="Revise Case Plan">
+                                                                        <IconButton
+                                                                            color="error"
+                                                                            size="small"
+                                                                            onClick={() => handleOpenCasePlanDialog(report)}
+                                                                        >
+                                                                            <Edit fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Tooltip>
+                                                                )}
                                                         </>
                                                     )}
                                                 </Box>
@@ -1906,7 +1906,7 @@ const InvestigationOfficer = () => {
                                             variant="outlined"
                                             size="small"
                                             startIcon={<Download />}
-                                            onClick={() => {/* Add download logic */}}
+                                            onClick={() => {/* Add download logic */ }}
                                         >
                                             Download
                                         </Button>

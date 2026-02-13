@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Model.AuditLog;
 import org.example.siidsbackend.Model.Employee;
-import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.AuditLogRepository;
 import org.springframework.stereotype.Service;

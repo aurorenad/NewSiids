@@ -1,12 +1,12 @@
 package org.example.siidsbackend.Service;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
@@ -16,8 +16,8 @@ import java.util.Map;
 @Slf4j
 public class JWTService {
 
-    private final SecretKey accessTokenKey;
-    private final SecretKey refreshTokenKey;
+    private SecretKey accessTokenKey;
+    private SecretKey refreshTokenKey;
 
     @Value("${jwt.access-token.expiration:900000}") // 15 minutes default
     private long accessTokenExpiration;
@@ -25,9 +25,19 @@ public class JWTService {
     @Value("${jwt.refresh-token.expiration:604800000}") // 7 days default
     private long refreshTokenExpiration;
 
+    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    private String secretKey;
+
     public JWTService() {
-        this.accessTokenKey = Keys.secretKeyFor(SignatureAlgorithm.HS384);
-        this.refreshTokenKey = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+        // Keys will be initialized in init() or directly if we move logic
+    }
+
+    @PostConstruct
+    public void init() {
+        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
+        this.accessTokenKey = Keys.hmacShaKeyFor(keyBytes);
+        this.refreshTokenKey = Keys.hmacShaKeyFor(keyBytes); // Using same key for simplicity, or add another property
+        log.info("JWT Service initialized with fixed secret key.");
     }
 
     public String generateToken(String username) {
@@ -35,7 +45,7 @@ public class JWTService {
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiration))
-                .signWith(accessTokenKey, SignatureAlgorithm.HS384)
+                .signWith(accessTokenKey)
                 .compact();
     }
 
@@ -44,7 +54,7 @@ public class JWTService {
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + refreshTokenExpiration))
-                .signWith(refreshTokenKey, SignatureAlgorithm.HS512)
+                .signWith(refreshTokenKey)
                 .compact();
     }
 
@@ -70,21 +80,22 @@ public class JWTService {
                     .parseSignedClaims(token);
             return true;
         } catch (Exception e) {
+            log.error("Token validation failed: {}", e.getMessage());
             return false;
         }
     }
 
-//    public boolean validateRefreshToken(String refreshToken) {
-//        try {
-//            Jwts.parser()
-//                    .verifyWith(refreshTokenKey)
-//                    .build()
-//                    .parseSignedClaims(refreshToken);
-//            return true;
-//        } catch (Exception e) {
-//            return false;
-//        }
-//    }
+    // public boolean validateRefreshToken(String refreshToken) {
+    // try {
+    // Jwts.parser()
+    // .verifyWith(refreshTokenKey)
+    // .build()
+    // .parseSignedClaims(refreshToken);
+    // return true;
+    // } catch (Exception e) {
+    // return false;
+    // }
+    // }
 
     public boolean validateRefreshToken(String refreshToken) {
         try {

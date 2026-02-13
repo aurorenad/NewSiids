@@ -4,6 +4,7 @@ import SockJS from 'sockjs-client';
 let stompClient = null;
 
 export const connectWebSocket = (employeeId, onNotification, onError) => {
+    if (!employeeId) return;
     console.log(`Connecting WebSocket for employee: ${employeeId}`);
 
     // Disconnect existing connection if it exists
@@ -13,7 +14,7 @@ export const connectWebSocket = (employeeId, onNotification, onError) => {
 
     // Create new client
     stompClient = new Client({
-        webSocketFactory: () => new SockJS('http://localhost:8080/ws-notifications'),
+        webSocketFactory: () => new SockJS(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/ws-notifications`),
         connectHeaders: {
             'employee_id': employeeId
         },

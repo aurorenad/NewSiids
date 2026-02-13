@@ -8,7 +8,6 @@ import org.example.siidsbackend.DTO.FinesReportDTO;
 import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
-import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
@@ -17,7 +16,6 @@ import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Repository.ReportRepo;
-import org.example.siidsbackend.Service.CaseService;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -37,7 +35,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -50,7 +47,6 @@ public class ReportController {
     private final EmployeeRepo employeeRepo;
     private final ReportRepo reportRepo;
     private final CaseRepo caseRepo;
-    private final CaseService caseService;
     private final ObjectMapper objectMapper;
 
     @Value("${file.upload-dir}")
@@ -60,7 +56,6 @@ public class ReportController {
     private String maxFileSize;
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("application/pdf");
-    private static final Map<String, String> EXTENSION_TO_MIME = Map.of("pdf", "application/pdf");
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ReportResponseDTO> createReport(

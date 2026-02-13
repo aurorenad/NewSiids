@@ -128,13 +128,13 @@ const ViewReportDetails = () => {
             const filename = report.attachmentPaths[0];
 
             console.log('Test download parameters:', {
-                url: `http://localhost:8080/api/reports/download/${id}/${filename}?requesterId=${employeeId}`,
+                url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/api/reports/download/${id}/${filename}?requesterId=${employeeId}`,
                 filename: filename,
                 employeeId: employeeId
             });
 
             const response = await fetch(
-                `http://localhost:8080/api/reports/download/${id}/${filename}?requesterId=${employeeId}`,
+                `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/api/reports/download/${id}/${filename}?requesterId=${employeeId}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`

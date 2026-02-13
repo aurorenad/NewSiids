@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from '../api/axios.jsx';
@@ -11,8 +11,14 @@ const Login = () => {
     const [rememberMe, setRememberMe] = useState(true);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { login } = useContext(AuthContext);
+    const { login, authState } = useContext(AuthContext);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (authState?.token) {
+            navigate('/home', { replace: true });
+        }
+    }, [authState, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -36,47 +42,18 @@ const Login = () => {
                     const name = data.name || '';
                     const role = data.role || '';
 
-                    console.log('Login data:', {
-                        token: !!data.token,
-                        employeeId: employeeId,
-                        userId: userId.trim(),
-                        name: name,
-                        fullResponse: data
-                    });
-
                     login(userId.trim(), data.token, employeeId, name, rememberMe, role);
-
-                    console.log('Login successful, navigating to /home');
-
-                    setTimeout(() => {
-                        navigate('/home', { replace: true });
-                    }, 100);
-
+                    // Navigation happens in useEffect
                 } catch (loginError) {
                     console.error('Login context error:', loginError);
                     setError('Internal authentication error. Please try again.');
                 }
             } else {
-                console.error('Missing required login data:', {
-                    token: !!data?.token,
-                    employeeId: !!data?.employeeId,
-                    fullResponse: data
-                });
                 setError(data?.error || data?.message || 'Invalid login response - missing token');
             }
         } catch (err) {
             console.error('Login error:', err);
-            let errorMessage = 'Login failed. Please try again.';
-            if (err.response) {
-                errorMessage = err.response.data?.error ||
-                    err.response.data?.message ||
-                    `Server error: ${err.response.status}`;
-            } else if (err.request) {
-                errorMessage = 'No response from server. Check your connection.';
-            } else {
-                errorMessage = err.message || 'Unexpected error occurred';
-            }
-            setError(errorMessage);
+            setError(err.response?.data?.error || 'Login failed. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -141,18 +118,13 @@ const Login = () => {
                     </button>
 
                     <div className="forgot-password">
-                        <Grid container justifyContent="space-between">
-                            <Grid item>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <div>
                                 <Link href="/forgot-password" variant="body2">
                                     Forgot password?
                                 </Link>
-                            </Grid>
-                            {/*<Grid item>*/}
-                            {/*    <Link href="/register" variant="body2">*/}
-                            {/*        Don't have an account? Register*/}
-                            {/*    </Link>*/}
-                            {/*</Grid>*/}
-                        </Grid>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>

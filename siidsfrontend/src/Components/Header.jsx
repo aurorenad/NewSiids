@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { NotificationBell } from './../NotificationComponents/NotificationBell.jsx';
-import { NotificationProvider } from './../NotificationComponents/NotificationContext';
+
 import 'font-awesome/css/font-awesome.min.css';
 import '../styles/Header.css';
 
@@ -29,9 +29,7 @@ const Header = () => {
                         )}
                     </div>
                     {currentUser?.employeeId && (
-                        <NotificationProvider employeeId={currentUser.employeeId}>
-                            <NotificationBell />
-                        </NotificationProvider>
+                        <NotificationBell />
                     )}
                     <button className="logout-btn" onClick={handleLogout}>
                         <i className="fa fa-sign-out"></i>
