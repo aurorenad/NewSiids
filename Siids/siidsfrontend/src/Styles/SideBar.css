@@ -8,16 +8,18 @@
 .sidebar-header {
     padding: 15px;
     border-bottom: 1px solid #e0e0e0;
-    text-align: left;
+    text-align: center;
     display: flex;
     flex-direction: column;
+    align-items: center;
 }
 
 .sidebar-header h3 {
-    margin: 0;
+    margin: 10px 0 0;
     font-size: 20px;
     color: #fff;
 }
+
 
 .sidebar-nav {
     padding: 15px 0;
@@ -44,11 +46,12 @@
 }
 
 .sidebar-nav a:hover {
-    background-color: rgba(0,0 ,0, 0.3);
+    background-color: rgba(0, 0, 0, 0.3);
 }
 
 .sidebar-nav a.active {
-    background-color: rgba(0,0 ,0, 0.3);;
+    background-color: rgba(0, 0, 0, 0.3);
+    ;
     color: #3498db;
     font-weight: bold;
 }
@@ -58,9 +61,11 @@
     padding-left: 20px;
     color: #fff;
 }
-.sidebar .submenu li a{
+
+.sidebar .submenu li a {
     color: #d9e2ec;
 }
+
 .sidebar .submenu li {
     margin: 5px 0;
 }
@@ -69,9 +74,12 @@
     cursor: pointer;
     color: #fff;
 }
-.sidebar-logo{
 
-}
-.sidebar-logo img{
-    width: 150px;
+.sidebar-logo img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: contain;
+    background-color: white;
+    border: 2px solid white;
 }

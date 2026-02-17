@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { jsPDF } from 'jspdf';
+import { Edit, Trash2, Download } from 'lucide-react';
 import '../styles/StockManagement.css'; // We will create this CSS file
 
 const StockManagement = () => {
@@ -223,19 +225,50 @@ const StockManagement = () => {
 
             if (response.ok) {
                 const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `document-${id}.pdf`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
+                const fileURL = window.URL.createObjectURL(blob);
+                window.open(fileURL, '_blank');
             } else {
-                alert('Document not found or error downloading.');
+                alert('Document not found or error opening.');
             }
         } catch (error) {
-            console.error('Error downloading document:', error);
+            console.error('Error opening document:', error);
         }
+    };
+
+    const generateStockPdf = (stock) => {
+        const doc = new jsPDF();
+
+        doc.setFontSize(18);
+        doc.text('Stock Information', 105, 20, { align: 'center' });
+
+        doc.setFontSize(12);
+        let y = 40;
+        const lineHeight = 10;
+
+        const addField = (label, value) => {
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${label}:`, 20, y);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`${value}`, 80, y);
+            y += lineHeight;
+        };
+
+        addField('Owner Name', stock.ownerName);
+        addField('Takeover Name', stock.takeoverName);
+        addField('Seizure Number', stock.seizureNumber);
+        addField('PV Number', stock.pvNumber);
+        addField('Taken Date', stock.takenDate);
+        addField('Received Date', stock.receivedDate);
+        addField('Item Type', stock.item);
+        addField('Item Name', stock.itemName);
+        addField('Quantity', stock.quantity);
+
+        if (stock.dateReleased) {
+            addField('Date Released', stock.dateReleased);
+            addField('Reason', stock.reason);
+        }
+
+        doc.save(`Stock-Info-${stock.id}.pdf`);
     };
 
     return (
@@ -275,9 +308,16 @@ const StockManagement = () => {
                                             <button className="link-btn" onClick={() => downloadDocument(stock.id, 'another')}>Doc 2</button>
                                         )}
                                     </td>
-                                    <td>
-                                        <button className="edit-btn" onClick={() => openEditModal(stock)}>Edit</button>
-                                        <button className="delete-btn" onClick={() => handleDelete(stock.id)}>Delete</button>
+                                    <td className="actions-cell">
+                                        <button className="icon-btn edit-btn" onClick={() => openEditModal(stock)} title="Edit">
+                                            <Edit size={18} />
+                                        </button>
+                                        <button className="icon-btn delete-btn" onClick={() => handleDelete(stock.id)} title="Delete">
+                                            <Trash2 size={18} />
+                                        </button>
+                                        <button className="icon-btn download-btn" onClick={() => generateStockPdf(stock)} title="Download Info">
+                                            <Download size={18} />
+                                        </button>
                                     </td>
                                 </tr>
                             ))}

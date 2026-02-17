@@ -47,23 +47,47 @@
     margin-right: 10px;
 }
 
-.edit-btn,
-.delete-btn {
-    padding: 5px 10px;
+.actions-cell {
+    display: flex;
+    gap: 5px;
+    white-space: nowrap;
+}
+
+.icon-btn {
+    background: none;
     border: none;
-    border-radius: 3px;
     cursor: pointer;
+    padding: 5px;
     margin-right: 5px;
+    transition: color 0.2s;
+    display: flex;
+    /* Ensure the icon itself is centered if needed */
+    align-items: center;
+    justify-content: center;
 }
 
 .edit-btn {
-    background-color: #ffc107;
-    color: black;
+    color: #ffc107;
+}
+
+.edit-btn:hover {
+    color: #e0a800;
 }
 
 .delete-btn {
-    background-color: #dc3545;
-    color: white;
+    color: #dc3545;
+}
+
+.delete-btn:hover {
+    color: #c82333;
+}
+
+.download-btn {
+    color: #007bff;
+}
+
+.download-btn:hover {
+    color: #0056b3;
 }
 
 .modal-overlay {
