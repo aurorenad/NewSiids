@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.StockRequestDTO;
 import org.example.siidsbackend.DTO.Response.StockResponseDTO;
+import org.example.siidsbackend.Model.Item;
+import org.example.siidsbackend.Model.MeasurementUnit;
 import org.example.siidsbackend.Model.Stock;
 import org.example.siidsbackend.Service.StockService;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -19,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,6 +41,26 @@ public class StockController {
 
     @Value("${file.upload-dir}")
     private String uploadDir;
+
+    // --- Enum endpoints for frontend comboboxes ---
+
+    @GetMapping("/item-types")
+    public ResponseEntity<List<String>> getItemTypes() {
+        List<String> types = Arrays.stream(Item.values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(types);
+    }
+
+    @GetMapping("/measurement-units")
+    public ResponseEntity<List<String>> getMeasurementUnits() {
+        List<String> units = Arrays.stream(MeasurementUnit.values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(units);
+    }
+
+    // --- CRUD endpoints ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createStock(

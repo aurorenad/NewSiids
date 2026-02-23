@@ -9,12 +9,12 @@ import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
-import org.example.siidsbackend.Model.Case;
+
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
 import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.CaseRepo;
-import org.example.siidsbackend.Repository.EmployeeRepo;
+
 import org.example.siidsbackend.Repository.ReportRepo;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,10 +44,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReportController {
     private final ReportService reportService;
-    private final EmployeeRepo employeeRepo;
+
     private final ReportRepo reportRepo;
     private final CaseRepo caseRepo;
     private final ObjectMapper objectMapper;
+    private final org.example.siidsbackend.Repository.UserRepo userRepo;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -205,8 +206,7 @@ public class ReportController {
             FindingsRequestDTO findingsDTO = objectMapper.readValue(findingsDataJson, FindingsRequestDTO.class);
 
             // Convert array to list for service method
-            List<MultipartFile> attachmentsList = attachments != null ?
-                    Arrays.asList(attachments) : new ArrayList<>();
+            List<MultipartFile> attachmentsList = attachments != null ? Arrays.asList(attachments) : new ArrayList<>();
             findingsDTO.setAttachmentsList(attachmentsList);
 
             Report report = reportService.submitFindings(id, findingsDTO, officerId);
@@ -258,7 +258,6 @@ public class ReportController {
         }
     }
 
-
     @GetMapping("/my-reports")
     public ResponseEntity<List<ReportResponseDTO>> getMyReports(
             @RequestHeader("employee_id") String employeeId) {
@@ -297,11 +296,18 @@ public class ReportController {
             Report report = reportService.getReport(id);
 
             // Check access permissions
-            boolean hasAccess = report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+            boolean isDirector = reportRepo.DirectorsOfInvestigation().stream()
+                    .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+
+            // Check if employee is Admin
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            boolean isAdmin = user != null && "Admin".equals(user.getRole());
+
+            boolean hasAccess = isAdmin || report.getCreatedBy().getEmployeeId().equals(employeeId) ||
                     (report.getCurrentRecipient() != null &&
-                            report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
-                    reportRepo.DirectorsOfInvestigation().stream()
-                            .anyMatch(d -> d.getEmployeeId().equals(employeeId));
+                            report.getCurrentRecipient().getEmployeeId().equals(employeeId))
+                    ||
+                    isDirector;
 
             if (!hasAccess) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -344,8 +350,6 @@ public class ReportController {
             @PathVariable("id") Integer reportId,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee sender = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Sender not found"));
 
             Report report = reportService.sendToDirectorIntelligence(reportId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -361,8 +365,6 @@ public class ReportController {
             @PathVariable Integer id,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee sender = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Sender not found"));
 
             Report report = reportService.sendToAssistantCommissioner(id);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -378,8 +380,6 @@ public class ReportController {
             @PathVariable("id") Integer reportId,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee sender = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Sender not found"));
 
             Report report = reportService.sendToDirectorInvestigation(reportId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -397,11 +397,6 @@ public class ReportController {
             @RequestParam String returnReason,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee returner = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Returner not found"));
-
-            Employee returnTarget = employeeRepo.findByEmployeeId(returnToEmployeeId)
-                    .orElseThrow(() -> new RuntimeException("Return target employee not found"));
 
             if (returnReason == null || returnReason.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(null);
@@ -443,8 +438,6 @@ public class ReportController {
             @PathVariable Integer id,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee approver = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Approver not found"));
 
             Report report = reportService.approveReport(id, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -461,8 +454,6 @@ public class ReportController {
             @RequestParam(required = false) String rejectionReason,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee rejector = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Rejector not found"));
 
             Report report = reportService.rejectReport(id, rejectionReason, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -496,7 +487,8 @@ public class ReportController {
     public ResponseEntity<List<ReportResponseDTO>> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(
             @RequestHeader("employee_id") String directorId) {
         try {
-            List<Report> reports = reportService.getReportsApprovedByAssistantCommissionerForDirectorInvestigation(directorId);
+            List<Report> reports = reportService
+                    .getReportsApprovedByAssistantCommissionerForDirectorInvestigation(directorId);
             List<ReportResponseDTO> responseList = reports.stream()
                     .map(reportService::toResponseDTO)
                     .collect(Collectors.toList());
@@ -510,14 +502,13 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     @PostMapping("/{id}/assign-to-investigation-officer")
     public ResponseEntity<ReportResponseDTO> assignToInvestigationOfficer(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Employee assigner = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Assigner not found"));
 
             String specificOfficerId = requestBody.get("specificOfficerId");
             String assignmentNotes = requestBody.get("assignmentNotes");
@@ -563,44 +554,55 @@ public class ReportController {
         }
     }
 
-//
-@GetMapping("/{id}/findings")
-public ResponseEntity<ReportResponseDTO> getFindings(
-        @PathVariable Integer id,
-        @RequestHeader("employee_id") String employeeId) {
-    try {
-        Report report = reportService.getReport(id);
+    //
+    @GetMapping("/{id}/findings")
+    public ResponseEntity<ReportResponseDTO> getFindings(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.getReport(id);
 
-        // Check access permissions
-        boolean hasAccess =
-                // Creator has access
-                report.getCreatedBy().getEmployeeId().equals(employeeId) ||
-                        // Current recipient has access
-                        (report.getCurrentRecipient() != null &&
-                                report.getCurrentRecipient().getEmployeeId().equals(employeeId)) ||
-                        // Director of Investigation has access
-                        reportRepo.DirectorsOfInvestigation().stream()
-                                .anyMatch(d -> d.getEmployeeId().equals(employeeId)) ||
-                        // Assistant Commissioner has access
-                        reportRepo.assistantCommissioner().stream()
-                                .anyMatch(d-> d.getEmployeeId().equals(employeeId)) ||
-                        // Investigation officer (current or former) has access
-                        (report.getInvestigationOfficer() != null &&
-                                report.getInvestigationOfficer().getEmployeeId().equals(employeeId));
+            // Check access permissions
+            boolean hasAccess =
+                    // Creator has access
+                    report.getCreatedBy().getEmployeeId().equals(employeeId) ||
+                    // Current recipient has access
+                            (report.getCurrentRecipient() != null &&
+                                    report.getCurrentRecipient().getEmployeeId().equals(employeeId))
+                            ||
+                            // Director of Investigation has access
+                            reportRepo.DirectorsOfInvestigation().stream()
+                                    .anyMatch(d -> d.getEmployeeId().equals(employeeId))
+                            ||
+                            // Assistant Commissioner has access
+                            reportRepo.assistantCommissioner().stream()
+                                    .anyMatch(d -> d.getEmployeeId().equals(employeeId))
+                            ||
+                            // Investigation officer (current or former) has access
+                            (report.getInvestigationOfficer() != null &&
+                                    report.getInvestigationOfficer().getEmployeeId().equals(employeeId));
 
-        if (!hasAccess) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            if (!hasAccess) {
+                org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+                if (user != null && "Admin".equals(user.getRole())) {
+                    hasAccess = true;
+                }
+            }
+
+            if (!hasAccess) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            log.error("Error getting findings: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
-
-        return ResponseEntity.ok(reportService.toResponseDTO(report));
-    } catch (Exception e) {
-        log.error("Error getting findings: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
-}
 
     private void validatePdfFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) return;
+        if (file == null || file.isEmpty())
+            return;
 
         // 1. File size validation
         if (file.getSize() > Long.parseLong(maxFileSize)) {
@@ -643,7 +645,8 @@ public ResponseEntity<ReportResponseDTO> getFindings(
 
     private String extractOriginalFilename(String storedFilename) {
         // Extract original filename from stored UUID_filename.pdf format
-        if (storedFilename == null) return "document.pdf";
+        if (storedFilename == null)
+            return "document.pdf";
         int underscoreIndex = storedFilename.indexOf('_');
         return underscoreIndex > 0 ? storedFilename.substring(underscoreIndex + 1) : storedFilename;
     }
@@ -677,7 +680,8 @@ public ResponseEntity<ReportResponseDTO> getFindings(
     }
 
     private String storePdfAttachment(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty()) return null;
+        if (file == null || file.isEmpty())
+            return null;
 
         // Ensure upload directory exists with proper permissions
         Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
@@ -750,6 +754,12 @@ public ResponseEntity<ReportResponseDTO> getFindings(
             return; // Creator has full access
         }
 
+        // Check if employee is Admin
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        if (user != null && "Admin".equals(user.getRole())) {
+            return; // Admin has full access
+        }
+
         // 3. Check if employee is the current recipient
         if (report.getCurrentRecipient() != null &&
                 employeeId.equals(report.getCurrentRecipient().getEmployeeId())) {
@@ -817,6 +827,7 @@ public ResponseEntity<ReportResponseDTO> getFindings(
             }
         }
     }
+
     @GetMapping("/download/{reportId}/{filename}")
     public ResponseEntity<Resource> downloadReportAttachment(
             @PathVariable Integer reportId,
@@ -833,7 +844,7 @@ public ResponseEntity<ReportResponseDTO> getFindings(
 
         try {
             log.info("Fetching reports for case: {}", caseNum);
-            Case relatedCase = caseRepo.findByCaseNum(caseNum)
+            caseRepo.findByCaseNum(caseNum)
                     .orElseThrow(() -> {
                         log.warn("Case not found: {}", caseNum);
                         return new RuntimeException("Case not found");
@@ -985,46 +996,49 @@ public ResponseEntity<ReportResponseDTO> getFindings(
         }
     }
 
-//    @GetMapping("/investigation-officer/active-reports")
-//    public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
-//            @RequestHeader("employee_id") String officerId) {
-//        try {
-//            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
-//            List<ReportResponseDTO> responseList = reports.stream()
-//                    .map(reportService::toResponseDTO)
-//                    .collect(Collectors.toList());
-//            return ResponseEntity.ok(responseList);
-//        } catch (RuntimeException e) {
-//            log.error("Error getting active reports: {}", e.getMessage());
-//            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-//        } catch (Exception e) {
-//            log.error("Error getting reports: {}", e.getMessage(), e);
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-//        }
-//    }
-@GetMapping("/investigation-officer/active-reports")
-public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
-        @RequestHeader("employee_id") String officerId) {
-    try {
-        List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
-        List<ReportResponseDTO> responseList = reports.stream()
-                .map(reportService::toResponseDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(responseList);
-    } catch (RuntimeException e) {
-        log.error("Error getting active reports: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    } catch (Exception e) {
-        log.error("Error getting reports: {}", e.getMessage(), e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    // @GetMapping("/investigation-officer/active-reports")
+    // public ResponseEntity<List<ReportResponseDTO>>
+    // getActiveReportsForInvestigationOfficer(
+    // @RequestHeader("employee_id") String officerId) {
+    // try {
+    // List<Report> reports =
+    // reportService.getReportsAssignedToInvestigationOfficer(officerId);
+    // List<ReportResponseDTO> responseList = reports.stream()
+    // .map(reportService::toResponseDTO)
+    // .collect(Collectors.toList());
+    // return ResponseEntity.ok(responseList);
+    // } catch (RuntimeException e) {
+    // log.error("Error getting active reports: {}", e.getMessage());
+    // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    // } catch (Exception e) {
+    // log.error("Error getting reports: {}", e.getMessage(), e);
+    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    // }
+    // }
+    @GetMapping("/investigation-officer/active-reports")
+    public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
+            @RequestHeader("employee_id") String officerId) {
+        try {
+            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Error getting active reports: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting reports: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
-}
 
     @GetMapping("/investigation-officer/all-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
             @RequestHeader("employee_id") String officerId) {
         try {
-            List<Report> reports = reportService.getHistoricalReportsForInvestigationOfficer(officerId); // Updated method name
+            List<Report> reports = reportService.getHistoricalReportsForInvestigationOfficer(officerId); // Updated
+                                                                                                         // method name
             List<ReportResponseDTO> responseList = reports.stream()
                     .map(reportService::toResponseDTO)
                     .collect(Collectors.toList());
@@ -1038,23 +1052,25 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
         }
     }
 
-//    @GetMapping("/investigation-officer/all-reports")
-//    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
-//            @RequestHeader("employee_id") String officerId) {
-//        try {
-//            List<Report> reports = reportService.getAllReportsForInvestigationOfficer(officerId);
-//            List<ReportResponseDTO> responseList = reports.stream()
-//                    .map(reportService::toResponseDTO)
-//                    .collect(Collectors.toList());
-//            return ResponseEntity.ok(responseList);
-//        } catch (RuntimeException e) {
-//            log.error("Error getting all reports: {}", e.getMessage());
-//            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-//        } catch (Exception e) {
-//            log.error("Error getting reports: {}", e.getMessage(), e);
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-//        }
-//    }
+    // @GetMapping("/investigation-officer/all-reports")
+    // public ResponseEntity<List<ReportResponseDTO>>
+    // getAllReportsForInvestigationOfficer(
+    // @RequestHeader("employee_id") String officerId) {
+    // try {
+    // List<Report> reports =
+    // reportService.getAllReportsForInvestigationOfficer(officerId);
+    // List<ReportResponseDTO> responseList = reports.stream()
+    // .map(reportService::toResponseDTO)
+    // .collect(Collectors.toList());
+    // return ResponseEntity.ok(responseList);
+    // } catch (RuntimeException e) {
+    // log.error("Error getting all reports: {}", e.getMessage());
+    // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    // } catch (Exception e) {
+    // log.error("Error getting reports: {}", e.getMessage(), e);
+    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    // }
+    // }
 
     @GetMapping("/investigation-officers/assigned-reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsAssignedToInvestigationOfficers(
@@ -1079,6 +1095,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     @PostMapping("/{id}/send")
     public ResponseEntity<?> sendReportToDepartment(
             @PathVariable Integer id,
@@ -1095,6 +1112,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
                     .body("Failed to send report: " + e.getMessage());
         }
     }
+
     @PostMapping("/{id}/send-to-legal-advisor")
     public ResponseEntity<ReportResponseDTO> sendToLegalAdvisor(
             @PathVariable Integer id,
@@ -1139,6 +1157,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     @PostMapping("/{id}/return-to-investigation-officer")
     public ResponseEntity<ReportResponseDTO> returnToInvestigationOfficer(
             @PathVariable Integer id,
@@ -1183,10 +1202,6 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             @RequestHeader("employee_id") String employeeId) {
 
         try {
-            Employee returner = employeeRepo.findByEmployeeId(employeeId)
-                    .orElseThrow(() -> new RuntimeException("Returner not found"));
-            Employee returnTarget = employeeRepo.findByEmployeeId(returnToEmployeeId)
-                    .orElseThrow(() -> new RuntimeException("Return target employee not found"));
 
             // Validate at least one reason is provided
             if ((returnReason == null || returnReason.trim().isEmpty()) && returnDocument == null) {
@@ -1197,7 +1212,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             String documentPath = null;
             if (returnDocument != null && !returnDocument.isEmpty()) {
                 // Validate document type
-                String contentType = returnDocument.getContentType();
+
                 String originalFilename = returnDocument.getOriginalFilename();
 
                 if (originalFilename != null) {
@@ -1256,6 +1271,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
         return "return-documents/" + secureFilename;
     }
+
     @GetMapping("/{id}/return-document")
     public ResponseEntity<Resource> downloadReturnDocument(
             @PathVariable Integer id,
@@ -1302,9 +1318,8 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
                 }
             }
 
-            String filename = report.getReturnDocumentOriginalName() != null ?
-                    report.getReturnDocumentOriginalName() :
-                    "return-document" + getFileExtension(report.getReturnDocumentPath());
+            String filename = report.getReturnDocumentOriginalName() != null ? report.getReturnDocumentOriginalName()
+                    : "return-document" + getFileExtension(report.getReturnDocumentPath());
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
@@ -1320,7 +1335,8 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
     }
 
     private String getFileExtension(String filename) {
-        if (filename == null) return "";
+        if (filename == null)
+            return "";
         int lastDot = filename.lastIndexOf('.');
         return lastDot > 0 ? filename.substring(lastDot) : "";
     }
@@ -1393,8 +1409,10 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
 
             if (canEdit) {
                 response.put("returnReason", report.getReturnReason());
-                response.put("returnedBy", report.getReturnedBy() != null ?
-                        report.getReturnedBy().getGivenName() + " " + report.getReturnedBy().getFamilyName() : null);
+                response.put("returnedBy",
+                        report.getReturnedBy() != null
+                                ? report.getReturnedBy().getGivenName() + " " + report.getReturnedBy().getFamilyName()
+                                : null);
                 response.put("returnedAt", report.getReturnedAt());
 
                 // Provide guidance based on return reason
@@ -1441,7 +1459,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             @RequestPart(value = "casePlanAttachment", required = false) MultipartFile casePlanAttachment,
             @RequestHeader("employee_id") String employeeId) {
         try {
-            Report report = reportService.submitCasePlan(id,casePlanDescription, casePlanAttachment, employeeId);
+            Report report = reportService.submitCasePlan(id, casePlanDescription, casePlanAttachment, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error submitting case plan: {}", e.getMessage());
@@ -1485,6 +1503,7 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     @GetMapping("/{id}/case-plan")
     public ResponseEntity<ReportResponseDTO> getCasePlan(
             @PathVariable Integer id,
@@ -1538,12 +1557,13 @@ public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationO
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
     @PostMapping("/{id}/approve-investigation-report")
     public ResponseEntity<ReportResponseDTO> approveInvestigationReport(
             @PathVariable Integer id,
             @RequestHeader("employee_id") String employeeId) {
         try {
-             Report report = reportService.approveInvestigationReport(id, employeeId);
+            Report report = reportService.approveInvestigationReport(id, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error approving investigation report: {}", e.getMessage());

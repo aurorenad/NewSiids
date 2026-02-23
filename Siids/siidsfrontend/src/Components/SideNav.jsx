@@ -37,13 +37,13 @@ const Sidebar = () => {
                                         Director Intelligence
                                     </NavLink>
                                 </li>
-                                {authState.role === 'User' && (
+                                {authState.role === 'User' || authState.role === 'Admin' && (
                                     <li>
                                         <NavLink to="/intelligence-officer" className={({ isActive }) => isActive ? 'active' : ''}>
                                             Intelligence Officer
                                         </NavLink>
                                     </li>)}
-                                {authState.role === 'Surveillance' && (
+                                {authState.role === 'Surveillance' || authState.role === 'Admin' && (
                                     <li>
                                         <NavLink to='/surveillence-officer' className={({ isActive }) => isActive ? 'active' : ''}>
                                             Surveillence Officer
@@ -77,14 +77,14 @@ const Sidebar = () => {
                             Assistant Commissioner
                         </NavLink>
                     </li>
-                    {authState.role === 'ROLE_AUDITOR' && (
+                    {(authState.role === 'ROLE_AUDITOR' || authState.role === 'Admin') && (
                         <li>
                             <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>
                                 Audit Logs
                             </NavLink>
                         </li>
                     )}
-                    {authState.role === 'legalAdvisor' && (
+                    {(authState.role === 'legalAdvisor' || authState.role === 'Admin') && (
                         <li>
                             <NavLink to="/legal-advisor" className={({ isActive }) => isActive ? 'active' : ''}>
                                 Legal Advisor

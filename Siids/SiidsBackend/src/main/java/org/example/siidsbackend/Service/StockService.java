@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.StockRequestDTO;
 import org.example.siidsbackend.DTO.Response.StockResponseDTO;
+import org.example.siidsbackend.DTO.StockItemDTO;
 import org.example.siidsbackend.Model.Item;
+import org.example.siidsbackend.Model.MeasurementUnit;
 import org.example.siidsbackend.Model.Stock;
+import org.example.siidsbackend.Model.StockItem;
 import org.example.siidsbackend.Repository.StockRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -18,9 +21,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +43,6 @@ public class StockService {
         validateStockRequest(dto, document, anotherDocument);
 
         Stock stock = new Stock();
-        // Map DTO to Entity (Common logic to extract?)
         mapDtoToEntity(dto, stock);
 
         if (document != null && !document.isEmpty()) {
@@ -55,16 +59,7 @@ public class StockService {
     @Transactional
     public Stock updateStock(Integer id, StockRequestDTO dto, MultipartFile document, MultipartFile anotherDocument)
             throws IOException {
-        // Validation for update (might be slightly different if files are optional on
-        // update?)
-        // For now, re-using validation but we need to handle "keep existing file" logic
-        // if null passed?
-        // The prompt implies strict "must fill" rules. Let's assume on update, if a
-        // file is ALREADY there, it's filled.
-
         Stock stock = getStock(id);
-
-        // Custom validation that considers existing state
         validateStockUpdateRequest(dto, stock, document, anotherDocument);
 
         mapDtoToEntity(dto, stock);
@@ -87,13 +82,28 @@ public class StockService {
         stock.setPvNumber(dto.getPvNumber());
         stock.setTakenDate(dto.getTakenDate());
         stock.setReceivedDate(dto.getReceivedDate());
-        if (dto.getItem() != null) {
-            stock.setItem(Item.valueOf(dto.getItem().toUpperCase()));
-        }
-        stock.setItemName(dto.getItemName());
-        stock.setQuantity(dto.getQuantity());
         stock.setDateReleased(dto.getDateReleased());
+        stock.setReleasedItem(dto.getReleasedItem());
+        stock.setQuantityReleased(dto.getQuantityReleased());
+        stock.setSoldAmount(dto.getSoldAmount());
         stock.setReason(dto.getReason());
+
+        // Clear existing items and add new ones
+        stock.getItems().clear();
+        if (dto.getItems() != null) {
+            for (StockItemDTO itemDto : dto.getItems()) {
+                StockItem item = new StockItem();
+                item.setItemName(itemDto.getItemName());
+                if (itemDto.getItem() != null) {
+                    item.setItem(Item.valueOf(itemDto.getItem().toUpperCase()));
+                }
+                item.setQuantity(itemDto.getQuantity());
+                if (itemDto.getMeasurementUnit() != null) {
+                    item.setMeasurementUnit(MeasurementUnit.valueOf(itemDto.getMeasurementUnit().toUpperCase()));
+                }
+                stock.addItem(item);
+            }
+        }
     }
 
     private void validateStockRequest(StockRequestDTO dto, MultipartFile document, MultipartFile anotherDocument) {
@@ -104,8 +114,7 @@ public class StockService {
         }
 
         validateDateLogic(dto);
-        validateReleaseLogic(dto, anotherDocument != null && !anotherDocument.isEmpty(), null); // New creation, no
-                                                                                                // existing doc
+        validateReleaseLogic(dto, anotherDocument != null && !anotherDocument.isEmpty(), null);
     }
 
     private void validateStockUpdateRequest(StockRequestDTO dto, Stock existingStock, MultipartFile document,
@@ -137,12 +146,23 @@ public class StockService {
             throw new IllegalArgumentException("Taken Date is required.");
         if (dto.getReceivedDate() == null)
             throw new IllegalArgumentException("Received Date is required.");
-        if (dto.getItem() == null)
-            throw new IllegalArgumentException("Item Type is required.");
-        if (!StringUtils.hasText(dto.getItemName()))
-            throw new IllegalArgumentException("Item Name is required.");
-        if (dto.getQuantity() == null || dto.getQuantity() < 1)
-            throw new IllegalArgumentException("Quantity must be at least 1.");
+
+        // Validate items
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new IllegalArgumentException("At least one item is required.");
+        }
+        for (int i = 0; i < dto.getItems().size(); i++) {
+            StockItemDTO item = dto.getItems().get(i);
+            int itemNum = i + 1;
+            if (!StringUtils.hasText(item.getItemName()))
+                throw new IllegalArgumentException("Item Name is required for item " + itemNum + ".");
+            if (item.getItem() == null || item.getItem().isBlank())
+                throw new IllegalArgumentException("Item Type is required for item " + itemNum + ".");
+            if (item.getQuantity() == null || item.getQuantity() <= 0)
+                throw new IllegalArgumentException("Quantity must be greater than zero for item " + itemNum + ".");
+            if (item.getMeasurementUnit() == null || item.getMeasurementUnit().isBlank())
+                throw new IllegalArgumentException("Measurement Unit is required for item " + itemNum + ".");
+        }
     }
 
     private void validateDateLogic(StockRequestDTO dto) {
@@ -153,7 +173,6 @@ public class StockService {
 
     private void validateReleaseLogic(StockRequestDTO dto, boolean hasReleaseDocument, Stock existingStock) {
         if (dto.getDateReleased() != null) {
-            // If Released Date is set -> Reason and Release Document are mandatory
             if (!StringUtils.hasText(dto.getReason())) {
                 throw new IllegalArgumentException("Reason is required when Date Released is set.");
             }
@@ -162,6 +181,38 @@ public class StockService {
             }
             if (dto.getDateReleased().isBefore(dto.getReceivedDate())) {
                 throw new IllegalArgumentException("Date Released cannot be before Received Date.");
+            }
+
+            // Validate quantity released
+            if (dto.getQuantityReleased() == null || dto.getQuantityReleased() <= 0) {
+                throw new IllegalArgumentException(
+                        "Quantity Released must be greater than zero when Date Released is set.");
+            }
+
+            // Validate released item selection
+            if (!StringUtils.hasText(dto.getReleasedItem())) {
+                throw new IllegalArgumentException("Released Item selection is required when Date Released is set.");
+            }
+
+            // Determine max quantity based on which item is released
+            int maxQuantity;
+            if ("ALL".equalsIgnoreCase(dto.getReleasedItem())) {
+                maxQuantity = dto.getItems().stream()
+                        .mapToInt(StockItemDTO::getQuantity)
+                        .sum();
+            } else {
+                maxQuantity = dto.getItems().stream()
+                        .filter(i -> dto.getReleasedItem().equals(i.getItemName()))
+                        .mapToInt(StockItemDTO::getQuantity)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Released Item '" + dto.getReleasedItem() + "' not found in items list."));
+            }
+
+            if (dto.getQuantityReleased() > maxQuantity) {
+                throw new IllegalArgumentException(
+                        "Quantity Released (" + dto.getQuantityReleased() + ") cannot exceed available quantity ("
+                                + maxQuantity + ").");
             }
         }
     }
@@ -211,13 +262,30 @@ public class StockService {
         dto.setPvNumber(stock.getPvNumber());
         dto.setTakenDate(stock.getTakenDate());
         dto.setReceivedDate(stock.getReceivedDate());
-        dto.setItem(stock.getItem());
-        dto.setItemName(stock.getItemName());
-        dto.setQuantity(stock.getQuantity());
         dto.setDocumentPath(stock.getDocumentPath());
         dto.setDateReleased(stock.getDateReleased());
+        dto.setReleasedItem(stock.getReleasedItem());
+        dto.setQuantityReleased(stock.getQuantityReleased());
+        dto.setSoldAmount(stock.getSoldAmount());
         dto.setAnotherDocumentPath(stock.getAnotherDocumentPath());
         dto.setReason(stock.getReason());
+
+        // Map items
+        if (stock.getItems() != null) {
+            List<StockItemDTO> itemDtos = stock.getItems().stream().map(item -> {
+                StockItemDTO itemDto = new StockItemDTO();
+                itemDto.setId(item.getId());
+                itemDto.setItemName(item.getItemName());
+                itemDto.setItem(item.getItem() != null ? item.getItem().name() : null);
+                itemDto.setQuantity(item.getQuantity());
+                itemDto.setMeasurementUnit(item.getMeasurementUnit() != null ? item.getMeasurementUnit().name() : null);
+                return itemDto;
+            }).collect(Collectors.toList());
+            dto.setItems(itemDtos);
+        } else {
+            dto.setItems(new ArrayList<>());
+        }
+
         return dto;
     }
 }
