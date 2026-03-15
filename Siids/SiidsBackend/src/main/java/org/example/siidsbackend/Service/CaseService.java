@@ -26,6 +26,7 @@ public class CaseService {
     private final EmployeeRepo employeeRepo;
     private final ReportRepo reportRepo;
     private final AuditService auditService;
+    private final org.example.siidsbackend.Repository.UserRepo userRepo;
 
     @Transactional
     public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer) {
@@ -57,7 +58,6 @@ public class CaseService {
         savedCase.setCaseNum(savedCase.generateCaseNumber());
         Case finalCase = caseRepo.save(savedCase);
 
-
         return finalCase;
     }
 
@@ -77,6 +77,13 @@ public class CaseService {
             throw new IllegalArgumentException("Employee ID cannot be null");
         }
 
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        if (user != null && "Admin".equals(user.getRole())) {
+            return caseRepo.findAll().stream()
+                    .map(this::mapToCaseResponseDTO)
+                    .collect(Collectors.toList());
+        }
+
         return caseRepo.findByCreatedBy_EmployeeId(employeeId).stream()
                 .map(this::mapToCaseResponseDTO)
                 .collect(Collectors.toList());
@@ -85,6 +92,12 @@ public class CaseService {
     public Optional<CaseResponseDTO> getCaseIfCreator(Integer caseId, String employeeId) {
         if (caseId == null || employeeId == null) {
             throw new IllegalArgumentException("Case ID and Employee ID cannot be null");
+        }
+
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        if (user != null && "Admin".equals(user.getRole())) {
+            return caseRepo.findById(caseId)
+                    .map(this::mapToCaseResponseDTO);
         }
 
         return caseRepo.findById(caseId)
@@ -115,8 +128,7 @@ public class CaseService {
         auditService.logAction(
                 newStatus,
                 "Case " + updatedCase.getCaseNum() + " status changed to " + newStatus + " by " + employeeId,
-                existingCase.getCreatedBy()
-        );
+                existingCase.getCreatedBy());
 
         return mapToCaseResponseDTO(updatedCase);
     }
@@ -124,6 +136,12 @@ public class CaseService {
     public Optional<CaseResponseDTO> getCaseByCaseNum(String caseNum, String employeeId) {
         if (caseNum == null || employeeId == null) {
             throw new IllegalArgumentException("Case number and employee ID cannot be null");
+        }
+
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        if (user != null && "Admin".equals(user.getRole())) {
+            return caseRepo.findByCaseNum(caseNum)
+                    .map(this::mapToCaseResponseDTO);
         }
 
         return caseRepo.findByCaseNum(caseNum)
@@ -135,6 +153,13 @@ public class CaseService {
     public List<CaseResponseDTO> getCasesByStatus(WorkflowStatus status, String employeeId) {
         if (status == null || employeeId == null) {
             throw new IllegalArgumentException("Status and employee ID cannot be null");
+        }
+
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        if (user != null && "Admin".equals(user.getRole())) {
+            return caseRepo.findByStatus(status).stream()
+                    .map(this::mapToCaseResponseDTO)
+                    .collect(Collectors.toList());
         }
 
         return caseRepo.findByStatusAndCreatedBy_EmployeeId(status, employeeId.trim()).stream()
@@ -201,9 +226,11 @@ public class CaseService {
         }
         if (caseEntity.getCreatedBy() != null) {
             responseDTO.setCreatedByName(
-                    (caseEntity.getCreatedBy().getGivenName() != null ? caseEntity.getCreatedBy().getGivenName() : "") + " " +
-                            (caseEntity.getCreatedBy().getFamilyName() != null ? caseEntity.getCreatedBy().getFamilyName() : "")
-            );
+                    (caseEntity.getCreatedBy().getGivenName() != null ? caseEntity.getCreatedBy().getGivenName() : "")
+                            + " " +
+                            (caseEntity.getCreatedBy().getFamilyName() != null
+                                    ? caseEntity.getCreatedBy().getFamilyName()
+                                    : ""));
         }
 
         responseDTO.setReferringDepartment(caseEntity.getReferringDepartment());
@@ -240,7 +267,6 @@ public class CaseService {
         auditService.logAction(
                 WorkflowStatus.CASE_DELETED,
                 "Case " + caseEntity.getCaseNum() + " deleted by " + employeeId,
-                caseEntity.getCreatedBy()
-        );
+                caseEntity.getCreatedBy());
     }
 }

@@ -1,8 +1,11 @@
 package org.example.siidsbackend.DTO.Request;
 
 import lombok.Data;
+import org.example.siidsbackend.DTO.StockItemDTO;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class StockRequestDTO {
@@ -12,9 +15,10 @@ public class StockRequestDTO {
     private String pvNumber;
     private LocalDate takenDate;
     private LocalDate receivedDate;
-    private String item; // Enum as String
-    private String itemName;
-    private Integer quantity;
+    private List<StockItemDTO> items;
     private LocalDate dateReleased;
+    private String releasedItem;
+    private Integer quantityReleased;
+    private BigDecimal soldAmount;
     private String reason;
 }

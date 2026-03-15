@@ -63,7 +63,7 @@ const DirectorIntelligence = () => {
             const token = localStorage.getItem('token') || sessionStorage.getItem('token');
             const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
-            const response = await axios.get(`${BASE_URL}/api/reports/director-intelligence/all-reports`, {
+            const response = await axios.get(`${BASE_URL}/api/reports/director-intelligence/reports`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'employee_id': employeeId

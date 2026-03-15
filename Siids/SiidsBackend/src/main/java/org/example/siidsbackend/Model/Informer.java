@@ -5,7 +5,6 @@ import lombok.Data;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Random;
 
 @Entity
 @Data
@@ -24,7 +23,6 @@ public class Informer {
 
     public String generateInformerNumber() {
         String datePart = new SimpleDateFormat("yyMMdd").format(new Date());
-        int randomSeq = new Random().nextInt(900) + 100;
         return "INF/" + datePart + "/" + this.nationalId;
     }
 }
