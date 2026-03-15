@@ -1,10 +1,6 @@
 package org.example.siidsbackend.Model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
@@ -13,18 +9,29 @@ import java.time.LocalDateTime;
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private int id;
+    @Column(name = "id")
+    private Integer id;
+    
+    @Column(name = "username")
     private String username;
+    
+    @Column(name = "password")
     private String password;
+    
+    @Column(name = "role")
     private String role;
+    
+    @Column(name = "otp")
     private String otp;
+    
+    @Column(name = "otp_expiry_time")
     private LocalDateTime otpExpiryTime;
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Integer id) {
         this.id = id;
     }
 

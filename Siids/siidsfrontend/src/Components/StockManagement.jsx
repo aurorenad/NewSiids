@@ -346,8 +346,8 @@ const StockManagement = () => {
                                     <input type="text" name="seizureNumber" value={formData.seizureNumber || ''} onChange={handleInputChange} required />
                                 </div>
                                 <div className="form-group">
-                                    <label>PV Number *</label>
-                                    <input type="text" name="pvNumber" value={formData.pvNumber || ''} onChange={handleInputChange} required />
+                                    <label>PV Number</label>
+                                    <input type="text" name="pvNumber" value={formData.pvNumber || ''} onChange={handleInputChange} />
                                 </div>
                                 <div className="form-group">
                                     <label>Taken Date *</label>

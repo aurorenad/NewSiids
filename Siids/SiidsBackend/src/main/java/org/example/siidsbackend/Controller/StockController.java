@@ -13,6 +13,7 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -40,6 +41,7 @@ public class StockController {
     private String uploadDir;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
     public ResponseEntity<?> createStock(
             @RequestPart("stockData") StockRequestDTO dto,
             @RequestPart(value = "document", required = false) MultipartFile document,
@@ -54,6 +56,7 @@ public class StockController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
     public ResponseEntity<?> updateStock(
             @PathVariable Integer id,
             @RequestPart("stockData") StockRequestDTO dto,
@@ -68,6 +71,7 @@ public class StockController {
         }
     }
 
+    @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStock(@PathVariable Integer id) {
         stockService.deleteStock(id);

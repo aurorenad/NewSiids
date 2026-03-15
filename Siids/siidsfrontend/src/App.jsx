@@ -32,15 +32,15 @@ import EditReport from "./Components/EditReport.jsx";
 import StockManagement from "./Components/StockManagement.jsx";
 
 const ProtectedRoute = ({ children }) => {
-    const { authState, loading } = useContext(AuthContext);
+    // const { authState, loading } = useContext(AuthContext);
 
-    if (loading) {
-        return <div>Loading...</div>; // Or a proper loading spinner
-    }
+    // if (loading) {
+    //     return <div>Loading...</div>;
+    // }
 
-    if (!authState?.token || !authState?.employeeId) {
-        return <Navigate to="/" replace />;
-    }
+    // if (!authState?.token || !authState?.employeeId) {
+    //     return <Navigate to="/" replace />;
+    // }
 
     return (
         <div className="app-container">
@@ -58,7 +58,8 @@ const AppRoutes = () => {
         <Routes>
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/" element={<Login />} />
+            {/* <Route path="/" element={<Login />} /> */}
+            <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
             <Route path="/director-intelligence" element={<ProtectedRoute><DirectorIntelligence /></ProtectedRoute>} />
             <Route path="/intelligence-officer" element={<ProtectedRoute><IntelligenceOfficer /></ProtectedRoute>} />
