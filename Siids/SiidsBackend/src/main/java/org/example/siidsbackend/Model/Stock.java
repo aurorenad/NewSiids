@@ -21,7 +21,9 @@ public class Stock {
 
     private String ownerName;
     private String takeoverName;
+
     private String seizureNumber;
+    
     private String pvNumber;
     private LocalDate takenDate;
     private LocalDate receivedDate;
@@ -29,12 +31,21 @@ public class Stock {
     @OneToMany(mappedBy = "stock", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StockItem> items = new ArrayList<>();
 
-    private String documentPath;
+    @ElementCollection
+    @CollectionTable(name = "stock_documents", joinColumns = @JoinColumn(name = "stock_id"))
+    @Column(name = "document_path")
+    private List<String> documentPaths = new ArrayList<>();
+
+    @Column(columnDefinition = "TEXT")
+    private String seizureReason;
 
     private LocalDate dateReleased;
     private String releasedItem; // "ALL" or specific item name
     private Integer quantityReleased;
     private BigDecimal soldAmount;
+
+    @Enumerated(EnumType.STRING)
+    private ReleaseReason releaseReason;
 
     private String anotherDocumentPath;
 

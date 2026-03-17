@@ -9,4 +9,6 @@ public class StockItemDTO {
     private String item; // Item enum as String
     private Integer quantity;
     private String measurementUnit; // MeasurementUnit enum as String
+    private String itemType;
+    private String plateNumber;
 }

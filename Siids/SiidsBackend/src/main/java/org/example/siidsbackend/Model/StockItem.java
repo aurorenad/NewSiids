@@ -16,13 +16,16 @@ public class StockItem {
 
     private String itemName;
 
-    @Enumerated(EnumType.STRING)
-    private Item item;
+    private String item;
 
     private Integer quantity;
 
     @Enumerated(EnumType.STRING)
     private MeasurementUnit measurementUnit;
+
+    private String itemType;
+
+    private String plateNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id")

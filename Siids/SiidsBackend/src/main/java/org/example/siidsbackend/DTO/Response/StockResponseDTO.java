@@ -17,11 +17,13 @@ public class StockResponseDTO {
     private LocalDate takenDate;
     private LocalDate receivedDate;
     private List<StockItemDTO> items;
-    private String documentPath;
+    private List<String> documentPaths;
+    private String seizureReason;
     private LocalDate dateReleased;
     private String releasedItem;
     private Integer quantityReleased;
     private BigDecimal soldAmount;
     private String anotherDocumentPath;
     private String reason;
+    private String releaseReason;
 }

@@ -4,5 +4,6 @@ public enum Item {
     FOOD,
     DRINKS,
     CLOTHING,
-    CLEANING
+    CLEANING,
+    VEHICLE
 }

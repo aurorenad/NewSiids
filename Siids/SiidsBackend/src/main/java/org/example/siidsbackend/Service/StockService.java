@@ -5,10 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.StockRequestDTO;
 import org.example.siidsbackend.DTO.Response.StockResponseDTO;
 import org.example.siidsbackend.DTO.StockItemDTO;
-import org.example.siidsbackend.Model.Item;
-import org.example.siidsbackend.Model.MeasurementUnit;
-import org.example.siidsbackend.Model.Stock;
-import org.example.siidsbackend.Model.StockItem;
+import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.StockRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -33,20 +30,30 @@ import java.util.stream.Collectors;
 public class StockService {
 
     private final StockRepository stockRepository;
+    private final ItemCategoryService itemCategoryService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
     @Transactional
-    public Stock createStock(StockRequestDTO dto, MultipartFile document, MultipartFile anotherDocument)
+    public Stock createStock(StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument)
             throws IOException {
-        validateStockRequest(dto, document, anotherDocument);
+        validateStockRequest(dto, documents, anotherDocument);
+
+        // Check uniqueness of seizureNumber (pvNumber is now optional and not unique)
+        if (stockRepository.existsBySeizureNumber(dto.getSeizureNumber())) {
+            throw new IllegalArgumentException("A stock with this Seizure Number already exists.");
+        }
 
         Stock stock = new Stock();
         mapDtoToEntity(dto, stock);
 
-        if (document != null && !document.isEmpty()) {
-            stock.setDocumentPath(storeFile(document));
+        if (documents != null && !documents.isEmpty()) {
+            for (MultipartFile doc : documents) {
+                if (doc != null && !doc.isEmpty()) {
+                    stock.getDocumentPaths().add(storeFile(doc));
+                }
+            }
         }
 
         if (anotherDocument != null && !anotherDocument.isEmpty()) {
@@ -57,15 +64,28 @@ public class StockService {
     }
 
     @Transactional
-    public Stock updateStock(Integer id, StockRequestDTO dto, MultipartFile document, MultipartFile anotherDocument)
+    public Stock updateStock(Integer id, StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument)
             throws IOException {
         Stock stock = getStock(id);
-        validateStockUpdateRequest(dto, stock, document, anotherDocument);
+        validateStockUpdateRequest(dto, stock, documents, anotherDocument);
+
+        // Check uniqueness of seizureNumber (pvNumber is now optional and not unique)
+        if (stockRepository.existsBySeizureNumberAndIdNot(dto.getSeizureNumber(), id)) {
+            throw new IllegalArgumentException("A stock with this Seizure Number already exists.");
+        }
 
         mapDtoToEntity(dto, stock);
 
-        if (document != null && !document.isEmpty()) {
-            stock.setDocumentPath(storeFile(document));
+        if (documents != null && !documents.isEmpty()) {
+            // Depending on requirements, we might want to clear old documents or append
+            // User said "a person can add more than one document", usually implies appending in edit or replacing
+            // Let's assume appending for now if new ones are provided, or replacing if that's the intention.
+            // But usually, it's safer to append or have a separate way to remove.
+            for (MultipartFile doc : documents) {
+                if (doc != null && !doc.isEmpty()) {
+                    stock.getDocumentPaths().add(storeFile(doc));
+                }
+            }
         }
 
         if (anotherDocument != null && !anotherDocument.isEmpty()) {
@@ -87,6 +107,10 @@ public class StockService {
         stock.setQuantityReleased(dto.getQuantityReleased());
         stock.setSoldAmount(dto.getSoldAmount());
         stock.setReason(dto.getReason());
+        stock.setSeizureReason(dto.getSeizureReason());
+        if (dto.getReleaseReason() != null) {
+            stock.setReleaseReason(ReleaseReason.valueOf(dto.getReleaseReason().toUpperCase()));
+        }
 
         // Clear existing items and add new ones
         stock.getItems().clear();
@@ -95,35 +119,40 @@ public class StockService {
                 StockItem item = new StockItem();
                 item.setItemName(itemDto.getItemName());
                 if (itemDto.getItem() != null) {
-                    item.setItem(Item.valueOf(itemDto.getItem().toUpperCase()));
+                    itemCategoryService.ensureCategoryExists(itemDto.getItem());
+                    item.setItem(itemDto.getItem().toUpperCase());
                 }
                 item.setQuantity(itemDto.getQuantity());
                 if (itemDto.getMeasurementUnit() != null) {
                     item.setMeasurementUnit(MeasurementUnit.valueOf(itemDto.getMeasurementUnit().toUpperCase()));
                 }
+                item.setItemType(itemDto.getItemType());
+                item.setPlateNumber(itemDto.getPlateNumber());
                 stock.addItem(item);
             }
         }
     }
 
-    private void validateStockRequest(StockRequestDTO dto, MultipartFile document, MultipartFile anotherDocument) {
+    private void validateStockRequest(StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument) {
         validateMandatoryFields(dto);
 
-        if (document == null || document.isEmpty()) {
-            throw new IllegalArgumentException("Seizure Document is mandatory.");
+        boolean hasDocs = documents != null && documents.stream().anyMatch(d -> !d.isEmpty());
+        if (!hasDocs) {
+            throw new IllegalArgumentException("At least one Seizure Document is mandatory.");
         }
 
         validateDateLogic(dto);
         validateReleaseLogic(dto, anotherDocument != null && !anotherDocument.isEmpty(), null);
     }
 
-    private void validateStockUpdateRequest(StockRequestDTO dto, Stock existingStock, MultipartFile document,
+    private void validateStockUpdateRequest(StockRequestDTO dto, Stock existingStock, List<MultipartFile> documents,
             MultipartFile anotherDocument) {
         validateMandatoryFields(dto);
 
-        boolean hasSeizureDoc = (document != null && !document.isEmpty()) || (existingStock.getDocumentPath() != null);
-        if (!hasSeizureDoc) {
-            throw new IllegalArgumentException("Seizure Document is mandatory.");
+        boolean hasDocs = (documents != null && documents.stream().anyMatch(d -> !d.isEmpty())) 
+                || (existingStock.getDocumentPaths() != null && !existingStock.getDocumentPaths().isEmpty());
+        if (!hasDocs) {
+            throw new IllegalArgumentException("At least one Seizure Document is mandatory.");
         }
 
         validateDateLogic(dto);
@@ -140,12 +169,13 @@ public class StockService {
             throw new IllegalArgumentException("Takeover Name is required.");
         if (!StringUtils.hasText(dto.getSeizureNumber()))
             throw new IllegalArgumentException("Seizure Number is required.");
-        if (!StringUtils.hasText(dto.getPvNumber()))
-            throw new IllegalArgumentException("PV Number is required.");
+        // PV Number is now optional
         if (dto.getTakenDate() == null)
             throw new IllegalArgumentException("Taken Date is required.");
         if (dto.getReceivedDate() == null)
             throw new IllegalArgumentException("Received Date is required.");
+        if (!StringUtils.hasText(dto.getSeizureReason()))
+            throw new IllegalArgumentException("Reason for taking items is required.");
 
         // Validate items
         if (dto.getItems() == null || dto.getItems().isEmpty()) {
@@ -162,6 +192,16 @@ public class StockService {
                 throw new IllegalArgumentException("Quantity must be greater than zero for item " + itemNum + ".");
             if (item.getMeasurementUnit() == null || item.getMeasurementUnit().isBlank())
                 throw new IllegalArgumentException("Measurement Unit is required for item " + itemNum + ".");
+            
+            // Validate plate number for vehicles
+            if ("VEHICLE".equalsIgnoreCase(item.getItem())) {
+                if (!StringUtils.hasText(item.getPlateNumber())) {
+                    throw new IllegalArgumentException("Plate Number is required for vehicle item " + itemNum + ".");
+                }
+                if (!item.getPlateNumber().matches("^[A-Z]{3}\\d{3}[A-Z]$")) {
+                    throw new IllegalArgumentException("Invalid Plate Number format for item " + itemNum + ". Expected: 3 letters, 3 numbers, 1 letter (e.g., ABC123D)");
+                }
+            }
         }
     }
 
@@ -262,7 +302,8 @@ public class StockService {
         dto.setPvNumber(stock.getPvNumber());
         dto.setTakenDate(stock.getTakenDate());
         dto.setReceivedDate(stock.getReceivedDate());
-        dto.setDocumentPath(stock.getDocumentPath());
+        dto.setDocumentPaths(stock.getDocumentPaths());
+        dto.setSeizureReason(stock.getSeizureReason());
         dto.setDateReleased(stock.getDateReleased());
         dto.setReleasedItem(stock.getReleasedItem());
         dto.setQuantityReleased(stock.getQuantityReleased());
@@ -276,9 +317,11 @@ public class StockService {
                 StockItemDTO itemDto = new StockItemDTO();
                 itemDto.setId(item.getId());
                 itemDto.setItemName(item.getItemName());
-                itemDto.setItem(item.getItem() != null ? item.getItem().name() : null);
+                itemDto.setItem(item.getItem());
                 itemDto.setQuantity(item.getQuantity());
                 itemDto.setMeasurementUnit(item.getMeasurementUnit() != null ? item.getMeasurementUnit().name() : null);
+                itemDto.setItemType(item.getItemType());
+                itemDto.setPlateNumber(item.getPlateNumber());
                 return itemDto;
             }).collect(Collectors.toList());
             dto.setItems(itemDtos);
@@ -287,5 +330,14 @@ public class StockService {
         }
 
         return dto;
+    }
+
+    @Transactional
+    public void removeDocument(Integer id, int index) {
+        Stock stock = getStock(id);
+        if (stock.getDocumentPaths() != null && index >= 0 && index < stock.getDocumentPaths().size()) {
+            stock.getDocumentPaths().remove(index);
+            stockRepository.save(stock);
+        }
     }
 }

@@ -6,10 +6,11 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import '../styles/StockManagement.css';
 
-const EMPTY_ITEM = { itemName: '', item: '', quantity: '', measurementUnit: '' };
+const EMPTY_ITEM = { itemName: '', item: '', quantity: '', measurementUnit: '', plateNumber: '' };
 
 const StockManagement = () => {
     const { authState } = useContext(AuthContext);
+    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
     const [stocks, setStocks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -22,18 +23,20 @@ const StockManagement = () => {
         takenDate: '',
         receivedDate: '',
         items: [{ ...EMPTY_ITEM }],
+        seizureReason: '',
         dateReleased: '',
         releasedItem: '',
         quantityReleased: '',
         soldAmount: '',
         reason: ''
     });
-    const [documentFile, setDocumentFile] = useState(null);
+    const [documentFiles, setDocumentFiles] = useState([]);
     const [anotherDocumentFile, setAnotherDocumentFile] = useState(null);
 
     // Backend-driven dropdown options
     const [itemTypes, setItemTypes] = useState([]);
     const [measurementUnits, setMeasurementUnits] = useState([]);
+    const [releaseReasons, setReleaseReasons] = useState([]);
 
     // Search & filter state
     const [searchOwner, setSearchOwner] = useState('');
@@ -45,10 +48,13 @@ const StockManagement = () => {
     const API_URL = `${BASE_URL}/api/stock`;
 
     useEffect(() => {
-        fetchStocks();
-        fetchItemTypes();
-        fetchMeasurementUnits();
-    }, []);
+        if (authState.token) {
+            fetchStocks();
+            fetchItemTypes();
+            fetchMeasurementUnits();
+            fetchReleaseReasons();
+        }
+    }, [authState.token]);
 
     const fetchStocks = async () => {
         try {
@@ -61,8 +67,12 @@ const StockManagement = () => {
             if (response.ok) {
                 const data = await response.json();
                 setStocks(data);
+            } else if (response.status === 401) {
+                console.error('Unauthorized: Token may be expired. Please log in again.');
+                alert('Session expired. Please log in again.');
             } else {
-                console.error('Failed to fetch stocks');
+                const errorText = await response.text();
+                console.error('Failed to fetch stocks:', errorText);
             }
         } catch (error) {
             console.error('Error fetching stocks:', error);
@@ -105,9 +115,59 @@ const StockManagement = () => {
         }
     };
 
+    const fetchReleaseReasons = async () => {
+        try {
+            const response = await fetch(`${API_URL}/release-reasons`, {
+                headers: {
+                    'Authorization': `Bearer ${authState.token}`,
+                    'employee_id': authState.employeeId
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setReleaseReasons(data);
+            }
+        } catch (error) {
+            console.error('Error fetching release reasons:', error);
+        }
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleRemoveExistingDocument = async (id, index) => {
+        if (window.confirm('Are you sure you want to remove this document?')) {
+            try {
+                const response = await fetch(`${API_URL}/${id}/document/${index}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${authState.token}`,
+                        'employee_id': authState.employeeId
+                    }
+                });
+                if (response.ok) {
+                    setStocks(prev => prev.map(s => {
+                        if (s.id === id) {
+                            return { ...s, documentPaths: s.documentPaths.filter((_, i) => i !== index) };
+                        }
+                        return s;
+                    }));
+                    if (currentStock && currentStock.id === id) {
+                        setCurrentStock(prev => ({
+                            ...prev,
+                            documentPaths: prev.documentPaths.filter((_, i) => i !== index)
+                        }));
+                    }
+                } else {
+                    alert('Failed to remove document');
+                }
+            } catch (error) {
+                console.error('Error removing document:', error);
+                alert('An error occurred while removing the document');
+            }
+        }
     };
 
     const handleItemChange = (index, field, value) => {
@@ -135,11 +195,23 @@ const StockManagement = () => {
 
     const handleFileChange = (e) => {
         const { name, files } = e.target;
-        if (name === 'document') {
-            setDocumentFile(files[0]);
+        if (name === 'documents') {
+            const newFiles = Array.from(files);
+            setDocumentFiles(prev => {
+                // Filter out duplicates (optional but good for UX)
+                const existingNames = prev.map(f => f.name);
+                const uniqueNewFiles = newFiles.filter(f => !existingNames.includes(f.name));
+                return [...prev, ...uniqueNewFiles];
+            });
+            // Reset input value to allow selecting same files again if needed
+            e.target.value = '';
         } else if (name === 'anotherDocument') {
             setAnotherDocumentFile(files[0]);
         }
+    };
+
+    const handleRemoveNewDocument = (index) => {
+        setDocumentFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     const getTotalQuantity = () => {
@@ -158,6 +230,14 @@ const StockManagement = () => {
         e.preventDefault();
 
         // Validate dates
+        if (formData.receivedDate > today) {
+            alert('Received Date cannot be in the future.');
+            return;
+        }
+        if (formData.takenDate > today) {
+            alert('Taken Date cannot be in the future.');
+            return;
+        }
         if (new Date(formData.receivedDate) < new Date(formData.takenDate)) {
             alert('Received Date cannot be before Taken Date.');
             return;
@@ -188,16 +268,16 @@ const StockManagement = () => {
         // Validate release logic
         if (formData.dateReleased) {
             if (!formData.reason || formData.reason.trim() === '') {
-                alert('Reason is required when Date Released is set.');
+                alert('Reason is required when item is released.');
+                return;
+            }
+            if (!formData.releaseReason) {
+                alert('Reason for Release is required.');
                 return;
             }
             const hasReleaseDoc = anotherDocumentFile || (currentStock && currentStock.anotherDocumentPath);
             if (!hasReleaseDoc) {
-                alert('Release Document is required when Date Released is set.');
-                return;
-            }
-            if (new Date(formData.dateReleased) < new Date(formData.receivedDate)) {
-                alert('Date Released cannot be before Received Date.');
+                alert('Release Document is required when item is released.');
                 return;
             }
             if (!formData.releasedItem) {
@@ -206,7 +286,7 @@ const StockManagement = () => {
             }
             const qtyReleased = parseInt(formData.quantityReleased);
             if (!qtyReleased || qtyReleased <= 0) {
-                alert('Quantity Released must be greater than zero when Date Released is set.');
+                alert('Quantity Released must be greater than zero.');
                 return;
             }
             const maxQty = getMaxReleasedQuantity();
@@ -216,8 +296,14 @@ const StockManagement = () => {
             }
         }
 
-        if (!documentFile && !currentStock?.documentPath) {
-            alert('Seizure Document is mandatory.');
+        const hasSeizureDocs = documentFiles.length > 0 || (currentStock && currentStock.documentPaths && currentStock.documentPaths.length > 0);
+        if (!hasSeizureDocs) {
+            alert('At least one Seizure Document is mandatory.');
+            return;
+        }
+
+        if (!formData.seizureReason || formData.seizureReason.trim() === '') {
+            alert('Reason for taking items is required.');
             return;
         }
 
@@ -227,24 +313,30 @@ const StockManagement = () => {
             ownerName: formData.ownerName,
             takeoverName: formData.takeoverName,
             seizureNumber: formData.seizureNumber,
-            pvNumber: formData.pvNumber,
+            pvNumber: formData.pvNumber || null,
             takenDate: formData.takenDate || null,
             receivedDate: formData.receivedDate || null,
-            items: formData.items.map(item => ({
-                itemName: item.itemName,
-                item: item.item,
-                quantity: parseInt(item.quantity) || 0,
-                measurementUnit: item.measurementUnit
-            })),
+            seizureReason: formData.seizureReason || null,
+            items: formData.items.map(item => {
+                const category = item.item === 'OTHER' ? (item.newCategory || 'OTHER').toUpperCase() : item.item;
+                return {
+                    itemName: item.itemName,
+                    item: category,
+                    quantity: parseInt(item.quantity) || 0,
+                    measurementUnit: item.measurementUnit,
+                    plateNumber: category === 'VEHICLE' ? item.plateNumber : null
+                };
+            }),
             dateReleased: formData.dateReleased || null,
             releasedItem: formData.dateReleased ? (formData.releasedItem || null) : null,
             quantityReleased: formData.dateReleased ? (parseInt(formData.quantityReleased) || null) : null,
-            soldAmount: formData.dateReleased ? (parseFloat(formData.soldAmount) || null) : null,
-            reason: formData.reason
+            soldAmount: formData.dateReleased && formData.releaseReason === 'CYAMUNARA' ? (parseFloat(formData.soldAmount) || null) : null,
+            reason: formData.reason,
+            releaseReason: formData.releaseReason
         };
 
         data.append('stockData', new Blob([JSON.stringify(stockData)], { type: 'application/json' }));
-        if (documentFile) data.append('document', documentFile);
+        documentFiles.forEach(file => data.append('documents', file));
         if (anotherDocumentFile) data.append('anotherDocument', anotherDocumentFile);
 
         try {
@@ -263,14 +355,16 @@ const StockManagement = () => {
             if (response.ok) {
                 fetchStocks();
                 closeModal();
+            } else if (response.status === 401) {
+                alert('Session expired. Please log in again.');
             } else {
                 const errorText = await response.text();
                 console.error('Failed to save stock:', errorText);
-                alert(errorText || 'Failed to save stock. Please check inputs and try again.');
+                alert(errorText || 'Failed to save stock.');
             }
         } catch (error) {
             console.error('Error saving stock:', error);
-            alert('Error saving stock');
+            alert('Network error: Could not connect to the server.');
         }
     };
 
@@ -303,7 +397,8 @@ const StockManagement = () => {
                 itemName: item.itemName || '',
                 item: item.item || (itemTypes[0] || ''),
                 quantity: item.quantity || '',
-                measurementUnit: item.measurementUnit || (measurementUnits[0] || '')
+                measurementUnit: item.measurementUnit || (measurementUnits[0] || ''),
+                plateNumber: item.plateNumber || ''
             }))
             : [{ ...EMPTY_ITEM, item: itemTypes[0] || '', measurementUnit: measurementUnits[0] || '' }];
 
@@ -315,12 +410,16 @@ const StockManagement = () => {
             takenDate: stock.takenDate || '',
             receivedDate: stock.receivedDate || '',
             items: items,
+            seizureReason: stock.seizureReason || '',
             dateReleased: stock.dateReleased || '',
             releasedItem: stock.releasedItem || '',
             quantityReleased: stock.quantityReleased || '',
             soldAmount: stock.soldAmount || '',
-            reason: stock.reason || ''
+            reason: stock.reason || '',
+            releaseReason: stock.releaseReason || ''
         });
+        setDocumentFiles([]);
+        setAnotherDocumentFile(null);
         setShowModal(true);
     };
 
@@ -334,13 +433,14 @@ const StockManagement = () => {
             takenDate: '',
             receivedDate: '',
             items: [{ ...EMPTY_ITEM, item: itemTypes[0] || '', measurementUnit: measurementUnits[0] || '' }],
+            seizureReason: '',
             dateReleased: '',
             releasedItem: '',
             quantityReleased: '',
             soldAmount: '',
             reason: ''
         });
-        setDocumentFile(null);
+        setDocumentFiles([]);
         setAnotherDocumentFile(null);
         setShowModal(true);
     };
@@ -350,10 +450,9 @@ const StockManagement = () => {
         setCurrentStock(null);
     };
 
-    const downloadDocument = async (id, type) => {
-        const endpoint = type === 'document' ? 'document' : 'another-document';
+    const downloadDocument = async (id, index) => {
         try {
-            const response = await fetch(`${API_URL}/${id}/${endpoint}`, {
+            const response = await fetch(`${API_URL}/${id}/document/${index}`, {
                 headers: {
                     'Authorization': `Bearer ${authState.token}`,
                     'employee_id': authState.employeeId
@@ -417,6 +516,7 @@ const StockManagement = () => {
             'Owner Name': stock.ownerName || '',
             'Takeover Name': stock.takeoverName || '',
             'Seizure Number': stock.seizureNumber || '',
+            'Seizure Reason': stock.seizureReason || '',
             'PV Number': stock.pvNumber || '',
             'Items': (stock.items || []).map(i => `${i.itemName} (${i.quantity} ${i.measurementUnit})`).join(', '),
             'Item Types': (stock.items || []).map(i => i.item).join(', '),
@@ -472,6 +572,7 @@ const StockManagement = () => {
         addField('Owner Name', stock.ownerName);
         addField('Takeover Name', stock.takeoverName);
         addField('Seizure Number', stock.seizureNumber);
+        if (stock.seizureReason) addField('Seizure Reason', stock.seizureReason);
         addField('PV Number', stock.pvNumber);
         addField('Taken Date', stock.takenDate);
         addField('Received Date', stock.receivedDate);
@@ -613,11 +714,11 @@ const StockManagement = () => {
                                         <td>{stock.quantityReleased || '-'}</td>
                                         <td>{stock.soldAmount ? `${stock.soldAmount} RWF` : '-'}</td>
                                         <td>
-                                            {stock.documentPath && (
-                                                <button className="link-btn" onClick={() => downloadDocument(stock.id, 'document')}>Doc 1</button>
-                                            )}
+                                            {stock.documentPaths && stock.documentPaths.map((path, idx) => (
+                                                <button key={idx} className="link-btn" onClick={() => downloadDocument(stock.id, idx)}>Doc {idx + 1}</button>
+                                            ))}
                                             {stock.anotherDocumentPath && (
-                                                <button className="link-btn" onClick={() => downloadDocument(stock.id, 'another')}>Doc 2</button>
+                                                <button className="link-btn" onClick={() => downloadDocumentRelease(stock.id)}>Release Doc</button>
                                             )}
                                         </td>
                                         <td className="actions-cell">
@@ -664,16 +765,47 @@ const StockManagement = () => {
                                 </div>
                                 <div className="form-group">
                                     <label>Taken Date *</label>
-                                    <input type="date" name="takenDate" value={formData.takenDate || ''} onChange={handleInputChange} required />
+                                    <input type="date" name="takenDate" value={formData.takenDate || ''} onChange={handleInputChange} max={today} required />
                                 </div>
                                 <div className="form-group">
                                     <label>Received Date *</label>
-                                    <input type="date" name="receivedDate" value={formData.receivedDate || ''} onChange={handleInputChange} min={formData.takenDate} required />
+                                    <input type="date" name="receivedDate" value={formData.receivedDate || ''} onChange={handleInputChange} min={formData.takenDate} max={today} required />
                                 </div>
-                                <div className="form-group">
-                                    <label>Seizure Document (PDF) *</label>
-                                    <input type="file" name="document" accept=".pdf" onChange={handleFileChange} required={!currentStock} />
-                                    {currentStock && currentStock.documentPath && <small>Current: Attached</small>}
+                                <div className="form-group full-width">
+                                    <label>Upload Documents (PDF) *</label>
+                                    <input type="file" name="documents" accept=".pdf" onChange={handleFileChange} multiple />
+                                    
+                                    {/* Existing Stored Documents */}
+                                    {currentStock && currentStock.documentPaths && currentStock.documentPaths.length > 0 && (
+                                        <div className="document-list" style={{ marginTop: '10px' }}>
+                                            <small style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Existing Documents:</small>
+                                            {currentStock.documentPaths.map((path, idx) => (
+                                                <div key={idx} className="document-item">
+                                                    <span>{path.split(/[\/\\]/).pop()}</span>
+                                                    <button type="button" className="remove-doc-btn" onClick={() => handleRemoveExistingDocument(currentStock.id, idx)}>
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {documentFiles.length > 0 && (
+                                        <div className="document-list" style={{ marginTop: '10px' }}>
+                                            {documentFiles.map((file, idx) => (
+                                                <div key={idx} className="document-item new-file">
+                                                    <span>{file.name}</span>
+                                                    <button type="button" className="remove-doc-btn" onClick={() => handleRemoveNewDocument(idx)}>
+                                                        <X size={14} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="form-group full-width">
+                                    <label>Reason for Taking Items *</label>
+                                    <textarea name="seizureReason" value={formData.seizureReason || ''} onChange={handleInputChange} placeholder="Explain why the items were seized/taken..." required />
                                 </div>
                             </div>
 
@@ -682,62 +814,98 @@ const StockManagement = () => {
                                 <h4>Items *</h4>
                                 {formData.items.map((item, index) => (
                                     <div key={index} className="item-row">
-                                        <div className="item-fields">
-                                            <div className="item-field">
-                                                <label>Item Name *</label>
-                                                <input
-                                                    type="text"
-                                                    value={item.itemName}
-                                                    onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
-                                                    required
-                                                />
+                                        <div className="item-fields-container">
+                                            <div className="item-main-row">
+                                                <div className="item-field">
+                                                    <label>Item Category *</label>
+                                                    <select
+                                                        value={item.item}
+                                                        onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                        required
+                                                    >
+                                                        <option value="">Select Category</option>
+                                                        {itemTypes.map(type => (
+                                                            <option key={type} value={type}>{formatUnit(type)}</option>
+                                                        ))}
+                                                        <option value="OTHER">OTHER (Add New...)</option>
+                                                    </select>
+                                                </div>
+                                                {item.item === 'OTHER' && (
+                                                    <div className="item-field">
+                                                        <label>New Category Name *</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.newCategory || ''}
+                                                            onChange={(e) => handleItemChange(index, 'newCategory', e.target.value)}
+                                                            required
+                                                            placeholder="Enter category name..."
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="item-field">
+                                                    <label>Item Name *</label>
+                                                    <input
+                                                        type="text"
+                                                        value={item.itemName}
+                                                        onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                {item.item === 'VEHICLE' && (
+                                                    <div className="item-field">
+                                                        <label>Plate Number *</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.plateNumber}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                                                if (val.length <= 7) {
+                                                                    handleItemChange(index, 'plateNumber', val);
+                                                                }
+                                                            }}
+                                                            placeholder="AAA123A"
+                                                            required
+                                                        />
+                                                        <small>Format: 3 chars, 3 nums, 1 char</small>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div className="item-field">
-                                                <label>Item Type *</label>
-                                                <select
-                                                    value={item.item}
-                                                    onChange={(e) => handleItemChange(index, 'item', e.target.value)}
-                                                    required
-                                                >
-                                                    <option value="">Select Type</option>
-                                                    {itemTypes.map(type => (
-                                                        <option key={type} value={type}>{formatUnit(type)}</option>
-                                                    ))}
-                                                </select>
+
+                                            <div className="item-sub-row">
+                                                <div className="item-field quantity-field">
+                                                    <label>Quantity *</label>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={item.quantity}
+                                                        onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="item-field measurement-field">
+                                                    <label>Measurement *</label>
+                                                    <select
+                                                        value={item.measurementUnit}
+                                                        onChange={(e) => handleItemChange(index, 'measurementUnit', e.target.value)}
+                                                        required
+                                                    >
+                                                        <option value="">Select Unit</option>
+                                                        {measurementUnits.map(unit => (
+                                                            <option key={unit} value={unit}>{formatUnit(unit)}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                {formData.items.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        className="remove-item-btn"
+                                                        onClick={() => removeItem(index)}
+                                                        title="Remove this item"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div className="item-field">
-                                                <label>Quantity *</label>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    value={item.quantity}
-                                                    onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="item-field">
-                                                <label>Measurement *</label>
-                                                <select
-                                                    value={item.measurementUnit}
-                                                    onChange={(e) => handleItemChange(index, 'measurementUnit', e.target.value)}
-                                                    required
-                                                >
-                                                    <option value="">Select Unit</option>
-                                                    {measurementUnits.map(unit => (
-                                                        <option key={unit} value={unit}>{formatUnit(unit)}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            {formData.items.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    className="remove-item-btn"
-                                                    onClick={() => removeItem(index)}
-                                                    title="Remove this item"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -747,14 +915,34 @@ const StockManagement = () => {
                             </div>
 
                             {/* Release Section */}
-                            <div className="form-grid" style={{ marginTop: '15px' }}>
-                                <div className="form-group">
-                                    <label>Date Released</label>
-                                    <input type="date" name="dateReleased" value={formData.dateReleased || ''} onChange={handleInputChange} min={formData.receivedDate} />
+                            <div className="release-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                                <div className="form-group" style={{ marginBottom: '15px', flexDirection: 'row', alignItems: 'center', gap: '10px' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="releaseCheckbox"
+                                        checked={!!formData.dateReleased}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setFormData(prev => ({ ...prev, dateReleased: new Date().toISOString().split('T')[0] }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    dateReleased: '',
+                                                    releasedItem: '',
+                                                    quantityReleased: '',
+                                                    soldAmount: '',
+                                                    reason: '',
+                                                    releaseReason: ''
+                                                }));
+                                            }
+                                        }}
+                                        style={{ width: 'auto', cursor: 'pointer' }}
+                                    />
+                                    <label htmlFor="releaseCheckbox" style={{ cursor: 'pointer', marginBottom: 0 }}>Do you want to release an item?</label>
                                 </div>
 
                                 {formData.dateReleased && (
-                                    <>
+                                    <div className="form-grid">
                                         <div className="form-group">
                                             <label>Released Item *</label>
                                             <select
@@ -783,29 +971,57 @@ const StockManagement = () => {
                                             />
                                         </div>
                                         <div className="form-group">
-                                            <label>Sold Amount (RWF)</label>
-                                            <input
-                                                type="number"
-                                                name="soldAmount"
-                                                min="0"
-                                                step="0.01"
-                                                value={formData.soldAmount || ''}
+                                            <label>Reason for Release *</label>
+                                            <select
+                                                name="releaseReason"
+                                                value={formData.releaseReason || ''}
                                                 onChange={handleInputChange}
-                                                placeholder="Enter amount if sold"
+                                                required
+                                            >
+                                                <option value="">Select Reason</option>
+                                                {releaseReasons.map(r => (
+                                                    <option key={r} value={r}>{formatUnit(r)}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        {formData.releaseReason === 'CYAMUNARA' && (
+                                            <div className="form-group">
+                                                <label>Sold Amount (RWF) *</label>
+                                                <input
+                                                    type="number"
+                                                    name="soldAmount"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={formData.soldAmount || ''}
+                                                    onChange={handleInputChange}
+                                                    required
+                                                    placeholder="Enter sold amount"
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="form-group full-width">
+                                            <label>Release Details / Remarks *</label>
+                                            <textarea
+                                                name="reason"
+                                                value={formData.reason || ''}
+                                                onChange={handleInputChange}
+                                                required
+                                                placeholder="Enter any additional details about the release..."
                                             />
                                         </div>
-                                    </>
+                                        <div className="form-group">
+                                            <label>Release Document (PDF) *</label>
+                                            <input
+                                                type="file"
+                                                name="anotherDocument"
+                                                accept=".pdf"
+                                                onChange={handleFileChange}
+                                                required={!currentStock || !currentStock.anotherDocumentPath}
+                                            />
+                                            {currentStock && currentStock.anotherDocumentPath && <small>Current: Attached</small>}
+                                        </div>
+                                    </div>
                                 )}
-
-                                <div className="form-group full-width">
-                                    <label>Reason {formData.dateReleased ? '*' : ''}</label>
-                                    <textarea name="reason" value={formData.reason || ''} onChange={handleInputChange} required={!!formData.dateReleased} />
-                                </div>
-                                <div className="form-group">
-                                    <label>Release Document (PDF) {formData.dateReleased ? '*' : ''}</label>
-                                    <input type="file" name="anotherDocument" accept=".pdf" onChange={handleFileChange} required={!!formData.dateReleased && (!currentStock || !currentStock.anotherDocumentPath)} />
-                                    {currentStock && currentStock.anotherDocumentPath && <small>Current: Attached</small>}
-                                </div>
                             </div>
 
                             <div className="modal-actions">

@@ -4,9 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.StockRequestDTO;
 import org.example.siidsbackend.DTO.Response.StockResponseDTO;
-import org.example.siidsbackend.Model.Item;
-import org.example.siidsbackend.Model.MeasurementUnit;
-import org.example.siidsbackend.Model.Stock;
+import org.example.siidsbackend.Model.*;
+import org.example.siidsbackend.Service.ItemCategoryService;
 import org.example.siidsbackend.Service.StockService;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,10 +31,12 @@ import java.util.stream.Collectors;
 public class StockController {
 
     private final StockService stockService;
+    private final ItemCategoryService itemCategoryService;
     private final ObjectMapper objectMapper;
 
-    public StockController(StockService stockService, ObjectMapper objectMapper) {
+    public StockController(StockService stockService, ItemCategoryService itemCategoryService, ObjectMapper objectMapper) {
         this.stockService = stockService;
+        this.itemCategoryService = itemCategoryService;
         this.objectMapper = objectMapper;
         this.objectMapper.registerModule(new JavaTimeModule());
     }
@@ -47,10 +48,13 @@ public class StockController {
 
     @GetMapping("/item-types")
     public ResponseEntity<List<String>> getItemTypes() {
-        List<String> types = Arrays.stream(Item.values())
-                .map(Enum::name)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(types);
+        return ResponseEntity.ok(itemCategoryService.getAllCategoryNames());
+    }
+
+    @DeleteMapping("/{id}/document/{index}")
+    public ResponseEntity<Void> removeDocument(@PathVariable Integer id, @PathVariable int index) {
+        stockService.removeDocument(id, index);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/measurement-units")
@@ -61,17 +65,28 @@ public class StockController {
         return ResponseEntity.ok(units);
     }
 
+    @GetMapping("/release-reasons")
+    public ResponseEntity<List<String>> getReleaseReasons() {
+        List<String> reasons = Arrays.stream(ReleaseReason.values())
+                .map(Enum::name)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(reasons);
+    }
+
     // --- CRUD endpoints ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
     public ResponseEntity<?> createStock(
             @RequestPart("stockData") StockRequestDTO dto,
-            @RequestPart(value = "document", required = false) MultipartFile document,
+            @RequestPart(value = "documents", required = false) List<MultipartFile> documents,
             @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument) {
         try {
-            Stock stock = stockService.createStock(dto, document, anotherDocument);
+            Stock stock = stockService.createStock(dto, documents, anotherDocument);
             return ResponseEntity.ok(stockService.toDTO(stock));
+        } catch (IllegalArgumentException e) {
+            log.warn("Validation error creating stock: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             log.error("Error creating stock: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body("Error creating stock: " + e.getMessage());
@@ -83,11 +98,14 @@ public class StockController {
     public ResponseEntity<?> updateStock(
             @PathVariable Integer id,
             @RequestPart("stockData") StockRequestDTO dto,
-            @RequestPart(value = "document", required = false) MultipartFile document,
+            @RequestPart(value = "documents", required = false) List<MultipartFile> documents,
             @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument) {
         try {
-            Stock stock = stockService.updateStock(id, dto, document, anotherDocument);
+            Stock stock = stockService.updateStock(id, dto, documents, anotherDocument);
             return ResponseEntity.ok(stockService.toDTO(stock));
+        } catch (IllegalArgumentException e) {
+            log.warn("Validation error updating stock: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (Exception e) {
             log.error("Error updating stock: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body("Error updating stock: " + e.getMessage());
@@ -113,11 +131,20 @@ public class StockController {
         return ResponseEntity.ok(stockService.toDTO(stock));
     }
 
-    @GetMapping("/{id}/document")
-    public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id) throws IOException {
+    @GetMapping("/{id}/documents")
+    public ResponseEntity<List<String>> getStockDocuments(@PathVariable Integer id) {
         Stock stock = stockService.getStock(id);
-        String path = stock.getDocumentPath();
-        return downloadFile(path);
+        return ResponseEntity.ok(stock.getDocumentPaths());
+    }
+
+    @GetMapping("/{id}/document/{index}")
+    public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id, @PathVariable Integer index) throws IOException {
+        Stock stock = stockService.getStock(id);
+        List<String> paths = stock.getDocumentPaths();
+        if (index < 0 || index >= paths.size()) {
+            return ResponseEntity.notFound().build();
+        }
+        return downloadFile(paths.get(index));
     }
 
     @GetMapping("/{id}/another-document")

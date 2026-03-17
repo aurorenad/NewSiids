@@ -8,5 +8,7 @@ public enum MeasurementUnit {
     BOXES,
     BAGS,
     BOTTLES,
-    PACKETS
+    PACKETS,
+    TON,
+    CARTON
 }
