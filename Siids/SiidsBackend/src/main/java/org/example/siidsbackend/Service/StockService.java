@@ -24,6 +24,8 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.example.siidsbackend.DTO.StockReleaseDTO;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,6 +33,7 @@ public class StockService {
 
     private final StockRepository stockRepository;
     private final ItemCategoryService itemCategoryService;
+    private final PdfService pdfService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -108,9 +111,18 @@ public class StockService {
         stock.setSoldAmount(dto.getSoldAmount());
         stock.setReason(dto.getReason());
         stock.setSeizureReason(dto.getSeizureReason());
-        if (dto.getReleaseReason() != null) {
-            stock.setReleaseReason(ReleaseReason.valueOf(dto.getReleaseReason().toUpperCase()));
+        if (StringUtils.hasText(dto.getReleaseReason())) {
+            try {
+                stock.setReleaseReason(ReleaseReason.valueOf(dto.getReleaseReason().toUpperCase().trim()));
+            } catch (IllegalArgumentException e) {
+                log.error("Invalid release reason: {}", dto.getReleaseReason());
+            }
         }
+        stock.setNewPlateNumber(dto.getNewPlateNumber());
+        stock.setNewOwner(dto.getNewOwner());
+        stock.setReleasedBy(dto.getReleasedBy());
+        stock.setAddedBy(dto.getAddedBy());
+        stock.setStatus(dto.getStatus());
 
         // Clear existing items and add new ones
         stock.getItems().clear();
@@ -123,11 +135,17 @@ public class StockService {
                     item.setItem(itemDto.getItem().toUpperCase());
                 }
                 item.setQuantity(itemDto.getQuantity());
-                if (itemDto.getMeasurementUnit() != null) {
-                    item.setMeasurementUnit(MeasurementUnit.valueOf(itemDto.getMeasurementUnit().toUpperCase()));
+                if (StringUtils.hasText(itemDto.getMeasurementUnit())) {
+                    try {
+                        item.setMeasurementUnit(MeasurementUnit.valueOf(itemDto.getMeasurementUnit().toUpperCase().trim()));
+                    } catch (IllegalArgumentException e) {
+                        log.error("Invalid measurement unit: {}", itemDto.getMeasurementUnit());
+                    }
                 }
                 item.setItemType(itemDto.getItemType());
                 item.setPlateNumber(itemDto.getPlateNumber());
+                item.setChassisNumber(itemDto.getChassisNumber());
+                item.setVehicleType(itemDto.getVehicleType());
                 stock.addItem(item);
             }
         }
@@ -201,6 +219,12 @@ public class StockService {
                 if (!item.getPlateNumber().matches("^[A-Z]{3}\\d{3}[A-Z]$")) {
                     throw new IllegalArgumentException("Invalid Plate Number format for item " + itemNum + ". Expected: 3 letters, 3 numbers, 1 letter (e.g., ABC123D)");
                 }
+                if (!StringUtils.hasText(item.getChassisNumber())) {
+                    throw new IllegalArgumentException("Chassis Number is required for vehicle item " + itemNum + ".");
+                }
+                if (!StringUtils.hasText(item.getVehicleType())) {
+                    throw new IllegalArgumentException("Vehicle Type (as in Car, Moto, etc.) is required for vehicle item " + itemNum + ".");
+                }
             }
         }
     }
@@ -216,9 +240,11 @@ public class StockService {
             if (!StringUtils.hasText(dto.getReason())) {
                 throw new IllegalArgumentException("Reason is required when Date Released is set.");
             }
+/*
             if (!hasReleaseDocument) {
                 throw new IllegalArgumentException("Release Document is required when Date Released is set.");
             }
+            */
             if (dto.getDateReleased().isBefore(dto.getReceivedDate())) {
                 throw new IllegalArgumentException("Date Released cannot be before Received Date.");
             }
@@ -310,6 +336,12 @@ public class StockService {
         dto.setSoldAmount(stock.getSoldAmount());
         dto.setAnotherDocumentPath(stock.getAnotherDocumentPath());
         dto.setReason(stock.getReason());
+        dto.setReleaseReason(stock.getReleaseReason() != null ? stock.getReleaseReason().name() : null);
+        dto.setNewPlateNumber(stock.getNewPlateNumber());
+        dto.setNewOwner(stock.getNewOwner());
+        dto.setReleasedBy(stock.getReleasedBy());
+        dto.setAddedBy(stock.getAddedBy());
+        dto.setStatus(stock.getStatus());
 
         // Map items
         if (stock.getItems() != null) {
@@ -322,11 +354,34 @@ public class StockService {
                 itemDto.setMeasurementUnit(item.getMeasurementUnit() != null ? item.getMeasurementUnit().name() : null);
                 itemDto.setItemType(item.getItemType());
                 itemDto.setPlateNumber(item.getPlateNumber());
+                itemDto.setChassisNumber(item.getChassisNumber());
+                itemDto.setVehicleType(item.getVehicleType());
                 return itemDto;
             }).collect(Collectors.toList());
             dto.setItems(itemDtos);
         } else {
             dto.setItems(new ArrayList<>());
+        }
+
+        // Map releases
+        if (stock.getReleases() != null) {
+            List<StockReleaseDTO> releaseDtos = stock.getReleases().stream().map(rel -> {
+                StockReleaseDTO relDto = new StockReleaseDTO();
+                relDto.setId(rel.getId());
+                relDto.setReleasedItemName(rel.getReleasedItemName());
+                relDto.setQuantityReleased(rel.getQuantityReleased());
+                relDto.setReleaseReason(rel.getReleaseReason() != null ? rel.getReleaseReason().name() : null);
+                relDto.setDateReleased(rel.getDateReleased());
+                relDto.setSoldAmount(rel.getSoldAmount());
+                relDto.setReason(rel.getReason());
+                relDto.setNewPlateNumber(rel.getNewPlateNumber());
+                relDto.setNewOwner(rel.getNewOwner());
+                relDto.setReleasedBy(rel.getReleasedBy());
+                return relDto;
+            }).collect(Collectors.toList());
+            dto.setReleases(releaseDtos);
+        } else {
+            dto.setReleases(new ArrayList<>());
         }
 
         return dto;
@@ -339,5 +394,9 @@ public class StockService {
             stock.getDocumentPaths().remove(index);
             stockRepository.save(stock);
         }
+    }
+
+    public byte[] generateReleasePdf(Stock stock) throws IOException {
+        return pdfService.generateReleaseDocument(stock);
     }
 }

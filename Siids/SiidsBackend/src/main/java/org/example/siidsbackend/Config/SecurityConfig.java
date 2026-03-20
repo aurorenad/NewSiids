@@ -57,7 +57,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/departments").hasAnyAuthority("User", "Surveillance", "Admin", "admin")
                         .requestMatchers("/api/employees/**").hasAnyAuthority("User", "Surveillance", "Admin", "admin")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
-                        .requestMatchers("/api/stock/**").hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager")
+                        .requestMatchers("/api/stock/**").hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "User", "Surveillance")
                         .anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

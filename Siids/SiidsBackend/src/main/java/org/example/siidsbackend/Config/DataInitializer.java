@@ -2,16 +2,14 @@ package org.example.siidsbackend.Config;
 
 import org.example.siidsbackend.Model.Grade;
 import org.example.siidsbackend.Model.JobMaster;
-import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Model.structures;
 import org.example.siidsbackend.Repository.GradeRepository;
 import org.example.siidsbackend.Repository.JobMasterRepository;
 import org.example.siidsbackend.Repository.StructureRepository;
-import org.example.siidsbackend.Repository.UserRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
@@ -23,9 +21,6 @@ import java.time.format.DateTimeFormatter;
 public class DataInitializer implements CommandLineRunner {
 
     @Autowired
-    private UserRepo userRepo;
-
-    @Autowired
     private StructureRepository structureRepository;
 
     @Autowired
@@ -34,7 +29,8 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private JobMasterRepository jobMasterRepository;
 
-    private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) {
@@ -42,8 +38,8 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("Starting Data Initialization...");
         System.out.println("========================================");
 
-        // Initialize default user
-        initializeDefaultUser();
+        // Fix database constraints if necessary
+        fixDatabaseConstraints();
 
         // Initialize organizational data
         initializeStructures();
@@ -55,20 +51,17 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("========================================");
     }
 
-    private void initializeDefaultUser() {
-        String employeeId = "00763";
-
-        if (userRepo.findByUsername(employeeId) == null) {
-            User user = new User();
-            user.setUsername(employeeId);
-            user.setPassword(encoder.encode("Aurore!@123"));
-            user.setRole("User");
-            userRepo.save(user);
-            System.out.println("✓ User created for existing employee: " + employeeId + " with role: User");
-        } else {
-            System.out.println("✓ User " + employeeId + " already exists");
+    private void fixDatabaseConstraints() {
+        System.out.println("→ Checking database constraints...");
+        try {
+            // Drop the check constraint if it exists to allow new Enum values like MUTATION and CYAMUNARA
+            jdbcTemplate.execute("ALTER TABLE stock DROP CONSTRAINT IF EXISTS stock_release_reason_check");
+            System.out.println("✓ Database constraint 'stock_release_reason_check' dropped or handled.");
+        } catch (Exception e) {
+            System.err.println("✗ Error fixing database constraints: " + e.getMessage());
         }
     }
+
 
     private void initializeStructures() {
         long count = structureRepository.count();

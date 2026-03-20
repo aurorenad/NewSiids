@@ -23,4 +23,9 @@ public class StockRequestDTO {
     private BigDecimal soldAmount;
     private String reason;
     private String releaseReason;
+    private String newPlateNumber;
+    private String newOwner;
+    private String releasedBy;
+    private String addedBy;
+    private String status;
 }

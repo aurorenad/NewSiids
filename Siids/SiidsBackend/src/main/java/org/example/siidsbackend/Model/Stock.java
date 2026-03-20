@@ -52,6 +52,15 @@ public class Stock {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
+    private String newPlateNumber;
+    private String newOwner;
+    private String releasedBy;
+    private String addedBy;
+    private String status; // ACTIVE, RELEASED, DAMAGED
+
+    @OneToMany(mappedBy = "stock", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StockRelease> releases = new ArrayList<>();
+
     // Helper method to manage bidirectional relationship
     public void addItem(StockItem item) {
         items.add(item);

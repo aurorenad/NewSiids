@@ -11,4 +11,6 @@ public class StockItemDTO {
     private String measurementUnit; // MeasurementUnit enum as String
     private String itemType;
     private String plateNumber;
+    private String chassisNumber;
+    private String vehicleType;
 }

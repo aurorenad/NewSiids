@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.example.siidsbackend.DTO.StockReleaseDTO;
+
 @Data
 public class StockResponseDTO {
     private Integer id;
@@ -26,4 +28,10 @@ public class StockResponseDTO {
     private String anotherDocumentPath;
     private String reason;
     private String releaseReason;
+    private String newPlateNumber;
+    private String newOwner;
+    private String releasedBy;
+    private String addedBy;
+    private String status;
+    private List<StockReleaseDTO> releases;
 }

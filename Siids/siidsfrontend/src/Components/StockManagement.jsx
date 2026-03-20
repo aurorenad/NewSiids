@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import '../styles/StockManagement.css';
 
-const EMPTY_ITEM = { itemName: '', item: '', quantity: '', measurementUnit: '', plateNumber: '' };
+const EMPTY_ITEM = { itemName: '', item: '', quantity: '', measurementUnit: '', plateNumber: '', chassisNumber: '', vehicleType: '' };
 
 const StockManagement = () => {
     const { authState } = useContext(AuthContext);
@@ -28,7 +28,10 @@ const StockManagement = () => {
         releasedItem: '',
         quantityReleased: '',
         soldAmount: '',
-        reason: ''
+        reason: '',
+        releaseReason: '',
+        newPlateNumber: '',
+        newOwner: ''
     });
     const [documentFiles, setDocumentFiles] = useState([]);
     const [anotherDocumentFile, setAnotherDocumentFile] = useState(null);
@@ -44,8 +47,53 @@ const StockManagement = () => {
     const [searchTakenDate, setSearchTakenDate] = useState('');
     const [releaseFilter, setReleaseFilter] = useState('all');
 
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005';
     const API_URL = `${BASE_URL}/api/stock`;
+
+    // Always read the freshest token from storage to avoid stale closure issues
+    const getAuthHeaders = () => {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('token') || authState.token;
+        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId') || authState.employeeId;
+        return {
+            'Authorization': `Bearer ${token}`,
+            'employee_id': employeeId
+        };
+    };
+
+    // Wrapper around fetch that auto-refreshes the token on 401
+    const fetchWithAuth = async (url, options = {}) => {
+        const headers = { ...getAuthHeaders(), ...(options.headers || {}) };
+        let response = await fetch(url, { ...options, headers });
+
+        if (response.status === 401) {
+            // Try to refresh the token
+            try {
+                const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+                if (refreshToken) {
+                    const refreshResponse = await fetch(`${BASE_URL}/api/auth/refresh`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ refreshToken })
+                    });
+                    if (refreshResponse.ok) {
+                        const data = await refreshResponse.json();
+                        // Store the new token
+                        if (localStorage.getItem('token')) {
+                            localStorage.setItem('token', data.token);
+                        } else {
+                            sessionStorage.setItem('token', data.token);
+                        }
+                        // Retry the original request with new token
+                        const newHeaders = { ...getAuthHeaders(), ...(options.headers || {}) };
+                        response = await fetch(url, { ...options, headers: newHeaders });
+                    }
+                }
+            } catch (refreshError) {
+                console.error('Token refresh failed:', refreshError);
+            }
+        }
+        return response;
+    };
 
     useEffect(() => {
         if (authState.token) {
@@ -58,12 +106,7 @@ const StockManagement = () => {
 
     const fetchStocks = async () => {
         try {
-            const response = await fetch(API_URL, {
-                headers: {
-                    'Authorization': `Bearer ${authState.token}`,
-                    'employee_id': authState.employeeId
-                }
-            });
+            const response = await fetchWithAuth(API_URL);
             if (response.ok) {
                 const data = await response.json();
                 setStocks(data);
@@ -83,12 +126,7 @@ const StockManagement = () => {
 
     const fetchItemTypes = async () => {
         try {
-            const response = await fetch(`${API_URL}/item-types`, {
-                headers: {
-                    'Authorization': `Bearer ${authState.token}`,
-                    'employee_id': authState.employeeId
-                }
-            });
+            const response = await fetchWithAuth(`${API_URL}/item-types`);
             if (response.ok) {
                 const data = await response.json();
                 setItemTypes(data);
@@ -100,12 +138,7 @@ const StockManagement = () => {
 
     const fetchMeasurementUnits = async () => {
         try {
-            const response = await fetch(`${API_URL}/measurement-units`, {
-                headers: {
-                    'Authorization': `Bearer ${authState.token}`,
-                    'employee_id': authState.employeeId
-                }
-            });
+            const response = await fetchWithAuth(`${API_URL}/measurement-units`);
             if (response.ok) {
                 const data = await response.json();
                 setMeasurementUnits(data);
@@ -117,12 +150,7 @@ const StockManagement = () => {
 
     const fetchReleaseReasons = async () => {
         try {
-            const response = await fetch(`${API_URL}/release-reasons`, {
-                headers: {
-                    'Authorization': `Bearer ${authState.token}`,
-                    'employee_id': authState.employeeId
-                }
-            });
+            const response = await fetchWithAuth(`${API_URL}/release-reasons`);
             if (response.ok) {
                 const data = await response.json();
                 setReleaseReasons(data);
@@ -140,12 +168,8 @@ const StockManagement = () => {
     const handleRemoveExistingDocument = async (id, index) => {
         if (window.confirm('Are you sure you want to remove this document?')) {
             try {
-                const response = await fetch(`${API_URL}/${id}/document/${index}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${authState.token}`,
-                        'employee_id': authState.employeeId
-                    }
+                const response = await fetchWithAuth(`${API_URL}/${id}/document/${index}`, {
+                    method: 'DELETE'
                 });
                 if (response.ok) {
                     setStocks(prev => prev.map(s => {
@@ -275,11 +299,13 @@ const StockManagement = () => {
                 alert('Reason for Release is required.');
                 return;
             }
+/*
             const hasReleaseDoc = anotherDocumentFile || (currentStock && currentStock.anotherDocumentPath);
             if (!hasReleaseDoc) {
                 alert('Release Document is required when item is released.');
                 return;
             }
+            */
             if (!formData.releasedItem) {
                 alert('Please select which item was released.');
                 return;
@@ -324,7 +350,9 @@ const StockManagement = () => {
                     item: category,
                     quantity: parseInt(item.quantity) || 0,
                     measurementUnit: item.measurementUnit,
-                    plateNumber: category === 'VEHICLE' ? item.plateNumber : null
+                    plateNumber: category === 'VEHICLE' ? item.plateNumber : null,
+                    chassisNumber: category === 'VEHICLE' ? item.chassisNumber : null,
+                    vehicleType: category === 'VEHICLE' ? item.vehicleType : null
                 };
             }),
             dateReleased: formData.dateReleased || null,
@@ -332,7 +360,11 @@ const StockManagement = () => {
             quantityReleased: formData.dateReleased ? (parseInt(formData.quantityReleased) || null) : null,
             soldAmount: formData.dateReleased && formData.releaseReason === 'CYAMUNARA' ? (parseFloat(formData.soldAmount) || null) : null,
             reason: formData.reason,
-            releaseReason: formData.releaseReason
+            releaseReason: formData.releaseReason,
+            newPlateNumber: formData.releaseReason === 'MUTATION' ? formData.newPlateNumber : null,
+            newOwner: formData.releaseReason === 'MUTATION' ? formData.newOwner : null,
+            releasedBy: formData.dateReleased ? (localStorage.getItem('name') || sessionStorage.getItem('name') || authState.name || '') : null,
+            addedBy: currentStock ? currentStock.addedBy : (localStorage.getItem('name') || sessionStorage.getItem('name') || authState.name || '')
         };
 
         data.append('stockData', new Blob([JSON.stringify(stockData)], { type: 'application/json' }));
@@ -343,18 +375,20 @@ const StockManagement = () => {
             const url = currentStock ? `${API_URL}/${currentStock.id}` : API_URL;
             const method = currentStock ? 'PUT' : 'POST';
 
-            const response = await fetch(url, {
+            const response = await fetchWithAuth(url, {
                 method: method,
-                headers: {
-                    'Authorization': `Bearer ${authState.token}`,
-                    'employee_id': authState.employeeId
-                },
                 body: data
             });
 
             if (response.ok) {
+                const savedStock = await response.json();
                 fetchStocks();
                 closeModal();
+                
+                // If a release was just added during this submission (edit or create), auto-download the release note
+                if (formData.dateReleased) {
+                    downloadGeneratedReleaseDoc(savedStock.id);
+                }
             } else if (response.status === 401) {
                 alert('Session expired. Please log in again.');
             } else {
@@ -398,7 +432,9 @@ const StockManagement = () => {
                 item: item.item || (itemTypes[0] || ''),
                 quantity: item.quantity || '',
                 measurementUnit: item.measurementUnit || (measurementUnits[0] || ''),
-                plateNumber: item.plateNumber || ''
+                plateNumber: item.plateNumber || '',
+                chassisNumber: item.chassisNumber || '',
+                vehicleType: item.vehicleType || ''
             }))
             : [{ ...EMPTY_ITEM, item: itemTypes[0] || '', measurementUnit: measurementUnits[0] || '' }];
 
@@ -411,12 +447,14 @@ const StockManagement = () => {
             receivedDate: stock.receivedDate || '',
             items: items,
             seizureReason: stock.seizureReason || '',
-            dateReleased: stock.dateReleased || '',
-            releasedItem: stock.releasedItem || '',
-            quantityReleased: stock.quantityReleased || '',
-            soldAmount: stock.soldAmount || '',
-            reason: stock.reason || '',
-            releaseReason: stock.releaseReason || ''
+            dateReleased: '',
+            releasedItem: '',
+            quantityReleased: '',
+            soldAmount: '',
+            reason: '',
+            releaseReason: '',
+            newPlateNumber: '',
+            newOwner: ''
         });
         setDocumentFiles([]);
         setAnotherDocumentFile(null);
@@ -438,7 +476,10 @@ const StockManagement = () => {
             releasedItem: '',
             quantityReleased: '',
             soldAmount: '',
-            reason: ''
+            reason: '',
+            releaseReason: '',
+            newPlateNumber: '',
+            newOwner: ''
         });
         setDocumentFiles([]);
         setAnotherDocumentFile(null);
@@ -452,12 +493,7 @@ const StockManagement = () => {
 
     const downloadDocument = async (id, index) => {
         try {
-            const response = await fetch(`${API_URL}/${id}/document/${index}`, {
-                headers: {
-                    'Authorization': `Bearer ${authState.token}`,
-                    'employee_id': authState.employeeId
-                }
-            });
+            const response = await fetchWithAuth(`${API_URL}/${id}/document/${index}`);
 
             if (response.ok) {
                 const blob = await response.blob();
@@ -471,6 +507,29 @@ const StockManagement = () => {
         }
     };
 
+    const downloadGeneratedReleaseDoc = async (id) => {
+        try {
+            const response = await fetchWithAuth(`${API_URL}/${id}/release-document`);
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const fileURL = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = fileURL;
+                link.setAttribute('download', `ReleaseNote-${id}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.parentNode.removeChild(link);
+            } else {
+                const errorText = await response.text();
+                console.error('Release document error:', response.status, errorText);
+                alert('Error generating release document: ' + errorText);
+            }
+        } catch (error) {
+            console.error('Error generating document:', error);
+        }
+    };
+
     // Helper to format items for display
     const formatItemsDisplay = (items) => {
         if (!items || items.length === 0) return 'No items';
@@ -481,6 +540,12 @@ const StockManagement = () => {
     const formatTotalQuantity = (items) => {
         if (!items || items.length === 0) return 0;
         return items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+    };
+
+    const getRemainingQuantity = (stock) => {
+        const total = formatTotalQuantity(stock.items);
+        const released = (stock.releases || []).reduce((sum, r) => sum + (r.amount || 0), 0);
+        return total - released;
     };
 
     // --- Filtering logic ---
@@ -506,29 +571,38 @@ const StockManagement = () => {
             if (releaseFilter === 'not_released' && stock.dateReleased) {
                 return false;
             }
+            if (releaseFilter === 'damaged' && stock.status !== 'DAMAGED') {
+                return false;
+            }
             return true;
         });
     }, [stocks, searchOwner, searchItemName, searchTakenDate, releaseFilter]);
 
     // --- Excel download ---
     const downloadExcel = () => {
-        const excelData = filteredStocks.map(stock => ({
-            'Owner Name': stock.ownerName || '',
-            'Takeover Name': stock.takeoverName || '',
-            'Seizure Number': stock.seizureNumber || '',
-            'Seizure Reason': stock.seizureReason || '',
-            'PV Number': stock.pvNumber || '',
-            'Items': (stock.items || []).map(i => `${i.itemName} (${i.quantity} ${i.measurementUnit})`).join(', '),
-            'Item Types': (stock.items || []).map(i => i.item).join(', '),
-            'Total Quantity': formatTotalQuantity(stock.items),
-            'Taken Date': stock.takenDate || '',
-            'Received Date': stock.receivedDate || '',
-            'Date Released': stock.dateReleased || '',
-            'Released Item': stock.releasedItem || '',
-            'Quantity Released': stock.quantityReleased || '',
-            'Sold Amount': stock.soldAmount || '',
-            'Reason': stock.reason || '',
-        }));
+        const excelData = filteredStocks.map(stock => {
+            const data = {
+                'Owner Name': stock.ownerName || '',
+                'Takeover Name': stock.takeoverName || '',
+                'Seizure Number': stock.seizureNumber || '',
+                'PV Number': stock.pvNumber || '',
+                'Items': (stock.items || []).map(i => `${i.itemName} (${i.quantity} ${i.measurementUnit})`).join(', '),
+                'Item Types': (stock.items || []).map(i => i.item).join(', '),
+                'Total Taken Qty': formatTotalQuantity(stock.items),
+                'Remaining Qty': getRemainingQuantity(stock),
+                'Taken Date': stock.takenDate || '',
+                'Received Date': stock.receivedDate || ''
+            };
+            
+            if (releaseFilter !== 'not_released') {
+                data['Date Released'] = stock.dateReleased || '';
+                data['Released Item'] = stock.releasedItem || '';
+                data['Quantity Released'] = stock.quantityReleased || '';
+                data['Sold Amount'] = stock.soldAmount || '';
+                data['Reason'] = stock.reason || '';
+            }
+            return data;
+        });
 
         const worksheet = XLSX.utils.json_to_sheet(excelData);
         const workbook = XLSX.utils.book_new();
@@ -572,7 +646,6 @@ const StockManagement = () => {
         addField('Owner Name', stock.ownerName);
         addField('Takeover Name', stock.takeoverName);
         addField('Seizure Number', stock.seizureNumber);
-        if (stock.seizureReason) addField('Seizure Reason', stock.seizureReason);
         addField('PV Number', stock.pvNumber);
         addField('Taken Date', stock.takenDate);
         addField('Received Date', stock.receivedDate);
@@ -588,8 +661,6 @@ const StockManagement = () => {
             doc.text(`  ${idx + 1}. ${item.itemName} - ${item.item} - ${item.quantity} ${item.measurementUnit}`, 20, y);
             y += lineHeight;
         });
-
-        addField('Total Quantity', String(formatTotalQuantity(stock.items)));
 
         if (stock.dateReleased) {
             addField('Date Released', stock.dateReleased);
@@ -654,6 +725,7 @@ const StockManagement = () => {
                     <option value="all">All Status</option>
                     <option value="released">Released</option>
                     <option value="not_released">Not Released</option>
+                    <option value="damaged">Damaged</option>
                 </select>
 
                 {isFilterActive && (
@@ -661,8 +733,8 @@ const StockManagement = () => {
                         <button className="clear-filters-btn" onClick={clearAllFilters} title="Clear all filters">
                             <X size={16} /> Clear
                         </button>
-                        <button className="download-excel-btn" onClick={downloadExcel} title="Download filtered list as Excel">
-                            <FileSpreadsheet size={16} /> Download Excel
+                        <button className="download-excel-btn" onClick={downloadExcel} title="Download filtered list as report">
+                            <FileSpreadsheet size={16} /> Report
                         </button>
                     </>
                 )}
@@ -681,7 +753,7 @@ const StockManagement = () => {
                             <tr>
                                 <th>Owner</th>
                                 <th>Items</th>
-                                <th>Total Qty</th>
+                                <th>Rem. Qty</th>
                                 <th>Taken Date</th>
                                 <th>Released Date</th>
                                 <th>Qty Released</th>
@@ -693,7 +765,7 @@ const StockManagement = () => {
                         <tbody>
                             {filteredStocks.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9" className="no-results">No stock items found matching your criteria.</td>
+                                    <td colSpan="8" className="no-results">No stock items found matching your criteria.</td>
                                 </tr>
                             ) : (
                                 filteredStocks.map(stock => (
@@ -702,7 +774,7 @@ const StockManagement = () => {
                                         <td title={(stock.items || []).map(i => `${i.itemName} (${i.item})`).join(', ')}>
                                             {formatItemsDisplay(stock.items)}
                                         </td>
-                                        <td>{formatTotalQuantity(stock.items)}</td>
+                                        <td>{getRemainingQuantity(stock)}</td>
                                         <td>{stock.takenDate}</td>
                                         <td>
                                             {stock.dateReleased ? (
@@ -717,9 +789,6 @@ const StockManagement = () => {
                                             {stock.documentPaths && stock.documentPaths.map((path, idx) => (
                                                 <button key={idx} className="link-btn" onClick={() => downloadDocument(stock.id, idx)}>Doc {idx + 1}</button>
                                             ))}
-                                            {stock.anotherDocumentPath && (
-                                                <button className="link-btn" onClick={() => downloadDocumentRelease(stock.id)}>Release Doc</button>
-                                            )}
                                         </td>
                                         <td className="actions-cell">
                                             <button className="icon-btn edit-btn" onClick={() => openEditModal(stock)} title="Edit">
@@ -728,7 +797,11 @@ const StockManagement = () => {
                                             <button className="icon-btn delete-btn" onClick={() => handleDelete(stock.id)} title="Delete">
                                                 <Trash2 size={18} />
                                             </button>
-                                            <button className="icon-btn download-btn" onClick={() => generateStockPdf(stock)} title="Download Info">
+                                            <button 
+                                                className="icon-btn download-btn" 
+                                                onClick={() => stock.dateReleased ? downloadGeneratedReleaseDoc(stock.id) : generateStockPdf(stock)} 
+                                                title={stock.dateReleased ? "Download Release Note" : "Download Stock Info"}
+                                            >
                                                 <Download size={18} />
                                             </button>
                                         </td>
@@ -742,8 +815,11 @@ const StockManagement = () => {
 
             {showModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content">
+                    <div class="modal-content">
                         <h3>{currentStock ? 'Edit Stock' : 'Add New Stock'}</h3>
+                        {currentStock && currentStock.addedBy && (
+                            <p className="added-by-info">Added by: <strong>{currentStock.addedBy}</strong></p>
+                        )}
                         <form onSubmit={handleSubmit}>
                             <div className="form-grid">
                                 {/* Mandatory Fields */}
@@ -852,22 +928,49 @@ const StockManagement = () => {
                                                     />
                                                 </div>
                                                 {item.item === 'VEHICLE' && (
-                                                    <div className="item-field">
-                                                        <label>Plate Number *</label>
-                                                        <input
-                                                            type="text"
-                                                            value={item.plateNumber}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                                                                if (val.length <= 7) {
-                                                                    handleItemChange(index, 'plateNumber', val);
-                                                                }
-                                                            }}
-                                                            placeholder="AAA123A"
-                                                            required
-                                                        />
-                                                        <small>Format: 3 chars, 3 nums, 1 char</small>
-                                                    </div>
+                                                    <>
+                                                        <div className="item-field">
+                                                            <label>Vehicle Type *</label>
+                                                            <select
+                                                                value={item.vehicleType}
+                                                                onChange={(e) => handleItemChange(index, 'vehicleType', e.target.value)}
+                                                                required
+                                                            >
+                                                                <option value="">Select Type</option>
+                                                                <option value="CAR">Car</option>
+                                                                <option value="MOTO">Moto Vehicle</option>
+                                                                <option value="TRUCK">Truck</option>
+                                                                <option value="VAN">Van</option>
+                                                                <option value="OTHER">Other</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="item-field">
+                                                            <label>Plate Number *</label>
+                                                            <input
+                                                                type="text"
+                                                                value={item.plateNumber}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                                                    if (val.length <= 7) {
+                                                                        handleItemChange(index, 'plateNumber', val);
+                                                                    }
+                                                                }}
+                                                                placeholder="AAA123A"
+                                                                required
+                                                            />
+                                                            <small>Format: 3 chars, 3 nums, 1 char</small>
+                                                        </div>
+                                                        <div className="item-field">
+                                                            <label>Chassis Number *</label>
+                                                            <input
+                                                                type="text"
+                                                                value={item.chassisNumber}
+                                                                onChange={(e) => handleItemChange(index, 'chassisNumber', e.target.value.toUpperCase())}
+                                                                placeholder="Enter Chassis Number"
+                                                                required
+                                                            />
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
 
@@ -953,7 +1056,12 @@ const StockManagement = () => {
                                             >
                                                 <option value="">Select Item</option>
                                                 <option value="ALL">All Items</option>
-                                                {formData.items.filter(i => i.itemName).map((item, idx) => (
+                                                {formData.items.filter(i => {
+                                                    if (!i.itemName) return false;
+                                                    // Exclude items that have already been released
+                                                    const alreadyReleased = (currentStock?.releases || []).map(r => r.releasedItemName);
+                                                    return !alreadyReleased.includes(i.itemName);
+                                                }).map((item, idx) => (
                                                     <option key={idx} value={item.itemName}>{item.itemName}</option>
                                                 ))}
                                             </select>
@@ -999,6 +1107,37 @@ const StockManagement = () => {
                                                 />
                                             </div>
                                         )}
+                                        {formData.releaseReason === 'MUTATION' && (
+                                            <>
+                                                <div className="form-group">
+                                                    <label>New Plate Number *</label>
+                                                    <input
+                                                        type="text"
+                                                        name="newPlateNumber"
+                                                        value={formData.newPlateNumber || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                                            if (val.length <= 7) {
+                                                                setFormData(prev => ({ ...prev, newPlateNumber: val }));
+                                                            }
+                                                        }}
+                                                        placeholder="AAA123A"
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>New Owner *</label>
+                                                    <input
+                                                        type="text"
+                                                        name="newOwner"
+                                                        value={formData.newOwner || ''}
+                                                        onChange={handleInputChange}
+                                                        placeholder="Enter New Owner Name"
+                                                        required
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
                                         <div className="form-group full-width">
                                             <label>Release Details / Remarks *</label>
                                             <textarea
@@ -1008,17 +1147,6 @@ const StockManagement = () => {
                                                 required
                                                 placeholder="Enter any additional details about the release..."
                                             />
-                                        </div>
-                                        <div className="form-group">
-                                            <label>Release Document (PDF) *</label>
-                                            <input
-                                                type="file"
-                                                name="anotherDocument"
-                                                accept=".pdf"
-                                                onChange={handleFileChange}
-                                                required={!currentStock || !currentStock.anotherDocumentPath}
-                                            />
-                                            {currentStock && currentStock.anotherDocumentPath && <small>Current: Attached</small>}
                                         </div>
                                     </div>
                                 )}

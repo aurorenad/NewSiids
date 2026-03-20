@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: 'Times New Roman', Times, serif; margin: 40px; }
+        .header { text-align: left; margin-bottom: 20px; }
+        .header h2 { margin: 0; font-size: 18px; text-align: left; }
+        .header p { margin: 2px 0; font-size: 14px; text-align: left; }
+        .header a { color: #1a0dab; text-decoration: underline; }
+        .logo { width: 100px; height: auto; margin-bottom: 10px; }
+        .date { text-align: left; margin: 20px 0; font-weight: bold; }
+        .re { font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
+        th { background-color: #f2f2f2; }
+        .content { font-size: 14px; line-height: 1.6; margin-top: 20px; text-align: left; }
+        .signatures { margin-top: 40px; font-weight: bold; }
+        .footer { margin-top: 60px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" class="logo" />
+        <h2>RWANDA REVENUE AUTHORITY</h2>
+        <p>STRATEGIC INTELLIGENCE AND INVESTIGATION DIVISION</p>
+        <p>SURVEILLANCE UNIT</p>
+        <p>E-mail address: <a href="mailto:prso@rra.gov.rw">prso@rra.gov.rw</a></p>
+        <p>Mobile: 0788311491</p>
+    </div>
+
+    <div class="date" th:text="'Date: ' + ${#temporals.format(stock.dateReleased, 'dd MMMM yyyy')}">
+        Date: 27 February 2026
+    </div>
+
+    <div class="re">
+        RE: RELEASE NOTE OF MOTOR VEHICLE No <span th:text="${stock.seizureNumber}">10/SI&amp;ID/2026</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S/N</th>
+                <th>PLATE NUMBER</th>
+                <th>CHASSIS NUMBER</th>
+                <th>OWNER</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="item, iter : ${stock.items}" th:if="${item.item == 'VEHICLE'}">
+                <td th:text="${iter.count}">1</td>
+                <td th:text="${item.plateNumber}">RAJ 517 P</td>
+                <td th:text="${item.chassisNumber}">FK417E-721060</td>
+                <td th:text="${stock.ownerName}">UMULISA DELPHINE</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="content">
+        <div th:if="${stock.releaseReason.name() == 'MUTATION'}" style="margin-bottom: 15px;">
+            <span th:text="${oldPlateNumber}">RAG 953 S</span> : OLD &lt;&lt;&lt;&lt; CHANGED&gt;&gt;&gt;&gt;NEW: <span th:text="${stock.newPlateNumber}">RAJ 517 P</span>
+        </div>
+
+        <p>Iki kinyabiziga gikorewe Release nyuma y'uko nyiracyo yishyuye ibirarane by'imisoro cyari kibereyemo Rwanda Revenue Authority.</p>
+        
+        <p th:if="${stock.releaseReason.name() == 'MUTATION'}">
+            Nyuma kandi yo gukorerwa ihererekanya (Mutation) kiva kuri <span th:text="${stock.ownerName}">old owner</span> kijya kuri <span th:text="${newOwner}">new owner</span> kigahabwa plaque nshya.-
+        </p>
+
+        <p style="margin-top: 20px;">Taken by: <span th:text="${stock.takeoverName}">takeover name</span></p>
+        <p>Released by: <span th:text="${releasedBy}">releaser name</span></p>
+    </div>
+
+    <div class="footer">
+        Approved by: JBC MURANGIRA
+    </div>
+</body>
+</html>

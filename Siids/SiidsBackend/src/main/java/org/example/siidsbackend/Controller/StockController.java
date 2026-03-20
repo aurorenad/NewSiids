@@ -76,7 +76,7 @@ public class StockController {
     // --- CRUD endpoints ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance')")
     public ResponseEntity<?> createStock(
             @RequestPart("stockData") StockRequestDTO dto,
             @RequestPart(value = "documents", required = false) List<MultipartFile> documents,
@@ -94,7 +94,7 @@ public class StockController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance')")
     public ResponseEntity<?> updateStock(
             @PathVariable Integer id,
             @RequestPart("stockData") StockRequestDTO dto,
@@ -112,7 +112,7 @@ public class StockController {
         }
     }
 
-    @PreAuthorize("hasAnyAuthority('Admin', 'StockManager')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStock(@PathVariable Integer id) {
         stockService.deleteStock(id);
@@ -152,6 +152,24 @@ public class StockController {
         Stock stock = stockService.getStock(id);
         String path = stock.getAnotherDocumentPath();
         return downloadFile(path);
+    }
+
+    @GetMapping("/{id}/release-document")
+    public ResponseEntity<?> downloadGeneratedReleaseDocument(@PathVariable Integer id) {
+        try {
+            Stock stock = stockService.getStock(id);
+            if (stock.getDateReleased() == null) {
+                return ResponseEntity.badRequest().body("Stock has not been released yet.");
+            }
+            byte[] pdfContent = stockService.generateReleasePdf(stock);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ReleaseNote-" + stock.getSeizureNumber().replace("/", "-") + ".pdf\"")
+                    .body(pdfContent);
+        } catch (Exception e) {
+            log.error("Error generating release document for stock {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error generating release document: " + e.getMessage());
+        }
     }
 
     private ResponseEntity<Resource> downloadFile(String relativePath) throws IOException {

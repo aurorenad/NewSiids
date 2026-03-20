@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: 'Times New Roman', Times, serif; margin: 40px; }
+        .header { text-align: left; margin-bottom: 20px; }
+        .header h2 { margin: 0; font-size: 18px; text-align: left; }
+        .header p { margin: 2px 0; font-size: 14px; text-align: left; }
+        .header a { color: #1a0dab; text-decoration: underline; }
+        .logo { width: 100px; height: auto; margin-bottom: 10px; }
+        .date { text-align: left; margin: 20px 0; font-weight: bold; }
+        .re { font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
+        th { background-color: #f2f2f2; }
+        .observation-cell { font-size: 11px; line-height: 1.4; }
+        .signatures { margin-top: 40px; font-weight: bold; font-size: 14px; }
+        .footer { margin-top: 60px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" class="logo" />
+        <h2>RWANDA REVENUE AUTHORITY</h2>
+        <p>STRATEGIC INTELLIGENCE AND INVESTIGATION DIVISION</p>
+        <p>SURVEILLANCE UNIT</p>
+        <p>E-mail address: <a href="mailto:prso@rra.gov.rw">prso@rra.gov.rw</a></p>
+        <p>Mobile: 0788311491</p>
+    </div>
+
+    <div class="date" th:text="'Date: ' + ${#temporals.format(stock.dateReleased, 'dd MMMM yyyy')}">
+        Date: 12 March 2026
+    </div>
+
+    <div class="re">
+        RE: RELEASE NOTE OF GOODS PURCHASED AT PUBLIC AUCTION LOT: <span th:text="${lotNumber}">02</span>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>S/N</th>
+                <th>ITEM DESCRIPTION</th>
+                <th>QUANTITY</th>
+                <th>OBSERVATION</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1.</td>
+                <td>
+                    <ul style="padding-left: 15px; margin: 0;">
+                        <li th:each="item : ${stock.items}" th:text="${item.itemName} + ' / ' + ${item.item}">FOOD / IBYOKURYA</li>
+                    </ul>
+                </td>
+                <td th:text="${stock.quantityReleased} + ' Units'">22 Units</td>
+                <td class="observation-cell">
+                    These are different type of items, we sold at an AUCTION on <span th:text="${auctionDate}">10 March 2026</span>.<br/>
+                    They were sold in <span th:text="${location}">MASORO</span> at SI&amp;ID Store, the winning bidder who also paid <span th:text="${#numbers.formatDecimal(stock.soldAmount, 0, 'COMMA', 0, 'POINT')} + 'Rwf'">8,055,000Rwf</span> is called: <span th:text="${bidderName}">KAYIRANGA Bosco</span>; TIN <span th:text="${bidderTin}">103572947</span> in total amount on Doc ID: <span th:text="${stock.seizureNumber}">66713807</span>.
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="signatures">
+        <p>Taken by: <span th:text="${stock.takeoverName}">takeover name</span></p>
+        
+        <div style="margin-top: 30px;">
+            <p>Released by: <span th:text="${releasedBy}">releaser name</span></p>
+    <div class="footer">
+        Approved by: JBC MURANGIRA
+    </div>
+</body>
+</html>

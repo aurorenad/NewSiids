@@ -26,6 +26,8 @@ public class StockItem {
     private String itemType;
 
     private String plateNumber;
+    private String chassisNumber;
+    private String vehicleType;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id")
