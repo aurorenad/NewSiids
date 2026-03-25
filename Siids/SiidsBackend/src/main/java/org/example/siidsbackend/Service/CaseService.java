@@ -115,9 +115,20 @@ public class CaseService {
         Case existingCase = caseRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
 
-        if (existingCase.getCreatedBy() == null ||
-                !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
-            throw new RuntimeException("Only case creator can update status");
+        boolean isCreator = existingCase.getCreatedBy() != null &&
+                existingCase.getCreatedBy().getEmployeeId().equals(employeeId);
+
+        if (!isCreator) {
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            boolean isAuthorizedRole = user != null && (
+                    "Admin".equals(user.getRole()) ||
+                    "DirectorIntelligence".equals(user.getRole()) ||
+                    "IntelligenceOfficer".equals(user.getRole())
+            );
+
+            if (!isAuthorizedRole) {
+                throw new RuntimeException("Only case creator or authorized intelligence officers can update status");
+            }
         }
 
         existingCase.setStatus(newStatus);

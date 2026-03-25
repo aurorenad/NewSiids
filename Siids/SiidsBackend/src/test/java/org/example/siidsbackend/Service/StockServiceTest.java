@@ -2,7 +2,6 @@ package org.example.siidsbackend.Service;
 
 import org.example.siidsbackend.DTO.Request.StockRequestDTO;
 import org.example.siidsbackend.DTO.StockItemDTO;
-import org.example.siidsbackend.Model.Stock;
 import org.example.siidsbackend.Repository.StockRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

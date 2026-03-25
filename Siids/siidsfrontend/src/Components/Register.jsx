@@ -10,7 +10,11 @@ import {
     Link,
     Alert,
     Paper,
-    Grid
+    Grid,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem
 } from '@mui/material';
 import { LockOutlined } from '@mui/icons-material';
 
@@ -125,17 +129,26 @@ const Register = () => {
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <TextField
-                                required
-                                fullWidth
-                                name="role"
-                                label="role"
-                                type="role"
-                                id="role"
-                                autoComplete="role"
-                                value={formData.role}
-                                onChange={handleChange}
-                            />
+                            <FormControl fullWidth required>
+                                <InputLabel id="role-label">Role</InputLabel>
+                                <Select
+                                    labelId="role-label"
+                                    id="role"
+                                    name="role"
+                                    value={formData.role}
+                                    label="Role"
+                                    onChange={handleChange}
+                                >
+                                    <MenuItem value="Admin">Admin</MenuItem>
+                                    <MenuItem value="IntelligenceOfficer">Intelligence Officer</MenuItem>
+                                    <MenuItem value="Surveillance">Surveillance Officer</MenuItem>
+                                    <MenuItem value="InvestigationOfficer">Investigation Officer</MenuItem>
+                                    <MenuItem value="DirectorIntelligence">Director Intelligence</MenuItem>
+                                    <MenuItem value="DirectorInvestigation">Director Investigation</MenuItem>
+                                    <MenuItem value="AssistantCommissioner">Assistant Commissioner</MenuItem>
+                                    <MenuItem value="legalAdvisor">Legal Advisor</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
                     </Grid>
 

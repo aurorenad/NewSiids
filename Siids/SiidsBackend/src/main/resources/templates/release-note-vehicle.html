@@ -3,76 +3,125 @@
 <head>
     <meta charset="UTF-8"/>
     <style>
-        body { font-family: 'Times New Roman', Times, serif; margin: 40px; }
-        .header { text-align: left; margin-bottom: 20px; }
-        .header h2 { margin: 0; font-size: 18px; text-align: left; }
-        .header p { margin: 2px 0; font-size: 14px; text-align: left; }
-        .header a { color: #1a0dab; text-decoration: underline; }
-        .logo { width: 100px; height: auto; margin-bottom: 10px; }
-        .date { text-align: left; margin: 20px 0; font-weight: bold; }
-        .re { font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
-        th { background-color: #f2f2f2; }
-        .content { font-size: 14px; line-height: 1.6; margin-top: 20px; text-align: left; }
-        .signatures { margin-top: 40px; font-weight: bold; }
-        .footer { margin-top: 60px; font-weight: bold; }
+        body { font-family: 'Times New Roman', Times, serif; margin: 35px; position: relative; }
+        .colored-line { width: 100%; border-spacing: 0; margin-top: 5px; margin-bottom: 15px; }
+        .colored-line td { padding: 0; height: 3px; }
+        .c-blue { background-color: rgb(0, 112, 192); width: 25%; }
+        .c-green { background-color: rgb(112, 173, 71); width: 25%; }
+        .c-orange { background-color: rgb(237, 125, 49); width: 25%; }
+        .re { font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; font-size: 14px; }
+        table.content-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        table.content-table th, table.content-table td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
+        table.content-table th { background-color: #f2f2f2; }
+        .content { font-size: 13px; line-height: 1.6; margin-top: 20px; text-align: justify; }
+        .signatures { margin-top: 40px; font-weight: bold; font-size: 13px; }
+        .footer { position: fixed; bottom: 20px; left: 35px; right: 35px; width: auto; font-size: 9px; color: rgb(0,112,192); text-align: center; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" class="logo" />
-        <h2>RWANDA REVENUE AUTHORITY</h2>
-        <p>STRATEGIC INTELLIGENCE AND INVESTIGATION DIVISION</p>
-        <p>SURVEILLANCE UNIT</p>
-        <p>E-mail address: <a href="mailto:prso@rra.gov.rw">prso@rra.gov.rw</a></p>
-        <p>Mobile: 0788311491</p>
+    <div th:if="${watermarkBase64 != null}" style="position: absolute; top: 15%; right: -20px; z-index: -1;">
+        <img th:src="'data:image/png;base64,' + ${watermarkBase64}" style="width: 350px; opacity: 0.15;" />
     </div>
 
-    <div class="date" th:text="'Date: ' + ${#temporals.format(stock.dateReleased, 'dd MMMM yyyy')}">
-        Date: 27 February 2026
-    </div>
+    <table style="width: 100%; border: none; margin-bottom: 5px; border-collapse: collapse;">
+        <tr>
+            <td style="width: 15%; border: none; vertical-align: middle; padding: 0;">
+                <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" style="width: 80px; height: auto;" />
+            </td>
+            <td style="width: 60%; border: none; vertical-align: middle; padding: 0;">
+                <h2 style="color: rgb(0,112,192); font-size: 14px; margin: 0; font-weight: bold;">RWANDA REVENUE AUTHORITY</h2>
+                <p style="color: rgb(112,173,71); font-size: 8px; margin: 0;">TAXES FOR GROWTH AND DEVELOPMENT</p>
+            </td>
+            <td style="width: 25%; border: none; text-align: right; vertical-align: middle; padding: 0;">
+                <div style="border-top: 2px solid rgb(192,0,0); border-bottom: 2px solid rgb(192,0,0); color: rgb(192,0,0); font-weight: bold; font-size: 11px; text-align: center; padding: 3px; display: inline-block;">CONFIDENTIAL</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="colored-line">
+        <tr>
+            <td class="c-blue"></td>
+            <td class="c-green"></td>
+            <td class="c-blue"></td>
+            <td class="c-orange"></td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border: none; margin-bottom: 20px;">
+        <tr>
+            <td style="width: 60%; border: none; vertical-align: top; padding: 0;">
+                <div class="header-sub">
+                    <p style="font-weight: bold; font-size: 10px; margin: 2px 0;">STRATEGIC INTELLIGENCE AND INVESTIGATION DIVISION</p>
+                    <p style="font-weight: bold; font-size: 10px; margin: 2px 0;">SURVEILLANCE UNIT</p>
+                    <p style="font-size: 10px; margin: 2px 0;">E-mail address: <a href="mailto:prso@rra.gov.rw" style="color: rgb(0,112,192);">prso@rra.gov.rw</a></p>
+                    <p style="font-size: 10px; margin: 2px 0;">Mobile: 0788311491</p>
+                </div>
+            </td>
+            <td style="width: 40%; border: none; vertical-align: top; text-align: right; padding: 0;">
+                <div style="color: rgb(0,112,192); font-size: 10px; margin: 2px 0;" th:text="'Date: ' + ${#temporals.format(release != null ? release.dateReleased : stock.dateReleased, 'dd/MM/yyyy')}">
+                    Date: 21/03/2026
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <div class="re">
-        RE: RELEASE NOTE OF MOTOR VEHICLE No <span th:text="${stock.seizureNumber}">10/SI&amp;ID/2026</span>
+        <span th:if="${oldPlateNumber != null and oldPlateNumber != ''}">
+            RE: RELEASE NOTE OF MOTORCYCLE / VEHICLE REG. NUMBER: <span th:text="${oldPlateNumber}">KGP845X</span>
+        </span>
+        <span th:if="${oldPlateNumber == null or oldPlateNumber == ''}">
+            RE: RELEASE NOTE OF SEIZED ITEMS
+        </span>
     </div>
 
-    <table>
+    <table class="content-table">
         <thead>
             <tr>
                 <th>S/N</th>
-                <th>PLATE NUMBER</th>
+                <th>VEHICLE PLATE No</th>
                 <th>CHASSIS NUMBER</th>
-                <th>OWNER</th>
+                <th>QUANTITY</th>
             </tr>
         </thead>
         <tbody>
-            <tr th:each="item, iter : ${stock.items}" th:if="${item.item == 'VEHICLE'}">
-                <td th:text="${iter.count}">1</td>
-                <td th:text="${item.plateNumber}">RAJ 517 P</td>
-                <td th:text="${item.chassisNumber}">FK417E-721060</td>
-                <td th:text="${stock.ownerName}">UMULISA DELPHINE</td>
+            <tr th:each="item, iterStat : ${stock.items}" 
+                th:if="${(release != null ? release.releasedItemName : stock.releasedItem) == 'ALL' or (release != null ? release.releasedItemName : stock.releasedItem) == null or item.itemName == (release != null ? release.releasedItemName : stock.releasedItem)}">
+                <td th:text="${iterStat.count} + '.'">1.</td>
+                <td th:text="${item.plateNumber}">KGP845X</td>
+                <td th:text="${item.chassisNumber}">R12RMEP21K600989</td>
+                <td th:if="${(release != null ? release.releasedItemName : stock.releasedItem) == 'ALL' or (release != null ? release.releasedItemName : stock.releasedItem) == null}" th:text="${item.quantity} + ' ' + ${item.measurementUnit}">1</td>
+                <td th:if="${(release != null ? release.releasedItemName : stock.releasedItem) != 'ALL' and (release != null ? release.releasedItemName : stock.releasedItem) != null}" th:text="${release != null ? release.quantityReleased : stock.quantityReleased} + ' ' + ${item.measurementUnit}">1</td>
             </tr>
         </tbody>
     </table>
 
     <div class="content">
-        <div th:if="${stock.releaseReason.name() == 'MUTATION'}" style="margin-bottom: 15px;">
-            <span th:text="${oldPlateNumber}">RAG 953 S</span> : OLD &lt;&lt;&lt;&lt; CHANGED&gt;&gt;&gt;&gt;NEW: <span th:text="${stock.newPlateNumber}">RAJ 517 P</span>
+        <div th:if="${(release != null ? release.releaseReason?.name() : stock.releaseReason?.name()) == 'MUTATION'}" style="margin-bottom: 15px;">
+            <span th:text="${oldPlateNumber}">RAG 953 S</span> : OLD &lt;&lt;&lt;&lt; CHANGED&gt;&gt;&gt;&gt;NEW: <span th:text="${release != null ? release.newPlateNumber : stock.newPlateNumber}">RAJ 517 P</span>
         </div>
 
-        <p>Iki kinyabiziga gikorewe Release nyuma y'uko nyiracyo yishyuye ibirarane by'imisoro cyari kibereyemo Rwanda Revenue Authority.</p>
+        <p th:text="${release != null ? release.reason : stock.reason}">
+            Iki kinyabiziga gikorewe Release nyuma y'uko nyiracyo yishyuye ibirarane by'imisoro cyari kibereyemo Rwanda Revenue Authority.
+        </p>
         
-        <p th:if="${stock.releaseReason.name() == 'MUTATION'}">
-            Nyuma kandi yo gukorerwa ihererekanya (Mutation) kiva kuri <span th:text="${stock.ownerName}">old owner</span> kijya kuri <span th:text="${newOwner}">new owner</span> kigahabwa plaque nshya.-
+        <p th:if="${(release != null ? release.releaseReason?.name() : stock.releaseReason?.name()) == 'MUTATION'}">
+            Nyuma kandi yo gukorerwa ihererekanya (Mutation) kiva kuri <span th:text="${stock.ownerName}">old owner</span> kijya kuri <span th:text="${newOwner}">new owner</span> kigahabwa plaque nshya.
         </p>
 
         <p style="margin-top: 20px;">Taken by: <span th:text="${stock.takeoverName}">takeover name</span></p>
         <p>Released by: <span th:text="${releasedBy}">releaser name</span></p>
     </div>
 
-    <div class="footer">
+    <div class="signatures">
         Approved by: JBC MURANGIRA
+    </div>
+
+    <div class="footer">
+        <img th:if="${footerBase64 != null}" th:src="'data:image/png;base64,' + ${footerBase64}" style="width: 100%; max-width: 600px;" />
+        <div th:if="${footerBase64 == null}">
+            <table class="colored-line" style="margin-top: 0; margin-bottom: 5px;"><tr><td class="c-blue"></td><td class="c-green"></td><td class="c-blue"></td><td class="c-orange"></td></tr></table>
+            <table style="width: 100%; border: none;"><tr><td style="width: 45%; text-align: left;">Kicukiro-Sonatubes-Silverback Mall, P.O.Box 3987 Kigali, Rwanda</td><td style="width: 15%; text-align: left;">3004</td><td style="width: 20%; text-align: left;">www.rra.gov.rw</td><td style="width: 20%; text-align: right;">@rrainfo</td></tr></table>
+        </div>
     </div>
 </body>
 </html>

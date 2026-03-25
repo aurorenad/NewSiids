@@ -32,18 +32,21 @@ const Sidebar = () => {
                         </div>
                         {isIntelligenceOpen && (
                             <ul className="submenu">
-                                <li>
-                                    <NavLink to="/director-intelligence" className={({ isActive }) => isActive ? 'active' : ''}>
-                                        Director Intelligence
-                                    </NavLink>
-                                </li>
-                                {authState.role === 'User' || authState.role === 'Admin' && (
+                                {(authState.role === 'DirectorIntelligence' || authState.role === 'Admin' || authState.role === 'admin') && (
+                                    <li>
+                                        <NavLink to="/director-intelligence" className={({ isActive }) => isActive ? 'active' : ''}>
+                                            Director Intelligence
+                                        </NavLink>
+                                    </li>
+                                )}
+                                {(authState.role === 'User' || authState.role === 'IntelligenceOfficer' || authState.role === 'Admin' || authState.role === 'admin') && (
                                     <li>
                                         <NavLink to="/intelligence-officer" className={({ isActive }) => isActive ? 'active' : ''}>
                                             Intelligence Officer
                                         </NavLink>
-                                    </li>)}
-                                {authState.role === 'Surveillance' || authState.role === 'Admin' && (
+                                    </li>
+                                )}
+                                {(authState.role === 'Surveillance' || authState.role === 'Admin' || authState.role === 'admin') && (
                                     <li>
                                         <NavLink to='/surveillence-officer' className={({ isActive }) => isActive ? 'active' : ''}>
                                             Surveillence Officer
@@ -59,24 +62,30 @@ const Sidebar = () => {
                         </div>
                         {isInvestigationOpen && (
                             <ul className="submenu">
-                                <li>
-                                    <NavLink to="/investigation-officer" className={({ isActive }) => isActive ? 'active' : ''}>
-                                        Investigation Officer
-                                    </NavLink>
-                                </li>
-                                <li>
-                                    <NavLink to="/director-investigation" className={({ isActive }) => isActive ? 'active' : ''}>
-                                        Director Investigation
-                                    </NavLink>
-                                </li>
+                                {(authState.role === 'InvestigationOfficer' || authState.role === 'Admin' || authState.role === 'admin') && (
+                                    <li>
+                                        <NavLink to="/investigation-officer" className={({ isActive }) => isActive ? 'active' : ''}>
+                                            Investigation Officer
+                                        </NavLink>
+                                    </li>
+                                )}
+                                {(authState.role === 'DirectorInvestigation' || authState.role === 'Admin' || authState.role === 'admin') && (
+                                    <li>
+                                        <NavLink to="/director-investigation" className={({ isActive }) => isActive ? 'active' : ''}>
+                                            Director Investigation
+                                        </NavLink>
+                                    </li>
+                                )}
                             </ul>
                         )}
                     </li>
-                    <li>
-                        <NavLink to="/assistant-commissioner" className={({ isActive }) => isActive ? 'active' : ''}>
-                            Assistant Commissioner
-                        </NavLink>
-                    </li>
+                    {(authState.role === 'AssistantCommissioner' || authState.role === 'Admin' || authState.role === 'admin') && (
+                        <li>
+                            <NavLink to="/assistant-commissioner" className={({ isActive }) => isActive ? 'active' : ''}>
+                                Assistant Commissioner
+                            </NavLink>
+                        </li>
+                    )}
                     {(authState.role === 'ROLE_AUDITOR' || authState.role === 'Admin') && (
                         <li>
                             <NavLink to="/history" className={({ isActive }) => isActive ? 'active' : ''}>

@@ -3,41 +3,74 @@
 <head>
     <meta charset="UTF-8"/>
     <style>
-        body { font-family: 'Times New Roman', Times, serif; margin: 40px; }
-        .header { text-align: left; margin-bottom: 20px; }
-        .header h2 { margin: 0; font-size: 18px; text-align: left; }
-        .header p { margin: 2px 0; font-size: 14px; text-align: left; }
-        .header a { color: #1a0dab; text-decoration: underline; }
-        .logo { width: 100px; height: auto; margin-bottom: 10px; }
-        .date { text-align: left; margin: 20px 0; font-weight: bold; }
-        .re { font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; }
-        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        th, td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
-        th { background-color: #f2f2f2; }
-        .observation-cell { font-size: 11px; line-height: 1.4; }
-        .signatures { margin-top: 40px; font-weight: bold; font-size: 14px; }
-        .footer { margin-top: 60px; font-weight: bold; }
+        body { font-family: 'Times New Roman', Times, serif; margin: 35px; position: relative; }
+        .colored-line { width: 100%; border-spacing: 0; margin-top: 5px; margin-bottom: 15px; }
+        .colored-line td { padding: 0; height: 3px; }
+        .c-blue { background-color: rgb(0, 112, 192); width: 25%; }
+        .c-green { background-color: rgb(112, 173, 71); width: 25%; }
+        .c-orange { background-color: rgb(237, 125, 49); width: 25%; }
+        .re { font-weight: bold; text-decoration: underline; margin: 20px 0; text-transform: uppercase; font-size: 14px; }
+        table.content-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        table.content-table th, table.content-table td { border: 1px solid black; padding: 8px; text-align: left; font-size: 12px; }
+        table.content-table th { background-color: #f2f2f2; }
+        .observation-cell { border: 2px solid rgb(0, 112, 192); font-size: 12px; font-weight: bold; color: rgb(0, 112, 192); text-align: justify; padding: 10px; }
+        .content { font-size: 13px; line-height: 1.6; margin-top: 20px; text-align: justify; }
+        .signatures { margin-top: 40px; font-weight: bold; font-size: 13px; }
+        .footer { position: fixed; bottom: 20px; left: 35px; right: 35px; width: auto; font-size: 9px; color: rgb(0,112,192); text-align: center; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" class="logo" />
-        <h2>RWANDA REVENUE AUTHORITY</h2>
-        <p>STRATEGIC INTELLIGENCE AND INVESTIGATION DIVISION</p>
-        <p>SURVEILLANCE UNIT</p>
-        <p>E-mail address: <a href="mailto:prso@rra.gov.rw">prso@rra.gov.rw</a></p>
-        <p>Mobile: 0788311491</p>
+    <div th:if="${watermarkBase64 != null}" style="position: absolute; top: 15%; right: -20px; z-index: -1;">
+        <img th:src="'data:image/png;base64,' + ${watermarkBase64}" style="width: 350px; opacity: 0.15;" />
     </div>
 
-    <div class="date" th:text="'Date: ' + ${#temporals.format(stock.dateReleased, 'dd MMMM yyyy')}">
-        Date: 12 March 2026
-    </div>
+    <table style="width: 100%; border: none; margin-bottom: 5px; border-collapse: collapse;">
+        <tr>
+            <td style="width: 15%; border: none; vertical-align: middle; padding: 0;">
+                <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" style="width: 80px; height: auto;" />
+            </td>
+            <td style="width: 60%; border: none; vertical-align: middle; padding: 0;">
+                <h2 style="color: rgb(0,112,192); font-size: 14px; margin: 0; font-weight: bold;">RWANDA REVENUE AUTHORITY</h2>
+                <p style="color: rgb(112,173,71); font-size: 8px; margin: 0;">TAXES FOR GROWTH AND DEVELOPMENT</p>
+            </td>
+            <td style="width: 25%; border: none; text-align: right; vertical-align: middle; padding: 0;">
+                <div style="border-top: 2px solid rgb(192,0,0); border-bottom: 2px solid rgb(192,0,0); color: rgb(192,0,0); font-weight: bold; font-size: 11px; text-align: center; padding: 3px; display: inline-block;">CONFIDENTIAL</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="colored-line">
+        <tr>
+            <td class="c-blue"></td>
+            <td class="c-green"></td>
+            <td class="c-blue"></td>
+            <td class="c-orange"></td>
+        </tr>
+    </table>
+
+    <table style="width: 100%; border: none; margin-bottom: 20px;">
+        <tr>
+            <td style="width: 60%; border: none; vertical-align: top; padding: 0;">
+                <div class="header-sub">
+                    <p style="font-weight: bold; font-size: 10px; margin: 2px 0;">STRATEGIC INTELLIGENCE AND INVESTIGATION DIVISION</p>
+                    <p style="font-weight: bold; font-size: 10px; margin: 2px 0;">SURVEILLANCE UNIT</p>
+                    <p style="font-size: 10px; margin: 2px 0;">E-mail address: <a href="mailto:prso@rra.gov.rw" style="color: rgb(0,112,192);">prso@rra.gov.rw</a></p>
+                    <p style="font-size: 10px; margin: 2px 0;">Mobile: 0788311491</p>
+                </div>
+            </td>
+            <td style="width: 40%; border: none; vertical-align: top; text-align: right; padding: 0;">
+                <div style="color: rgb(0,112,192); font-size: 10px; margin: 2px 0;" th:text="'Date: ' + ${#temporals.format(release != null ? release.dateReleased : stock.dateReleased, 'dd/MM/yyyy')}">
+                    Date: 21/03/2026
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <div class="re">
         RE: RELEASE NOTE OF GOODS PURCHASED AT PUBLIC AUCTION LOT: <span th:text="${lotNumber}">02</span>
     </div>
 
-    <table>
+    <table class="content-table">
         <thead>
             <tr>
                 <th>S/N</th>
@@ -51,13 +84,16 @@
                 <td>1.</td>
                 <td>
                     <ul style="padding-left: 15px; margin: 0;">
-                        <li th:each="item : ${stock.items}" th:text="${item.itemName} + ' / ' + ${item.item}">FOOD / IBYOKURYA</li>
+                        <!-- Show all items if 'ALL' or null is selected. Otherwise, only show the specific released item -->
+                        <li th:each="item : ${stock.items}" 
+                            th:if="${(release != null ? release.releasedItemName : stock.releasedItem) == 'ALL' or (release != null ? release.releasedItemName : stock.releasedItem) == null or item.itemName == (release != null ? release.releasedItemName : stock.releasedItem)}" 
+                            th:text="${item.itemName} + ' / ' + ${item.item}">FOOD / IBYOKURYA</li>
                     </ul>
                 </td>
-                <td th:text="${stock.quantityReleased} + ' Units'">22 Units</td>
+                <td th:text="${release != null ? release.quantityReleased : stock.quantityReleased} + ' Units'">22 Units</td>
                 <td class="observation-cell">
                     These are different type of items, we sold at an AUCTION on <span th:text="${auctionDate}">10 March 2026</span>.<br/>
-                    They were sold in <span th:text="${location}">MASORO</span> at SI&amp;ID Store, the winning bidder who also paid <span th:text="${#numbers.formatDecimal(stock.soldAmount, 0, 'COMMA', 0, 'POINT')} + 'Rwf'">8,055,000Rwf</span> is called: <span th:text="${bidderName}">KAYIRANGA Bosco</span>; TIN <span th:text="${bidderTin}">103572947</span> in total amount on Doc ID: <span th:text="${stock.seizureNumber}">66713807</span>.
+                    They were sold in <span th:text="${location}">MASORO</span> at SI&amp;ID Store, the winning bidder who also paid <span th:text="${#numbers.formatDecimal(release != null ? release.soldAmount : stock.soldAmount, 0, 'COMMA', 0, 'POINT')} + 'Rwf'">8,055,000Rwf</span> is called: <span th:text="${bidderName}">KAYIRANGA Bosco</span>; TIN <span th:text="${bidderTin}">103572947</span> in total amount on Doc ID: <span th:text="${stock.seizureNumber}">66713807</span>.
                 </td>
             </tr>
         </tbody>
@@ -68,8 +104,19 @@
         
         <div style="margin-top: 30px;">
             <p>Released by: <span th:text="${releasedBy}">releaser name</span></p>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            Approved by: JBC MURANGIRA
+        </div>
+    </div>
+
     <div class="footer">
-        Approved by: JBC MURANGIRA
+        <img th:if="${footerBase64 != null}" th:src="'data:image/png;base64,' + ${footerBase64}" style="width: 100%; max-width: 600px;" />
+        <div th:if="${footerBase64 == null}">
+            <table class="colored-line" style="margin-top: 0; margin-bottom: 5px;"><tr><td class="c-blue"></td><td class="c-green"></td><td class="c-blue"></td><td class="c-orange"></td></tr></table>
+            <table style="width: 100%; border: none;"><tr><td style="width: 45%; text-align: left;">Kicukiro-Sonatubes-Silverback Mall, P.O.Box 3987 Kigali, Rwanda</td><td style="width: 15%; text-align: left;">3004</td><td style="width: 20%; text-align: left;">www.rra.gov.rw</td><td style="width: 20%; text-align: right;">@rrainfo</td></tr></table>
+        </div>
     </div>
 </body>
 </html>

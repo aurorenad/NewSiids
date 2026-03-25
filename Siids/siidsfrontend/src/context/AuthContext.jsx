@@ -53,16 +53,18 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('employeeId');
         localStorage.removeItem('userId');
-        localStorage.removeItem('name');  // Remove name
+        localStorage.removeItem('role');
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('employeeId');
         sessionStorage.removeItem('userId');
-        sessionStorage.removeItem('name');  // Remove name
+        sessionStorage.removeItem('name');
+        sessionStorage.removeItem('role');
         setAuthState({
             token: null,
             userId: null,
             employeeId: null,
-            name: null
+            name: null,
+            role: null
         });
     };
 

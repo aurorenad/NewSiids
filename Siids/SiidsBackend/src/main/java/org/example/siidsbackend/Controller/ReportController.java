@@ -754,10 +754,15 @@ public class ReportController {
             return; // Creator has full access
         }
 
-        // Check if employee is Admin
+        // Check if employee has a privileged role
         org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
-        if (user != null && "Admin".equals(user.getRole())) {
-            return; // Admin has full access
+        if (user != null) {
+            String role = user.getRole();
+            if ("Admin".equals(role) || "DirectorIntelligence".equals(role) ||
+                    "DirectorInvestigation".equals(role) || "InvestigationOfficer".equals(role) ||
+                    "AssistantCommissioner".equals(role) || "legalAdvisor".equals(role)) {
+                return; // Privileged role has access
+            }
         }
 
         // 3. Check if employee is the current recipient
@@ -1609,6 +1614,56 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (Exception e) {
             log.error("Error returning investigation report: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    @GetMapping("/assistant-commissioner/case-plans")
+    public ResponseEntity<List<ReportResponseDTO>> getCasePlansForAssistantCommissioner(
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            List<Report> reports = reportService.getCasePlansForAssistantCommissioner(employeeId);
+            List<ReportResponseDTO> responseList = reports.stream()
+                    .map(reportService::toResponseDTO)
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(responseList);
+        } catch (RuntimeException e) {
+            log.error("Authorization error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        } catch (Exception e) {
+            log.error("Error getting case plans for AC: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/approve-case-plan-assistant-commissioner")
+    public ResponseEntity<ReportResponseDTO> approveCasePlanByAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.approveCasePlanByAssistantCommissioner(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error approving case plan by AC: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error approving case plan: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping("/{id}/reject-case-plan-assistant-commissioner")
+    public ResponseEntity<ReportResponseDTO> rejectCasePlanByAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestParam String rejectionReason,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            Report report = reportService.rejectCasePlanByAssistantCommissioner(id, rejectionReason, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (RuntimeException e) {
+            log.error("Error rejecting case plan by AC: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (Exception e) {
+            log.error("Error rejecting case plan: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

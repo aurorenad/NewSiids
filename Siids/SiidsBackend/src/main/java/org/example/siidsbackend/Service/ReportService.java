@@ -305,10 +305,26 @@ public class ReportService {
         relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
         caseRepo.save(relatedCase);
 
+        if (directors.isEmpty()) {
+            log.info("No Director found via structural query. Attempting fallback via User roles.");
+            // Fallback: Find any employee who has the role in the User table
+            List<org.example.siidsbackend.Model.User> directorUsers = userRepo.findAll().stream()
+                    .filter(u -> "DirectorIntelligence".equalsIgnoreCase(u.getRole()))
+                    .collect(Collectors.toList());
+            
+            for (org.example.siidsbackend.Model.User user : directorUsers) {
+                Optional<Employee> emp = employeeRepo.findByEmployeeId(user.getUsername());
+                if (emp.isPresent()) {
+                    directors.add(emp.get());
+                    break; 
+                }
+            }
+        }
+
         if (!directors.isEmpty()) {
             report.setCurrentRecipient(directors.get(0));
         } else {
-            throw new IllegalStateException("No Director of Intelligence found.");
+            throw new IllegalStateException("No Director of Intelligence found in structural mapping or user roles.");
         }
 
         report.setUpdatedAt(LocalDateTime.now());
@@ -623,7 +639,10 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            throw new RuntimeException("Employee is not a Director of Intelligence");
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
+                throw new RuntimeException("Employee is not a Director of Intelligence");
+            }
         }
 
         return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
@@ -771,7 +790,10 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
         if (!isAssistantCommissioner) {
-            throw new RuntimeException("Employee is not an Assistant Commissioner");
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            if (user == null || (!"Admin".equals(user.getRole()) && !"AssistantCommissioner".equals(user.getRole()))) {
+                throw new RuntimeException("Employee is not an Assistant Commissioner");
+            }
         }
 
         return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
@@ -783,7 +805,10 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            throw new RuntimeException("Employee is not a Director of Investigation");
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
+                throw new RuntimeException("Employee is not a Director of Investigation");
+            }
         }
 
         return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
@@ -881,7 +906,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
         }
@@ -1076,8 +1101,12 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            throw new RuntimeException("Employee is not a Director of Intelligence");
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
+                throw new RuntimeException("Employee is not a Director of Intelligence");
+            }
         }
+
         return reportRepo.findReportsHandledByDirectorIntelligence();
     }
 
@@ -1088,7 +1117,7 @@ public class ReportService {
 
         if (!isAssistantCommissioner) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"AssistantCommissioner".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
         }
@@ -1102,7 +1131,10 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            throw new RuntimeException("Employee is not a Director of Investigation");
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
+                throw new RuntimeException("Employee is not a Director of Investigation");
+            }
         }
 
         return reportRepo.findReportsHandledByDirectorInvestigation();
@@ -1220,7 +1252,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
         }
@@ -1255,7 +1287,7 @@ public class ReportService {
 
         if (!isValidOfficer) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
         }
@@ -1282,7 +1314,7 @@ public class ReportService {
 
         if (!isT3Officer) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
         }
@@ -1297,7 +1329,7 @@ public class ReportService {
 
         if (!isValidOfficer) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
         }
@@ -1312,7 +1344,7 @@ public class ReportService {
 
         if (!isValidOfficer) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
         }
@@ -1412,7 +1444,7 @@ public class ReportService {
 
         if (!isLegalAdvisor) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(legalAdvisorId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equals(user.getRole()) && !"legalAdvisor".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Legal Advisor");
             }
         }
@@ -1898,7 +1930,7 @@ public class ReportService {
 
         // Update case status
         Case relatedCase = report.getRelatedCase();
-        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION);
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER);
         caseRepo.save(relatedCase);
 
         report.setDirectorInvestigation(approver);
@@ -1906,9 +1938,10 @@ public class ReportService {
         report.setApprovedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
-        // Set next recipient - investigation officer can now proceed with investigation
-        if (report.getInvestigationOfficer() != null) {
-            report.setCurrentRecipient(report.getInvestigationOfficer());
+        // Set next recipient - Assistant Commissioner for final approval
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        if (!commissioners.isEmpty()) {
+            report.setCurrentRecipient(commissioners.get(0));
         }
 
         Report savedReport = reportRepo.save(report);
@@ -1927,13 +1960,12 @@ public class ReportService {
         createNotification(savedReport, message);
 
         // Send websocket notification to investigation officer
-        if (report.getInvestigationOfficer() != null) {
+        // Send websocket notification to Assistant Commissioner
+        if (report.getCurrentRecipient() != null) {
             NotificationDTO broadcastNotification = webSocketNotificationService
-                    .createNotificationDTO(savedReport, message, report.getInvestigationOfficer());
-            broadcastNotification.setNotificationType("CASE_PLAN_APPROVED");
-            webSocketNotificationService.sendNotificationToUser(
-                    report.getInvestigationOfficer().getEmployeeId(),
-                    broadcastNotification);
+                    .createNotificationDTO(savedReport, message, report.getCurrentRecipient());
+            broadcastNotification.setNotificationType("NEW_CASE_PLAN_ASSISTANT_COMMISSIONER");
+            webSocketNotificationService.sendNotificationToAssistantCommissioners(broadcastNotification);
         }
 
         return savedReport;
@@ -2195,5 +2227,83 @@ public class ReportService {
         }
 
         return savedReport;
+    }
+    @Transactional
+    public Report approveCasePlanByAssistantCommissioner(Integer reportId, String approverId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        if (report.getRelatedCase().getStatus() != WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER) {
+            throw new RuntimeException("Case plan not in correct status for AC approval");
+        }
+
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER);
+        caseRepo.save(relatedCase);
+
+        report.setAssistantCommissioner(approver);
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Send back to investigation officer
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        String message = "Your case plan # " + report.getId() + " has been approved by the Assistant Commissioner.";
+        createNotification(savedReport, message);
+
+        return savedReport;
+    }
+
+    @Transactional
+    public Report rejectCasePlanByAssistantCommissioner(Integer reportId, String reason, String rejectorId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
+                .orElseThrow(() -> new RuntimeException("Rejector not found"));
+
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER);
+        caseRepo.save(relatedCase);
+
+        report.setAssistantCommissioner(rejector);
+        report.setRejectionReason(reason);
+        report.setUpdatedAt(LocalDateTime.now());
+
+        // Return to investigation officer
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+        }
+
+        Report savedReport = reportRepo.save(report);
+
+        String message = "Your case plan # " + report.getId() + " has been rejected by the Assistant Commissioner. Reason: " + reason;
+        createNotification(savedReport, message);
+
+        return savedReport;
+    }
+
+    public List<Report> getCasePlansForAssistantCommissioner(String employeeId) {
+        // Fallback for AC role if not in employee table
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        if (user == null || (!"Admin".equals(user.getRole()) && !"AssistantCommissioner".equals(user.getRole()))) {
+             // Check if it's in employee table as AC
+             List<Employee> commissioners = reportRepo.assistantCommissioner();
+             boolean isAC = commissioners.stream().anyMatch(e -> e.getEmployeeId().equals(employeeId));
+             if (!isAC) {
+                 throw new RuntimeException("Employee is not an Assistant Commissioner");
+             }
+        }
+
+        return reportRepo.findCasePlansForAssistantCommissioner(
+                WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER,
+                employeeId
+        );
     }
 }

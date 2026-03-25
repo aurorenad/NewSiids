@@ -109,9 +109,14 @@ const TaxReportForm = () => {
     // Tax payer lookup by TIN
     const handleTinChange = async (e) => {
         const { value } = e.target;
+        
+        // Only allow digits and max 9 characters
+        if (value !== '' && !/^\d+$/.test(value)) return;
+        if (value.length > 9) return;
+
         handleChange(e);
 
-        if (value.length >= 3) {
+        if (value.length === 9) {
             setIsSearchingTaxPayer(true);
             try {
                 const response = await caseApi.get(`/api/taxpayers/tin/${value}`);
@@ -123,7 +128,10 @@ const TaxReportForm = () => {
                     }));
                 }
             } catch (error) {
-                console.error('Error fetching tax payer:', error);
+                // If 404, it just means the taxpayer is new, so we do nothing and let the user type.
+                if (error.response?.status !== 404) {
+                    console.error('Error fetching tax payer:', error);
+                }
             } finally {
                 setIsSearchingTaxPayer(false);
             }
@@ -146,7 +154,10 @@ const TaxReportForm = () => {
                     }));
                 }
             } catch (error) {
-                console.error('Error fetching informer:', error);
+                // If 404, it just means the informer is new, so we do nothing and let the user register them.
+                if (error.response?.status !== 404) {
+                    console.error('Error fetching informer:', error);
+                }
             } finally {
                 setIsSearchingInformer(false);
             }
@@ -320,7 +331,8 @@ const TaxReportForm = () => {
                                 value={formData.tin}
                                 onChange={handleTinChange}
                                 className="tax-report-form-input"
-                                placeholder="Enter tax identification number"
+                                placeholder="Enter 9-digit TIN"
+                                maxLength="9"
                                 required
                             />
                             {isSearchingTaxPayer && (

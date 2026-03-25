@@ -39,7 +39,7 @@ public class StockService {
     private String uploadDir;
 
     @Transactional
-    public Stock createStock(StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument)
+    public Stock createStock(StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument, MultipartFile paymentProof)
             throws IOException {
         validateStockRequest(dto, documents, anotherDocument);
 
@@ -63,13 +63,26 @@ public class StockService {
             stock.setAnotherDocumentPath(storeFile(anotherDocument));
         }
 
+        if (paymentProof != null && !paymentProof.isEmpty() && !stock.getReleases().isEmpty()) {
+            StockRelease lastRelease = stock.getReleases().get(stock.getReleases().size() - 1);
+            if (ReleaseReason.CLEARED.equals(lastRelease.getReleaseReason())) {
+                lastRelease.setPaymentProofPath(storeFile(paymentProof));
+            }
+        }
+
         return stockRepository.save(stock);
     }
 
     @Transactional
-    public Stock updateStock(Integer id, StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument)
+    public Stock updateStock(Integer id, StockRequestDTO dto, List<MultipartFile> documents, MultipartFile anotherDocument, MultipartFile paymentProof)
             throws IOException {
         Stock stock = getStock(id);
+        
+        // Preserve any previously explicitly saved payment proofs on older releases before wiping
+        java.util.List<String> oldPaymentProofs = stock.getReleases().stream()
+                .map(StockRelease::getPaymentProofPath)
+                .collect(java.util.stream.Collectors.toList());
+                
         validateStockUpdateRequest(dto, stock, documents, anotherDocument);
 
         // Check uniqueness of seizureNumber (pvNumber is now optional and not unique)
@@ -78,6 +91,13 @@ public class StockService {
         }
 
         mapDtoToEntity(dto, stock);
+
+        // Restore old payment proofs to matching mapped releases
+        for (int i = 0; i < Math.min(oldPaymentProofs.size(), stock.getReleases().size()); i++) {
+            if (oldPaymentProofs.get(i) != null) {
+                stock.getReleases().get(i).setPaymentProofPath(oldPaymentProofs.get(i));
+            }
+        }
 
         if (documents != null && !documents.isEmpty()) {
             // Depending on requirements, we might want to clear old documents or append
@@ -93,6 +113,13 @@ public class StockService {
 
         if (anotherDocument != null && !anotherDocument.isEmpty()) {
             stock.setAnotherDocumentPath(storeFile(anotherDocument));
+        }
+
+        if (paymentProof != null && !paymentProof.isEmpty() && !stock.getReleases().isEmpty()) {
+            StockRelease lastRelease = stock.getReleases().get(stock.getReleases().size() - 1);
+            if (ReleaseReason.CLEARED.equals(lastRelease.getReleaseReason())) {
+                lastRelease.setPaymentProofPath(storeFile(paymentProof));
+            }
         }
 
         return stockRepository.save(stock);
@@ -147,6 +174,30 @@ public class StockService {
                 item.setChassisNumber(itemDto.getChassisNumber());
                 item.setVehicleType(itemDto.getVehicleType());
                 stock.addItem(item);
+            }
+        }
+
+        // Clear existing releases and add new ones
+        stock.getReleases().clear();
+        if (dto.getReleases() != null) {
+            for (org.example.siidsbackend.DTO.StockReleaseDTO releaseDto : dto.getReleases()) {
+                StockRelease release = new StockRelease();
+                release.setReleasedItemName(releaseDto.getReleasedItemName());
+                release.setQuantityReleased(releaseDto.getQuantityReleased());
+                if (StringUtils.hasText(releaseDto.getReleaseReason())) {
+                    try {
+                        release.setReleaseReason(ReleaseReason.valueOf(releaseDto.getReleaseReason().toUpperCase().trim()));
+                    } catch (IllegalArgumentException e) {
+                        log.error("Invalid release reason in item release: {}", releaseDto.getReleaseReason());
+                    }
+                }
+                release.setDateReleased(releaseDto.getDateReleased());
+                release.setSoldAmount(releaseDto.getSoldAmount());
+                release.setReason(releaseDto.getReason());
+                release.setNewPlateNumber(releaseDto.getNewPlateNumber());
+                release.setNewOwner(releaseDto.getNewOwner());
+                release.setReleasedBy(releaseDto.getReleasedBy());
+                stock.addRelease(release);
             }
         }
     }
@@ -398,5 +449,13 @@ public class StockService {
 
     public byte[] generateReleasePdf(Stock stock) throws IOException {
         return pdfService.generateReleaseDocument(stock);
+    }
+
+    public byte[] generateReleasePdf(Stock stock, int releaseIndex) throws IOException {
+        if (stock.getReleases() != null && releaseIndex >= 0 && releaseIndex < stock.getReleases().size()) {
+            StockRelease release = stock.getReleases().get(releaseIndex);
+            return pdfService.generateReleaseDocument(stock, release);
+        }
+        throw new IllegalArgumentException("Invalid release index: " + releaseIndex);
     }
 }

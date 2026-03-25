@@ -36,4 +36,7 @@ public class StockRelease {
     private String newPlateNumber;
     private String newOwner;
     private String releasedBy; // The logged-in user who performed the release
+
+    @Column(name = "payment_proof_path")
+    private String paymentProofPath;
 }

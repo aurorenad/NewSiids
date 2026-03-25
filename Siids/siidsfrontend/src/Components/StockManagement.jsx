@@ -35,6 +35,7 @@ const StockManagement = () => {
     });
     const [documentFiles, setDocumentFiles] = useState([]);
     const [anotherDocumentFile, setAnotherDocumentFile] = useState(null);
+    const [paymentProofFile, setPaymentProofFile] = useState(null);
 
     // Backend-driven dropdown options
     const [itemTypes, setItemTypes] = useState([]);
@@ -242,12 +243,26 @@ const StockManagement = () => {
         return formData.items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0);
     };
 
+    const getItemRemainingQuantity = (itemName) => {
+        const item = formData.items.find(i => i.itemName === itemName);
+        if (!item) return 0;
+        const total = parseInt(item.quantity) || 0;
+        
+        // Sum up quantities from past releases for this specific item
+        const released = (currentStock?.releases || [])
+            .filter(r => r.releasedItemName === itemName || r.releasedItemName === 'ALL')
+            .reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0);
+            
+        return Math.max(0, total - released);
+    };
+
     const getMaxReleasedQuantity = () => {
         if (!formData.releasedItem || formData.releasedItem === 'ALL') {
-            return getTotalQuantity();
+             const total = getTotalQuantity();
+             const released = (currentStock?.releases || []).reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0);
+             return Math.max(0, total - released);
         }
-        const selectedItem = formData.items.find(i => i.itemName === formData.releasedItem);
-        return selectedItem ? (parseInt(selectedItem.quantity) || 0) : 0;
+        return getItemRemainingQuantity(formData.releasedItem);
     };
 
     const handleSubmit = async (e) => {
@@ -355,21 +370,27 @@ const StockManagement = () => {
                     vehicleType: category === 'VEHICLE' ? item.vehicleType : null
                 };
             }),
-            dateReleased: formData.dateReleased || null,
-            releasedItem: formData.dateReleased ? (formData.releasedItem || null) : null,
-            quantityReleased: formData.dateReleased ? (parseInt(formData.quantityReleased) || null) : null,
-            soldAmount: formData.dateReleased && formData.releaseReason === 'CYAMUNARA' ? (parseFloat(formData.soldAmount) || null) : null,
-            reason: formData.reason,
-            releaseReason: formData.releaseReason,
-            newPlateNumber: formData.releaseReason === 'MUTATION' ? formData.newPlateNumber : null,
-            newOwner: formData.releaseReason === 'MUTATION' ? formData.newOwner : null,
-            releasedBy: formData.dateReleased ? (localStorage.getItem('name') || sessionStorage.getItem('name') || authState.name || '') : null,
+            releases: [
+                ...(currentStock?.releases || []),
+                ...(formData.dateReleased ? [{
+                    dateReleased: formData.dateReleased,
+                    releasedItemName: formData.releasedItem,
+                    quantityReleased: parseInt(formData.quantityReleased) || null,
+                    soldAmount: formData.releaseReason === 'CYAMUNARA' ? (parseFloat(formData.soldAmount) || null) : null,
+                    reason: formData.reason,
+                    releaseReason: formData.releaseReason,
+                    newPlateNumber: formData.releaseReason === 'MUTATION' ? formData.newPlateNumber : null,
+                    newOwner: formData.releaseReason === 'MUTATION' ? formData.newOwner : null,
+                    releasedBy: localStorage.getItem('name') || sessionStorage.getItem('name') || authState.name || ''
+                }] : [])
+            ],
             addedBy: currentStock ? currentStock.addedBy : (localStorage.getItem('name') || sessionStorage.getItem('name') || authState.name || '')
         };
 
         data.append('stockData', new Blob([JSON.stringify(stockData)], { type: 'application/json' }));
         documentFiles.forEach(file => data.append('documents', file));
         if (anotherDocumentFile) data.append('anotherDocument', anotherDocumentFile);
+        if (paymentProofFile) data.append('paymentProof', paymentProofFile);
 
         try {
             const url = currentStock ? `${API_URL}/${currentStock.id}` : API_URL;
@@ -387,7 +408,7 @@ const StockManagement = () => {
                 
                 // If a release was just added during this submission (edit or create), auto-download the release note
                 if (formData.dateReleased) {
-                    downloadGeneratedReleaseDoc(savedStock.id);
+                    downloadGeneratedReleaseDoc(savedStock.id, (savedStock.releases?.length || 1) - 1);
                 }
             } else if (response.status === 401) {
                 alert('Session expired. Please log in again.');
@@ -507,16 +528,16 @@ const StockManagement = () => {
         }
     };
 
-    const downloadGeneratedReleaseDoc = async (id) => {
+    const downloadGeneratedReleaseDoc = async (id, index = 0) => {
         try {
-            const response = await fetchWithAuth(`${API_URL}/${id}/release-document`);
+            const response = await fetchWithAuth(`${API_URL}/${id}/release-document/${index}`);
 
             if (response.ok) {
                 const blob = await response.blob();
                 const fileURL = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = fileURL;
-                link.setAttribute('download', `ReleaseNote-${id}.pdf`);
+                link.setAttribute('download', `ReleaseNote-${id}-Release${index + 1}.pdf`);
                 document.body.appendChild(link);
                 link.click();
                 link.parentNode.removeChild(link);
@@ -549,33 +570,61 @@ const StockManagement = () => {
     };
 
     // --- Filtering logic ---
+    const getStockItemRemainingQuantity = (stock, itemName) => {
+        const item = (stock.items || []).find(i => i.itemName === itemName);
+        if (!item) return 0;
+        const total = parseInt(item.quantity) || 0;
+        const released = (stock.releases || [])
+            .filter(r => r.releasedItemName === itemName || r.releasedItemName === 'ALL')
+            .reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0);
+        return Math.max(0, total - released);
+    };
+
     const isFilterActive = searchOwner || searchItemName || searchTakenDate || releaseFilter !== 'all';
 
     const filteredStocks = useMemo(() => {
-        return stocks.filter(stock => {
-            if (searchOwner && !(stock.ownerName || '').toLowerCase().includes(searchOwner.toLowerCase())) {
-                return false;
-            }
+        return stocks.map(stock => {
+            if (searchOwner && !(stock.ownerName || '').toLowerCase().includes(searchOwner.toLowerCase())) return null;
+            
             if (searchItemName) {
                 const itemNames = (stock.items || []).map(i => (i.itemName || '').toLowerCase()).join(' ');
-                if (!itemNames.includes(searchItemName.toLowerCase())) {
-                    return false;
-                }
+                if (!itemNames.includes(searchItemName.toLowerCase())) return null;
             }
-            if (searchTakenDate && stock.takenDate !== searchTakenDate) {
-                return false;
+            
+            if (searchTakenDate && stock.takenDate !== searchTakenDate) return null;
+            
+            let filteredItems = [...(stock.items || [])];
+            
+            if (releaseFilter === 'released') {
+                filteredItems = filteredItems.filter(item => {
+                    const remaining = getStockItemRemainingQuantity(stock, item.itemName);
+                    const original = parseInt(item.quantity) || 0;
+                    return remaining < original || stock.dateReleased; // It has some released quantity or legacy flag
+                });
+            } else if (releaseFilter === 'not_released') {
+                filteredItems = filteredItems.filter(item => {
+                    const remaining = getStockItemRemainingQuantity(stock, item.itemName);
+                    const original = parseInt(item.quantity) || 0;
+                    return remaining === original && !stock.dateReleased; // It has ZERO releases computationally
+                });
+            } else if (releaseFilter === 'damaged') {
+                filteredItems = filteredItems.filter(item => {
+                    const hasDamagedRelease = (stock.releases || []).some(r => 
+                        r.releaseReason === 'DAMAGED' && (r.releasedItemName === item.itemName || r.releasedItemName === 'ALL')
+                    );
+                    return hasDamagedRelease || stock.status === 'DAMAGED';
+                });
             }
-            if (releaseFilter === 'released' && !stock.dateReleased) {
-                return false;
+            
+            if (releaseFilter !== 'all' && releaseFilter !== 'damaged' && filteredItems.length === 0) {
+                return null;
             }
-            if (releaseFilter === 'not_released' && stock.dateReleased) {
-                return false;
-            }
-            if (releaseFilter === 'damaged' && stock.status !== 'DAMAGED') {
-                return false;
-            }
-            return true;
-        });
+            
+            return {
+                ...stock,
+                displayItems: filteredItems
+            };
+        }).filter(Boolean);
     }, [stocks, searchOwner, searchItemName, searchTakenDate, releaseFilter]);
 
     // --- Excel download ---
@@ -771,20 +820,38 @@ const StockManagement = () => {
                                 filteredStocks.map(stock => (
                                     <tr key={stock.id}>
                                         <td>{stock.ownerName}</td>
-                                        <td title={(stock.items || []).map(i => `${i.itemName} (${i.item})`).join(', ')}>
-                                            {formatItemsDisplay(stock.items)}
+                                        <td title={((stock.displayItems || stock.items) || []).map(i => `${i.itemName} (${i.item})`).join(', ')}>
+                                            {formatItemsDisplay(stock.displayItems || stock.items)}
                                         </td>
                                         <td>{getRemainingQuantity(stock)}</td>
                                         <td>{stock.takenDate}</td>
                                         <td>
-                                            {stock.dateReleased ? (
+                                            {stock.releases && stock.releases.length > 0 ? (
+                                                <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                                                    {stock.releases.map((r, i) => (
+                                                        <span key={i} className="released-badge" style={{fontSize: '0.75rem', padding: '2px 6px'}}>{r.dateReleased}</span>
+                                                    ))}
+                                                </div>
+                                            ) : stock.dateReleased ? (
                                                 <span className="released-badge">{stock.dateReleased}</span>
                                             ) : (
                                                 <span className="not-released-badge">Not Released</span>
                                             )}
                                         </td>
-                                        <td>{stock.quantityReleased || '-'}</td>
-                                        <td>{stock.soldAmount ? `${stock.soldAmount} RWF` : '-'}</td>
+                                        <td>
+                                            {stock.releases && stock.releases.length > 0 ? (
+                                                <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                                                    {stock.releases.map((r, i) => <div key={i}>{r.quantityReleased}</div>)}
+                                                </div>
+                                            ) : stock.quantityReleased || '-'}
+                                        </td>
+                                        <td>
+                                            {stock.releases && stock.releases.length > 0 ? (
+                                                <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
+                                                    {stock.releases.map((r, i) => <div key={i}>{r.soldAmount ? `${r.soldAmount} RWF` : '-'}</div>)}
+                                                </div>
+                                            ) : stock.soldAmount ? `${stock.soldAmount} RWF` : '-'}
+                                        </td>
                                         <td>
                                             {stock.documentPaths && stock.documentPaths.map((path, idx) => (
                                                 <button key={idx} className="link-btn" onClick={() => downloadDocument(stock.id, idx)}>Doc {idx + 1}</button>
@@ -797,13 +864,24 @@ const StockManagement = () => {
                                             <button className="icon-btn delete-btn" onClick={() => handleDelete(stock.id)} title="Delete">
                                                 <Trash2 size={18} />
                                             </button>
-                                            <button 
-                                                className="icon-btn download-btn" 
-                                                onClick={() => stock.dateReleased ? downloadGeneratedReleaseDoc(stock.id) : generateStockPdf(stock)} 
-                                                title={stock.dateReleased ? "Download Release Note" : "Download Stock Info"}
-                                            >
-                                                <Download size={18} />
-                                            </button>
+                                            
+                                            {stock.releases && stock.releases.length > 0 ? (
+                                                <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
+                                                    {stock.releases.map((r, i) => (
+                                                        <button key={i} className="icon-btn download-btn" onClick={() => downloadGeneratedReleaseDoc(stock.id, i)} title={`Download Release ${i + 1}`}>
+                                                            <Download size={16} /><span style={{fontSize: '9px', fontWeight:'bold'}}>{i+1}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            ) : stock.dateReleased ? (
+                                                <button className="icon-btn download-btn" onClick={() => downloadGeneratedReleaseDoc(stock.id)} title="Download Release Note">
+                                                    <Download size={18} />
+                                                </button>
+                                            ) : (
+                                                <button className="icon-btn download-btn" onClick={() => generateStockPdf(stock)} title="Download Stock Info">
+                                                    <Download size={18} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))
@@ -1017,7 +1095,51 @@ const StockManagement = () => {
                                 </button>
                             </div>
 
-                            {/* Release Section */}
+                            {/* Existing Releases Section */}
+                            {currentStock && currentStock.releases && currentStock.releases.length > 0 && (
+                                <div className="existing-releases-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                                    <h4 style={{marginBottom: '10px'}}>Past Releases</h4>
+                                    <table className="content-table" style={{width: '100%', fontSize: '13px', borderCollapse: 'collapse'}}>
+                                        <thead>
+                                            <tr>
+                                                <th style={{padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left'}}>Date</th>
+                                                <th style={{padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left'}}>Item</th>
+                                                <th style={{padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left'}}>Qty</th>
+                                                <th style={{padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left'}}>Reason</th>
+                                                <th style={{padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left'}}>By</th>
+                                                <th style={{padding: '8px', borderBottom: '2px solid #ddd', textAlign: 'left'}}>Proof</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {currentStock.releases.map((r, i) => (
+                                                <tr key={i}>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.dateReleased}</td>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.releasedItemName}</td>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.quantityReleased}</td>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.releaseReason}</td>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.releasedBy}</td>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>
+                                                        {r.paymentProofPath ? (
+                                                            <button 
+                                                                type="button" 
+                                                                className="link-btn" 
+                                                                style={{padding:0, fontSize:'12px', border:'none', background:'none', color:'rgb(0, 112, 192)', cursor:'pointer', textDecoration:'underline'}} 
+                                                                onClick={() => {
+                                                                    fetchWithAuth(`${API_URL}/${currentStock.id}/payment-proof/${i}`)
+                                                                    .then(res => res.blob())
+                                                                    .then(blob => window.open(window.URL.createObjectURL(blob), '_blank'));
+                                                                }}
+                                                            >View</button>
+                                                        ) : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {/* Release Section (For Adding New) */}
                             <div className="release-section" style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
                                 <div className="form-group" style={{ marginBottom: '15px', flexDirection: 'row', alignItems: 'center', gap: '10px' }}>
                                     <input
@@ -1041,7 +1163,7 @@ const StockManagement = () => {
                                         }}
                                         style={{ width: 'auto', cursor: 'pointer' }}
                                     />
-                                    <label htmlFor="releaseCheckbox" style={{ cursor: 'pointer', marginBottom: 0 }}>Do you want to release an item?</label>
+                                    <label htmlFor="releaseCheckbox" style={{ cursor: 'pointer', marginBottom: 0, fontWeight: 'bold' }}>Add a new partial release of items?</label>
                                 </div>
 
                                 {formData.dateReleased && (
@@ -1055,12 +1177,17 @@ const StockManagement = () => {
                                                 required
                                             >
                                                 <option value="">Select Item</option>
-                                                <option value="ALL">All Items</option>
+                                                {(() => {
+                                                    // Determine if ALL items have any remaining balance
+                                                    const total = getTotalQuantity();
+                                                    const released = (currentStock?.releases || []).reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0);
+                                                    const allRemaining = Math.max(0, total - released);
+                                                    return allRemaining > 0 ? <option value="ALL">All Items</option> : null;
+                                                })()}
                                                 {formData.items.filter(i => {
                                                     if (!i.itemName) return false;
-                                                    // Exclude items that have already been released
-                                                    const alreadyReleased = (currentStock?.releases || []).map(r => r.releasedItemName);
-                                                    return !alreadyReleased.includes(i.itemName);
+                                                    // Exclude items that have no remaining quantity left
+                                                    return getItemRemainingQuantity(i.itemName) > 0;
                                                 }).map((item, idx) => (
                                                     <option key={idx} value={item.itemName}>{item.itemName}</option>
                                                 ))}
@@ -1104,6 +1231,17 @@ const StockManagement = () => {
                                                     onChange={handleInputChange}
                                                     required
                                                     placeholder="Enter sold amount"
+                                                />
+                                            </div>
+                                        )}
+                                        {formData.releaseReason === 'CLEARED' && (
+                                            <div className="form-group" style={{gridColumn: '1 / -1'}}>
+                                                <label>Upload Payment Proof *</label>
+                                                <input
+                                                    type="file"
+                                                    onChange={(e) => setPaymentProofFile(e.target.files[0])}
+                                                    accept=".pdf, image/*"
+                                                    required
                                                 />
                                             </div>
                                         )}

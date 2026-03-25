@@ -25,7 +25,7 @@ export const ClaimForm = () => {
             }
 
             // Check file type
-            const allowedTypes = ['.pdf', '.doc', '.docx', '.txt', '.jpg', '.jpeg', '.png'];
+            const allowedTypes = ['.pdf'];
             const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
             if (!allowedTypes.includes(fileExtension)) {
                 fileError = `File "${file.name}" has unsupported format. Allowed: ${allowedTypes.join(', ')}`;
@@ -229,7 +229,7 @@ export const ClaimForm = () => {
                         id="file-input"
                         className="file-input"
                         onChange={handleFileChange}
-                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                        accept=".pdf"
                         disabled={isSubmitting}
                         aria-label="File attachments"
                         multiple
@@ -317,7 +317,7 @@ export const ClaimForm = () => {
                 </div>
             </div>
 
-            <style jsx>{`
+            <style>{`
                 .claim-form-wrapper {
                     padding: 20px;
                     max-width: 800px;

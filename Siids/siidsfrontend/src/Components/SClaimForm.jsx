@@ -199,7 +199,7 @@ export const SClaimForm = () => {
                         id="file-input"
                         className="file-input"
                         onChange={handleFileChange}
-                        accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                        accept=".pdf"
                         disabled={isSubmitting}
                         aria-label="File attachment"
                     />
@@ -258,7 +258,7 @@ export const SClaimForm = () => {
                 </div>
             </div>
 
-            <style jsx>{`
+            <style>{`
                 .claim-form-wrapper {
                     padding: 20px;
                     max-width: 800px;

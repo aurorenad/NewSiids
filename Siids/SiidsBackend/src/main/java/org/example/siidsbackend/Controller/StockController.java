@@ -76,13 +76,14 @@ public class StockController {
     // --- CRUD endpoints ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
     public ResponseEntity<?> createStock(
             @RequestPart("stockData") StockRequestDTO dto,
             @RequestPart(value = "documents", required = false) List<MultipartFile> documents,
-            @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument) {
+            @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument,
+            @RequestPart(value = "paymentProof", required = false) MultipartFile paymentProof) {
         try {
-            Stock stock = stockService.createStock(dto, documents, anotherDocument);
+            Stock stock = stockService.createStock(dto, documents, anotherDocument, paymentProof);
             return ResponseEntity.ok(stockService.toDTO(stock));
         } catch (IllegalArgumentException e) {
             log.warn("Validation error creating stock: {}", e.getMessage());
@@ -94,14 +95,15 @@ public class StockController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
     public ResponseEntity<?> updateStock(
             @PathVariable Integer id,
             @RequestPart("stockData") StockRequestDTO dto,
             @RequestPart(value = "documents", required = false) List<MultipartFile> documents,
-            @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument) {
+            @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument,
+            @RequestPart(value = "paymentProof", required = false) MultipartFile paymentProof) {
         try {
-            Stock stock = stockService.updateStock(id, dto, documents, anotherDocument);
+            Stock stock = stockService.updateStock(id, dto, documents, anotherDocument, paymentProof);
             return ResponseEntity.ok(stockService.toDTO(stock));
         } catch (IllegalArgumentException e) {
             log.warn("Validation error updating stock: {}", e.getMessage());
@@ -112,7 +114,7 @@ public class StockController {
         }
     }
 
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStock(@PathVariable Integer id) {
         stockService.deleteStock(id);
@@ -154,11 +156,24 @@ public class StockController {
         return downloadFile(path);
     }
 
+    @GetMapping("/{id}/payment-proof/{releaseIndex}")
+    public ResponseEntity<Resource> downloadPaymentProof(@PathVariable Integer id, @PathVariable Integer releaseIndex) throws IOException {
+        Stock stock = stockService.getStock(id);
+        if (stock.getReleases() == null || releaseIndex < 0 || releaseIndex >= stock.getReleases().size()) {
+            return ResponseEntity.notFound().build();
+        }
+        String path = stock.getReleases().get(releaseIndex).getPaymentProofPath();
+        if (path == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return downloadFile(path);
+    }
+
     @GetMapping("/{id}/release-document")
     public ResponseEntity<?> downloadGeneratedReleaseDocument(@PathVariable Integer id) {
         try {
             Stock stock = stockService.getStock(id);
-            if (stock.getDateReleased() == null) {
+            if (stock.getDateReleased() == null && (stock.getReleases() == null || stock.getReleases().isEmpty())) {
                 return ResponseEntity.badRequest().body("Stock has not been released yet.");
             }
             byte[] pdfContent = stockService.generateReleasePdf(stock);
@@ -168,6 +183,24 @@ public class StockController {
                     .body(pdfContent);
         } catch (Exception e) {
             log.error("Error generating release document for stock {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error generating release document: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/release-document/{releaseIndex}")
+    public ResponseEntity<?> downloadGeneratedReleaseDocumentByIndex(@PathVariable Integer id, @PathVariable int releaseIndex) {
+        try {
+            Stock stock = stockService.getStock(id);
+            if (stock.getReleases() == null || releaseIndex < 0 || releaseIndex >= stock.getReleases().size()) {
+                return ResponseEntity.badRequest().body("Invalid release index.");
+            }
+            byte[] pdfContent = stockService.generateReleasePdf(stock, releaseIndex);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ReleaseNote-" + stock.getSeizureNumber().replace("/", "-") + "-Release" + (releaseIndex + 1) + ".pdf\"")
+                    .body(pdfContent);
+        } catch (Exception e) {
+            log.error("Error generating specific release document for stock {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().body("Error generating release document: " + e.getMessage());
         }
     }

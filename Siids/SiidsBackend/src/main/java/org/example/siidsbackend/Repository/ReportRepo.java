@@ -84,8 +84,9 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     List<Report> findByRelatedCase(Case relatedCase);
 
-    @Query(value = "SELECT r.* FROM Report r WHERE\n" +
-            "       r.current_recipient IN (SELECT\n" +
+    @Query(value = "SELECT r.* FROM siids.report r \n" +
+            "       LEFT JOIN siids.case c ON c.case_num = r.case_num \n" +
+            "       WHERE r.current_recipient IN (SELECT\n" +
             "                                   e.employee_id\n" +
             "                               FROM\n" +
             "                                   employees e\n" +
@@ -101,12 +102,13 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "                                   j.job_master_id = 119\n" +
             "                                 and j.grade_id = 5)\n" +
             "       OR r.director_intelligence_id IS NOT NULL \n" +
-            "       OR r.case_num IN ('REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE', 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE')\n" +
+            "       OR c.status IN ('REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE', 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE')\n" +
             "       ORDER BY r.updated_at DESC", nativeQuery = true)
     List<Report> findReportsHandledByDirectorIntelligence();
 
-    @Query(value = "SELECT r.* FROM Report r WHERE\n" +
-            "       r.current_recipient IN (SELECT\n" +
+    @Query(value = "SELECT r.* FROM siids.report r \n" +
+            "       LEFT JOIN siids.case c ON c.case_num = r.case_num \n" +
+            "       WHERE r.current_recipient IN (SELECT\n" +
             "                                   e.employee_id\n" +
             "                               FROM\n" +
             "                                   employees e\n" +
@@ -122,7 +124,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "                                   j.job_master_id = 116\n" +
             "                                 and j.grade_id = 4)\n" +
             "       OR r.assistant_commissioner_id IS NOT NULL\n" +
-            "       OR r.case_num IN ('REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER')\n" +
+            "       OR c.status IN ('REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER', 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER')\n" +
             "       ORDER BY r.updated_at DESC;", nativeQuery = true)
     List<Report> findReportsHandledAssistantCommissioner();
 

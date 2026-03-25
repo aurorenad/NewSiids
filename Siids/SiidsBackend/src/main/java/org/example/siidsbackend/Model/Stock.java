@@ -71,4 +71,14 @@ public class Stock {
         items.remove(item);
         item.setStock(null);
     }
+
+    public void addRelease(StockRelease release) {
+        releases.add(release);
+        release.setStock(this);
+    }
+
+    public void removeRelease(StockRelease release) {
+        releases.remove(release);
+        release.setStock(null);
+    }
 }

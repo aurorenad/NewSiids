@@ -2,6 +2,7 @@ package org.example.siidsbackend.DTO.Request;
 
 import lombok.Data;
 import org.example.siidsbackend.DTO.StockItemDTO;
+import org.example.siidsbackend.DTO.StockReleaseDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,6 +18,8 @@ public class StockRequestDTO {
     private LocalDate receivedDate;
     private List<StockItemDTO> items;
     private String seizureReason;
+    
+    // Legacy single-release fields (kept for backward compatibility or ease, but essentially unused)
     private LocalDate dateReleased;
     private String releasedItem;
     private Integer quantityReleased;
@@ -28,4 +31,7 @@ public class StockRequestDTO {
     private String releasedBy;
     private String addedBy;
     private String status;
+
+    private List<StockReleaseDTO> releases;
 }
+
