@@ -6,6 +6,7 @@ import { AuthContext } from '../context/AuthContext';
 const Sidebar = () => {
     const [isIntelligenceOpen, setIntelligenceOpen] = useState(false);
     const [isInvestigationOpen, setInvestigationOpen] = useState(false);
+    const [isSurveillanceOpen, setSurveillanceOpen] = useState(false);
     const { authState } = useContext(AuthContext);
 
     const toggleIntelligence = () => {
@@ -14,6 +15,10 @@ const Sidebar = () => {
 
     const toggleInvestigation = () => {
         setInvestigationOpen(!isInvestigationOpen);
+    };
+
+    const toggleSurveillance = () => {
+        setSurveillanceOpen(!isSurveillanceOpen);
     };
 
     return (
@@ -26,10 +31,11 @@ const Sidebar = () => {
             </div>
             <nav className="sidebar-nav">
                 <ul>
-                    <li>
-                        <div onClick={toggleIntelligence} className="sidebar-item">
-                            Intelligence
-                        </div>
+                    {authState.role !== 'StockManager' && (
+                        <li>
+                            <div onClick={toggleIntelligence} className="sidebar-item">
+                                Intelligence
+                            </div>
                         {isIntelligenceOpen && (
                             <ul className="submenu">
                                 {(authState.role === 'DirectorIntelligence' || authState.role === 'Admin' || authState.role === 'admin') && (
@@ -49,13 +55,15 @@ const Sidebar = () => {
                                 {(authState.role === 'Surveillance' || authState.role === 'Admin' || authState.role === 'admin') && (
                                     <li>
                                         <NavLink to='/surveillence-officer' className={({ isActive }) => isActive ? 'active' : ''}>
-                                            Surveillence Officer
+                                            Surveillance Officer
                                         </NavLink>
                                     </li>
                                 )}
                             </ul>
                         )}
                     </li>
+                    )}
+                    {authState.role !== 'StockManager' && (
                     <li>
                         <div onClick={toggleInvestigation} className="sidebar-item">
                             Investigation
@@ -79,6 +87,25 @@ const Sidebar = () => {
                             </ul>
                         )}
                     </li>
+                    )}
+                    {authState.role !== 'StockManager' && (
+                    <li>
+                        <div onClick={toggleSurveillance} className="sidebar-item">
+                            Surveillance
+                        </div>
+                        {isSurveillanceOpen && (
+                            <ul className="submenu">
+                                {(authState.role === 'Surveillance' || authState.role === 'Admin' || authState.role === 'admin') && (
+                                    <li>
+                                        <NavLink to='/surveillence-officer/releases' className={({ isActive }) => isActive ? 'active' : ''}>
+                                            PRSO
+                                        </NavLink>
+                                    </li>
+                                )}
+                            </ul>
+                        )}
+                    </li>
+                    )}
                     {(authState.role === 'AssistantCommissioner' || authState.role === 'Admin' || authState.role === 'admin') && (
                         <li>
                             <NavLink to="/assistant-commissioner" className={({ isActive }) => isActive ? 'active' : ''}>
@@ -100,11 +127,20 @@ const Sidebar = () => {
                             </NavLink>
                         </li>
                     )}
-                    <li>
-                        <NavLink to="/stock-management" className={({ isActive }) => isActive ? 'active' : ''}>
-                            Stock Management
-                        </NavLink>
-                    </li>
+                    {(authState.role === 'StockManager' || authState.role === 'Admin' || authState.role === 'admin') && (
+                        <li>
+                            <NavLink to="/stock-management" className={({ isActive }) => isActive ? 'active' : ''}>
+                                Stock Management
+                            </NavLink>
+                        </li>
+                    )}
+                    {(authState.role === 'Admin' || authState.role === 'admin') && (
+                        <li>
+                            <NavLink to="/system-admin" className={({ isActive }) => isActive ? 'active' : ''}>
+                                System Admin
+                            </NavLink>
+                        </li>
+                    )}
                 </ul>
             </nav>
         </div>

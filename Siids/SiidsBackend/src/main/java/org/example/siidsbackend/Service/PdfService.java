@@ -95,6 +95,21 @@ public class PdfService {
                 byte[] footerBytes = footerResource.getInputStream().readAllBytes();
                 context.setVariable("footerBase64", Base64.getEncoder().encodeToString(footerBytes));
             }
+
+            if (release != null && "APPROVED".equals(release.getStatus())) {
+                ClassPathResource signatureResource = new ClassPathResource("templates/signature.png");
+                if (signatureResource.exists()) {
+                    byte[] sigBytes = signatureResource.getInputStream().readAllBytes();
+                    context.setVariable("prsoSignatureBase64", Base64.getEncoder().encodeToString(sigBytes));
+                }
+                ClassPathResource stampResource = new ClassPathResource("templates/stamp.png");
+                if (stampResource.exists()) {
+                    byte[] stampBytes = stampResource.getInputStream().readAllBytes();
+                    context.setVariable("prsoStampBase64", Base64.getEncoder().encodeToString(stampBytes));
+                }
+                context.setVariable("prsoApprovedBy", release.getPrsoApprovedBy());
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("Could not load images for PDF generation.");

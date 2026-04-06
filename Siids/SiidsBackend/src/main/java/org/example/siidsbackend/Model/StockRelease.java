@@ -39,4 +39,13 @@ public class StockRelease {
 
     @Column(name = "payment_proof_path")
     private String paymentProofPath;
+
+    @Column(name = "status", columnDefinition = "varchar(255) default 'PENDING'")
+    private String status = "PENDING"; // PENDING, APPROVED, REJECTED
+
+    @Column(name = "prso_approved_by")
+    private String prsoApprovedBy;
+
+    @Column(columnDefinition = "TEXT", name = "rejection_reason")
+    private String rejectionReason;
 }

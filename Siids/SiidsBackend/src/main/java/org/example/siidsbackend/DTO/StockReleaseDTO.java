@@ -17,4 +17,7 @@ public class StockReleaseDTO {
     private String newPlateNumber;
     private String newOwner;
     private String releasedBy;
+    private String status;
+    private String prsoApprovedBy;
+    private String rejectionReason;
 }

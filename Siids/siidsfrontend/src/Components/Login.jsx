@@ -118,15 +118,10 @@ const Login = () => {
                     </button>
 
                     <div className="forgot-password">
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex' }}>
                             <div>
                                 <Link href="/forgot-password" variant="body2">
                                     Forgot password?
-                                </Link>
-                            </div>
-                            <div>
-                                <Link href="/register" variant="body2">
-                                    Create an account (Register)
                                 </Link>
                             </div>
                         </div>

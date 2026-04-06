@@ -163,11 +163,7 @@ public class StockService {
                 }
                 item.setQuantity(itemDto.getQuantity());
                 if (StringUtils.hasText(itemDto.getMeasurementUnit())) {
-                    try {
-                        item.setMeasurementUnit(MeasurementUnit.valueOf(itemDto.getMeasurementUnit().toUpperCase().trim()));
-                    } catch (IllegalArgumentException e) {
-                        log.error("Invalid measurement unit: {}", itemDto.getMeasurementUnit());
-                    }
+                    item.setMeasurementUnit(itemDto.getMeasurementUnit().toUpperCase().trim());
                 }
                 item.setItemType(itemDto.getItemType());
                 item.setPlateNumber(itemDto.getPlateNumber());
@@ -197,6 +193,16 @@ public class StockService {
                 release.setNewPlateNumber(releaseDto.getNewPlateNumber());
                 release.setNewOwner(releaseDto.getNewOwner());
                 release.setReleasedBy(releaseDto.getReleasedBy());
+                
+                // Set default status if not provided
+                if (StringUtils.hasText(releaseDto.getStatus())) {
+                    release.setStatus(releaseDto.getStatus());
+                } else {
+                    release.setStatus("PENDING");
+                }
+                release.setPrsoApprovedBy(releaseDto.getPrsoApprovedBy());
+                release.setRejectionReason(releaseDto.getRejectionReason());
+
                 stock.addRelease(release);
             }
         }
@@ -402,7 +408,7 @@ public class StockService {
                 itemDto.setItemName(item.getItemName());
                 itemDto.setItem(item.getItem());
                 itemDto.setQuantity(item.getQuantity());
-                itemDto.setMeasurementUnit(item.getMeasurementUnit() != null ? item.getMeasurementUnit().name() : null);
+                itemDto.setMeasurementUnit(item.getMeasurementUnit());
                 itemDto.setItemType(item.getItemType());
                 itemDto.setPlateNumber(item.getPlateNumber());
                 itemDto.setChassisNumber(item.getChassisNumber());
@@ -428,6 +434,9 @@ public class StockService {
                 relDto.setNewPlateNumber(rel.getNewPlateNumber());
                 relDto.setNewOwner(rel.getNewOwner());
                 relDto.setReleasedBy(rel.getReleasedBy());
+                relDto.setStatus(rel.getStatus());
+                relDto.setPrsoApprovedBy(rel.getPrsoApprovedBy());
+                relDto.setRejectionReason(rel.getRejectionReason());
                 return relDto;
             }).collect(Collectors.toList());
             dto.setReleases(releaseDtos);
@@ -454,7 +463,28 @@ public class StockService {
     public byte[] generateReleasePdf(Stock stock, int releaseIndex) throws IOException {
         if (stock.getReleases() != null && releaseIndex >= 0 && releaseIndex < stock.getReleases().size()) {
             StockRelease release = stock.getReleases().get(releaseIndex);
+            if(!"APPROVED".equals(release.getStatus())) {
+                 throw new IllegalArgumentException("Cannot generate document: Release status is not APPROVED.");
+            }
             return pdfService.generateReleaseDocument(stock, release);
+        }
+        throw new IllegalArgumentException("Invalid release index: " + releaseIndex);
+    }
+
+    @Transactional
+    public Stock updateReleaseStatus(Integer stockId, int releaseIndex, String status, String rejectionReason, String prsoApprovedBy) {
+        Stock stock = getStock(stockId);
+        if (stock.getReleases() != null && releaseIndex >= 0 && releaseIndex < stock.getReleases().size()) {
+            StockRelease release = stock.getReleases().get(releaseIndex);
+            release.setStatus(status);
+            release.setPrsoApprovedBy(prsoApprovedBy);
+            
+            if ("REJECTED".equalsIgnoreCase(status)) {
+                release.setRejectionReason(rejectionReason);
+            } else {
+                release.setRejectionReason(null);
+            }
+            return stockRepository.save(stock);
         }
         throw new IllegalArgumentException("Invalid release index: " + releaseIndex);
     }

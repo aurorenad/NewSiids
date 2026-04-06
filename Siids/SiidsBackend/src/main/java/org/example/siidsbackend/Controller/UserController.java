@@ -32,7 +32,53 @@ public class UserController {
     @PostMapping("/register")
     public User register(@RequestBody User user) {
         return service.register(user);
+    }
 
+    @PostMapping("/admin/register-user")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
+    public ResponseEntity<?> adminRegisterUser(@RequestBody Map<String, String> request) {
+        try {
+            String username = request.get("username");
+            String role = request.get("role");
+
+            if (username == null || role == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Username and role are required"));
+            }
+
+            // Verify employee
+            Optional<Employee> employeeOpt = employeeRepo.findByEmployeeId(username);
+            if (employeeOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Employee not found with ID: " + username));
+            }
+
+            // Create user
+            User user = new User();
+            user.setUsername(username);
+            user.setRole(role);
+            user.setPassword(java.util.UUID.randomUUID().toString()); // Placeholder password
+            service.register(user);
+
+            // Generate OTP
+            Map<String, String> otpResult = service.generateOtp(username);
+            if (otpResult.containsKey("error")) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of("error", "User registered, but failed to generate OTP: " + otpResult.get("error")));
+            }
+
+            // Send specialized welcome email (since the generateOtp sends the generic one, 
+            // we have the OTP now and can send the welcome one OR the generic one is already sent by generateOtp.
+            // Since generateOtp() already calls emailService.sendOtpEmail(), we have two emails sent if we send another here.
+            // To be precise and clean: We could re-send the welcome email, but since generateOtp handles generating and emailing, 
+            // the user will receive the generic OTP email. That is functionally perfectly fine.
+            // Wait, we can fetch the OTP and send the welcome email directly instead of trusting generateOtp.
+            // Let's rely on generateOtp since it already does the work.
+
+            return ResponseEntity.ok(Map.of("message", "User successfully registered and OTP sent via email"));
+        } catch (Exception e) {
+            log.error("Error in admin register", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                 .body(Map.of("error", "Failed to register user: " + e.getMessage()));
+        }
     }
 
 
@@ -137,6 +183,39 @@ public class UserController {
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to reset password");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @org.springframework.web.bind.annotation.GetMapping("/users")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
+    public java.util.List<User> getAllUsers() {
+        return service.getAllUsers();
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/users/{id}/role")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
+    public ResponseEntity<?> updateUserRole(@org.springframework.web.bind.annotation.PathVariable Integer id, @RequestBody Map<String, String> request) {
+        try {
+            String role = request.get("role");
+            User updatedUser = service.updateUserRole(id, role);
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to update user role");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/users/{id}/deactivate")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
+    public ResponseEntity<?> toggleUserActiveStatus(@org.springframework.web.bind.annotation.PathVariable Integer id) {
+        try {
+            User updatedUser = service.toggleUserActiveStatus(id);
+            return ResponseEntity.ok(updatedUser);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to toggle user status");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }

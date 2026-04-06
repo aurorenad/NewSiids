@@ -27,6 +27,9 @@ public class User {
     @Column(name = "otp_expiry_time")
     private LocalDateTime otpExpiryTime;
 
+    @Column(name = "active", columnDefinition = "boolean default true")
+    private Boolean active = true;
+
     public Integer getId() {
         return id;
     }
@@ -72,6 +75,14 @@ public class User {
 
     public void setOtpExpiryTime(LocalDateTime otpExpiryTime) {
         this.otpExpiryTime = otpExpiryTime;
+    }
+
+    public Boolean getActive() {
+        return active;
+    }
+
+    public void setActive(Boolean active) {
+        this.active = active;
     }
 
     @Override

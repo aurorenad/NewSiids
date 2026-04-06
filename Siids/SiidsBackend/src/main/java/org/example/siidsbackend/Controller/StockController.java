@@ -114,6 +114,25 @@ public class StockController {
         }
     }
 
+    @PutMapping(value = "/{id}/release/{releaseIndex}/status")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'Surveillance')")
+    public ResponseEntity<?> updateReleaseStatus(
+            @PathVariable Integer id,
+            @PathVariable int releaseIndex,
+            @RequestBody java.util.Map<String, String> request) {
+        try {
+            String status = request.get("status");
+            String rejectionReason = request.get("rejectionReason");
+            String prsoApprovedBy = request.get("prsoApprovedBy");
+            Stock stock = stockService.updateReleaseStatus(id, releaseIndex, status, rejectionReason, prsoApprovedBy);
+            return ResponseEntity.ok(stockService.toDTO(stock));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error updating status: " + e.getMessage());
+        }
+    }
+
     @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStock(@PathVariable Integer id) {

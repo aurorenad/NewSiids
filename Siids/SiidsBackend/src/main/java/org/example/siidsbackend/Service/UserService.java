@@ -66,6 +66,13 @@ public class UserService {
 
         System.out.println("Employee found: " + employee.get().getEmployeeId());
 
+        User dbUser = repo.findByUsername(user.getUsername());
+        if (dbUser != null && dbUser.getActive() != null && !dbUser.getActive()) {
+            System.out.println("User is deactivated: " + user.getUsername());
+            response.put("error", "Your account has been deactivated. Please contact the administrator.");
+            return response;
+        }
+
         try {
             Authentication authentication = authManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
@@ -76,7 +83,6 @@ public class UserService {
                 System.out.println("Login request received for user: " + user.getUsername());
                 System.out.println("Token generated: " + token);
 
-                User dbUser = repo.findByUsername(user.getUsername());
                 if (dbUser != null) {
                     response.put("token", token);
                     response.put("role", dbUser.getRole());
@@ -190,5 +196,21 @@ public class UserService {
 
         response.put("message", "Password reset successfully");
         return response;
+    }
+
+    public java.util.List<User> getAllUsers() {
+        return repo.findAll();
+    }
+
+    public User updateUserRole(Integer id, String role) {
+        User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setRole(role);
+        return repo.save(user);
+    }
+
+    public User toggleUserActiveStatus(Integer id) {
+        User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        user.setActive(user.getActive() == null ? false : !user.getActive());
+        return repo.save(user);
     }
 }

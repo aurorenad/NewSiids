@@ -360,11 +360,12 @@ const StockManagement = () => {
             seizureReason: formData.seizureReason || null,
             items: formData.items.map(item => {
                 const category = item.item === 'OTHER' ? (item.newCategory || 'OTHER').toUpperCase() : item.item;
+                const unit = item.measurementUnit === 'OTHER' ? (item.newUnit || 'OTHER').toUpperCase() : item.measurementUnit;
                 return {
                     itemName: item.itemName,
                     item: category,
                     quantity: parseInt(item.quantity) || 0,
-                    measurementUnit: item.measurementUnit,
+                    measurementUnit: unit,
                     plateNumber: category === 'VEHICLE' ? item.plateNumber : null,
                     chassisNumber: category === 'VEHICLE' ? item.chassisNumber : null,
                     vehicleType: category === 'VEHICLE' ? item.vehicleType : null
@@ -565,8 +566,14 @@ const StockManagement = () => {
 
     const getRemainingQuantity = (stock) => {
         const total = formatTotalQuantity(stock.items);
-        const released = (stock.releases || []).reduce((sum, r) => sum + (r.amount || 0), 0);
-        return total - released;
+        let releasedTotal = (stock.releases || []).reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0);
+        
+        // Handle legacy data: if no releases but there's a legacy quantityReleased
+        if (releasedTotal === 0 && stock.quantityReleased) {
+            releasedTotal = parseInt(stock.quantityReleased) || 0;
+        }
+        
+        return Math.max(0, total - releasedTotal);
     };
 
     // --- Filtering logic ---
@@ -574,10 +581,18 @@ const StockManagement = () => {
         const item = (stock.items || []).find(i => i.itemName === itemName);
         if (!item) return 0;
         const total = parseInt(item.quantity) || 0;
-        const released = (stock.releases || [])
+        let releasedForThisItem = (stock.releases || [])
             .filter(r => r.releasedItemName === itemName || r.releasedItemName === 'ALL')
             .reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0);
-        return Math.max(0, total - released);
+            
+        // Handle legacy data
+        if (releasedForThisItem === 0 && stock.quantityReleased) {
+            if (stock.releasedItem === itemName || stock.releasedItem === 'ALL' || !stock.releasedItem) {
+                releasedForThisItem = parseInt(stock.quantityReleased) || 0;
+            }
+        }
+
+        return Math.max(0, total - releasedForThisItem);
     };
 
     const isFilterActive = searchOwner || searchItemName || searchTakenDate || releaseFilter !== 'all';
@@ -616,7 +631,7 @@ const StockManagement = () => {
                 });
             }
             
-            if (releaseFilter !== 'all' && releaseFilter !== 'damaged' && filteredItems.length === 0) {
+            if (releaseFilter !== 'all' && filteredItems.length === 0) {
                 return null;
             }
             
@@ -630,25 +645,43 @@ const StockManagement = () => {
     // --- Excel download ---
     const downloadExcel = () => {
         const excelData = filteredStocks.map(stock => {
+            const relevantItems = stock.displayItems || stock.items;
+            
+            // Deduplicate item names and types
+            const uniqueItemNames = [...new Set((relevantItems || []).map(i => i.itemName))];
+            const uniqueItemTypes = [...new Set((relevantItems || []).map(i => i.item))];
+
             const data = {
                 'Owner Name': stock.ownerName || '',
                 'Takeover Name': stock.takeoverName || '',
                 'Seizure Number': stock.seizureNumber || '',
                 'PV Number': stock.pvNumber || '',
-                'Items': (stock.items || []).map(i => `${i.itemName} (${i.quantity} ${i.measurementUnit})`).join(', '),
-                'Item Types': (stock.items || []).map(i => i.item).join(', '),
-                'Total Taken Qty': formatTotalQuantity(stock.items),
+                'Items': uniqueItemNames.map(name => {
+                    const item = (relevantItems || []).find(i => i.itemName === name);
+                    return `${name} (${item.quantity} ${item.measurementUnit})`;
+                }).join(', '),
+                'Item Types': uniqueItemTypes.join(', '),
+                'Total Taken Qty': formatTotalQuantity(stock.items), // Always show full stock total
                 'Remaining Qty': getRemainingQuantity(stock),
                 'Taken Date': stock.takenDate || '',
                 'Received Date': stock.receivedDate || ''
             };
             
-            if (releaseFilter !== 'not_released') {
-                data['Date Released'] = stock.dateReleased || '';
-                data['Released Item'] = stock.releasedItem || '';
-                data['Quantity Released'] = stock.quantityReleased || '';
-                data['Sold Amount'] = stock.soldAmount || '';
-                data['Reason'] = stock.reason || '';
+            if (releaseFilter === 'damaged') {
+                const damagedReleases = (stock.releases || []).filter(r => 
+                    r.releaseReason === 'DAMAGED' && 
+                    ((relevantItems || []).some(i => i.itemName === r.releasedItemName) || r.releasedItemName === 'ALL')
+                );
+                const uniqueDamagedNames = [...new Set(damagedReleases.map(r => r.releasedItemName))];
+                data['Damaged Items'] = uniqueDamagedNames.length > 0 ? uniqueDamagedNames.join(', ') : (stock.status === 'DAMAGED' ? 'ALL' : '');
+                data['Damaged Qty'] = damagedReleases.length > 0 ? damagedReleases.reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0) : (stock.status === 'DAMAGED' ? formatTotalQuantity(stock.items) : '');
+            } else if (releaseFilter !== 'not_released' && releaseFilter !== 'all') {
+                const releasedNames = [...new Set((stock.releases || []).map(r => r.releasedItemName))];
+                data['Date Released'] = stock.dateReleased || (stock.releases && stock.releases.length > 0 ? stock.releases[0].dateReleased : '');
+                data['Released Item'] = stock.releasedItem || (stock.releases && stock.releases.length > 0 ? releasedNames.join(', ') : '');
+                data['Quantity Released'] = stock.quantityReleased || (stock.releases && stock.releases.length > 0 ? stock.releases.reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0) : '');
+                data['Sold Amount'] = stock.soldAmount || (stock.releases && stock.releases.length > 0 ? stock.releases.reduce((sum, r) => sum + (parseFloat(r.soldAmount) || 0), 0) : '');
+                data['Reason'] = stock.reason || (stock.releases && stock.releases.length > 0 ? stock.releases[0].reason : '');
             }
             return data;
         });
@@ -829,11 +862,19 @@ const StockManagement = () => {
                                             {stock.releases && stock.releases.length > 0 ? (
                                                 <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
                                                     {stock.releases.map((r, i) => (
-                                                        <span key={i} className="released-badge" style={{fontSize: '0.75rem', padding: '2px 6px'}}>{r.dateReleased}</span>
+                                                        <div key={i} style={{display: 'flex', flexDirection: 'column'}}>
+                                                            <span className="released-badge" style={{fontSize: '0.75rem', padding: '2px 6px'}}>{r.dateReleased}</span>
+                                                            {r.status === 'REJECTED' && <span style={{fontSize: '0.7rem', color: 'red'}}>REJECTED: {r.rejectionReason}</span>}
+                                                            {(!r.status || r.status === 'PENDING') && <span style={{fontSize: '0.7rem', color: 'orange'}}>PENDING</span>}
+                                                            {r.status === 'APPROVED' && <span style={{fontSize: '0.7rem', color: 'green'}}>APPROVED</span>}
+                                                        </div>
                                                     ))}
                                                 </div>
                                             ) : stock.dateReleased ? (
-                                                <span className="released-badge">{stock.dateReleased}</span>
+                                                <div style={{display: 'flex', flexDirection: 'column'}}>
+                                                    <span className="released-badge">{stock.dateReleased}</span>
+                                                    {stock.status === 'REJECTED' && <span style={{fontSize: '0.7rem', color: 'red'}}>REJECTED</span>}
+                                                </div>
                                             ) : (
                                                 <span className="not-released-badge">Not Released</span>
                                             )}
@@ -868,9 +909,15 @@ const StockManagement = () => {
                                             {stock.releases && stock.releases.length > 0 ? (
                                                 <div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
                                                     {stock.releases.map((r, i) => (
-                                                        <button key={i} className="icon-btn download-btn" onClick={() => downloadGeneratedReleaseDoc(stock.id, i)} title={`Download Release ${i + 1}`}>
-                                                            <Download size={16} /><span style={{fontSize: '9px', fontWeight:'bold'}}>{i+1}</span>
-                                                        </button>
+                                                        r.status === 'APPROVED' ? (
+                                                            <button key={i} className="icon-btn download-btn" onClick={() => downloadGeneratedReleaseDoc(stock.id, i)} title={`Download Release ${i + 1}`}>
+                                                                <Download size={16} /><span style={{fontSize: '9px', fontWeight:'bold'}}>{i+1}</span>
+                                                            </button>
+                                                        ) : (
+                                                            <span key={i} style={{fontSize: '10px', color: 'gray'}}>
+                                                                {r.status || 'PENDING'}
+                                                            </span>
+                                                        )
                                                     ))}
                                                 </div>
                                             ) : stock.dateReleased ? (
@@ -903,31 +950,31 @@ const StockManagement = () => {
                                 {/* Mandatory Fields */}
                                 <div className="form-group">
                                     <label>Owner Name *</label>
-                                    <input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleInputChange} required />
+                                    <input type="text" name="ownerName" value={formData.ownerName || ''} onChange={handleInputChange} disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                                 <div className="form-group">
                                     <label>Takeover Name *</label>
-                                    <input type="text" name="takeoverName" value={formData.takeoverName || ''} onChange={handleInputChange} required />
+                                    <input type="text" name="takeoverName" value={formData.takeoverName || ''} onChange={handleInputChange} disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                                 <div className="form-group">
                                     <label>Seizure Number *</label>
-                                    <input type="text" name="seizureNumber" value={formData.seizureNumber || ''} onChange={handleInputChange} required />
+                                    <input type="text" name="seizureNumber" value={formData.seizureNumber || ''} onChange={handleInputChange} disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                                 <div className="form-group">
                                     <label>PV Number</label>
-                                    <input type="text" name="pvNumber" value={formData.pvNumber || ''} onChange={handleInputChange} />
+                                    <input type="text" name="pvNumber" value={formData.pvNumber || ''} onChange={handleInputChange} disabled={currentStock?.releases?.length > 0} />
                                 </div>
                                 <div className="form-group">
                                     <label>Taken Date *</label>
-                                    <input type="date" name="takenDate" value={formData.takenDate || ''} onChange={handleInputChange} max={today} required />
+                                    <input type="date" name="takenDate" value={formData.takenDate || ''} onChange={handleInputChange} max={today} disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                                 <div className="form-group">
                                     <label>Received Date *</label>
-                                    <input type="date" name="receivedDate" value={formData.receivedDate || ''} onChange={handleInputChange} min={formData.takenDate} max={today} required />
+                                    <input type="date" name="receivedDate" value={formData.receivedDate || ''} onChange={handleInputChange} min={formData.takenDate} max={today} disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                                 <div className="form-group full-width">
                                     <label>Upload Documents (PDF) *</label>
-                                    <input type="file" name="documents" accept=".pdf" onChange={handleFileChange} multiple />
+                                    <input type="file" name="documents" accept=".pdf" onChange={handleFileChange} multiple disabled={currentStock?.releases?.length > 0} />
                                     
                                     {/* Existing Stored Documents */}
                                     {currentStock && currentStock.documentPaths && currentStock.documentPaths.length > 0 && (
@@ -936,7 +983,7 @@ const StockManagement = () => {
                                             {currentStock.documentPaths.map((path, idx) => (
                                                 <div key={idx} className="document-item">
                                                     <span>{path.split(/[\/\\]/).pop()}</span>
-                                                    <button type="button" className="remove-doc-btn" onClick={() => handleRemoveExistingDocument(currentStock.id, idx)}>
+                                                    <button type="button" className="remove-doc-btn" onClick={() => handleRemoveExistingDocument(currentStock.id, idx)} disabled={currentStock?.releases?.length > 0}>
                                                         <X size={14} />
                                                     </button>
                                                 </div>
@@ -949,7 +996,7 @@ const StockManagement = () => {
                                             {documentFiles.map((file, idx) => (
                                                 <div key={idx} className="document-item new-file">
                                                     <span>{file.name}</span>
-                                                    <button type="button" className="remove-doc-btn" onClick={() => handleRemoveNewDocument(idx)}>
+                                                    <button type="button" className="remove-doc-btn" onClick={() => handleRemoveNewDocument(idx)} disabled={currentStock?.releases?.length > 0}>
                                                         <X size={14} />
                                                     </button>
                                                 </div>
@@ -959,7 +1006,7 @@ const StockManagement = () => {
                                 </div>
                                 <div className="form-group full-width">
                                     <label>Reason for Taking Items *</label>
-                                    <textarea name="seizureReason" value={formData.seizureReason || ''} onChange={handleInputChange} placeholder="Explain why the items were seized/taken..." required />
+                                    <textarea name="seizureReason" value={formData.seizureReason || ''} onChange={handleInputChange} placeholder="Explain why the items were seized/taken..." disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                             </div>
 
@@ -975,6 +1022,7 @@ const StockManagement = () => {
                                                     <select
                                                         value={item.item}
                                                         onChange={(e) => handleItemChange(index, 'item', e.target.value)}
+                                                        disabled={currentStock?.releases?.length > 0}
                                                         required
                                                     >
                                                         <option value="">Select Category</option>
@@ -991,66 +1039,76 @@ const StockManagement = () => {
                                                             type="text"
                                                             value={item.newCategory || ''}
                                                             onChange={(e) => handleItemChange(index, 'newCategory', e.target.value)}
+                                                            disabled={currentStock?.releases?.length > 0}
                                                             required
                                                             placeholder="Enter category name..."
                                                         />
                                                     </div>
                                                 )}
+                                                {item.item === 'VEHICLE' && (
+                                                    <div className="item-field">
+                                                        <label>Vehicle Type *</label>
+                                                        <select
+                                                            value={item.vehicleType}
+                                                            onChange={(e) => handleItemChange(index, 'vehicleType', e.target.value)}
+                                                            disabled={currentStock?.releases?.length > 0}
+                                                            required
+                                                        >
+                                                            <option value="">Select Type</option>
+                                                            <option value="CAR">Car</option>
+                                                            <option value="MOTO">Moto Vehicle</option>
+                                                            <option value="TRUCK">Truck</option>
+                                                            <option value="VAN">Van</option>
+                                                            <option value="OTHER">Other</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
                                                 <div className="item-field">
                                                     <label>Item Name *</label>
                                                     <input
                                                         type="text"
                                                         value={item.itemName}
                                                         onChange={(e) => handleItemChange(index, 'itemName', e.target.value)}
+                                                        disabled={currentStock?.releases?.length > 0}
                                                         required
+                                                        placeholder={item.item === 'VEHICLE' ? "Enter Vehicle Model/Brand (e.g. Toyota Hilux)" : "Enter Item Name"}
                                                     />
                                                 </div>
-                                                {item.item === 'VEHICLE' && (
-                                                    <>
-                                                        <div className="item-field">
-                                                            <label>Vehicle Type *</label>
-                                                            <select
-                                                                value={item.vehicleType}
-                                                                onChange={(e) => handleItemChange(index, 'vehicleType', e.target.value)}
-                                                                required
-                                                            >
-                                                                <option value="">Select Type</option>
-                                                                <option value="CAR">Car</option>
-                                                                <option value="MOTO">Moto Vehicle</option>
-                                                                <option value="TRUCK">Truck</option>
-                                                                <option value="VAN">Van</option>
-                                                                <option value="OTHER">Other</option>
-                                                            </select>
-                                                        </div>
-                                                        <div className="item-field">
-                                                            <label>Plate Number *</label>
-                                                            <input
-                                                                type="text"
-                                                                value={item.plateNumber}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                                                                    if (val.length <= 7) {
-                                                                        handleItemChange(index, 'plateNumber', val);
-                                                                    }
-                                                                }}
-                                                                placeholder="AAA123A"
-                                                                required
-                                                            />
-                                                            <small>Format: 3 chars, 3 nums, 1 char</small>
-                                                        </div>
-                                                        <div className="item-field">
-                                                            <label>Chassis Number *</label>
-                                                            <input
-                                                                type="text"
-                                                                value={item.chassisNumber}
-                                                                onChange={(e) => handleItemChange(index, 'chassisNumber', e.target.value.toUpperCase())}
-                                                                placeholder="Enter Chassis Number"
-                                                                required
-                                                            />
-                                                        </div>
-                                                    </>
-                                                )}
                                             </div>
+
+                                            {item.item === 'VEHICLE' && (
+                                                <div className="item-main-row">
+                                                    <div className="item-field">
+                                                        <label>Plate Number *</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.plateNumber}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                                                                if (val.length <= 7) {
+                                                                    handleItemChange(index, 'plateNumber', val);
+                                                                }
+                                                            }}
+                                                            disabled={currentStock?.releases?.length > 0}
+                                                            placeholder="AAA123A"
+                                                            required
+                                                        />
+                                                        <small>Format: 3 chars, 3 nums, 1 char</small>
+                                                    </div>
+                                                    <div className="item-field">
+                                                        <label>Chassis Number *</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.chassisNumber}
+                                                            onChange={(e) => handleItemChange(index, 'chassisNumber', e.target.value.toUpperCase())}
+                                                            disabled={currentStock?.releases?.length > 0}
+                                                            placeholder="Enter Chassis Number"
+                                                            required
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="item-sub-row">
                                                 <div className="item-field quantity-field">
@@ -1060,6 +1118,7 @@ const StockManagement = () => {
                                                         min="1"
                                                         value={item.quantity}
                                                         onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
+                                                        disabled={currentStock?.releases?.length > 0}
                                                         required
                                                     />
                                                 </div>
@@ -1068,19 +1127,35 @@ const StockManagement = () => {
                                                     <select
                                                         value={item.measurementUnit}
                                                         onChange={(e) => handleItemChange(index, 'measurementUnit', e.target.value)}
+                                                        disabled={currentStock?.releases?.length > 0}
                                                         required
                                                     >
                                                         <option value="">Select Unit</option>
                                                         {measurementUnits.map(unit => (
                                                             <option key={unit} value={unit}>{formatUnit(unit)}</option>
                                                         ))}
+                                                        <option value="OTHER">OTHER (Add New...)</option>
                                                     </select>
                                                 </div>
+                                                {item.measurementUnit === 'OTHER' && (
+                                                    <div className="item-field">
+                                                        <label>New Unit *</label>
+                                                        <input
+                                                            type="text"
+                                                            value={item.newUnit || ''}
+                                                            onChange={(e) => handleItemChange(index, 'newUnit', e.target.value)}
+                                                            disabled={currentStock?.releases?.length > 0}
+                                                            required
+                                                            placeholder="Enter unit..."
+                                                        />
+                                                    </div>
+                                                )}
                                                 {formData.items.length > 1 && (
                                                     <button
                                                         type="button"
                                                         className="remove-item-btn"
                                                         onClick={() => removeItem(index)}
+                                                        disabled={currentStock?.releases?.length > 0}
                                                         title="Remove this item"
                                                     >
                                                         <X size={16} />
@@ -1090,9 +1165,11 @@ const StockManagement = () => {
                                         </div>
                                     </div>
                                 ))}
-                                <button type="button" className="add-item-btn" onClick={addItem}>
-                                    <Plus size={16} /> Add Another Item
-                                </button>
+                                {!(currentStock?.releases?.length > 0) && (
+                                    <button type="button" className="add-item-btn" onClick={addItem}>
+                                        <Plus size={16} /> Add Another Item
+                                    </button>
+                                )}
                             </div>
 
                             {/* Existing Releases Section */}
@@ -1116,7 +1193,13 @@ const StockManagement = () => {
                                                     <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.dateReleased}</td>
                                                     <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.releasedItemName}</td>
                                                     <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.quantityReleased}</td>
-                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.releaseReason}</td>
+                                                    <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>
+                                                        <div>{r.releaseReason}</div>
+                                                        <div style={{fontSize: '10px', color: r.status === 'APPROVED' ? 'green' : (r.status === 'REJECTED' ? 'red' : 'orange')}}>
+                                                            {r.status || 'PENDING'}
+                                                            {r.status === 'REJECTED' && ` - ${r.rejectionReason}`}
+                                                        </div>
+                                                    </td>
                                                     <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>{r.releasedBy}</td>
                                                     <td style={{padding: '8px', borderBottom: '1px solid #eee'}}>
                                                         {r.paymentProofPath ? (

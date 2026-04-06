@@ -20,8 +20,7 @@ public class StockItem {
 
     private Integer quantity;
 
-    @Enumerated(EnumType.STRING)
-    private MeasurementUnit measurementUnit;
+    private String measurementUnit;
 
     private String itemType;
 

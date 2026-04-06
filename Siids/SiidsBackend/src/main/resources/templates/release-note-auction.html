@@ -106,9 +106,18 @@
             <p>Released by: <span th:text="${releasedBy}">releaser name</span></p>
         </div>
         
-        <div style="margin-top: 30px;">
-            Approved by: JBC MURANGIRA
+        <div style="margin-top: 30px; float: left;">
+            <p>Approved By (PRSO): <span th:text="${prsoApprovedBy != null ? prsoApprovedBy : 'JBC MURANGIRA'}">JBC MURANGIRA</span></p>
+            <div style="margin-top: 10px;">
+                <div th:if="${prsoSignatureBase64 != null}" style="display: inline-block; vertical-align: middle; margin-right: 20px;">
+                    <img th:src="'data:image/png;base64,' + ${prsoSignatureBase64}" style="width: 150px; height: auto;" />
+                </div>
+                <div th:if="${prsoStampBase64 != null}" style="display: inline-block; vertical-align: middle;">
+                    <img th:src="'data:image/png;base64,' + ${prsoStampBase64}" style="width: 100px; height: auto;" />
+                </div>
+            </div>
         </div>
+        <div style="clear: both;"></div>
     </div>
 
     <div class="footer">
