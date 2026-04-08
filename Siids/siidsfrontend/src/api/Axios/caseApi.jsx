@@ -424,6 +424,9 @@ export const ReportApi = {
     getAllReportsWithLegalAdvisors: () => {
         return caseApi.get('/api/reports/legal-advisor/all-reports');
     },
+    getAvailableInvestigationOfficers: () => {
+        return caseApi.get('/api/reports/investigation-officers');
+    },
 };
 
 export const InvestigationApi = {
