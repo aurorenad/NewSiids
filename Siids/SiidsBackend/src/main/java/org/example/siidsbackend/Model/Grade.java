@@ -26,10 +26,10 @@ public class Grade {
     @Column(name = "level")
     private String level;
 
-    @Column(name = "purpose_std")
+    @Column(name = "purpose_std", columnDefinition = "TEXT")
     private String purposeStd;
 
-    @Column(name = "duties_std")
+    @Column(name = "duties_std", columnDefinition = "TEXT")
     private String dutiesStd;
 
     @Column(name = "num_staffs")

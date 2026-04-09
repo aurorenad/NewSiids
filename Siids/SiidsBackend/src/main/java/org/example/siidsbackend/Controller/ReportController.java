@@ -1077,17 +1077,6 @@ public class ReportController {
     // }
     // }
 
-    @GetMapping("/investigation-officers")
-    public ResponseEntity<List<Employee>> getAvailableInvestigationOfficers() {
-        try {
-            List<Employee> officers = reportRepo.findAvailableT3Officers();
-            return ResponseEntity.ok(officers);
-        } catch (Exception e) {
-            log.error("Error getting investigation officers: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
     @GetMapping("/investigation-officers/assigned-reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsAssignedToInvestigationOfficers(
             @RequestParam String employeeId) {

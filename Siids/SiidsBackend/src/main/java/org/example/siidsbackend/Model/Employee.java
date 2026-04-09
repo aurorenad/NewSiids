@@ -55,7 +55,7 @@ public class Employee {
 
     @JsonIgnore
     @Column(name = "curr_job_id", insertable = false, updatable = false)
-    private int currJobId;
+    private Integer currJobId;
 
     @Column(name = "rra_job_count")
     private int rraJobCount;
@@ -107,7 +107,7 @@ public class Employee {
     public Employee() {
     }
 
-    public Employee(String employeeId, String givenName, String familyName, Department department, String gender, LocalDate dob, String nationalId, String phoneNumber, String workEmail, String personalEmail, LocalDate joinDate, boolean profileFlag, boolean currJobFlag, int currJobId, int rraJobCount, int extJobCount, boolean isPunished, boolean confirmStatus, int letterConfirm, LocalDateTime letterConfDate, int jobDescriptionsConfirm, LocalDateTime jdsConfDate, int pmappConfirm, LocalDateTime pmappConfDate, int appealLetterConfirm, LocalDateTime appLetterConfDate, JobMaster currentJob, BankDetails bankDetails, Placements placement) {
+    public Employee(String employeeId, String givenName, String familyName, Department department, String gender, LocalDate dob, String nationalId, String phoneNumber, String workEmail, String personalEmail, LocalDate joinDate, boolean profileFlag, boolean currJobFlag, Integer currJobId, int rraJobCount, int extJobCount, boolean isPunished, boolean confirmStatus, int letterConfirm, LocalDateTime letterConfDate, int jobDescriptionsConfirm, LocalDateTime jdsConfDate, int pmappConfirm, LocalDateTime pmappConfDate, int appealLetterConfirm, LocalDateTime appLetterConfDate, JobMaster currentJob, BankDetails bankDetails, Placements placement) {
         this.employeeId = employeeId;
         this.givenName = givenName;
         this.familyName = familyName;
@@ -243,11 +243,11 @@ public class Employee {
         this.currJobFlag = currJobFlag;
     }
 
-    public int getCurrJobId() {
+    public Integer getCurrJobId() {
         return currJobId;
     }
 
-    public void setCurrJobId(int currJobId) {
+    public void setCurrJobId(Integer currJobId) {
         this.currJobId = currJobId;
     }
 
