@@ -18,6 +18,8 @@ public class StockRequestDTO {
     private LocalDate receivedDate;
     private List<StockItemDTO> items;
     private String seizureReason;
+    private String seizureReasonCategory;
+
     
     // Legacy single-release fields (kept for backward compatibility or ease, but essentially unused)
     private LocalDate dateReleased;

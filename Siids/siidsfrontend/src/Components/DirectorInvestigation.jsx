@@ -109,9 +109,10 @@ const DirectorInvestigation = () => {
                     caseId: report.relatedCase?._id,
                     isAssigned: !!report.investigationOfficer,
                     hasFindings: report.findings || report.recommendations ||
-                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0),
-                    hasCasePlan: report.casePlan ||
                         (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0) ||
+                        report.status?.includes('INVESTIGATION_REPORT') ||
+                        report.status?.includes('FINDINGS'),
+                    hasCasePlan: report.casePlan ||
                         report.status?.includes('CASE_PLAN'),
                     assignmentNotes: report.assignmentNotes || '',
                     investigationOfficer: report.investigationOfficer,
@@ -180,17 +181,22 @@ const DirectorInvestigation = () => {
 
     const getCaseCategory = (report) => {
         const status = report.status || '';
-        if (status.includes('INVESTIGATION_REPORT_SUBMITTED') ||
+        // Priority to Investigation Report if it's completed or has findings
+        if (status.includes('INVESTIGATION_REPORT') ||
             status.includes('FINDINGS_SUBMITTED') ||
-            (report.findings && report.investigationOfficer)) {
+            status === 'INVESTIGATION_COMPLETED' ||
+            report.findings) {
             return 'investigation_report';
-        } else if (status.includes('CASE_PLAN')) {
-            return 'case_plan';
-        } else if (report.investigationOfficer && !status.includes('APPROVED') && !status.includes('REJECTED')) {
-            return 'assigned';
-        } else {
-            return 'general';
         }
+        // Then Case Plan
+        if (status.includes('CASE_PLAN') || report.casePlan) {
+            return 'case_plan';
+        }
+        // Then assigned
+        if (report.investigationOfficer) {
+            return 'assigned';
+        }
+        return 'general';
     };
 
     const handleAssignOfficer = async (reportId, officerId, notes) => {
@@ -779,16 +785,23 @@ const DirectorInvestigation = () => {
 
         switch (activeTab) {
             case 1: // Pending Review
+                // Cases not assigned OR assigned but have no investigation report and no case plan
                 filtered = filtered.filter(c =>
-                    c.investigationReportStatus === 'submitted' ||
-                    c.casePlanStatus === 'submitted'
+                    !c.status.includes('COMPLETED') &&
+                    (!c.isAssigned || (c.isAssigned && !c.hasFindings && !c.hasCasePlan && c.investigationReportStatus === 'none' && c.casePlanStatus === 'none'))
                 );
                 break;
             case 2: // Investigation Reports
-                filtered = filtered.filter(c => c.category === 'investigation_report');
+                // Cases that have an investigation report
+                filtered = filtered.filter(c =>
+                    c.hasFindings || c.investigationReportStatus !== 'none' || c.category === 'investigation_report'
+                );
                 break;
             case 3: // Case Plans
-                filtered = filtered.filter(c => c.category === 'case_plan');
+                // Cases that have a case plan
+                filtered = filtered.filter(c =>
+                    c.hasCasePlan || c.casePlanStatus !== 'none' || c.category === 'case_plan'
+                );
                 break;
             default:
                 // All cases
@@ -809,8 +822,8 @@ const DirectorInvestigation = () => {
     }
 
     return (
-        <div style={{ padding: "20px" }}>
-            <Typography variant="h4" gutterBottom>
+        <Box sx={{ width: '100%', p: 3, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1e293b' }}>
                 Director of Investigation - Case Management
             </Typography>
 
@@ -850,14 +863,12 @@ const DirectorInvestigation = () => {
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
-                        <TableRow style={{ backgroundColor: "#f5f5f5" }}>
+                        <TableRow style={{ backgroundColor: "#f8fafc" }}>
                             <TableCell><strong>Case ID</strong></TableCell>
-                            <TableCell><strong>Assign Officer</strong></TableCell>
                             <TableCell><strong>Current Officer</strong></TableCell>
                             <TableCell><strong>Reported Date</strong></TableCell>
                             <TableCell><strong>Status</strong></TableCell>
                             <TableCell><strong>Case Plan</strong></TableCell>
-                            <TableCell><strong>Investigation Report</strong></TableCell>
                             <TableCell><strong>Assignment Notes</strong></TableCell>
                             <TableCell><strong>Actions</strong></TableCell>
                         </TableRow>
@@ -865,8 +876,8 @@ const DirectorInvestigation = () => {
                     <TableBody>
                         {filteredCases.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={9} align="center">
-                                    <Typography variant="body1" color="text.secondary">
+                                <TableCell colSpan={7} align="center">
+                                    <Typography variant="body1" color="text.secondary" sx={{ py: 4 }}>
                                         No cases found
                                     </Typography>
                                 </TableCell>
@@ -875,34 +886,6 @@ const DirectorInvestigation = () => {
                             filteredCases.map((caseItem) => (
                                 <TableRow key={caseItem.id}>
                                     <TableCell>{caseItem.id}</TableCell>
-                                    <TableCell>
-                                        <FormControl fullWidth size="small">
-                                            <InputLabel>Select Officer</InputLabel>
-                                            <Select
-                                                value={caseItem.delegate || ''}
-                                                onChange={(e) => {
-                                                    setCases(prev => prev.map(c =>
-                                                        c.reportId === caseItem.reportId ? {
-                                                            ...c,
-                                                            delegate: e.target.value
-                                                        } : c
-                                                    ));
-                                                }}
-                                                disabled={caseItem.status.includes("Approved") ||
-                                                    caseItem.status.includes("Rejected") ||
-                                                    caseItem.status.includes("INVESTIGATION_COMPLETED") ||
-                                                    caseItem.casePlanSentToCommissioner ||
-                                                    caseItem.investigationReportStatus === 'approved'}
-                                            >
-                                                <MenuItem value=""><em>None</em></MenuItem>
-                                                {officers.map((officer) => (
-                                                    <MenuItem key={officer._id} value={officer._id}>
-                                                        {officer.name}
-                                                    </MenuItem>
-                                                ))}
-                                            </Select>
-                                        </FormControl>
-                                    </TableCell>
                                     <TableCell>
                                         {caseItem.isAssigned ? (
                                             <Typography color="success.main" fontWeight="bold">
@@ -963,46 +946,6 @@ const DirectorInvestigation = () => {
                                             />
                                         )}
                                         {caseItem.casePlanStatus === 'none' && (
-                                            <Typography variant="body2" color="text.secondary">
-                                                Not submitted
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {caseItem.investigationReportStatus === 'submitted' && (
-                                            <Chip
-                                                icon={<Description />}
-                                                label="Submitted"
-                                                color="warning"
-                                                variant="outlined"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.investigationReportStatus === 'approved' && (
-                                            <Chip
-                                                icon={<Check />}
-                                                label="Approved"
-                                                color="success"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.investigationReportStatus === 'rejected' && (
-                                            <Chip
-                                                icon={<Close />}
-                                                label="Rejected"
-                                                color="error"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.investigationReportStatus === 'returned' && (
-                                            <Chip
-                                                icon={<Refresh />}
-                                                label="Returned"
-                                                color="warning"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.investigationReportStatus === 'none' && (
                                             <Typography variant="body2" color="text.secondary">
                                                 Not submitted
                                             </Typography>
@@ -1094,14 +1037,15 @@ const DirectorInvestigation = () => {
                                                         }
                                                     }}
                                                     disabled={caseItem.status.includes("Approved") ||
+                                                        caseItem.status.includes("Approved") ||
                                                         caseItem.status.includes("Rejected") ||
-                                                        caseItem.status.includes("INVESTIGATION_COMPLETED") ||
                                                         caseItem.casePlanSentToCommissioner ||
                                                         caseItem.investigationReportStatus === 'approved' ||
                                                         caseItem.casePlanStatus === 'approved' ||
                                                         !(
-                                                            caseItem.status?.includes('APPROVED_BY_ASSISTANT_COMMISSIONER') ||
-                                                            caseItem.status?.includes('ASSIGNED_TO_INVESTIGATION_OFFICER') ||
+                                                            caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                                                            caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                                                            caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
                                                             caseItem.investigationReportStatus === 'submitted' ||
                                                             caseItem.casePlanStatus === 'submitted'
                                                         )}
@@ -1115,13 +1059,9 @@ const DirectorInvestigation = () => {
                                                     variant="outlined"
                                                     size="small"
                                                     onClick={() => handleOpenAssignDialog(caseItem)}
-                                                    disabled={!caseItem.delegate ||
-                                                        caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Rejected") ||
-                                                        caseItem.status.includes("INVESTIGATION_COMPLETED") ||
-                                                        caseItem.casePlanSentToCommissioner ||
-                                                        caseItem.investigationReportStatus === 'approved' ||
-                                                        caseItem.casePlanStatus === 'approved'}
+                                                    disabled={
+                                                        caseItem.isAssigned && !caseItem.status.includes("REJECTED")
+                                                    }
                                                 >
                                                     Assign
                                                 </Button>
@@ -1138,15 +1078,15 @@ const DirectorInvestigation = () => {
                                                     disabled={
                                                         caseItem.status.includes("Approved") ||
                                                         caseItem.status.includes("Rejected") ||
-                                                        caseItem.status.includes("INVESTIGATION_COMPLETED") ||
                                                         caseItem.casePlanSentToCommissioner ||
                                                         caseItem.investigationReportStatus === 'approved' ||
                                                         caseItem.investigationReportStatus === 'rejected' ||
                                                         caseItem.casePlanStatus === 'approved' ||
                                                         caseItem.casePlanStatus === 'rejected' ||
                                                         !(
-                                                            caseItem.status?.includes('APPROVED_BY_ASSISTANT_COMMISSIONER') ||
-                                                            caseItem.status?.includes('ASSIGNED_TO_INVESTIGATION_OFFICER') ||
+                                                            caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                                                            caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                                                            caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
                                                             caseItem.investigationReportStatus === 'submitted' ||
                                                             caseItem.casePlanStatus === 'submitted'
                                                         )
@@ -1861,7 +1801,7 @@ const DirectorInvestigation = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </div>
+        </Box>
     );
 };
 

@@ -72,6 +72,10 @@ public class Report {
     @JoinColumn(name = "investigation_officer_id")
     private Employee investigationOfficer;
 
+    @ManyToOne
+    @JoinColumn(name = "legal_advisor_id")
+    private Employee legalAdvisor;
+
     @Column(columnDefinition = "TEXT")
     private String assignmentNotes;
     private String findings;

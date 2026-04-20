@@ -39,6 +39,8 @@ public class Stock {
     @Column(columnDefinition = "TEXT")
     private String seizureReason;
 
+    private String seizureReasonCategory;
+
     private LocalDate dateReleased;
     private String releasedItem; // "ALL" or specific item name
     private Integer quantityReleased;

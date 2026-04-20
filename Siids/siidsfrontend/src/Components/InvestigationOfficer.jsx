@@ -924,15 +924,17 @@ const InvestigationOfficer = () => {
                                                     )}
                                                 </Box>
                                             ) : (
-                                                <Button
-                                                    variant="outlined"
-                                                    size="small"
-                                                    startIcon={<Upload />}
-                                                    onClick={() => handleOpenCasePlanDialog(report)}
-                                                    color="primary"
-                                                >
-                                                    Create Plan
-                                                </Button>
+                                                report.canSubmitCasePlan && (
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
+                                                        startIcon={<Upload />}
+                                                        onClick={() => handleOpenCasePlanDialog(report)}
+                                                        color="primary"
+                                                    >
+                                                        Create Plan
+                                                    </Button>
+                                                )
                                             )}
                                         </TableCell>
                                         <TableCell>
@@ -977,7 +979,7 @@ const InvestigationOfficer = () => {
                                                         </Tooltip>
                                                     )}
 
-                                                    {/* Submit Findings Button - Based on conditions */}
+                                                    {/* Submit Findings Button - Based on backend permission */}
                                                     {report.canSubmitFindings && (
                                                         <Tooltip title="Submit Findings">
                                                             <IconButton
@@ -993,8 +995,8 @@ const InvestigationOfficer = () => {
                                                     {/* Case Plan Action Buttons - Contextual */}
                                                     {report.canContinueWorking && (
                                                         <>
-                                                            {/* Create New Case Plan - Only show if no case plan exists */}
-                                                            {!hasPlan && (
+                                                            {/* Create New Case Plan - Only show if backend allows and no plan yet */}
+                                                            {report.canSubmitCasePlan && !hasPlan && (
                                                                 <Tooltip title="Create Case Plan">
                                                                     <IconButton
                                                                         color="info"
@@ -1390,10 +1392,11 @@ const InvestigationOfficer = () => {
                         select
                         fullWidth
                         label="New Status"
-                        value={statusUpdate}
+                        value={['INVESTIGATION_IN_PROGRESS', 'INVESTIGATION_COMPLETED', 'INVESTIGATION_ON_HOLD'].includes(statusUpdate) ? statusUpdate : ''}
                         onChange={(e) => setStatusUpdate(e.target.value)}
                         sx={{ mb: 2 }}
                     >
+                        <MenuItem value="" disabled>Select Status...</MenuItem>
                         <MenuItem value="INVESTIGATION_IN_PROGRESS">
                             {formatStatus("INVESTIGATION_IN_PROGRESS")}
                         </MenuItem>

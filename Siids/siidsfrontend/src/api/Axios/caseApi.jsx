@@ -245,6 +245,9 @@ export const ReportApi = {
     getFinesReportForAssistantCommissioner: () => {
         return caseApi.get('/api/reports/assistant-commissioner/fines-report');
     },
+    getPenaltiesReportForAssistantCommissioner: () => {
+        return caseApi.get('/api/reports/assistant-commissioner/penalties-report');
+    },
     updateReturnedReport: (reportId, reportData) => {
         return caseApi.put(`/api/reports/${reportId}/update-returned-report`, reportData);
     },
@@ -361,7 +364,7 @@ export const ReportApi = {
     },
 
     updateInvestigationStatus: (caseId, status, notes) => {
-        return caseApi.patch(`/api/investigation/cases/${caseId}/status`, {
+        return caseApi.patch(`/api/reports/${caseId}/investigation-status`, {
             status,
             notes
         });
@@ -413,7 +416,10 @@ export const ReportApi = {
         });
     },
     sendReportToLegalAdvisor: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/send-to-legal-advisor`, {});
+        return caseApi.post(`/api/reports/${reportId}/send-to-legal-advisor`, {}).catch(err => {
+            console.error(`Failed to send report ${reportId} to Legal Advisor:`, err);
+            throw err;
+        });
     },
     getReportsForLegalAdvisor: () => {
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');

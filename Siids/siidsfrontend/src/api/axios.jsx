@@ -17,7 +17,13 @@ const UNAUTHENTICATED_ENDPOINTS = [
 instance.interceptors.request.use(
     (config) => {
         // Skip auth for unauthenticated endpoints
-        if (UNAUTHENTICATED_ENDPOINTS.some(endpoint => config.url.includes(endpoint))) {
+        // Use exact path matching to avoid catching sub-paths like /admin/register-user
+        const path = config.url.split('?')[0];
+        const isUnauthenticated = UNAUTHENTICATED_ENDPOINTS.some(endpoint => 
+            path === endpoint || path.endsWith(endpoint)
+        );
+
+        if (isUnauthenticated) {
             const newConfig = { ...config };
             delete newConfig.headers.Authorization;
             return newConfig;

@@ -264,15 +264,14 @@ const LegalAdvisorDashboard = () => {
     const handleReturnClick = (report) => {
         setSelectedReport(report);
         setReturnReason('');
-        setSelectedOfficer('');
         setReturnDialogOpen(true);
     };
 
     const handleReturnSubmit = async () => {
-        if (!selectedReport || !returnReason.trim() || !selectedOfficer) {
+        if (!selectedReport || !returnReason.trim()) {
             setSnackbar({
                 open: true,
-                message: 'Please select an officer and provide a return reason',
+                message: 'Please provide a return reason',
                 severity: 'error'
             });
             return;
@@ -281,12 +280,11 @@ const LegalAdvisorDashboard = () => {
         try {
             // Create the request body
             const requestBody = {
-                investigationOfficerId: selectedOfficer,
                 returnReason: returnReason
             };
 
-            // Call the API
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/reports/${selectedReport.id}/return-to-investigation-officer`, {
+            // Call the API - updated to return to Assistant Commissioner
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/reports/${selectedReport.id}/return-to-assistant-commissioner`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -301,11 +299,9 @@ const LegalAdvisorDashboard = () => {
                 throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
             }
 
-            const result = await response.json();
-
             setSnackbar({
                 open: true,
-                message: 'Report returned to investigation officer successfully',
+                message: 'Report returned to Assistant Commissioner successfully',
                 severity: 'success'
             });
 
@@ -491,7 +487,7 @@ const LegalAdvisorDashboard = () => {
 
                                                 {/* Return Button */}
                                                 {canReturn && (
-                                                    <Tooltip title="Return to Investigation Officer">
+                                                    <Tooltip title="Return to Assistant Commissioner">
                                                         <IconButton
                                                             color="warning"
                                                             onClick={() => handleReturnClick(report)}
@@ -550,7 +546,7 @@ const LegalAdvisorDashboard = () => {
                 <DialogTitle>
                     <Box display="flex" alignItems="center" gap={1}>
                         <ReturnIcon color="warning" />
-                        Return Report to Investigation Officer
+                        Return Report to Assistant Commissioner
                     </Box>
                 </DialogTitle>
                 <DialogContent>
@@ -570,33 +566,6 @@ const LegalAdvisorDashboard = () => {
                             </Typography>
                         </Box>
 
-                        {/* Investigation Officer Selection */}
-                        <FormControl fullWidth sx={{ mb: 3 }} required>
-                            <InputLabel>Select Investigation Officer</InputLabel>
-                            <Select
-                                value={selectedOfficer}
-                                onChange={(e) => setSelectedOfficer(e.target.value)}
-                                label="Select Investigation Officer"
-                                disabled={loadingOfficers}
-                            >
-                                <MenuItem value="">
-                                    <em>Select an investigation officer</em>
-                                </MenuItem>
-                                {investigationOfficers.map((officer) => (
-                                    <MenuItem key={officer.employeeId} value={officer.employeeId}>
-                                        {officer.givenName} {officer.familyName} ({officer.employeeId})
-                                        {officer.department && ` - ${officer.department}`}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                            {loadingOfficers && (
-                                <Typography variant="caption" color="textSecondary" sx={{ mt: 1 }}>
-                                    Loading investigation officers...
-                                </Typography>
-                            )}
-                        </FormControl>
-
-                        {/* Return Reason */}
                         <TextField
                             fullWidth
                             multiline
@@ -604,9 +573,8 @@ const LegalAdvisorDashboard = () => {
                             label="Return Reason"
                             value={returnReason}
                             onChange={(e) => setReturnReason(e.target.value)}
-                            placeholder="Please explain why you are returning this report to the investigation officer. Provide specific details about what needs clarification, additional evidence required, or issues identified..."
+                            placeholder="Please explain why you are returning this report to the Assistant Commissioner."
                             required
-                            helperText="Provide clear and specific reasons for returning the report"
                         />
                     </Box>
                 </DialogContent>
@@ -619,7 +587,7 @@ const LegalAdvisorDashboard = () => {
                         variant="contained"
                         color="warning"
                         startIcon={<ReturnIcon />}
-                        disabled={!selectedOfficer || !returnReason.trim() || loadingOfficers}
+                        disabled={!returnReason.trim()}
                     >
                         Return Report
                     </Button>

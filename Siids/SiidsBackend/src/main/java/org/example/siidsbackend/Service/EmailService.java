@@ -42,15 +42,32 @@ public class EmailService {
             message.setText("Welcome!\n\n"
                     + "An account has been successfully created for you on the SIIDS platform.\n\n"
                     + "Your Employee ID (Username): " + employeeId + "\n"
-                    + "Please use the following OTP (One-Time Password) to complete your setup and set your permanent password via the Forgot Password page.\n\n"
-                    + "OTP: " + otp + "\n\n"
-                    + "This OTP is valid for 10 minutes.\n"
+                    + "Please proceed to the login page and use the 'Forgot Password' feature to set your permanent password.\n\n"
                     + "If you did not request this, please contact your system administrator.");
 
             mailSender.send(message);
         } catch (MailException e) {
             log.error("Failed to send account creation email", e);
             throw new RuntimeException("Failed to send account creation email", e);
+        }
+    }
+
+    public void sendAccountCreatedWelcomeEmail(String toEmail, String employeeId) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("SIIDS - Your Account Has Been Created");
+            message.setText("Welcome!\n\n"
+                    + "An account has been successfully created for you on the SIIDS platform.\n\n"
+                    + "Your Employee ID (Username): " + employeeId + "\n"
+                    + "Please proceed to the login page and use the 'Forgot Password' feature to set your permanent password.\n\n"
+                    + "If you did not request this, please contact your system administrator.");
+
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error("Failed to send welcome email", e);
+            throw new RuntimeException("Failed to send welcome email", e);
         }
     }
 }

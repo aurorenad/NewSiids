@@ -21,6 +21,8 @@ public class StockResponseDTO {
     private List<StockItemDTO> items;
     private List<String> documentPaths;
     private String seizureReason;
+    private String seizureReasonCategory;
+
     private LocalDate dateReleased;
     private String releasedItem;
     private Integer quantityReleased;

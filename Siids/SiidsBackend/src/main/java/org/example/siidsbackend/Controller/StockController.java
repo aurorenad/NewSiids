@@ -32,11 +32,13 @@ public class StockController {
 
     private final StockService stockService;
     private final ItemCategoryService itemCategoryService;
+    private final org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository;
     private final ObjectMapper objectMapper;
 
-    public StockController(StockService stockService, ItemCategoryService itemCategoryService, ObjectMapper objectMapper) {
+    public StockController(StockService stockService, ItemCategoryService itemCategoryService, org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository, ObjectMapper objectMapper) {
         this.stockService = stockService;
         this.itemCategoryService = itemCategoryService;
+        this.seizureReasonRepository = seizureReasonRepository;
         this.objectMapper = objectMapper;
         this.objectMapper.registerModule(new JavaTimeModule());
     }
@@ -49,6 +51,18 @@ public class StockController {
     @GetMapping("/item-types")
     public ResponseEntity<List<String>> getItemTypes() {
         return ResponseEntity.ok(itemCategoryService.getAllCategoryNames());
+    }
+
+    @GetMapping("/seizure-reasons")
+    public ResponseEntity<List<String>> getSeizureReasons() {
+        List<String> reasons = seizureReasonRepository.findAll().stream()
+                .map(SeizureReason::getReason)
+                .collect(Collectors.toList());
+        // Ensure "Smuggling" is always an option if the list is empty or doesn't have it
+        if (!reasons.contains("SMUGGLING")) {
+            reasons.add(0, "SMUGGLING");
+        }
+        return ResponseEntity.ok(reasons);
     }
 
     @DeleteMapping("/{id}/document/{index}")

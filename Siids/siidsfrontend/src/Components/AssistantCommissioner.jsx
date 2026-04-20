@@ -440,20 +440,10 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const handleApprove = async (reportId) => {
-        setActionLoading(prev => ({ ...prev, [reportId]: true }));
-        try {
-            await ReportApi.approveReport(reportId);
-            setReports(prev => prev.map(r =>
-                r.id === reportId ? { ...r, status: "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" } : r
-            ));
-            showSnackbar("Report approved successfully.");
-        } catch (err) {
-            console.error('Failed to approve report:', err);
-            showSnackbar(err.response?.data?.message || "Approval failed.", "error");
-        } finally {
-            setActionLoading(prev => ({ ...prev, [reportId]: false }));
-        }
+    const handleApprove = (e, report) => {
+        // Instead of immediate approval, open the "Send to Department" menu
+        // as requested by the user.
+        handleMenuOpen(e, report);
     };
 
     const handleReject = (report) => {
@@ -895,10 +885,10 @@ const AssistantCommissioner = () => {
 
                                                         {["REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE", "REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER", "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER"].includes(report.status) && (
                                                             <>
-                                                                <Tooltip title="Approve">
+                                                                <Tooltip title="Approve & Send to Department">
                                                                     <IconButton
                                                                         color="success"
-                                                                        onClick={() => handleApprove(report.id)}
+                                                                        onClick={(e) => handleApprove(e, report)}
                                                                         disabled={report.status === "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER" || actionLoading[report.id]}
                                                                     >
                                                                         {actionLoading[report.id] ? <CircularProgress size={24} /> : <Check />}
@@ -935,14 +925,6 @@ const AssistantCommissioner = () => {
                                                                     </IconButton>
                                                                 </Tooltip>
 
-                                                                <Tooltip title="Send to Department">
-                                                                    <IconButton
-                                                                        color="secondary"
-                                                                        onClick={(e) => handleMenuOpen(e, report)}
-                                                                    >
-                                                                        <Send />
-                                                                    </IconButton>
-                                                                </Tooltip>
                                                             </>
                                                         )}
                                                     </Box>
@@ -1194,19 +1176,24 @@ const AssistantCommissioner = () => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
             >
-                {departments.length > 0 ? (
-                    departments.map(dept => (
-                        <MenuItem
+                {/* Special Addition: Investigation Department */}
+                <MenuItem onClick={() => handleSendToDepartment('Investigation')}>
+                    Approve & Send to Investigation
+                </MenuItem>
+                
+                {departments && departments.length > 0 ? (
+                    departments.map((dept) => (
+                        <MenuItem 
                             key={dept.id || dept.structureId || dept.departmentId}
                             onClick={() => handleSendToDepartment(
                                 dept.name || dept.structureName || dept.departmentName
                             )}
                         >
-                            {dept.name || dept.structureName || dept.departmentName}
+                            Approve & Send to {dept.name || dept.structureName || dept.departmentName}
                         </MenuItem>
                     ))
                 ) : (
-                    <MenuItem disabled>No departments available</MenuItem>
+                    <MenuItem disabled>No other departments available</MenuItem>
                 )}
             </Menu>
 

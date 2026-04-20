@@ -19,25 +19,16 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     List<Report> findByCreatedByOrderByCreatedAtDesc(Employee employee);
 
-    @Query("SELECT e FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "INNER JOIN structures s ON s.structureId = j.structureId " +
-            "WHERE j.gradeId.gradeId = 5 AND s.structureId = 159")
+    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
+            "(SELECT u.username FROM User u WHERE u.role = 'DirectorIntelligence' AND u.active = true)")
     List<Employee> DirectorsOfIntelligence();
 
-    @Query("SELECT e FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "INNER JOIN structures s ON s.structureId = j.structureId " +
-            "WHERE j.gradeId.gradeId = 5 AND s.structureId = 161")
+    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
+            "(SELECT u.username FROM User u WHERE u.role = 'DirectorInvestigation' AND u.active = true)")
     List<Employee> DirectorsOfInvestigation();
 
-    @Query("SELECT e FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "INNER JOIN structures s ON s.structureId = j.structureId " +
-            "WHERE j.gradeId.gradeId = 4 AND s.structureId = 10")
+    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
+            "(SELECT u.username FROM User u WHERE u.role IN ('AssistantCommissioner', 'Assistant Commissioner') AND u.active = true)")
     List<Employee> assistantCommissioner();
 
     @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
@@ -51,13 +42,8 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     List<Report> findByRelatedCaseStatus(WorkflowStatus workflowStatus);
 
-    @Query("SELECT e FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "INNER JOIN structures s ON s.structureId = j.structureId " +
-            "INNER JOIN Grade g ON g.gradeId = j.gradeId.gradeId " +
-            "WHERE j.gradeId.gradeId = 10 " +
-            "AND s.structureId = 165")
+    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
+            "(SELECT u.username FROM User u WHERE u.role = 'InvestigationOfficer' AND u.active = true)")
     List<Employee> findAvailableT3Officers();
 
     @Query("SELECT COUNT(r) FROM Report r JOIN r.relatedCase c " +
@@ -84,8 +70,8 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     List<Report> findByRelatedCase(Case relatedCase);
 
-    @Query(value = "SELECT r.* FROM siids.report r \n" +
-            "       LEFT JOIN siids.case c ON c.case_num = r.case_num \n" +
+    @Query(value = "SELECT r.* FROM report r \n" +
+            "       LEFT JOIN \"case\" c ON c.case_num = r.case_num \n" +
             "       WHERE r.current_recipient IN (SELECT\n" +
             "                                   e.employee_id\n" +
             "                               FROM\n" +
@@ -106,8 +92,8 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "       ORDER BY r.updated_at DESC", nativeQuery = true)
     List<Report> findReportsHandledByDirectorIntelligence();
 
-    @Query(value = "SELECT r.* FROM siids.report r \n" +
-            "       LEFT JOIN siids.case c ON c.case_num = r.case_num \n" +
+    @Query(value = "SELECT r.* FROM report r \n" +
+            "       LEFT JOIN \"case\" c ON c.case_num = r.case_num \n" +
             "       WHERE r.current_recipient IN (SELECT\n" +
             "                                   e.employee_id\n" +
             "                               FROM\n" +
@@ -124,29 +110,30 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "                                   j.job_master_id = 116\n" +
             "                                 and j.grade_id = 4)\n" +
             "       OR r.assistant_commissioner_id IS NOT NULL\n" +
-            "       OR c.status IN ('REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER', 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER')\n" +
+            "       OR c.status IN ('REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER', 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER', \n" +
+            "                       'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION', 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION', \n" +
+            "                       'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER', 'INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER',\n" +
+            "                       'CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER', 'CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER', 'CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER')\n" +
             "       ORDER BY r.updated_at DESC;", nativeQuery = true)
     List<Report> findReportsHandledAssistantCommissioner();
 
-    @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
-            "WHERE (r.currentRecipient.employeeId IN " +
-            "(SELECT e.employeeId FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "INNER JOIN structures s ON s.structureId = j.structureId " +
-            "WHERE j.gradeId.gradeId = 5 AND s.structureId = 161) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER) " +
-            "OR (c.status = org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED)) " +
-            "ORDER BY r.updatedAt DESC")
-    List<Report> findReportsHandledByDirectorInvestigation();
+    @Query("SELECT DISTINCT r FROM Report r JOIN r.relatedCase c " +
+            "WHERE r.currentRecipient.employeeId = :directorId " +
+            "OR r.directorInvestigation.employeeId = :directorId " +
+            "OR (c.status IN (" +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_IN_PROGRESS, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SUBMITTED, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_COMPLETED" +
+            "))")
+    List<Report> findReportsHandledByDirectorInvestigation(@Param("directorId") String directorId);
 
     boolean existsByRelatedCase_CaseNum(String caseNum);
 
@@ -180,8 +167,8 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "c.status, " +
             "c.reported_date, " +
             "c.tax_period " +
-            "FROM siids.report r " +
-            "JOIN siids.case c ON c.case_num = r.case_num " +
+            "FROM report r " +
+            "JOIN \"case\" c ON c.case_num = r.case_num " +
             "WHERE r.investigation_officer_id = :officerId " +
             "OR r.current_recipient = :officerId " +
             "ORDER BY r.created_at DESC",
@@ -205,24 +192,25 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             @Param("officerId") String officerId,
             @Param("activeStatuses") List<WorkflowStatus> activeStatuses);
 
-    @Query(value = "SELECT e FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "INNER JOIN structures s ON s.structureId = j.structureId " +
-            "WHERE j.jobMasterId = 118")
+    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
+            "(SELECT u.username FROM User u WHERE u.role IN ('legalAdvisor', 'Legal Advisor', 'LegalAdvisor') AND u.active = true)")
     List<Employee> findLegalAdvisors();
     @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
             "WHERE c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM " +
             "AND r.currentRecipient.employeeId IN " +
-            "(SELECT e.employeeId FROM Employee e " +
-            "INNER JOIN Placements p ON p.employee.employeeId = e.employeeId " +
-            "INNER JOIN JobMaster j ON j.jobMasterId = p.jobMaster.jobMasterId " +
-            "WHERE j.jobMasterId = 118)")
+            "(SELECT u.username FROM User u WHERE u.role IN ('legalAdvisor', 'Legal Advisor', 'LegalAdvisor') AND u.active = true)")
     List<Report> findReportsWithLegalAdvisors();
     @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
             "WHERE c.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM " +
             "AND r.currentRecipient.employeeId = :legalAdvisorId")
     List<Report> findReportsAssignedToLegalAdvisor(@Param("legalAdvisorId") String legalAdvisorId);
+
+    @Query("SELECT r FROM Report r " +
+            "WHERE r.legalAdvisor.employeeId = :legalAdvisorId " +
+            "OR (r.currentRecipient.employeeId = :legalAdvisorId " +
+            "AND r.relatedCase.status = org.example.siidsbackend.Model.WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM) " +
+            "ORDER BY r.createdAt DESC")
+    List<Report> findReportsByLegalAdvisor(@Param("legalAdvisorId") String legalAdvisorId);
 
     @Query("SELECT r FROM Report r WHERE r.relatedCase.status = :status " +
             "AND (r.casePlan IS NOT NULL OR SIZE(r.findingsAttachmentPaths) > 0) " +

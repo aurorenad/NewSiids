@@ -35,8 +35,20 @@ public class ReportResponseDTO {
     private String assistantCommissioner;
     private String directorInvestigation;
     private String directorIntelligence;
-    private String investigationOfficer;
+    @Data
+    public static class OfficerDTO {
+        private String employeeId;
+        private String givenName;
+        private String familyName;
+    }
+
+    private OfficerDTO investigationOfficer;
     private InformerDTO informer;
     private Double principleAmount;
     private Double penaltiesAmount;
+    private String casePlan;
+    private String casePlanDescription;
+    private boolean canSubmitFindings;
+    private boolean canSubmitCasePlan;
+    private boolean canContinueWorking;
 }

@@ -33,6 +33,7 @@ public class StockService {
 
     private final StockRepository stockRepository;
     private final ItemCategoryService itemCategoryService;
+    private final org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository;
     private final PdfService pdfService;
 
     @Value("${file.upload-dir}")
@@ -138,6 +139,17 @@ public class StockService {
         stock.setSoldAmount(dto.getSoldAmount());
         stock.setReason(dto.getReason());
         stock.setSeizureReason(dto.getSeizureReason());
+        stock.setSeizureReasonCategory(dto.getSeizureReasonCategory());
+
+        // Save new seizure reason if it doesn't exist
+        if (StringUtils.hasText(dto.getSeizureReasonCategory())) {
+            String category = dto.getSeizureReasonCategory().trim();
+            if (seizureReasonRepository.findByReason(category).isEmpty()) {
+                org.example.siidsbackend.Model.SeizureReason newReason = new org.example.siidsbackend.Model.SeizureReason();
+                newReason.setReason(category);
+                seizureReasonRepository.save(newReason);
+            }
+        }
         if (StringUtils.hasText(dto.getReleaseReason())) {
             try {
                 stock.setReleaseReason(ReleaseReason.valueOf(dto.getReleaseReason().toUpperCase().trim()));
@@ -149,7 +161,13 @@ public class StockService {
         stock.setNewOwner(dto.getNewOwner());
         stock.setReleasedBy(dto.getReleasedBy());
         stock.setAddedBy(dto.getAddedBy());
-        stock.setStatus(dto.getStatus());
+        
+        // Removed "DAMAGED" from status if present, map to RELEASED
+        if ("DAMAGED".equalsIgnoreCase(dto.getStatus())) {
+            stock.setStatus("RELEASED");
+        } else {
+            stock.setStatus(dto.getStatus());
+        }
 
         // Clear existing items and add new ones
         stock.getItems().clear();
@@ -202,6 +220,11 @@ public class StockService {
                 }
                 release.setPrsoApprovedBy(releaseDto.getPrsoApprovedBy());
                 release.setRejectionReason(releaseDto.getRejectionReason());
+
+                // If any release is DAMAGED, the overall stock status should be RELEASED
+                if (release.getReleaseReason() == ReleaseReason.DAMAGED) {
+                    stock.setStatus("RELEASED");
+                }
 
                 stock.addRelease(release);
             }
@@ -387,6 +410,7 @@ public class StockService {
         dto.setReceivedDate(stock.getReceivedDate());
         dto.setDocumentPaths(stock.getDocumentPaths());
         dto.setSeizureReason(stock.getSeizureReason());
+        dto.setSeizureReasonCategory(stock.getSeizureReasonCategory());
         dto.setDateReleased(stock.getDateReleased());
         dto.setReleasedItem(stock.getReleasedItem());
         dto.setQuantityReleased(stock.getQuantityReleased());

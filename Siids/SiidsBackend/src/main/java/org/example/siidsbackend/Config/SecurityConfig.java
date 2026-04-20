@@ -38,7 +38,7 @@ public class SecurityConfig {
                 .cors(customizer -> customizer.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
                     config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
-                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
                     return config;
@@ -50,20 +50,20 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/cases/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner",
+                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/reports/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "legalAdvisor",
-                                "AssistantCommissioner",
+                                "AssistantCommissioner", "Assistant Commissioner",
                                 "DirectorIntelligence", "DirectorInvestigation", "InvestigationOfficer", "Admin",
                                 "admin")
                         .requestMatchers("/api/taxpayers/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner",
+                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/informers/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner",
+                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/departments")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",

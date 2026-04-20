@@ -43,6 +43,10 @@ public class UserService {
 
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
+    private User getSingleUser(String username) {
+        return repo.findByUsername(username);
+    }
+
     public User register(User user) {
         user.setPassword(encoder.encode(user.getPassword()));
         repo.save(user);
@@ -66,7 +70,7 @@ public class UserService {
 
         System.out.println("Employee found: " + employee.get().getEmployeeId());
 
-        User dbUser = repo.findByUsername(user.getUsername());
+        User dbUser = getSingleUser(user.getUsername());
         if (dbUser != null && dbUser.getActive() != null && !dbUser.getActive()) {
             System.out.println("User is deactivated: " + user.getUsername());
             response.put("error", "Your account has been deactivated. Please contact the administrator.");
@@ -114,10 +118,49 @@ public class UserService {
     }
 
     public Map<String, String> generateOtp(String username) {
+        return generateOtpInternal(username, false);
+    }
+
+    public Map<String, String> generateRegistrationOtp(String username) {
+        return generateOtpInternal(username, true);
+    }
+
+    public Map<String, String> sendWelcomeEmail(String username) {
+        Map<String, String> response = new HashMap<>();
+        try {
+            User user = getSingleUser(username);
+            if (user == null) {
+                response.put("error", "User not found");
+                return response;
+            }
+
+            Optional<Employee> employee = employeeRepo.findByEmployeeId(username);
+            if (employee.isEmpty()) {
+                response.put("error", "Employee not found");
+                return response;
+            }
+
+            String email = employee.get().getWorkEmail();
+            if (email == null || email.isEmpty()) {
+                response.put("error", "No email found for employee");
+                return response;
+            }
+
+            emailService.sendAccountCreatedWelcomeEmail(email, username);
+            response.put("message", "Welcome email sent successfully");
+            return response;
+        } catch (Exception e) {
+            log.error("Error sending welcome email", e);
+            response.put("error", "Failed to send welcome email: " + e.getMessage());
+            return response;
+        }
+    }
+
+    private Map<String, String> generateOtpInternal(String username, boolean isRegistration) {
         Map<String, String> response = new HashMap<>();
 
         try {
-            User user = repo.findByUsername(username);
+            User user = getSingleUser(username);
             if (user == null) {
                 response.put("error", "User not found");
                 return response;
@@ -142,9 +185,13 @@ public class UserService {
                 return response;
             }
 
-            emailService.sendOtpEmail(email, otp);
+            if (isRegistration) {
+                emailService.sendAccountCreatedEmail(email, username, otp);
+            } else {
+                emailService.sendOtpEmail(email, otp);
+            }
 
-            response.put("message", "OTP sent to registered email");
+            response.put("message", isRegistration ? "Welcome email sent" : "OTP sent to registered email");
             return response;
         } catch (Exception e) {
             log.error("Error generating OTP", e);
@@ -156,7 +203,7 @@ public class UserService {
     public Map<String, String> verifyOtp(String username, String otp) {
         Map<String, String> response = new HashMap<>();
 
-        User user = repo.findByUsername(username);
+        User user = getSingleUser(username);
         if (user == null) {
             response.put("error", "User not found");
             return response;
@@ -188,7 +235,7 @@ public class UserService {
         }
 
         // OTP is valid, proceed with password reset
-        User user = repo.findByUsername(username);
+        User user = getSingleUser(username);
         user.setPassword(encoder.encode(newPassword));
         user.setOtp(null); // Clear OTP after use
         user.setOtpExpiryTime(null);

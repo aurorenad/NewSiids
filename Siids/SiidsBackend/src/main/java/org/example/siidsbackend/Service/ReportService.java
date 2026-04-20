@@ -144,11 +144,16 @@ public class ReportService {
         caseRepo.save(relatedCase);
 
         // Set Director of Investigation as recipient
-        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
-        if (!directors.isEmpty()) {
-            report.setCurrentRecipient(directors.get(0));
+        Employee recipient = report.getDirectorInvestigation();
+        if (recipient == null) {
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            if (!directors.isEmpty()) recipient = directors.get(0);
+        }
+
+        if (recipient != null) {
+            report.setCurrentRecipient(recipient);
         } else {
-            throw new IllegalStateException("No Director of Investigation found.");
+            throw new IllegalStateException("No Director of Investigation found to receive this investigation report.");
         }
 
         Report savedReport = reportRepo.save(report);
@@ -283,7 +288,8 @@ public class ReportService {
         }
     }
 
-    private boolean canSubmitFindings(Report report) {
+    public boolean canSubmitFindings(Report report) {
+        if (report.getRelatedCase() == null) return false;
         WorkflowStatus currentStatus = report.getRelatedCase().getStatus();
 
         // Allowed statuses for submitting findings
@@ -292,6 +298,26 @@ public class ReportService {
                 currentStatus == WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION ||
                 currentStatus == WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER ||
                 currentStatus == WorkflowStatus.INVESTIGATION_COMPLETED;
+    }
+
+    public boolean canSubmitCasePlan(Report report) {
+        if (report.getRelatedCase() == null) return false;
+        WorkflowStatus currentStatus = report.getRelatedCase().getStatus();
+
+        // Broadened statuses for submitting case plans to prevent deadlocks
+        return currentStatus == WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER ||
+                currentStatus == WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION ||
+                currentStatus == WorkflowStatus.CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER ||
+                currentStatus == WorkflowStatus.INVESTIGATION_IN_PROGRESS;
+    }
+
+    public boolean canContinueWorking(Report report) {
+        if (report.getRelatedCase() == null) return false;
+        WorkflowStatus status = report.getRelatedCase().getStatus();
+        
+        return status != WorkflowStatus.CLOSED && 
+               status != WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION &&
+               status != WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
     }
 
     @Transactional
@@ -576,6 +602,43 @@ public class ReportService {
                 .orElseThrow(() -> new RuntimeException("Report not found"));
     }
 
+    @Transactional
+    public Report updateInvestigationStatus(Integer reportId, String statusStr, String notes, String officerId) {
+        Report report = getReport(reportId);
+        
+        if (report.getInvestigationOfficer() == null || !report.getInvestigationOfficer().getEmployeeId().equals(officerId)) {
+            throw new RuntimeException("You are not the assigned investigation officer for this report");
+        }
+        
+        WorkflowStatus newStatus;
+        try {
+            newStatus = WorkflowStatus.valueOf(statusStr);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status: " + statusStr);
+        }
+        
+        Case relatedCase = report.getRelatedCase();
+        if (relatedCase != null) {
+            relatedCase.setStatus(newStatus);
+            relatedCase.setUpdatedAt(LocalDateTime.now());
+            Employee officer = employeeRepo.findById(officerId).orElse(null);
+            auditService.logAction(newStatus, "Investigation status updated to " + newStatus + " by officer " + officerId, officer);
+        }
+        
+        if (notes != null && !notes.trim().isEmpty()) {
+            String timestamp = LocalDateTime.now().toLocalDate().toString() + " " + LocalDateTime.now().toLocalTime().withNano(0).toString();
+            String formattedNote = "\n[" + timestamp + "] Investigator Notes: " + notes;
+            if (report.getAssignmentNotes() == null) {
+                report.setAssignmentNotes(formattedNote);
+            } else {
+                report.setAssignmentNotes(report.getAssignmentNotes() + formattedNote);
+            }
+        }
+        
+        report.setUpdatedAt(LocalDateTime.now());
+        return reportRepo.save(report);
+    }
+
     public ReportResponseDTO toResponseDTO(Report report) {
         ReportResponseDTO dto = new ReportResponseDTO();
         dto.setId(report.getId());
@@ -603,10 +666,25 @@ public class ReportService {
         dto.setFindings(report.getFindings());
         dto.setRecommendations(report.getRecommendations());
         dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths());
+        dto.setCasePlan(report.getCasePlan());
+        dto.setCasePlanDescription(report.getCasePlanDescription());
 
         if (report.getRelatedCase() != null && report.getRelatedCase().getInformerId() != null) {
             dto.setInformer(convertToInformerDTO(report.getRelatedCase().getInformerId()));
         }
+        
+        // Workflow permission flags for frontend
+        dto.setCanSubmitFindings(canSubmitFindings(report));
+        dto.setCanSubmitCasePlan(canSubmitCasePlan(report));
+        dto.setCanContinueWorking(canContinueWorking(report));
+        if (report.getInvestigationOfficer() != null) {
+            ReportResponseDTO.OfficerDTO officer = new ReportResponseDTO.OfficerDTO();
+            officer.setEmployeeId(report.getInvestigationOfficer().getEmployeeId());
+            officer.setGivenName(report.getInvestigationOfficer().getGivenName());
+            officer.setFamilyName(report.getInvestigationOfficer().getFamilyName());
+            dto.setInvestigationOfficer(officer);
+        }
+        
         return dto;
     }
 
@@ -706,6 +784,27 @@ public class ReportService {
                     report.setCurrentRecipient(investigationDirectors.get(0));
                 }
                 break;
+
+            case INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION:
+            case INVESTIGATION_COMPLETED:
+                newStatus = WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION;
+                report.setDirectorInvestigation(approver);
+                report.setInvestigationReportApprovedBy(approver.getGivenName() + " " + approver.getFamilyName());
+                report.setInvestigationReportApprovedAt(LocalDateTime.now());
+                
+                // Forward to Assistant Commissioner for final approval
+                List<Employee> acs = reportRepo.assistantCommissioner();
+                if (!acs.isEmpty()) {
+                    report.setCurrentRecipient(acs.get(0));
+                    report.setAssistantCommissioner(acs.get(0)); // Track that it's handled by AC now
+                }
+                break;
+            case INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
+                newStatus = WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                report.setAssistantCommissioner(approver);
+                report.setApprovedBy(approver);
+                report.setApprovedAt(LocalDateTime.now());
+                break;
             default:
                 throw new IllegalStateException("Cannot approve report in current status: " + relatedCase.getStatus());
         }
@@ -756,6 +855,29 @@ public class ReportService {
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
                 report.setAssistantCommissioner(rejector);
                 break;
+            case INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION:
+            case INVESTIGATION_COMPLETED:
+                newStatus = WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
+                report.setDirectorInvestigation(rejector);
+                report.setInvestigationReportRejectedBy(rejector.getGivenName() + " " + rejector.getFamilyName());
+                report.setInvestigationReportRejectedAt(LocalDateTime.now());
+                report.setInvestigationReportRejectionReason(rejectionReason);
+                
+                // Return to investigation officer
+                if (report.getInvestigationOfficer() != null) {
+                    report.setCurrentRecipient(report.getInvestigationOfficer());
+                }
+                break;
+            case INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
+                newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
+                report.setAssistantCommissioner(rejector);
+                
+                // Return to Director of Investigation
+                List<Employee> dists = reportRepo.DirectorsOfInvestigation();
+                if (!dists.isEmpty()) {
+                    report.setCurrentRecipient(dists.get(0));
+                }
+                break;
             default:
                 throw new IllegalStateException(
                         "Cannot reject report in current status: " + report.getRelatedCase().getStatus());
@@ -785,18 +907,36 @@ public class ReportService {
     }
 
     public List<Report> getApprovedReportsForAssistantCommissioner(String employeeId) {
+        validateAssistantCommissioner(employeeId);
+        // Broadened to include all handled and relevant cases for AC
+        return reportRepo.findReportsHandledAssistantCommissioner();
+    }
+
+    private void validateAssistantCommissioner(String employeeId) {
         List<Employee> assistantCommissioners = reportRepo.assistantCommissioner();
         boolean isAssistantCommissioner = assistantCommissioners.stream()
                 .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
         if (!isAssistantCommissioner) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"AssistantCommissioner".equals(user.getRole()))) {
-                throw new RuntimeException("Employee is not an Assistant Commissioner");
+            if (user == null) {
+                log.error("Access denied: User not found for username: {}", employeeId);
+                throw new RuntimeException("User account not found for: " + employeeId);
+            }
+            
+            String userRole = user.getRole() != null ? user.getRole().trim() : "";
+            log.info("Validating AC access for user: {}, role: '{}'", employeeId, userRole);
+
+            // Case-insensitive and trimmed comparison for all variations
+            boolean hasAcRole = "Admin".equalsIgnoreCase(userRole) || 
+                                "AssistantCommissioner".equalsIgnoreCase(userRole) || 
+                                "Assistant Commissioner".equalsIgnoreCase(userRole);
+                                
+            if (!hasAcRole) {
+                log.error("Access denied: User {} has role '{}', expected Assistant Commissioner", employeeId, userRole);
+                throw new RuntimeException("Access denied: User " + employeeId + " does not have the Assistant Commissioner role. (System found role: '" + userRole + "')");
             }
         }
-
-        return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
     }
 
     public List<Report> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(String directorId) {
@@ -811,11 +951,11 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findByRelatedCaseStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
+        return reportRepo.findReportsHandledByDirectorInvestigation(directorId);
     }
 
     @Transactional
-    public Report assignToInvestigationOfficer(Integer reportId, String specificOfficerId, String assignmentNotes) {
+    public Report assignToInvestigationOfficer(Integer reportId, String specificOfficerId, String assignmentNotes, String assignerId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
@@ -843,6 +983,15 @@ public class ReportService {
         report.setAssignmentNotes(assignmentNotes);
         report.setCurrentRecipient(assignedOfficer);
         report.setInvestigationOfficer(assignedOfficer);
+        
+        // Save who assigned the task so we can return to them later
+        if (assignerId != null) {
+            Employee assigner = employeeRepo.findByEmployeeId(assignerId).orElse(null);
+            if (assigner != null) {
+                report.setDirectorInvestigation(assigner);
+            }
+        }
+        
         report.setUpdatedAt(LocalDateTime.now());
 
         Report savedReport = reportRepo.save(report);
@@ -911,7 +1060,7 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findReportsHandledByDirectorInvestigation();
+        return reportRepo.findReportsHandledByDirectorInvestigation(directorId);
     }
 
     public ResponseEntity<Resource> downloadAttachment(String filename) {
@@ -1117,11 +1266,12 @@ public class ReportService {
 
         if (!isAssistantCommissioner) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"AssistantCommissioner".equals(user.getRole()))) {
+            if (user == null || (!"Admin".equalsIgnoreCase(user.getRole()) && !"AssistantCommissioner".equalsIgnoreCase(user.getRole()))) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
         }
 
+        // Return both pending and handled reports
         return reportRepo.findReportsHandledAssistantCommissioner();
     }
 
@@ -1137,7 +1287,7 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findReportsHandledByDirectorInvestigation();
+        return reportRepo.findReportsHandledByDirectorInvestigation(directorId);
     }
 
     @Transactional
@@ -1200,14 +1350,14 @@ public class ReportService {
     }
 
     public FinesReportDTO generateFinesReportForAssistantCommissioner(String employeeId) {
-        // Verify the employee is an assistant commissioner
+        // Verify the employee is an assistant commissioner or admin
         List<Employee> assistantCommissioners = reportRepo.assistantCommissioner();
         boolean isAssistantCommissioner = assistantCommissioners.stream()
                 .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
         if (!isAssistantCommissioner) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
-            if (user == null || !"Admin".equals(user.getRole())) {
+            if (user == null || (!"Admin".equalsIgnoreCase(user.getRole()) && !"AssistantCommissioner".equalsIgnoreCase(user.getRole()))) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
         }
@@ -1242,6 +1392,11 @@ public class ReportService {
                 .collect(Collectors.toList()));
 
         return reportDTO;
+    }
+
+    public FinesReportDTO generatePenaltiesReportForAssistantCommissioner(String employeeId) {
+        // Logic for penalties report (currently similar to fines but can be specialized)
+        return generateFinesReportForAssistantCommissioner(employeeId);
     }
 
     public List<DirectorIntelligenceReportDTO> getDirectorIntelligenceReport(String directorId) {
@@ -1292,7 +1447,7 @@ public class ReportService {
             }
         }
 
-        // Define statuses where investigation officer should still have access
+        // Define specific statuses that mean the case is actively being worked on by the officer
         List<WorkflowStatus> activeStatuses = Arrays.asList(
                 WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER,
                 WorkflowStatus.INVESTIGATION_IN_PROGRESS,
@@ -1334,7 +1489,7 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findReportsByInvestigationOfficer(officerId);
+        return reportRepo.findReportsAssignedToInvestigationOfficers(officerId);
     }
 
     public List<Report> getAllReportsForInvestigationOfficer(String officerId) {
@@ -1358,6 +1513,20 @@ public class ReportService {
         Report report = getReport(id);
 
         String normalizedDept = department.trim();
+
+        // Special handling for Investigation
+        if ("Investigation".equalsIgnoreCase(normalizedDept)) {
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            if (!directors.isEmpty()) {
+                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
+                report.setCurrentRecipient(directors.get(0));
+                save(report);
+                return;
+            } else {
+                throw new IllegalStateException("No Director of Investigation found to receive report.");
+            }
+        }
+
         Map<String, WorkflowStatus> deptWorkflowMap = Map.of(
                 "Legal Services and Board Affairs", WorkflowStatus.REPORT_SENT_TO_LEGAL_SERVICES_AND_BOARD_AFFAIRS,
                 "Customs Services", WorkflowStatus.REPORT_SENT_TO_CUSTOMS_SERVICES,
@@ -1365,6 +1534,7 @@ public class ReportService {
                 "Strategy and Risk Analysis", WorkflowStatus.REPORT_SENT_TO_STRATEGIC_AND_RISK_ANALYSIS,
                 "Internal Audit and Integrity", WorkflowStatus.REPORT_SENT_TO_INTERNAL_AUDIT_AND_INTEGRITY,
                 "IT and Digital Transformation", WorkflowStatus.REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION);
+        
         List<structures> departments = structureRepo.findByStructureType("department");
         boolean validDepartment = departments.stream()
                 .anyMatch(d -> d.getStructureName().equalsIgnoreCase(normalizedDept));
@@ -1399,17 +1569,24 @@ public class ReportService {
 
     @Transactional
     public Report sendToLegalAdvisor(Integer reportId) {
+        log.info("sendToLegalAdvisor called for reportId: {}", reportId);
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
+        log.info("Report {} found. Current case status: {}", reportId,
+                report.getRelatedCase() != null ? report.getRelatedCase().getStatus() : "NO CASE");
+
         List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
+        log.info("Found {} legal advisors", legalAdvisors.size());
 
         Case relatedCase = report.getRelatedCase();
         relatedCase.setStatus(WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM);
         caseRepo.save(relatedCase);
 
         if (!legalAdvisors.isEmpty()) {
-            report.setCurrentRecipient(legalAdvisors.get(0));
+            Employee advisor = legalAdvisors.get(0);
+            report.setCurrentRecipient(advisor);
+            report.setLegalAdvisor(advisor); // Set the legal advisor tracking field
         } else {
             throw new IllegalStateException("No Legal Advisor found.");
         }
@@ -1449,7 +1626,8 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findReportsAssignedToLegalAdvisor(legalAdvisorId);
+        // Return all reports where they are the assigned legal advisor or current recipient
+        return reportRepo.findReportsByLegalAdvisor(legalAdvisorId);
     }
 
     public List<Report> getAllReportsWithLegalAdvisors() {
@@ -1457,8 +1635,7 @@ public class ReportService {
     }
 
     @Transactional
-    public Report returnToInvestigationOfficer(Integer reportId, String returnReason, String legalAdvisorId,
-            String investigationOfficerId) {
+    public Report returnToAssistantCommissioner(Integer reportId, String returnReason, String legalAdvisorId) {
         Report report = getReport(reportId);
 
         // Verify legal advisor is the current recipient
@@ -1467,26 +1644,25 @@ public class ReportService {
             throw new RuntimeException("You are not the assigned legal advisor for this report");
         }
 
-        // Verify target is an investigation officer
-        Employee investigationOfficer = employeeRepo.findByEmployeeId(investigationOfficerId)
-                .orElseThrow(() -> new RuntimeException("Investigation officer not found"));
-
-        // Check if employee is a valid investigation officer
-        List<Employee> investigationOfficers = reportRepo.findAvailableT3Officers();
-        boolean isValidOfficer = investigationOfficers.stream()
-                .anyMatch(o -> o.getEmployeeId().equals(investigationOfficerId));
-
-        if (!isValidOfficer) {
-            throw new RuntimeException("Target employee is not a valid investigation officer");
+        // Get the Assistant Commissioner who sent it (it should be stored in assistantCommissioner field)
+        Employee assistantCommissioner = report.getAssistantCommissioner();
+        if (assistantCommissioner == null) {
+            // Fallback: look for Assistant Commissioners if not explicitly set
+            List<Employee> acs = reportRepo.assistantCommissioner();
+            if (!acs.isEmpty()) {
+                assistantCommissioner = acs.get(0);
+            } else {
+                throw new RuntimeException("No Assistant Commissioner found to return to");
+            }
         }
 
-        // Update case status
+        // Update case status - using existing status to avoid DB constraint issues
         Case relatedCase = report.getRelatedCase();
-        relatedCase.setStatus(WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER);
+        relatedCase.setStatus(WorkflowStatus.REPORT_RETURNED_ASSISTANT_COMMISSIONER);
         caseRepo.save(relatedCase);
 
         // Update report
-        report.setCurrentRecipient(investigationOfficer);
+        report.setCurrentRecipient(assistantCommissioner);
         report.setReturnedBy(employeeRepo.findByEmployeeId(legalAdvisorId).orElse(null));
         report.setReturnReason(returnReason);
         report.setReturnedAt(LocalDateTime.now());
@@ -1500,18 +1676,18 @@ public class ReportService {
                 returnReason);
         createNotification(savedReport, message);
 
-        // Send websocket notification
+        // Send websocket notification to the Assistant Commissioner
         NotificationDTO notificationDTO = webSocketNotificationService
-                .createNotificationDTO(savedReport, message, investigationOfficer);
+                .createNotificationDTO(savedReport, message, assistantCommissioner);
         notificationDTO.setNotificationType("REPORT_RETURNED_FROM_LEGAL");
         webSocketNotificationService.sendNotificationToUser(
-                investigationOfficerId,
+                assistantCommissioner.getEmployeeId(),
                 notificationDTO);
 
         auditService.logAction(
-                WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER,
-                "Report #" + savedReport.getId() + " returned to investigation officer " +
-                        investigationOfficerId + " by legal advisor " + legalAdvisorId +
+                WorkflowStatus.REPORT_RETURNED_ASSISTANT_COMMISSIONER,
+                "Report #" + savedReport.getId() + " returned to Assistant Commissioner " +
+                        assistantCommissioner.getEmployeeId() + " by legal advisor " + legalAdvisorId +
                         ". Reason: " + returnReason,
                 report.getReturnedBy());
 
@@ -1692,9 +1868,19 @@ public class ReportService {
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         // Check if the submitter is the investigation officer assigned to this report
-        if (report.getInvestigationOfficer() == null ||
-                !report.getInvestigationOfficer().getEmployeeId().equals(employeeId)) {
-            throw new RuntimeException("You are not the assigned investigation officer for this report");
+        if (report.getInvestigationOfficer() == null) {
+            throw new RuntimeException("No investigation officer is currently assigned to this report. Please contact your Director.");
+        }
+        
+        if (!report.getInvestigationOfficer().getEmployeeId().equals(employeeId)) {
+            throw new RuntimeException("You are not the assigned investigation officer for this report. Assigned officer ID: " 
+                + report.getInvestigationOfficer().getEmployeeId());
+        }
+
+        // Validate current status using centralized logic
+        if (!canSubmitCasePlan(report)) {
+            throw new IllegalStateException("Cannot submit case plan in current status: " + report.getRelatedCase().getStatus() + 
+                ". Valid statuses for this action are: Assigned, Rejected Plan, or In Progress.");
         }
 
         // Set case plan text
@@ -1717,15 +1903,22 @@ public class ReportService {
         }
 
         // Update case status
-        Case relatedCase = report.getRelatedCase();
-        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SUBMITTED);
-        caseRepo.save(relatedCase);
+        if (report.getRelatedCase() != null) {
+            report.getRelatedCase().setStatus(WorkflowStatus.CASE_PLAN_SUBMITTED);
+            caseRepo.save(report.getRelatedCase());
+        }
 
-        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
-        if (!directors.isEmpty()) {
-            report.setCurrentRecipient(directors.get(0));
+        // Set Director of Investigation as recipient
+        Employee recipient = report.getDirectorInvestigation();
+        if (recipient == null) {
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            if (!directors.isEmpty()) recipient = directors.get(0);
+        }
+
+        if (recipient != null) {
+            report.setCurrentRecipient(recipient);
         } else {
-            throw new IllegalStateException("No Director of Investigation found.");
+            throw new IllegalStateException("No Director of Investigation found to receive this case plan.");
         }
 
         report.setUpdatedAt(LocalDateTime.now());
@@ -1780,11 +1973,16 @@ public class ReportService {
         caseRepo.save(relatedCase);
 
         // Set recipient - Director of Investigation
-        List<Employee> directors = reportRepo.DirectorsOfInvestigation();
-        if (!directors.isEmpty()) {
-            report.setCurrentRecipient(directors.get(0));
+        Employee recipient = report.getDirectorInvestigation();
+        if (recipient == null) {
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            if (!directors.isEmpty()) recipient = directors.get(0);
+        }
+
+        if (recipient != null) {
+            report.setCurrentRecipient(recipient);
         } else {
-            throw new IllegalStateException("No Director of Investigation found.");
+            throw new IllegalStateException("No Director of Investigation found to receive this case plan.");
         }
 
         report.setUpdatedAt(LocalDateTime.now());
@@ -2230,6 +2428,7 @@ public class ReportService {
     }
     @Transactional
     public Report approveCasePlanByAssistantCommissioner(Integer reportId, String approverId) {
+        validateAssistantCommissioner(approverId);
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
@@ -2262,6 +2461,7 @@ public class ReportService {
 
     @Transactional
     public Report rejectCasePlanByAssistantCommissioner(Integer reportId, String reason, String rejectorId) {
+        validateAssistantCommissioner(rejectorId);
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
@@ -2289,18 +2489,9 @@ public class ReportService {
         return savedReport;
     }
 
-    public List<Report> getCasePlansForAssistantCommissioner(String employeeId) {
-        // Fallback for AC role if not in employee table
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
-        if (user == null || (!"Admin".equals(user.getRole()) && !"AssistantCommissioner".equals(user.getRole()))) {
-             // Check if it's in employee table as AC
-             List<Employee> commissioners = reportRepo.assistantCommissioner();
-             boolean isAC = commissioners.stream().anyMatch(e -> e.getEmployeeId().equals(employeeId));
-             if (!isAC) {
-                 throw new RuntimeException("Employee is not an Assistant Commissioner");
-             }
-        }
 
+    public List<Report> getCasePlansForAssistantCommissioner(String employeeId) {
+        validateAssistantCommissioner(employeeId);
         return reportRepo.findCasePlansForAssistantCommissioner(
                 WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER,
                 employeeId

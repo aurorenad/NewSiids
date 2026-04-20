@@ -24,6 +24,7 @@ const StockManagement = () => {
         receivedDate: '',
         items: [{ ...EMPTY_ITEM }],
         seizureReason: '',
+        seizureReasonCategory: '',
         dateReleased: '',
         releasedItem: '',
         quantityReleased: '',
@@ -33,6 +34,7 @@ const StockManagement = () => {
         newPlateNumber: '',
         newOwner: ''
     });
+
     const [documentFiles, setDocumentFiles] = useState([]);
     const [anotherDocumentFile, setAnotherDocumentFile] = useState(null);
     const [paymentProofFile, setPaymentProofFile] = useState(null);
@@ -41,6 +43,8 @@ const StockManagement = () => {
     const [itemTypes, setItemTypes] = useState([]);
     const [measurementUnits, setMeasurementUnits] = useState([]);
     const [releaseReasons, setReleaseReasons] = useState([]);
+    const [seizureReasons, setSeizureReasons] = useState([]);
+    const [isAddingNewSeizureReason, setIsAddingNewSeizureReason] = useState(false);
 
     // Search & filter state
     const [searchOwner, setSearchOwner] = useState('');
@@ -102,6 +106,7 @@ const StockManagement = () => {
             fetchItemTypes();
             fetchMeasurementUnits();
             fetchReleaseReasons();
+            fetchSeizureReasons();
         }
     }, [authState.token]);
 
@@ -158,6 +163,18 @@ const StockManagement = () => {
             }
         } catch (error) {
             console.error('Error fetching release reasons:', error);
+        }
+    };
+
+    const fetchSeizureReasons = async () => {
+        try {
+            const response = await fetchWithAuth(`${API_URL}/seizure-reasons`);
+            if (response.ok) {
+                const data = await response.json();
+                setSeizureReasons(data);
+            }
+        } catch (error) {
+            console.error('Error fetching seizure reasons:', error);
         }
     };
 
@@ -343,8 +360,13 @@ const StockManagement = () => {
             return;
         }
 
+        if (!formData.seizureReasonCategory || formData.seizureReasonCategory.trim() === '') {
+            alert('Reason for taking item is required.');
+            return;
+        }
+
         if (!formData.seizureReason || formData.seizureReason.trim() === '') {
-            alert('Reason for taking items is required.');
+            alert('Details for taking item(s) is required.');
             return;
         }
 
@@ -358,6 +380,7 @@ const StockManagement = () => {
             takenDate: formData.takenDate || null,
             receivedDate: formData.receivedDate || null,
             seizureReason: formData.seizureReason || null,
+            seizureReasonCategory: formData.seizureReasonCategory || null,
             items: formData.items.map(item => {
                 const category = item.item === 'OTHER' ? (item.newCategory || 'OTHER').toUpperCase() : item.item;
                 const unit = item.measurementUnit === 'OTHER' ? (item.newUnit || 'OTHER').toUpperCase() : item.measurementUnit;
@@ -469,6 +492,7 @@ const StockManagement = () => {
             receivedDate: stock.receivedDate || '',
             items: items,
             seizureReason: stock.seizureReason || '',
+            seizureReasonCategory: stock.seizureReasonCategory || '',
             dateReleased: '',
             releasedItem: '',
             quantityReleased: '',
@@ -478,6 +502,7 @@ const StockManagement = () => {
             newPlateNumber: '',
             newOwner: ''
         });
+        setIsAddingNewSeizureReason(false);
         setDocumentFiles([]);
         setAnotherDocumentFile(null);
         setShowModal(true);
@@ -494,6 +519,7 @@ const StockManagement = () => {
             receivedDate: '',
             items: [{ ...EMPTY_ITEM, item: itemTypes[0] || '', measurementUnit: measurementUnits[0] || '' }],
             seizureReason: '',
+            seizureReasonCategory: '',
             dateReleased: '',
             releasedItem: '',
             quantityReleased: '',
@@ -503,6 +529,7 @@ const StockManagement = () => {
             newPlateNumber: '',
             newOwner: ''
         });
+        setIsAddingNewSeizureReason(false);
         setDocumentFiles([]);
         setAnotherDocumentFile(null);
         setShowModal(true);
@@ -675,13 +702,14 @@ const StockManagement = () => {
                 const uniqueDamagedNames = [...new Set(damagedReleases.map(r => r.releasedItemName))];
                 data['Damaged Items'] = uniqueDamagedNames.length > 0 ? uniqueDamagedNames.join(', ') : (stock.status === 'DAMAGED' ? 'ALL' : '');
                 data['Damaged Qty'] = damagedReleases.length > 0 ? damagedReleases.reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0) : (stock.status === 'DAMAGED' ? formatTotalQuantity(stock.items) : '');
+                data['Reason for release'] = 'DAMAGED';
             } else if (releaseFilter !== 'not_released' && releaseFilter !== 'all') {
                 const releasedNames = [...new Set((stock.releases || []).map(r => r.releasedItemName))];
                 data['Date Released'] = stock.dateReleased || (stock.releases && stock.releases.length > 0 ? stock.releases[0].dateReleased : '');
                 data['Released Item'] = stock.releasedItem || (stock.releases && stock.releases.length > 0 ? releasedNames.join(', ') : '');
                 data['Quantity Released'] = stock.quantityReleased || (stock.releases && stock.releases.length > 0 ? stock.releases.reduce((sum, r) => sum + (parseInt(r.quantityReleased) || 0), 0) : '');
                 data['Sold Amount'] = stock.soldAmount || (stock.releases && stock.releases.length > 0 ? stock.releases.reduce((sum, r) => sum + (parseFloat(r.soldAmount) || 0), 0) : '');
-                data['Reason'] = stock.reason || (stock.releases && stock.releases.length > 0 ? stock.releases[0].reason : '');
+                data['Reason for release'] = stock.releaseReason || (stock.releases && stock.releases.length > 0 ? stock.releases[0].releaseReason : '');
             }
             return data;
         });
@@ -749,7 +777,7 @@ const StockManagement = () => {
             addField('Released Item', stock.releasedItem === 'ALL' ? 'All Items' : (stock.releasedItem || ''));
             addField('Quantity Released', String(stock.quantityReleased || ''));
             addField('Sold Amount', stock.soldAmount ? String(stock.soldAmount) : 'N/A');
-            addField('Reason', stock.reason);
+            addField('Reason for release', stock.releaseReason || stock.reason);
         }
 
         doc.save(`Stock-Info-${stock.id}.pdf`);
@@ -1004,8 +1032,46 @@ const StockManagement = () => {
                                         </div>
                                     )}
                                 </div>
+                                <div className="form-group">
+                                    <label>Reason for taking item *</label>
+                                    <select
+                                        name="seizureReasonCategory"
+                                        value={isAddingNewSeizureReason ? 'OTHER' : (formData.seizureReasonCategory || '')}
+                                        onChange={(e) => {
+                                            if (e.target.value === 'OTHER') {
+                                                setIsAddingNewSeizureReason(true);
+                                                setFormData(prev => ({ ...prev, seizureReasonCategory: '' }));
+                                            } else {
+                                                setIsAddingNewSeizureReason(false);
+                                                setFormData(prev => ({ ...prev, seizureReasonCategory: e.target.value }));
+                                            }
+                                        }}
+                                        disabled={currentStock?.releases?.length > 0}
+                                        required
+                                    >
+                                        <option value="">Select Reason</option>
+                                        {seizureReasons.map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                        {!seizureReasons.includes('SMUGGLING') && <option value="SMUGGLING">SMUGGLING</option>}
+                                        <option value="OTHER">OTHER (Add New...)</option>
+                                    </select>
+                                </div>
+                                {isAddingNewSeizureReason && (
+                                    <div className="form-group">
+                                        <label>New Reason Name *</label>
+                                        <input
+                                            type="text"
+                                            value={formData.seizureReasonCategory || ''}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, seizureReasonCategory: e.target.value.toUpperCase() }))}
+                                            placeholder="Enter new reason..."
+                                            disabled={currentStock?.releases?.length > 0}
+                                            required
+                                        />
+                                    </div>
+                                )}
                                 <div className="form-group full-width">
-                                    <label>Reason for Taking Items *</label>
+                                    <label>Details for taking item(s) *</label>
                                     <textarea name="seizureReason" value={formData.seizureReason || ''} onChange={handleInputChange} placeholder="Explain why the items were seized/taken..." disabled={currentStock?.releases?.length > 0} required />
                                 </div>
                             </div>

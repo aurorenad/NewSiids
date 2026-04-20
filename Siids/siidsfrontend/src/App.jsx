@@ -89,27 +89,28 @@ const AppRoutes = () => {
             <Route path="/" element={<Login />} />
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/director-intelligence" element={<RoleProtectedRoute allowedRoles={['DirectorIntelligence', 'Admin', 'admin']}><DirectorIntelligence /></RoleProtectedRoute>} />
-            <Route path="/intelligence-officer" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'Admin', 'admin']}><IntelligenceOfficer /></RoleProtectedRoute>} />
-            <Route path="/intelligence-officer/newCase" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'Admin', 'admin']}><NewCase /></RoleProtectedRoute>} />
-            <Route path="/intelligence-officer/view-case/*" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'Admin', 'admin']}><TaxReportView /></RoleProtectedRoute>} />
-            <Route path="/intelligence-officer/claim-form/:caseNum" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'Admin', 'admin']}><ClaimForm /></RoleProtectedRoute>} />
-            <Route path="/investigation-officer" element={<RoleProtectedRoute allowedRoles={['InvestigationOfficer', 'Admin', 'admin']}><InvestigationOfficer /></RoleProtectedRoute>} />
-            <Route path="/surveillence-officer" element={<RoleProtectedRoute allowedRoles={['Surveillance', 'Admin', 'admin']}><SurveillenceOfficer /></RoleProtectedRoute>} />
-            <Route path="/surveillence-officer/New" element={<RoleProtectedRoute allowedRoles={['Surveillance', 'Admin', 'admin']}><NewSurveillenceCase /></RoleProtectedRoute>} />
-            <Route path="/surveillence-officer/view/*" element={<RoleProtectedRoute allowedRoles={['Surveillance', 'Admin', 'admin']}><SurveillanceCaseView /></RoleProtectedRoute>} />
-            <Route path="/surveillence-officer/sclaim-form/:caseNum" element={<RoleProtectedRoute allowedRoles={['Surveillance', 'Admin', 'admin']}><SClaimForm /></RoleProtectedRoute>} />
-            <Route path="/Director-Investigation" element={<RoleProtectedRoute allowedRoles={['DirectorInvestigation', 'Admin', 'admin']}><DirectorInvestigation /></RoleProtectedRoute>} />
-            <Route path="/assistant-commissioner" element={<RoleProtectedRoute allowedRoles={['AssistantCommissioner', 'Admin', 'admin']}><AssistantCommissioner /></RoleProtectedRoute>} />
-            <Route path="/history" element={<RoleProtectedRoute allowedRoles={['ROLE_AUDITOR', 'Admin', 'admin']}><History /></RoleProtectedRoute>} />
-            <Route path="/reports/:id" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor', 'Admin', 'admin']}><ReportView /></RoleProtectedRoute>} />
-            <Route path="/reports/:caseNum" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor', 'Admin', 'admin']}><ReportView /></RoleProtectedRoute>} />
-            <Route path="/reports/:id/findings" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor', 'Admin', 'admin']}><FindingsViewerPage /></RoleProtectedRoute>} />
-            <Route path="/view-report/:id" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor', 'Admin', 'admin']}><ViewReportDetails /></RoleProtectedRoute>} />
-            <Route path="/assistant-commissioner/fines-report" element={<RoleProtectedRoute allowedRoles={['AssistantCommissioner', 'Admin', 'admin']}><FinesReport /></RoleProtectedRoute>} />
-            <Route path="/director-intelligence/case-reports" element={<RoleProtectedRoute allowedRoles={['DirectorIntelligence', 'Admin', 'admin']}><DirectorIntelligenceCaseReports /></RoleProtectedRoute>} />
-            <Route path="/reports/t3-officers" element={<RoleProtectedRoute allowedRoles={['DirectorIntelligence', 'Admin', 'admin']}><T3OfficersReports /></RoleProtectedRoute>} />
-            <Route path="/legal-advisor" element={<RoleProtectedRoute allowedRoles={['legalAdvisor', 'Admin', 'admin']}><LegalAdvisor /></RoleProtectedRoute>} />
+            <Route path="/director-intelligence" element={<RoleProtectedRoute allowedRoles={['DirectorIntelligence']}><DirectorIntelligence /></RoleProtectedRoute>} />
+            <Route path="/intelligence-officer" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer']}><IntelligenceOfficer /></RoleProtectedRoute>} />
+            <Route path="/intelligence-officer/newCase" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer']}><NewCase /></RoleProtectedRoute>} />
+            <Route path="/intelligence-officer/view-case/*" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer']}><TaxReportView /></RoleProtectedRoute>} />
+            <Route path="/intelligence-officer/claim-form/:caseNum" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer']}><ClaimForm /></RoleProtectedRoute>} />
+            <Route path="/investigation-officer" element={<RoleProtectedRoute allowedRoles={['InvestigationOfficer']}><InvestigationOfficer /></RoleProtectedRoute>} />
+            <Route path="/surveillence-officer" element={<RoleProtectedRoute allowedRoles={['Surveillance']}><SurveillenceOfficer /></RoleProtectedRoute>} />
+            <Route path="/surveillence-officer/New" element={<RoleProtectedRoute allowedRoles={['Surveillance']}><NewSurveillenceCase /></RoleProtectedRoute>} />
+            <Route path="/surveillence-officer/view/*" element={<RoleProtectedRoute allowedRoles={['Surveillance']}><SurveillanceCaseView /></RoleProtectedRoute>} />
+            <Route path="/surveillence-officer/sclaim-form/:caseNum" element={<RoleProtectedRoute allowedRoles={['Surveillance']}><SClaimForm /></RoleProtectedRoute>} />
+            <Route path="/Director-Investigation" element={<RoleProtectedRoute allowedRoles={['DirectorInvestigation']}><DirectorInvestigation /></RoleProtectedRoute>} />
+            <Route path="/assistant-commissioner" element={<RoleProtectedRoute allowedRoles={['AssistantCommissioner']}><AssistantCommissioner /></RoleProtectedRoute>} />
+            <Route path="/history" element={<RoleProtectedRoute allowedRoles={['ROLE_AUDITOR']}><History /></RoleProtectedRoute>} />
+            <Route path="/reports/:id" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor']}><ReportView /></RoleProtectedRoute>} />
+            <Route path="/reports/:caseNum" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor']}><ReportView /></RoleProtectedRoute>} />
+            <Route path="/reports/:id/findings" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor']}><FindingsViewerPage /></RoleProtectedRoute>} />
+            <Route path="/view-report/:id" element={<RoleProtectedRoute allowedRoles={['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor']}><ViewReportDetails /></RoleProtectedRoute>} />
+            <Route path="/assistant-commissioner/fines-report" element={<RoleProtectedRoute allowedRoles={['AssistantCommissioner']}><FinesReport /></RoleProtectedRoute>} />
+            <Route path="/assistant-commissioner/penalties-report" element={<RoleProtectedRoute allowedRoles={['AssistantCommissioner']}><FinesReport /></RoleProtectedRoute>} />
+            <Route path="/director-intelligence/case-reports" element={<RoleProtectedRoute allowedRoles={['DirectorIntelligence']}><DirectorIntelligenceCaseReports /></RoleProtectedRoute>} />
+            <Route path="/reports/t3-officers" element={<RoleProtectedRoute allowedRoles={['DirectorIntelligence']}><T3OfficersReports /></RoleProtectedRoute>} />
+            <Route path="/legal-advisor" element={<RoleProtectedRoute allowedRoles={['legalAdvisor']}><LegalAdvisor /></RoleProtectedRoute>} />
             <Route
                 path="/intelligence-officer/edit-report/:reportId"
                 element={
@@ -118,9 +119,9 @@ const AppRoutes = () => {
                     </ProtectedRoute>
                 }
             />
-            <Route path="/stock-management" element={<RoleProtectedRoute allowedRoles={['StockManager', 'Admin', 'admin']}><StockManagement /></RoleProtectedRoute>} />
+            <Route path="/stock-management" element={<RoleProtectedRoute allowedRoles={['StockManager']}><StockManagement /></RoleProtectedRoute>} />
             <Route path="/system-admin" element={<RoleProtectedRoute allowedRoles={['Admin', 'admin']}><SystemAdmin /></RoleProtectedRoute>} />
-            <Route path="/surveillence-officer/releases" element={<RoleProtectedRoute allowedRoles={['Surveillance', 'Admin', 'admin']}><PrsoReleases /></RoleProtectedRoute>} />
+            <Route path="/surveillence-officer/releases" element={<RoleProtectedRoute allowedRoles={['Surveillance']}><PrsoReleases /></RoleProtectedRoute>} />
         </Routes >
     );
 };

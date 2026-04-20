@@ -29,6 +29,10 @@ public class UserController {
     private org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
 
 
+    @Autowired
+    private org.example.siidsbackend.Repository.UserRepo userRepo;
+
+
     @PostMapping("/register")
     public User register(@RequestBody User user) {
         return service.register(user);
@@ -51,6 +55,13 @@ public class UserController {
                 return ResponseEntity.badRequest().body(Map.of("error", "Employee not found with ID: " + username));
             }
 
+            // Check if user already exists
+            User existingUser = userRepo.findByUsername(username);
+            if (existingUser != null) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("error", "A user account for this Employee ID already exists."));
+            }
+
             // Create user
             User user = new User();
             user.setUsername(username);
@@ -58,22 +69,14 @@ public class UserController {
             user.setPassword(java.util.UUID.randomUUID().toString()); // Placeholder password
             service.register(user);
 
-            // Generate OTP
-            Map<String, String> otpResult = service.generateOtp(username);
-            if (otpResult.containsKey("error")) {
+            // Send specialized welcome email
+            Map<String, String> emailResult = service.sendWelcomeEmail(username);
+            if (emailResult.containsKey("error")) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", "User registered, but failed to generate OTP: " + otpResult.get("error")));
+                        .body(Map.of("error", "User registered, but failed to send welcome email: " + emailResult.get("error")));
             }
 
-            // Send specialized welcome email (since the generateOtp sends the generic one, 
-            // we have the OTP now and can send the welcome one OR the generic one is already sent by generateOtp.
-            // Since generateOtp() already calls emailService.sendOtpEmail(), we have two emails sent if we send another here.
-            // To be precise and clean: We could re-send the welcome email, but since generateOtp handles generating and emailing, 
-            // the user will receive the generic OTP email. That is functionally perfectly fine.
-            // Wait, we can fetch the OTP and send the welcome email directly instead of trusting generateOtp.
-            // Let's rely on generateOtp since it already does the work.
-
-            return ResponseEntity.ok(Map.of("message", "User successfully registered and OTP sent via email"));
+            return ResponseEntity.ok(Map.of("message", "User successfully registered and welcome email sent"));
         } catch (Exception e) {
             log.error("Error in admin register", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
