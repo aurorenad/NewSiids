@@ -2,9 +2,16 @@ import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { NotificationBell } from './../NotificationComponents/NotificationBell.jsx';
-
-import 'font-awesome/css/font-awesome.min.css';
-import '../styles/Header.css';
+import {
+    AppBar,
+    Toolbar,
+    Typography,
+    IconButton,
+    Avatar,
+    Box,
+    Tooltip,
+} from '@mui/material';
+import { Logout, Person } from '@mui/icons-material';
 
 const Header = () => {
     const { currentUser, logout } = useContext(AuthContext);
@@ -12,31 +19,41 @@ const Header = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/login');
+        navigate('/');
     };
 
     return (
-        <header className="app-header">
-            <div className="header">
-                <h1 className="header-title">
+        <AppBar position="sticky" sx={{ zIndex: (t) => t.zIndex.drawer - 1 }}>
+            <Toolbar sx={{ gap: 2 }}>
+                <Typography
+                    variant="subtitle1"
+                    sx={{ flexGrow: 1, fontWeight: 600, color: 'text.primary' }}
+                >
                     Strategic Intelligence & Investigation Division System (SIIDS)
-                </h1>
-                <div className="header-actions">
-                    <div className="user-profile">
-                        <i className="fa fa-user"></i>
-                        {currentUser?.name && (
-                            <span className="user-name">{currentUser.name}</span>
-                        )}
-                    </div>
-                    {currentUser?.employeeId && (
-                        <NotificationBell />
+                </Typography>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    {currentUser?.name && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.875rem' }}>
+                                {currentUser.name.charAt(0).toUpperCase()}
+                            </Avatar>
+                            <Typography variant="body2" fontWeight={500} color="text.primary">
+                                {currentUser.name}
+                            </Typography>
+                        </Box>
                     )}
-                    <button className="logout-btn" onClick={handleLogout}>
-                        <i className="fa fa-sign-out"></i>
-                    </button>
-                </div>
-            </div>
-        </header>
+
+                    {currentUser?.employeeId && <NotificationBell />}
+
+                    <Tooltip title="Logout">
+                        <IconButton onClick={handleLogout} size="small" sx={{ color: 'text.secondary' }}>
+                            <Logout fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+            </Toolbar>
+        </AppBar>
     );
 };
 

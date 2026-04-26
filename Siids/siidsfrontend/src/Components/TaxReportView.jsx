@@ -100,26 +100,6 @@ const TaxReportView = () => {
         }
     };
 
-    const handleSendToDirector = async () => {
-        try {
-            await CaseService.updateCaseStatus(caseData.id || caseData.caseNum, 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE');
-            setCaseData(prev => ({
-                ...prev,
-                status: 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
-            }));
-            navigate('/intelligence-officer');
-        } catch (err) {
-            console.error('Error sending case to director:', err);
-            setError('Failed to send case to director');
-        }
-    };
-
-    const handleEdit = () => {
-        navigate('/intelligence-officer/newCase', {
-            state: { caseData }
-        });
-    };
-
     const handleDownloadPDF = async () => {
         const input = reportRef.current;
         const canvas = await html2canvas(input, { scale: 2 });

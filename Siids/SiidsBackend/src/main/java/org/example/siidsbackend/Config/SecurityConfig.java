@@ -75,7 +75,7 @@ public class SecurityConfig {
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .requestMatchers("/api/stock/**")
-                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager")
+                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "PRSO", "Surveillance")
                         .requestMatchers("/api/reward-memos/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "DirectorIntelligence", "AssistantCommissioner",
                                 "Admin", "admin", "Finance")

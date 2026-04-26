@@ -3,15 +3,12 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
     IconButton, Paper, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead,
-    TableRow, TextField, Typography, Alert, Tooltip, Chip, Card, CardContent,
-    MenuItem, Select, FormControl, InputLabel
+    TableRow, TextField, Typography, Alert, Tooltip, Chip
 } from '@mui/material';
 
 import {
-    PictureAsPdf, Search as SearchIcon, CheckCircle as ApproveIcon,
-    Cancel as RejectIcon, Visibility as VisibilityIcon, Gavel as LegalIcon,
-    Description as DescriptionIcon, Download as DownloadIcon,
-    Undo as ReturnIcon, Person as PersonIcon, Refresh as RefreshIcon
+    PictureAsPdf, Search as SearchIcon, Visibility as VisibilityIcon, Gavel as LegalIcon,
+    Undo as ReturnIcon, Refresh as RefreshIcon
 } from '@mui/icons-material';
 
 import { Link } from 'react-router-dom';
@@ -34,13 +31,8 @@ const LegalAdvisorDashboard = () => {
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState(null);
     const [returnReason, setReturnReason] = useState('');
-    const [investigationOfficers, setInvestigationOfficers] = useState([]);
-    const [selectedOfficer, setSelectedOfficer] = useState('');
-    const [loadingOfficers, setLoadingOfficers] = useState(false);
-
     useEffect(() => {
         fetchLegalAdvisorReports();
-        fetchInvestigationOfficers();
     }, []);
 
     const fetchLegalAdvisorReports = async () => {
@@ -131,24 +123,6 @@ const LegalAdvisorDashboard = () => {
         }
     };
 
-    const fetchInvestigationOfficers = async () => {
-        try {
-            setLoadingOfficers(true);
-            const response = await ReportApi.getAvailableInvestigationOfficers();
-            console.log('Investigation officers:', response.data);
-            setInvestigationOfficers(response.data || []);
-        } catch (error) {
-            console.error('Error fetching investigation officers:', error);
-            setSnackbar({
-                open: true,
-                message: 'Failed to load investigation officers',
-                severity: 'error'
-            });
-        } finally {
-            setLoadingOfficers(false);
-        }
-    };
-
     useEffect(() => {
         let results = reports;
 
@@ -171,7 +145,7 @@ const LegalAdvisorDashboard = () => {
         setFilteredReports(results);
     }, [searchTerm, reports]);
 
-    const handleViewPdf = async (reportId, filename, index) => {
+    const handleViewPdf = async (reportId, filename) => {
         try {
             // Set loading state for this specific report
             setPdfLoading(prev => ({ ...prev, [reportId]: true }));
@@ -257,7 +231,6 @@ const LegalAdvisorDashboard = () => {
 
     const handleRefresh = () => {
         fetchLegalAdvisorReports();
-        fetchInvestigationOfficers();
     };
 
     // Return report functions

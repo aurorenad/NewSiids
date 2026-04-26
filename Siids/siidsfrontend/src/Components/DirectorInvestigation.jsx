@@ -47,7 +47,7 @@ import {
     ThumbDown,
     Refresh
 } from "@mui/icons-material";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ReportApi, InvestigationApi } from './../api/Axios/caseApi';
 
 const DirectorInvestigation = () => {
@@ -85,8 +85,6 @@ const DirectorInvestigation = () => {
     const [investigationReturnReason, setInvestigationReturnReason] = useState('');
     const [selectedCaseForInvestigationReport, setSelectedCaseForInvestigationReport] = useState(null);
     const [activeTab, setActiveTab] = useState(0); // 0: All Cases, 1: Pending Review, 2: Investigation Reports
-
-    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -759,11 +757,6 @@ const DirectorInvestigation = () => {
         setSelectedOfficer(caseItem.delegate || '');
         setAssignmentNotes(caseItem.assignmentNotes || '');
         setAssignDialogOpen(true);
-    };
-
-    const handleOpenSendToCommissionerDialog = (caseItem) => {
-        setSelectedCaseForCommissioner(caseItem);
-        setSendToCommissionerDialogOpen(true);
     };
 
     // Helper functions for filtering

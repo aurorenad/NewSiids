@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../api/axios';
 import {
-    Grid,
     Link,
     TextField,
     Button,
@@ -10,15 +9,27 @@ import {
     Box,
     CircularProgress,
     Alert,
-    Paper
+    Card,
+    CardContent,
+    Stack,
+    Stepper,
+    Step,
+    StepLabel,
+    InputAdornment,
+    IconButton,
 } from '@mui/material';
+import { Person, Pin, Lock, Visibility, VisibilityOff } from '@mui/icons-material';
+import AuthLayout from './ui/AuthLayout.jsx';
+
+const STEPS = ['Request OTP', 'Verify OTP', 'Reset Password'];
 
 const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [step, setStep] = useState(1); // 1: request OTP, 2: verify OTP, 3: reset password
+    const [showPassword, setShowPassword] = useState(false);
+    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -29,7 +40,6 @@ const ForgotPassword = () => {
         setLoading(true);
         setError('');
         setSuccess('');
-
         try {
             const response = await axios.post('/forgot-password', { username: email });
             setSuccess(response.data.message || 'OTP sent to your registered email');
@@ -46,12 +56,8 @@ const ForgotPassword = () => {
         setLoading(true);
         setError('');
         setSuccess('');
-
         try {
-            const response = await axios.post('/verify-otp', {
-                username: email,
-                otp
-            });
+            const response = await axios.post('/verify-otp', { username: email, otp });
             setSuccess(response.data.message || 'OTP verified successfully');
             setStep(3);
         } catch (err) {
@@ -66,19 +72,13 @@ const ForgotPassword = () => {
         setLoading(true);
         setError('');
         setSuccess('');
-
         if (newPassword !== confirmPassword) {
             setError('Passwords do not match');
             setLoading(false);
             return;
         }
-
         try {
-            const response = await axios.post('/reset-password', {
-                username: email,
-                otp,
-                newPassword
-            });
+            const response = await axios.post('/reset-password', { username: email, otp, newPassword });
             setSuccess(response.data.message || 'Password reset successfully. You can now login.');
             setTimeout(() => navigate('/'), 2000);
         } catch (err) {
@@ -89,157 +89,138 @@ const ForgotPassword = () => {
     };
 
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                minHeight: '100vh',
-                bgcolor: 'background.default',
-                p: 2
-            }}
-        >
-            <Paper
-                elevation={3}
-                sx={{
-                    p: 4,
-                    width: '100%',
-                    maxWidth: 500,
-                    borderRadius: 2
-                }}
-            >
-                <Typography variant="h4" component="h1" gutterBottom align="center" sx={{ mb: 4 }}>
-                    {step === 1 ? 'Forgot Password' :
-                        step === 2 ? 'Verify OTP' :
-                            'Reset Password'}
-                </Typography>
-
-                {error && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                        {error}
-                    </Alert>
-                )}
-
-                {success && (
-                    <Alert severity="success" sx={{ mb: 3 }}>
-                        {success}
-                    </Alert>
-                )}
-
-                {step === 1 && (
-                    <form onSubmit={handleRequestOtp}>
-                        <TextField
-                            fullWidth
-                            label="Employee ID/Username"
-                            variant="outlined"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            margin="normal"
-                            required
-                            disabled={loading}
-                        />
-                        <Button
-                            fullWidth
-                            variant="contained"
-                            type="submit"
-                            disabled={loading}
-                            sx={{ mt: 3, mb: 2 }}
-                        >
-                            {loading ? <CircularProgress size={24} /> : 'Send OTP'}
-                        </Button>
-                        <Grid container justifyContent="flex-end">
-                            <Grid item>
-                                <Link href="/" variant="body2">
-                                    Remember your password? Login
-                                </Link>
-                            </Grid>
-                        </Grid>
-                    </form>
-                )}
-
-                {step === 2 && (
-                    <form onSubmit={handleVerifyOtp}>
-                        <Typography variant="body1" sx={{ mb: 2 }}>
-                            We've sent a 6-digit OTP to your registered email address.
+        <AuthLayout maxWidth="sm">
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+                <CardContent sx={{ p: 4 }}>
+                    <Stack spacing={3}>
+                        <Typography variant="h6" textAlign="center" fontWeight={700}>
+                            {step === 1 ? 'Forgot Password' : step === 2 ? 'Verify OTP' : 'Reset Password'}
                         </Typography>
-                        <TextField
-                            fullWidth
-                            label="OTP"
-                            variant="outlined"
-                            value={otp}
-                            onChange={(e) => setOtp(e.target.value)}
-                            margin="normal"
-                            required
-                            disabled={loading}
-                            inputProps={{ maxLength: 6 }}
-                        />
-                        <Button
-                            fullWidth
-                            variant="contained"
-                            type="submit"
-                            disabled={loading}
-                            sx={{ mt: 3, mb: 2 }}
-                        >
-                            {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
-                        </Button>
-                        <Button
-                            fullWidth
-                            variant="outlined"
-                            onClick={() => setStep(1)}
-                            disabled={loading}
-                            sx={{ mb: 2 }}
-                        >
-                            Back
-                        </Button>
-                    </form>
-                )}
 
-                {step === 3 && (
-                    <form onSubmit={handleResetPassword}>
-                        <TextField
-                            fullWidth
-                            label="New Password"
-                            type="password"
-                            variant="outlined"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            margin="normal"
-                            required
-                            disabled={loading}
-                        />
-                        <TextField
-                            fullWidth
-                            label="Confirm New Password"
-                            type="password"
-                            variant="outlined"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            margin="normal"
-                            required
-                            disabled={loading}
-                        />
-                        <Button
-                            fullWidth
-                            variant="contained"
-                            type="submit"
-                            disabled={loading}
-                            sx={{ mt: 3, mb: 2 }}
-                        >
-                            {loading ? <CircularProgress size={24} /> : 'Reset Password'}
-                        </Button>
-                        <Button
-                            fullWidth
-                            variant="outlined"
-                            onClick={() => setStep(2)}
-                            disabled={loading}
-                            sx={{ mb: 2 }}
-                        >
-                            Back
-                        </Button>
-                    </form>
-                )}
-            </Paper>
-        </Box>
+                        <Stepper activeStep={step - 1} alternativeLabel>
+                            {STEPS.map((label) => (
+                                <Step key={label}>
+                                    <StepLabel>{label}</StepLabel>
+                                </Step>
+                            ))}
+                        </Stepper>
+
+                        {error && <Alert severity="error">{error}</Alert>}
+                        {success && <Alert severity="success">{success}</Alert>}
+
+                        {step === 1 && (
+                            <form onSubmit={handleRequestOtp}>
+                                <Stack spacing={2}>
+                                    <TextField
+                                        label="Employee ID / Username"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        disabled={loading}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Person color="action" fontSize="small" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                    <Button type="submit" fullWidth disabled={loading} sx={{ py: 1.2 }}>
+                                        {loading ? <CircularProgress size={22} color="inherit" /> : 'Send OTP'}
+                                    </Button>
+                                    <Box textAlign="center">
+                                        <Link href="/" variant="body2" underline="hover">
+                                            Remember your password? Login
+                                        </Link>
+                                    </Box>
+                                </Stack>
+                            </form>
+                        )}
+
+                        {step === 2 && (
+                            <form onSubmit={handleVerifyOtp}>
+                                <Stack spacing={2}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        We've sent a 6-digit OTP to your registered email address.
+                                    </Typography>
+                                    <TextField
+                                        label="OTP"
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value)}
+                                        required
+                                        disabled={loading}
+                                        inputProps={{ maxLength: 6 }}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Pin color="action" fontSize="small" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                    <Button type="submit" fullWidth disabled={loading} sx={{ py: 1.2 }}>
+                                        {loading ? <CircularProgress size={22} color="inherit" /> : 'Verify OTP'}
+                                    </Button>
+                                    <Button variant="outlined" fullWidth onClick={() => setStep(1)} disabled={loading}>
+                                        Back
+                                    </Button>
+                                </Stack>
+                            </form>
+                        )}
+
+                        {step === 3 && (
+                            <form onSubmit={handleResetPassword}>
+                                <Stack spacing={2}>
+                                    <TextField
+                                        label="New Password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={newPassword}
+                                        onChange={(e) => setNewPassword(e.target.value)}
+                                        required
+                                        disabled={loading}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Lock color="action" fontSize="small" />
+                                                </InputAdornment>
+                                            ),
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" size="small">
+                                                        {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                    <TextField
+                                        label="Confirm New Password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        required
+                                        disabled={loading}
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Lock color="action" fontSize="small" />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                    <Button type="submit" fullWidth disabled={loading} sx={{ py: 1.2 }}>
+                                        {loading ? <CircularProgress size={22} color="inherit" /> : 'Reset Password'}
+                                    </Button>
+                                    <Button variant="outlined" fullWidth onClick={() => setStep(2)} disabled={loading}>
+                                        Back
+                                    </Button>
+                                </Stack>
+                            </form>
+                        )}
+                    </Stack>
+                </CardContent>
+            </Card>
+        </AuthLayout>
     );
 };
 

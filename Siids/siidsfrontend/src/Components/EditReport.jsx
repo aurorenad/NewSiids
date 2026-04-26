@@ -20,7 +20,6 @@ const EditReport = () => {
     const [report, setReport] = useState(null);
     const [editPermission, setEditPermission] = useState(null);
     const [attachments, setAttachments] = useState([]);
-    const [removedAttachments, setRemovedAttachments] = useState([]);
 
     const [formData, setFormData] = useState({
         description: '',
@@ -102,10 +101,6 @@ const EditReport = () => {
     };
 
     const handleRemoveAttachment = (attachment, index) => {
-        if (!attachment.isNew) {
-            // Mark existing attachment for removal
-            setRemovedAttachments(prev => [...prev, attachment]);
-        }
         // Remove from current attachments
         const newAttachments = [...attachments];
         newAttachments.splice(index, 1);
@@ -130,7 +125,7 @@ const EditReport = () => {
             // Add new attachments
             attachments
                 .filter(att => att.isNew && att.file)
-                .forEach((att, index) => {
+                .forEach((att) => {
                     formDataToSend.append(`attachments`, att.file);
                 });
 
@@ -148,42 +143,10 @@ const EditReport = () => {
         }
     };
 
-    const handlePartialEdit = async () => {
-        setSaving(true);
-        setError(null);
-
-        try {
-            const updates = {};
-
-            // Only include fields that have changed
-            Object.keys(formData).forEach(key => {
-                if (formData[key] !== report[key]) {
-                    updates[key] = formData[key];
-                }
-            });
-
-            // Include removed attachments
-            if (removedAttachments.length > 0) {
-                updates.removedAttachmentPaths = removedAttachments.map(att => att.name || att);
-            }
-
-            await ReportApi.partialEditReport(reportId, updates);
-
-            setSuccess(true);
-            setTimeout(() => {
-                navigate('/intelligence-officer');
-            }, 1500);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Failed to update report');
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const downloadAttachment = async (filename) => {
         try {
             await ReportApi.downloadAttachment(reportId, filename);
-        } catch (err) {
+        } catch {
             setError('Failed to download attachment');
         }
     };

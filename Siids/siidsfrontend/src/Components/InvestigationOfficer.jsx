@@ -107,7 +107,7 @@ const InvestigationOfficer = () => {
     // New states for enhanced functionality
     const [activeTab, setActiveTab] = useState(0); // 0: Active, 1: Historical
     const [historicalReports, setHistoricalReports] = useState([]);
-    const [loadingHistorical, setLoadingHistorical] = useState(false);
+    const [_loadingHistorical, setLoadingHistorical] = useState(false);
 
     const navigate = useNavigate();
 
@@ -203,7 +203,7 @@ const InvestigationOfficer = () => {
             let response;
             try {
                 response = await ReportApi.getActiveReportsForInvestigationOfficer?.();
-            } catch (err) {
+            } catch {
                 console.log("New endpoint not available, falling back to old endpoint");
                 response = await ReportApi.getAssignedReportsForInvestigationOfficer();
             }
@@ -426,7 +426,7 @@ const InvestigationOfficer = () => {
             formData.append("findingsData", JSON.stringify(findingsData));
 
             // Add attachments
-            attachments.forEach((file, index) => {
+            attachments.forEach((file) => {
                 formData.append(`attachments`, file);
             });
 
@@ -1141,7 +1141,6 @@ const InvestigationOfficer = () => {
                         filteredReports.map((report) => {
                             if (!report) return null;
 
-                            const casePlanStatus = getCasePlanStatus(report);
                             const hasPlan = report.casePlanExists || hasCasePlan(report);
 
                             return (

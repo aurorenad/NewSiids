@@ -129,7 +129,7 @@ public class StockController {
     }
 
     @PutMapping(value = "/{id}/release/{releaseIndex}/status")
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'Surveillance')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'Surveillance', 'PRSO')")
     public ResponseEntity<?> updateReleaseStatus(
             @PathVariable Integer id,
             @PathVariable int releaseIndex,

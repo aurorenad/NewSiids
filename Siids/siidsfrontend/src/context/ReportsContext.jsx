@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext } from 'react';
 import { ReportApi } from '../api/Axios/caseApi';
 import { UIContext } from './UIContext';
-import { CasesContext } from './CasesContext';
 
 export const ReportsContext = createContext();
 
@@ -18,7 +17,6 @@ export const ReportsProvider = ({ children }) => {
     const [pageNumber, setPageNumber] = useState(1);
     
     const { showSnackbar, setLoading } = useContext(UIContext);
-    const { updateCase } = useContext(CasesContext);
 
     // Get report by ID
     const getReport = async (reportId) => {

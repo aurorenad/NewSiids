@@ -82,16 +82,13 @@ const AssistantCommissioner = () => {
     const [casePlansRowsPerPage, setCasePlansRowsPerPage] = useState(10);
 
     // ✅ Sorting state
-    const [sortBy, setSortBy] = useState('createdAt');
     const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
 
     // ✅ Case Plans sorting
-    const [casePlansSortBy, setCasePlansSortBy] = useState('createdAt');
     const [casePlansSortOrder, setCasePlansSortOrder] = useState('desc');
 
     // ✅ Filter state
     const [filterStatus, setFilterStatus] = useState('ALL');
-    const [showFinesOnly, setShowFinesOnly] = useState(false);
     const [activeTab, setActiveTab] = useState(0); // 0 for Reports, 1 for Case Plans
     const [casePlanActionDialogOpen, setCasePlanActionDialogOpen] = useState(false);
     const [selectedCasePlan, setSelectedCasePlan] = useState(null);
@@ -210,14 +207,12 @@ const AssistantCommissioner = () => {
     const handleSortByDate = () => {
         const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
         setSortOrder(newSortOrder);
-        setSortBy('createdAt');
     };
 
     // ✅ Sort handler for case plans
     const handleCasePlansSortByDate = () => {
         const newSortOrder = casePlansSortOrder === 'desc' ? 'asc' : 'desc';
         setCasePlansSortOrder(newSortOrder);
-        setCasePlansSortBy('createdAt');
     };
 
     // ✅ File upload handler for return dialog
@@ -289,11 +284,6 @@ const AssistantCommissioner = () => {
                 return false;
             }
 
-            // Fines only filter
-            if (showFinesOnly && !report.hasFines && !report.hasPenalties) {
-                return false;
-            }
-
             return true;
         });
 
@@ -310,7 +300,7 @@ const AssistantCommissioner = () => {
         });
 
         return results;
-    }, [reports, searchQuery, sortOrder, filterStatus, showFinesOnly]);
+    }, [reports, searchQuery, sortOrder, filterStatus]);
 
     // ✅ Filter and sort case plans
     const filteredAndSortedCasePlans = React.useMemo(() => {
@@ -358,11 +348,6 @@ const AssistantCommissioner = () => {
     };
 
     // ✅ Fines filter handler
-    const handleToggleFinesOnly = () => {
-        setShowFinesOnly(!showFinesOnly);
-        setPage(0);
-    };
-
     // ✅ Tab change handler
     const handleTabChange = (event, newValue) => {
         setActiveTab(newValue);
@@ -683,7 +668,7 @@ const AssistantCommissioner = () => {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        } catch (error) {
+        } catch {
             return '-';
         }
     };

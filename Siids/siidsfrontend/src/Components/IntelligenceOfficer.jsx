@@ -40,7 +40,6 @@ const IntelligenceOfficer = () => {
     });
     const [showOnlyWithReports, setShowOnlyWithReports] = useState(false);
     const [reportLoading, setReportLoading] = useState(false);
-    const [pdfLoading, setPdfLoading] = useState(false);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [sortOrder, setSortOrder] = useState('desc');
@@ -74,7 +73,6 @@ const IntelligenceOfficer = () => {
         includeDetails: true,
         includeCharts: true
     });
-    const [generatedReportData, setGeneratedReportData] = useState(null);
     const [excelGenerating, setExcelGenerating] = useState(false);
     const [returnedCasesCount, setReturnedCasesCount] = useState(0);
 
@@ -318,7 +316,7 @@ const IntelligenceOfficer = () => {
                     hasReturnDocument: caseItem.hasReturnDocument || reportDetails.hasReturnDocument || permissionDetails.hasReturnDocument,
                     editGuidance: permissionDetails.editGuidance
                 });
-            } catch (permError) {
+            } catch {
                 // If permission check fails, use basic details
                 setReturnDetails({
                     returnReason: caseItem.returnReason || reportDetails.returnReason,
@@ -389,29 +387,11 @@ const IntelligenceOfficer = () => {
         }
     };
 
-    const handleViewPdf = async (reportId) => {
-        if (!reportId) {
-            showSnackbar('No report available', 'warning');
-            return;
-        }
-
-        setPdfLoading(true);
-        try {
-            showSnackbar('Opening PDF...', 'info');
-            window.open(`/api/reports/${reportId}/pdf`, '_blank');
-        } catch (error) {
-            showSnackbar('Failed to open PDF', 'error');
-            console.error('Error opening PDF:', error);
-        } finally {
-            setPdfLoading(false);
-        }
-    };
-
     const handleDownloadAttachment = async (reportId, filename) => {
         try {
             await ReportApi.downloadAttachment(reportId, filename);
             showSnackbar('Attachment downloaded successfully', 'success');
-        } catch (err) {
+        } catch {
             showSnackbar('Failed to download attachment', 'error');
         }
     };
@@ -523,7 +503,6 @@ const IntelligenceOfficer = () => {
             };
 
             generateExcelFile(reportData);
-            setGeneratedReportData(reportData);
             showSnackbar('Excel report generated successfully', 'success');
 
         } catch (error) {
@@ -732,7 +711,7 @@ const IntelligenceOfficer = () => {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        } catch (error) {
+        } catch {
             return '-';
         }
     };

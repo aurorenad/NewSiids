@@ -1,0 +1,153 @@
+/* ============================================
+   MDC3 Design Tokens & Global Styles
+   ============================================ */
+
+:root {
+  --mdc-primary: #1565C0;
+  --mdc-primary-light: #42A5F5;
+  --mdc-primary-dark: #0D47A1;
+  --mdc-on-primary: #FFFFFF;
+  --mdc-primary-container: #D1E4FF;
+  --mdc-secondary: #00897B;
+  --mdc-surface: #FFFFFF;
+  --mdc-surface-1: #F4F6FA;
+  --mdc-surface-2: #EEEFF5;
+  --mdc-surface-3: #E8EAF6;
+  --mdc-outline: #E0E0E0;
+  --mdc-outline-variant: #BDBDBD;
+  --mdc-text: #1C1B1F;
+  --mdc-text-secondary: #49454F;
+  --mdc-radius-sm: 8px;
+  --mdc-radius-md: 12px;
+  --mdc-radius-lg: 16px;
+  --mdc-radius-xl: 24px;
+  --mdc-transition: 0.2s ease;
+  --mdc-sidebar-width: 260px;
+}
+
+/* ---- Reset & Base ---- */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--mdc-surface-1);
+  color: var(--mdc-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: #C4C4C4;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: #A0A0A0; }
+
+/* ---- App Shell ---- */
+.mdc-app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: var(--mdc-surface-1);
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.mdc-page-content {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* ---- Auth Pages ---- */
+.mdc-auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(21,101,192,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0,137,123,0.06) 0%, transparent 50%),
+    linear-gradient(160deg, #E3F2FD 0%, #F4F6FA 35%, #FFFFFF 70%, #E8EAF6 100%);
+}
+
+.mdc-auth-card {
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  border: none !important;
+  border-radius: var(--mdc-radius-lg) !important;
+}
+
+.mdc-auth-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* ---- Tables (non-MUI) ---- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--mdc-surface);
+  border-radius: var(--mdc-radius-md);
+  overflow: hidden;
+}
+
+th {
+  background: var(--mdc-surface-3);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  letter-spacing: 0.03em;
+  color: var(--mdc-text);
+}
+
+th, td {
+  border-bottom: 1px solid var(--mdc-outline);
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 0.8125rem;
+}
+
+tr { transition: background-color 0.15s ease; }
+tbody tr:hover { background-color: #F5F5F5; }
+tbody tr:last-child td { border-bottom: 0; }
+
+/* ---- Form Elements ---- */
+input, select, textarea, button { font: inherit; }
+
+button:not(.MuiButtonBase-root):not(.MuiIconButton-root):not(.logout-btn) {
+  border: 0;
+  border-radius: 20px;
+  padding: 8px 20px;
+  background: var(--mdc-primary);
+  color: var(--mdc-on-primary);
+  cursor: pointer;
+  font-weight: 600;
+  transition: box-shadow var(--mdc-transition), background-color var(--mdc-transition);
+}
+
+button:not(.MuiButtonBase-root):not(.MuiIconButton-root):not(.logout-btn):hover {
+  box-shadow: 0 1px 6px rgba(21,101,192,0.3);
+}
+
+/* ---- Selection ---- */
+::selection {
+  background: var(--mdc-primary-container);
+  color: var(--mdc-primary-dark);
+}
+
+/* ---- Links ---- */
+a { color: var(--mdc-primary); transition: color var(--mdc-transition); }
+a:hover { color: var(--mdc-primary-dark); }
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .mdc-page-content { padding: 12px; }
+  .mdc-auth-card { padding: 20px; }
+}

@@ -6,7 +6,7 @@ import {
     Chip, Select, MenuItem, FormControl, InputLabel,
     Button, IconButton, Tooltip
 } from '@mui/material';
-import { Search, Description, Info } from '@mui/icons-material';
+import { Search, Description } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,7 +16,7 @@ const DirectorIntelligenceCaseReports = () => {
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [taxTypeFilter, setTaxTypeFilter] = useState('all');
+    const taxTypeFilter = 'all';
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -82,8 +82,6 @@ const DirectorIntelligenceCaseReports = () => {
 
         return matchesSearch && matchesStatus && matchesTaxType;
     });
-
-    const uniqueTaxTypes = [...new Set(reports.map(report => report.relatedCase?.taxType).filter(Boolean))];
 
     if (loading) {
         return (

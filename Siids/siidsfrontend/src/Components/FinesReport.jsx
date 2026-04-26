@@ -17,12 +17,11 @@ import {
     Snackbar,
     Alert
 } from '@mui/material';
-import { Download as DownloadIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon } from '@mui/icons-material';
 
 const FinesReport = () => {
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [pdfLoading, setPdfLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: '',
@@ -53,27 +52,6 @@ const FinesReport = () => {
             showSnackbar(`Failed to fetch fines report: ${error.message}`, 'error');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const downloadPdfReport = async () => {
-        try {
-            setPdfLoading(true);
-            const response = await ReportApi.getFinesReportPdfForAssistantCommissioner();
-
-            // Create download link
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `fines-report-${new Date().toISOString().split('T')[0]}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            showSnackbar('PDF report downloaded successfully');
-        } catch (error) {
-            showSnackbar(`Failed to download PDF report: ${error.message}`, 'error');
-        } finally {
-            setPdfLoading(false);
         }
     };
 

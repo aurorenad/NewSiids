@@ -116,65 +116,6 @@ const ViewReportDetails = () => {
         }
     };
 
-    const testDownload = async () => {
-        try {
-            if (!report?.attachmentPaths || report.attachmentPaths.length === 0) {
-                setError('No attachment available for testing');
-                return;
-            }
-
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-            const filename = report.attachmentPaths[0];
-
-            console.log('Test download parameters:', {
-                url: `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/api/reports/download/${id}/${filename}?requesterId=${employeeId}`,
-                filename: filename,
-                employeeId: employeeId
-            });
-
-            const response = await fetch(
-                `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/api/reports/download/${id}/${filename}?requesterId=${employeeId}`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
-
-            console.log('Test response:', {
-                status: response.status,
-                statusText: response.statusText,
-                ok: response.ok,
-                headers: Object.fromEntries(response.headers.entries())
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Error response text:', errorText);
-                setError(`Server error: ${response.status} ${response.statusText}`);
-
-                // Try to parse JSON error if exists
-                try {
-                    const errorJson = JSON.parse(errorText);
-                    console.error('Parsed error JSON:', errorJson);
-                    if (errorJson.message) {
-                        setError(`Error: ${errorJson.message}`);
-                    }
-                } catch {
-                    // Not JSON, keep text error
-                }
-            } else {
-                console.log('Download test successful! File should download.');
-                // Trigger actual download
-                handleDownloadAttachment();
-            }
-        } catch (err) {
-            console.error('Test fetch error:', err);
-            setError(`Network error: ${err.message}`);
-        }
-    };
-
     const handleDownloadPDF = async () => {
         if (!reportRef.current) return;
 
@@ -190,7 +131,7 @@ const ViewReportDetails = () => {
 
             pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
             pdf.save(`Report_Details_${report.id}.pdf`);
-        } catch (err) {
+        } catch {
             setError('Failed to generate PDF');
         }
     };

@@ -46,7 +46,6 @@ const DirectorIntelligence = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
 
     // Sorting state
-    const [sortBy, setSortBy] = useState('createdAt');
     const [sortOrder, setSortOrder] = useState('desc');
 
     const navigate = useNavigate();
@@ -101,7 +100,6 @@ const DirectorIntelligence = () => {
     const handleSortByDate = () => {
         const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
         setSortOrder(newSortOrder);
-        setSortBy('createdAt');
     };
 
     const handleChangePage = (event, newPage) => {
@@ -299,7 +297,7 @@ const DirectorIntelligence = () => {
             link.click();
             link.remove();
             window.URL.revokeObjectURL(url);
-        } catch (err) {
+        } catch {
             setError('Failed to download return document');
         }
     };
@@ -381,11 +379,6 @@ const DirectorIntelligence = () => {
             setReportLoading(selectedReport.id, false);
             setUploadProgress(0);
         }
-    };
-
-    const handleOpenInfoDialog = (report) => {
-        setSelectedReport(report);
-        setInfoDialogOpen(true);
     };
 
     const closeInfoDialog = () => {
@@ -484,7 +477,7 @@ const DirectorIntelligence = () => {
                 hour: '2-digit',
                 minute: '2-digit'
             });
-        } catch (error) {
+        } catch {
             return '-';
         }
     };

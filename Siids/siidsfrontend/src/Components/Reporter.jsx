@@ -60,4 +60,4 @@ const TaxReportView = ({ formData, handleEdit, handlePrint }) => {
     );
 };
 
-export default TaxReportSystem;
+export default TaxReportView;
