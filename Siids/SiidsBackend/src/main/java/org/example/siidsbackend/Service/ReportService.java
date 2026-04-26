@@ -295,7 +295,11 @@ public class ReportService {
         // Allowed statuses for submitting findings
         return currentStatus == WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER ||
                 currentStatus == WorkflowStatus.INVESTIGATION_IN_PROGRESS ||
+                currentStatus == WorkflowStatus.CASE_PLAN_SUBMITTED ||
+                currentStatus == WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION ||
                 currentStatus == WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION ||
+                currentStatus == WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER ||
+                currentStatus == WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER ||
                 currentStatus == WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER ||
                 currentStatus == WorkflowStatus.INVESTIGATION_COMPLETED;
     }

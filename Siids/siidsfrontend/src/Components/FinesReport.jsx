@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ReportApi } from './../api/Axios/caseApi';
 import {
     Table,
@@ -17,11 +18,12 @@ import {
     Snackbar,
     Alert
 } from '@mui/material';
-import { Refresh as RefreshIcon } from '@mui/icons-material';
+import { Refresh as RefreshIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 
 const FinesReport = () => {
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const [snackbar, setSnackbar] = useState({
         open: false,
         message: '',
@@ -96,6 +98,13 @@ const FinesReport = () => {
                     {/*>*/}
                     {/*    {pdfLoading ? 'Exporting...' : 'Export as PDF'}*/}
                     {/*</Button>*/}
+                    <Button
+                        variant="outlined"
+                        startIcon={<ArrowBackIcon />}
+                        onClick={() => navigate(-1)}
+                    >
+                        Go Back
+                    </Button>
                     <Button
                         variant="outlined"
                         startIcon={<RefreshIcon />}

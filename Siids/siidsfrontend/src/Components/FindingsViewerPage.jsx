@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Button, Alert, Spinner } from 'react-bootstrap';
 import { ReportApi } from '../api/Axios/caseApi';
 import MissionDocumentTable from './MissionDocumentTable';
@@ -10,6 +10,7 @@ const FindingsViewPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [downloading, setDownloading] = useState([]);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchReport = async () => {
@@ -107,6 +108,7 @@ const FindingsViewPage = () => {
                 rows: [
                     { label: "Status", value: report.status },
                     { label: "Created By", value: report.createdBy },
+                    { label: "Investigation Officer", value: report.investigationOfficer ? `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : 'N/A' },
                     { label: "Created At", value: formatDate(report.createdAt) },
                     { label: "Current Recipient", value: report.currentRecipient || 'N/A' },
                     { label: "Last Updated", value: formatDate(report.updatedAt) },
@@ -133,6 +135,11 @@ const FindingsViewPage = () => {
                         label: "Findings Details",
                         value: report.findings || "No findings submitted yet",
                         isTextArea: true
+                    },
+                    {
+                        label: "Description",
+                        value: report.description || "No description provided",
+                        isTextArea: true
                     }
                 ]
             },
@@ -151,15 +158,21 @@ const FindingsViewPage = () => {
                 rows: [
                     {
                         label: "Principle Tax( FRW ): ",
-                        value: report.principleAmount || 'N/A',
+                        value: report.principleAmount !== undefined && report.principleAmount !== null 
+                            ? `FRW ${report.principleAmount.toLocaleString()}` 
+                            : 'FRW 0',
                     },
                     {
                         label: "Tax fines( FRW ): ",
-                        value: report.penaltiesAmount || 'N/A',
+                        value: report.penaltiesAmount !== undefined && report.penaltiesAmount !== null 
+                            ? `FRW ${report.penaltiesAmount.toLocaleString()}` 
+                            : 'FRW 0',
                     },
                     {
                         label: "Total Tax( FRW ): ",
-                        value: (report.principleAmount + report.penaltiesAmount) || 'N/A',
+                        value: (report.principleAmount !== undefined && report.penaltiesAmount !== undefined) 
+                            ? `FRW ${(report.principleAmount + report.penaltiesAmount).toLocaleString()}` 
+                            : 'FRW 0',
                     }
                 ]
             }
@@ -172,6 +185,11 @@ const FindingsViewPage = () => {
 
     return (
         <Container className="mt-4 mb-5" style={{ Width: '100%'}}>
+                <div className="mb-3">
+                    <Button variant="secondary" onClick={() => navigate(-1)}>
+                        &larr; Go Back
+                    </Button>
+                </div>
                 <MissionDocumentTable
                     data={reportData}
                     attachments={report.findingsAttachmentPaths || []}

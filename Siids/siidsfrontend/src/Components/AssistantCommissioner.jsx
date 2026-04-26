@@ -29,7 +29,8 @@ import {
     FormControl,
     InputLabel,
     Select,
-    LinearProgress
+    LinearProgress,
+    Divider
 } from "@mui/material";
 import {
     Search,
@@ -114,8 +115,8 @@ const AssistantCommissioner = () => {
                     ...report,
                     hasFindings: report.findings || report.recommendations ||
                         (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0),
-                    hasFines: report.fines && report.fines.length > 0,
-                    hasPenalties: report.penalties && report.penalties.length > 0,
+                    hasFines: report.principleAmount > 0,
+                    hasPenalties: report.penaltiesAmount > 0,
                     // Ensure we have a createdAt field for sorting
                     createdAt: report.createdAt || report.createdDate || report.dateCreated || new Date().toISOString()
                 }));
@@ -622,6 +623,27 @@ const AssistantCommissioner = () => {
         }
     };
 
+    const handleApproveOnly = async () => {
+        try {
+            setActionLoading(prev => ({ ...prev, [menuReport.id]: true }));
+            await ReportApi.approveReport(menuReport.id);
+
+            setReports(prev => prev.map(r =>
+                r.id === menuReport.id ? {
+                    ...r,
+                    status: "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER"
+                } : r
+            ));
+            showSnackbar("Report approved successfully");
+        } catch (err) {
+            console.error("Failed to approve report:", err);
+            showSnackbar(err.response?.data?.message || "Failed to approve report", "error");
+        } finally {
+            setActionLoading(prev => ({ ...prev, [menuReport.id]: false }));
+            handleMenuClose();
+        }
+    };
+
     const formatStatus = (status) => {
         const statusMap = {
             // Report Statuses
@@ -781,7 +803,7 @@ const AssistantCommissioner = () => {
                                 <TableRow style={{ backgroundColor: "#cfd8dc" }}>
                                     <TableCell>Report ID</TableCell>
                                     <TableCell>Case Number</TableCell>
-                                    <TableCell>Created By</TableCell>
+                                    <TableCell>Officer</TableCell>
                                     <TableCell
                                         style={{
                                             cursor: 'pointer',
@@ -807,7 +829,7 @@ const AssistantCommissioner = () => {
                                             <TableRow key={report.id}>
                                                 <TableCell>{report.id}</TableCell>
                                                 <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
-                                                <TableCell>{report.createdBy}</TableCell>
+                                                <TableCell>{report.investigationOfficer ? `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : report.createdBy}</TableCell>
                                                 <TableCell>
                                                     {formatDate(report.createdAt)}
                                                 </TableCell>
@@ -820,24 +842,21 @@ const AssistantCommissioner = () => {
                                                     {formatStatus(report.status)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Box display="flex" gap={1}>
-                                                        {report.hasFines && (
-                                                            <Chip
-                                                                label="Fines"
-                                                                size="small"
-                                                                color="warning"
-                                                                variant="outlined"
-                                                            />
-                                                        )}
-                                                        {report.hasPenalties && (
-                                                            <Chip
-                                                                label="Penalties"
-                                                                size="small"
-                                                                color="error"
-                                                                variant="outlined"
-                                                            />
-                                                        )}
-                                                        {!report.hasFines && !report.hasPenalties && (
+                                                    <Box display="flex" flexDirection="column" gap={0.5}>
+                                                        {(report.principleAmount > 0 || report.penaltiesAmount > 0) ? (
+                                                            <>
+                                                                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                                                                    P: {report.principleAmount?.toLocaleString()}
+                                                                </Typography>
+                                                                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                                                    Pen: {report.penaltiesAmount?.toLocaleString()}
+                                                                </Typography>
+                                                                <Divider />
+                                                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                                                                    Total: {(report.principleAmount + report.penaltiesAmount)?.toLocaleString()}
+                                                                </Typography>
+                                                            </>
+                                                        ) : (
                                                             <Typography variant="caption" color="textSecondary">
                                                                 None
                                                             </Typography>
@@ -1078,14 +1097,34 @@ const AssistantCommissioner = () => {
                                                                             <Chip
                                                                                 label="Description"
                                                                                 size="small"
-                                                                                color="info"
-                                                                                variant="outlined"
                                                                             />
                                                                         </Tooltip>
                                                                     )}
                                                                     {!casePlan.casePlan && (
                                                                         <Typography variant="caption" color="textSecondary">
                                                                             No details
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Box display="flex" flexDirection="column" gap={0.5}>
+                                                                    {(casePlan.principleAmount > 0 || casePlan.penaltiesAmount > 0) ? (
+                                                                        <>
+                                                                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                                                                                P: {casePlan.principleAmount?.toLocaleString()}
+                                                                            </Typography>
+                                                                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                                                                Pen: {casePlan.penaltiesAmount?.toLocaleString()}
+                                                                            </Typography>
+                                                                            <Divider />
+                                                                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                                                                                Total: {(casePlan.principleAmount + casePlan.penaltiesAmount)?.toLocaleString()}
+                                                                            </Typography>
+                                                                        </>
+                                                                    ) : (
+                                                                        <Typography variant="caption" color="textSecondary">
+                                                                            None
                                                                         </Typography>
                                                                     )}
                                                                 </Box>
@@ -1161,6 +1200,9 @@ const AssistantCommissioner = () => {
                 open={Boolean(anchorEl)}
                 onClose={handleMenuClose}
             >
+                <MenuItem onClick={() => handleApproveOnly()}>
+                    Approve Only (Without Sending)
+                </MenuItem>
                 {/* Special Addition: Investigation Department */}
                 <MenuItem onClick={() => handleSendToDepartment('Investigation')}>
                     Approve & Send to Investigation
