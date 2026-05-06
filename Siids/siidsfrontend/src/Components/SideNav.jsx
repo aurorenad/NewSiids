@@ -47,7 +47,7 @@ const Sidebar = () => {
     };
 
     const menuSections = [
-        {
+        /*{
             key: 'intelligence',
             label: 'Intelligence',
             visible: isOpsRole,
@@ -56,7 +56,7 @@ const Sidebar = () => {
                 (role === 'User' || role === 'IntelligenceOfficer') && { to: '/intelligence-officer', label: 'Intelligence Officer' },
                 role === 'Surveillance' && { to: '/surveillence-officer', label: 'Surveillance Officer' },
             ].filter(Boolean),
-        },
+        },*/
         {
             key: 'investigation',
             label: 'Investigation',
@@ -70,7 +70,11 @@ const Sidebar = () => {
             key: 'surveillance',
             label: 'Surveillance',
             visible: isOpsRole,
-            links: [role === 'Surveillance' && { to: '/surveillence-officer/releases', label: 'PRSO' }].filter(Boolean),
+            links: [
+                role === 'DirectorIntelligence' && { to: '/director-intelligence', label: 'Director Intelligence' },
+                (role === 'User' || role === 'IntelligenceOfficer') && { to: '/intelligence-officer', label: 'Intelligence Officer' },
+                role === 'Surveillance' && { to: '/surveillence-officer', label: 'Surveillance Officer(Incharge)' },
+            ].filter(Boolean),
         },
         {
             key: 'commission',
