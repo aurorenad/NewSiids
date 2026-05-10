@@ -13,4 +13,9 @@ public interface StockRepository extends JpaRepository<Stock, Integer> {
     boolean existsBySeizureNumberAndIdNot(String seizureNumber, Integer id);
 
     boolean existsByPvNumberAndIdNot(String pvNumber, Integer id);
+    
+    java.util.List<Stock> findByStatus(String status);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM Stock s WHERE s.status IS NULL OR s.status = '' OR s.status = :status")
+    java.util.List<Stock> findByStatusIsNullOrStatus(@org.springframework.data.repository.query.Param("status") String status);
 }
