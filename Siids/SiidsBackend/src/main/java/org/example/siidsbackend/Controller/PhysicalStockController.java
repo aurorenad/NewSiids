@@ -66,7 +66,7 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.getMainStock());
     }
 
-    @GetMapping("/pending-approvals")
+    @GetMapping("/main/pending-approvals")
     @PreAuthorize("hasAuthority('PRSO')")
     public ResponseEntity<?> getPendingApprovals() {
         return ResponseEntity.ok(physicalStockService.getPendingApprovals());
