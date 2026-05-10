@@ -18,9 +18,10 @@ public class UserPrincipal implements UserDetails {
         String role = user.getRole();
         if (role == null) return Collections.emptyList();
         
-        // Return both with and without ROLE_ prefix for maximum compatibility
         String normalized = role.toUpperCase().replace("ROLE_", "");
+        // Return original, normalized, and ROLE_ prefixed for maximum flexibility
         return List.of(
+            new SimpleGrantedAuthority(role),
             new SimpleGrantedAuthority(normalized),
             new SimpleGrantedAuthority("ROLE_" + normalized)
         );

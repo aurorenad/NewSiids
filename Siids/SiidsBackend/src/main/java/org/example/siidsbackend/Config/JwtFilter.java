@@ -30,7 +30,8 @@ public class JwtFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         // Skip filter for auth endpoints
-        if (request.getServletPath().contains("/api/auth")) {
+        String path = request.getServletPath();
+        if (path.contains("/api/auth") || path.contains("/ws-notifications") || path.contains("/login")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -45,10 +46,11 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
+        try {
+            username = jwtService.extractUsername(jwt);
+            System.out.println("JwtFilter: Extracted username [" + username + "] from token");
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            try {
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
                 if (jwtService.validateToken(jwt)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -59,20 +61,19 @@ public class JwtFilter extends OncePerRequestFilter {
                             new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                     System.out.println(
-                            "User " + username + " authenticated with authorities: " + userDetails.getAuthorities());
+                            "JwtFilter: User " + username + " authenticated with authorities: " + userDetails.getAuthorities());
                 } else {
-                    System.out.println("Token validation failed for token: "
-                            + jwt.substring(0, Math.min(10, jwt.length())) + "...");
+                    System.err.println("JwtFilter: Token validation failed for user " + username);
                 }
-            } catch (Exception e) {
-                System.err.println("Authentication error in JwtFilter for user " + username + ": " + e.getMessage());
-                e.printStackTrace();
+            } else {
+                if (username == null)
+                    System.out.println("Username could not be extracted from token.");
+                if (SecurityContextHolder.getContext().getAuthentication() != null)
+                    System.out.println("User already authenticated in context.");
             }
-        } else {
-            if (username == null)
-                System.out.println("Username could not be extracted from token.");
-            if (SecurityContextHolder.getContext().getAuthentication() != null)
-                System.out.println("User already authenticated in context.");
+        } catch (Exception e) {
+            System.err.println("JwtFilter: Error processing JWT: " + e.getMessage());
+            e.printStackTrace();
         }
         filterChain.doFilter(request, response);
     }

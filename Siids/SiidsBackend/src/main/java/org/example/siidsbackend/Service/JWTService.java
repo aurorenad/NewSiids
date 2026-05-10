@@ -29,15 +29,20 @@ public class JWTService {
     private String secretKey;
 
     public JWTService() {
-        // Keys will be initialized in init() or directly if we move logic
+        // Keys will be initialized in init()
     }
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
+        byte[] keyBytes;
+        try {
+            keyBytes = io.jsonwebtoken.io.Decoders.BASE64.decode(secretKey);
+        } catch (Exception e) {
+            keyBytes = secretKey.getBytes();
+        }
         this.accessTokenKey = Keys.hmacShaKeyFor(keyBytes);
-        this.refreshTokenKey = Keys.hmacShaKeyFor(keyBytes); // Using same key for simplicity, or add another property
-        log.info("JWT Service initialized with fixed secret key.");
+        this.refreshTokenKey = Keys.hmacShaKeyFor(keyBytes);
+        log.info("JWT Service: Initialized with robust key decoding");
     }
 
     public String generateToken(String username) {
