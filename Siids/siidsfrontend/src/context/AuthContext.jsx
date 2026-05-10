@@ -46,6 +46,7 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('name', name);
             sessionStorage.setItem('role', role);
         }
+        console.log(`AuthContext: Setting auth state for user ${userId} with role ${role}`);
         setAuthState({ token, userId, employeeId, name, role });
     };
 

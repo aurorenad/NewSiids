@@ -7,18 +7,21 @@ import '../../Styles/NewSurveillenceCases.css';
 
 const NewSurveillenceCase = () => {
     const { authState } = useContext(AuthContext);
+    const location = useLocation();
+    const editData = location.state?.caseData;
+
     const [formData, setFormData] = useState({
-        tin: '',
-        taxPayerName: '',
-        taxPayerType: 'Individual',
-        taxPayerAddress: '',
-        taxPeriod: '',
-        reportedDate: new Date().toISOString().split('T')[0],
-        summaryOfInformationCase: '',
-        caseSource: 'anonymous',
-        informerId: '',
-        informerName: '',
-        referringOfficerId: '',
+        tin: editData?.taxPayer?.tin || editData?.tin || '',
+        taxPayerName: editData?.taxPayer?.name || editData?.taxPayerName || '',
+        taxPayerType: editData?.taxType || 'Individual',
+        taxPayerAddress: editData?.taxPayer?.address || '',
+        taxPeriod: editData?.taxPeriod || '',
+        reportedDate: editData?.createdAt ? new Date(editData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        summaryOfInformationCase: editData?.summaryOfInformationCase || '',
+        caseSource: editData?.informer ? 'identified' : (editData?.referringDepartment ? 'referred' : 'anonymous'),
+        informerId: editData?.informer?.nationalId || '',
+        informerName: editData?.informer?.name || '',
+        referringOfficerId: editData?.referringDepartment || '',
         referringOfficerName: ''
     });
 
@@ -31,7 +34,6 @@ const NewSurveillenceCase = () => {
     const [isSearchingReferringOfficer, setIsSearchingReferringOfficer] = useState(false);
     const [referringOfficerError, setReferringOfficerError] = useState('');
     const navigate = useNavigate();
-    const location = useLocation();
 
     const taxPayerTypes = ['None','PAYEE','VAT','Income Tax','Corporate Tax','Withholding Tax','Property Tax',
         'Capital gains','Consumption Tax','Immovable Property Tax', 'Payroll Tax', 'Trading Tax'];
@@ -241,18 +243,24 @@ const NewSurveillenceCase = () => {
                 referringOfficerId: formData.caseSource === 'referred' ? formData.referringOfficerId : null,
             };
 
-            console.log('Submitting surveillance case data:', caseData); // Debug log
+            let response;
+            if (location.state?.caseData?.id) {
+                console.log('Updating surveillance case data:', caseData);
+                response = await CaseService.updateCase(location.state.caseData.id, caseData);
+            } else {
+                console.log('Submitting surveillance case data:', caseData);
+                response = await CaseService.createCase(caseData);
+            }
 
-            const response = await CaseService.createCase(caseData);
             console.log('Response received:', response.data); // Debug log
 
             if (response.data) {
-                setSuccess('Surveillance case created successfully!');
+                setSuccess(location.state?.caseData ? 'Surveillance case updated successfully!' : 'Surveillance case created successfully!');
                 const id = setTimeout(() => navigate('/surveillence-officer'), 2000);
                 setTimeoutId(id);
             }
         } catch (err) {
-            console.error('Error creating case:', err);
+            console.error('Error saving case:', err);
             if (err.response?.status === 401) {
                 setError('Session expired. Please log in again.');
                 const id = setTimeout(() => navigate('/login'), 2000);
@@ -260,7 +268,7 @@ const NewSurveillenceCase = () => {
             } else if (err.response?.data?.message) {
                 setError(err.response.data.message);
             } else {
-                setError('Failed to create case. Please try again.');
+                setError('Failed to save case. Please try again.');
             }
         } finally {
             setIsSubmitting(false);
@@ -277,7 +285,7 @@ const NewSurveillenceCase = () => {
         <div className="tax-report-form-container">
             <div className="tax-report-form-card">
                 <div className="tax-report-form-header">
-                    <h1>New Surveillance Case</h1>
+                    <h1>{location.state?.caseData ? 'Edit Surveillance Case' : 'New Surveillance Case'}</h1>
                 </div>
 
                 {error && (
@@ -513,7 +521,7 @@ const NewSurveillenceCase = () => {
                                     <i className="fas fa-spinner fa-spin"></i> Processing...
                                 </>
                             ) : (
-                                'Create Surveillance Case'
+                                location.state?.caseData ? 'Save Changes' : 'Create Surveillance Case'
                             )}
                         </button>
                     </div>
