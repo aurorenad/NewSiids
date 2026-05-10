@@ -88,6 +88,7 @@ public class UserService {
                 System.out.println("Token generated: " + token);
 
                 if (dbUser != null) {
+                    System.out.println("Returning role for user " + user.getUsername() + ": " + dbUser.getRole());
                     response.put("token", token);
                     response.put("role", dbUser.getRole());
                 } else {
