@@ -61,6 +61,45 @@ public class CaseService {
         return finalCase;
     }
 
+    @Transactional
+    public CaseResponseDTO updateCase(Integer id, CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer) {
+        log.info("Updating case ID: {} for employee: {}", id, employeeId);
+
+        if (id == null || dto == null || employeeId == null) {
+            throw new IllegalArgumentException("ID, CaseRequestDTO, and employeeId cannot be null");
+        }
+
+        Case existingCase = caseRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
+
+        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED status
+        if (existingCase.getCreatedBy() == null || !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            boolean isAdmin = user != null && "Admin".equals(user.getRole());
+            if (!isAdmin) {
+                throw new RuntimeException("Only case creator or Admin can edit the case");
+            }
+        }
+
+        if (existingCase.getStatus() != WorkflowStatus.CASE_CREATED) {
+            throw new RuntimeException("Cannot edit a case that is no longer in CASE_CREATED status");
+        }
+
+        existingCase.setInformerId(informer);
+        existingCase.setTin(taxPayer);
+        existingCase.setSummaryOfInformationCase(dto.getSummaryOfInformationCase());
+        existingCase.setTaxType(dto.getTaxType());
+        existingCase.setTaxPeriod(dto.getTaxPeriod());
+        existingCase.setUpdatedAt(LocalDateTime.now());
+
+        if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
+            existingCase.setReferringDepartment(dto.getReferringDepartment().trim());
+        }
+
+        Case updatedCase = caseRepo.save(existingCase);
+        return mapToCaseResponseDTO(updatedCase);
+    }
+
     public CaseResponseDTO getCaseResponseById(Integer id) {
         if (id == null) {
             throw new IllegalArgumentException("Case ID cannot be null");

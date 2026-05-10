@@ -22,13 +22,13 @@ caseApi.interceptors.request.use((config) => {
         config.headers['employee_id'] = employeeId.trim();
     }
 
-    console.log('Request headers:', config.headers);
+    // console.log('Request headers:', config.headers);
     return config;
 }, (error) => Promise.reject(error));
 
 caseApi.interceptors.response.use(
     (response) => {
-        console.log('Response received:', response.data);
+        // console.log('Response received:', response.data);
         return response;
     },
     async (error) => {
@@ -72,6 +72,13 @@ export const CaseService = {
     },
     createCase: (caseData) => {
         return caseApi.post('/api/cases', {
+            ...caseData,
+            status: caseData.status || 'CASE_CREATED'
+        });
+    },
+
+    updateCase: (id, caseData) => {
+        return caseApi.put(`/api/cases/${id}`, {
             ...caseData,
             status: caseData.status || 'CASE_CREATED'
         });
