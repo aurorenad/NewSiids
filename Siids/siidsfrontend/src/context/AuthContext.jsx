@@ -9,6 +9,7 @@ export const AuthProvider = ({ children }) => {
         employeeId: null,
         name: null,
         role: null,
+        profile: {}, // Defensive initialization
     });
 
     const [loading, setLoading] = useState(true);
@@ -27,6 +28,7 @@ export const AuthProvider = ({ children }) => {
                 employeeId,
                 name,
                 role,
+                profile: {}, // Maintain defensive object on restore
             });
         }
         setLoading(false);
@@ -46,7 +48,7 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('name', name);
             sessionStorage.setItem('role', role);
         }
-        setAuthState({ token, userId, employeeId, name, role });
+        setAuthState({ token, userId, employeeId, name, role, profile: {} });
     };
 
     const logout = () => {
@@ -64,7 +66,8 @@ export const AuthProvider = ({ children }) => {
             userId: null,
             employeeId: null,
             name: null,
-            role: null
+            role: null,
+            profile: {},
         });
     };
 
