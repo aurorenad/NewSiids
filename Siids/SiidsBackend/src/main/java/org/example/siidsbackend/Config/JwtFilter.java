@@ -1,6 +1,7 @@
 package org.example.siidsbackend.Config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Service.JWTService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -18,6 +19,7 @@ import java.io.IOException;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JWTService jwtService;
@@ -30,7 +32,8 @@ public class JwtFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         // Skip filter for auth endpoints
-        if (request.getServletPath().contains("/api/auth")) {
+        String path = request.getServletPath();
+        if (path.contains("/api/auth") || path.contains("/ws-notifications") || path.contains("/login")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -45,10 +48,11 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         jwt = authHeader.substring(7);
-        username = jwtService.extractUsername(jwt);
+        try {
+            username = jwtService.extractUsername(jwt);
+            log.debug("JwtFilter: Extracted username [{}] from token", username);
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            try {
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
                 if (jwtService.validateToken(jwt)) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -58,21 +62,13 @@ public class JwtFilter extends OncePerRequestFilter {
                     authToken.setDetails(
                             new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    System.out.println(
-                            "User " + username + " authenticated with authorities: " + userDetails.getAuthorities());
+                    log.info("JwtFilter: User {} authenticated successfully", username);
                 } else {
-                    System.out.println("Token validation failed for token: "
-                            + jwt.substring(0, Math.min(10, jwt.length())) + "...");
+                    log.warn("JwtFilter: Token validation failed for user {}", username);
                 }
-            } catch (Exception e) {
-                System.err.println("Authentication error in JwtFilter for user " + username + ": " + e.getMessage());
-                e.printStackTrace();
             }
-        } else {
-            if (username == null)
-                System.out.println("Username could not be extracted from token.");
-            if (SecurityContextHolder.getContext().getAuthentication() != null)
-                System.out.println("User already authenticated in context.");
+        } catch (Exception e) {
+            log.error("JwtFilter: Error processing JWT: {}", e.getMessage());
         }
         filterChain.doFilter(request, response);
     }

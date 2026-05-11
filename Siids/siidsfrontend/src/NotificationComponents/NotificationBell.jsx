@@ -33,7 +33,7 @@ export const NotificationBell = () => {
                 size="small"
                 aria-label="Notifications"
                 sx={{
-                    color: 'text.secondary',
+                    color: unreadCount > 0 ? 'var(--rra-red, #dc2626)' : 'text.secondary',
                     '&:hover': { bgcolor: 'action.hover' },
                 }}
             >

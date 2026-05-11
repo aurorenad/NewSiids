@@ -6,6 +6,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 public class UserPrincipal implements UserDetails {
     private User user;
 
@@ -14,7 +15,16 @@ public class UserPrincipal implements UserDetails {
     }
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(new SimpleGrantedAuthority(user.getRole()));
+        String role = user.getRole();
+        if (role == null) return Collections.emptyList();
+        
+        String normalized = role.toUpperCase().replace("ROLE_", "");
+        // Return original, normalized, and ROLE_ prefixed for maximum flexibility
+        return List.of(
+            new SimpleGrantedAuthority(role),
+            new SimpleGrantedAuthority(normalized),
+            new SimpleGrantedAuthority("ROLE_" + normalized)
+        );
     }
 
     @Override

@@ -9,8 +9,16 @@ const Home = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (authState && authState.role === 'StockManager') {
-            navigate('/stock-management');
+        if (!authState || !authState.role) return;
+        
+        const role = (authState.role || '').toUpperCase().replace('ROLE_', '');
+
+        if (role.includes('STOCKMANAGER') || role.includes('STOCK_MANAGER')) {
+            navigate('/stock/inventory');
+        } else if (role.includes('PRSO')) {
+            navigate('/prso/approvals');
+        } else if (role.includes('SURVEILLANCE')) {
+            navigate('/pv/temporary-stock');
         }
     }, [authState, navigate]);
 

@@ -123,6 +123,7 @@ const Login = () => {
                                     onChange={(e) => setUserId(e.target.value)}
                                     required
                                     disabled={loading}
+                                    autoComplete="username"
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
@@ -139,6 +140,7 @@ const Login = () => {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     disabled={loading}
+                                    autoComplete="current-password"
                                     InputProps={{
                                         startAdornment: (
                                             <InputAdornment position="start">
