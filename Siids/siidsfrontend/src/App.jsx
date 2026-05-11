@@ -33,6 +33,7 @@ import StockManagement from "./Components/StockManagement.jsx";
 import SystemAdmin from "./Components/SystemAdmin.jsx";
 import PrsoReleases from "./Components/PrsoReleases.jsx";
 import { Box } from '@mui/material';
+import { Toaster } from 'sonner';
 
 // --- NEW PHYSICAL STOCK MODULE IMPORTS ---
 import PVTemporaryStockPage from "./Pages/Stock/PVTemporaryStockPage.jsx";
@@ -172,6 +173,7 @@ const NotificationWrapper = ({ children }) => {
 function App() {
     return (
         <Router>
+            <Toaster position="top-right" expand={false} richColors />
             <AuthProvider>
                 <NotificationWrapper>
                     <AppRoutes />
