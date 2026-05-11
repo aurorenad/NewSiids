@@ -36,7 +36,7 @@ const Header = () => {
                     {currentUser?.name && (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: '0.875rem' }}>
-                                {currentUser.name.charAt(0).toUpperCase()}
+                                {currentUser?.name?.charAt(0).toUpperCase()}
                             </Avatar>
                             <Typography variant="body2" fontWeight={500} color="text.primary">
                                 {currentUser.name}
