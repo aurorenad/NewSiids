@@ -91,11 +91,13 @@ public class UserController {
             System.out.println("Login request received for user: " + user.getUsername());
 
             Map<String, String> result = service.verify(user);
+            System.out.println("Verification result for " + user.getUsername() + ": " + (result.containsKey("error") ? "Error: " + result.get("error") : "Success"));
 
             if (result.containsKey("error")) {
                 String error = result.get("error");
                 Map<String, String> errorResponse = new HashMap<>();
                 errorResponse.put("error", error);
+                System.out.println("Returning error response: " + error);
                 return ResponseEntity.status(
                         error.equals("Employee not found") ? HttpStatus.NOT_FOUND : HttpStatus.UNAUTHORIZED
                 ).body(errorResponse);
