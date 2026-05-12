@@ -1,6 +1,12 @@
 import React, { createContext, useState, useEffect } from 'react';
 
-export const AuthContext = createContext();
+export const AuthContext = createContext({
+    authState: { profile: {} },
+    currentUser: { profile: {} },
+    loading: true,
+    login: () => {},
+    logout: () => {}
+});
 
 export const AuthProvider = ({ children }) => {
     const [authState, setAuthState] = useState({
@@ -9,6 +15,7 @@ export const AuthProvider = ({ children }) => {
         employeeId: null,
         name: null,
         role: null,
+        profile: {}, // Defensive initialization
     });
 
     const [loading, setLoading] = useState(true);
@@ -27,6 +34,7 @@ export const AuthProvider = ({ children }) => {
                 employeeId,
                 name,
                 role,
+                profile: {}, // Maintain defensive object on restore
             });
         }
         setLoading(false);
@@ -46,7 +54,7 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('name', name);
             sessionStorage.setItem('role', role);
         }
-        setAuthState({ token, userId, employeeId, name, role });
+        setAuthState({ token, userId, employeeId, name, role, profile: {} });
     };
 
     const logout = () => {
@@ -64,14 +72,15 @@ export const AuthProvider = ({ children }) => {
             userId: null,
             employeeId: null,
             name: null,
-            role: null
+            role: null,
+            profile: {},
         });
     };
 
     return (
         <AuthContext.Provider value={{
             authState,
-            currentUser: authState,
+            currentUser: authState || { profile: {} },
             login,
             logout,
             loading
