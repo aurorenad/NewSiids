@@ -1,0 +1,15 @@
+package org.example.siidsbackend.DTO.Request;
+
+import lombok.Data;
+import java.time.LocalDateTime;
+
+@Data
+public class SeizureNoteRequestDTO {
+    private String caseRef;
+    private String taxpayerTin;
+    private String taxpayerName;
+    private String goodsDescription;
+    private String seizureReason;
+    private LocalDateTime dateTimeSeized;
+    private String officerSignatureBase64;
+}

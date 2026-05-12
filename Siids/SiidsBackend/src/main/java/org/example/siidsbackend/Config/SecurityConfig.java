@@ -37,7 +37,10 @@ public class SecurityConfig {
         return http.csrf(customizer -> customizer.disable())
                 .cors(customizer -> customizer.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:5173"));
+                    config.setAllowedOrigins(List.of(
+                        "http://localhost:3000", "http://localhost:5173", "http://localhost:5174",
+                        "http://127.0.0.1:3000", "http://127.0.0.1:5173", "http://127.0.0.1:5174"
+                    ));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setAllowCredentials(true);
@@ -75,7 +78,7 @@ public class SecurityConfig {
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .requestMatchers("/api/stock/**")
-                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "PRSO", "Surveillance")
+                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "PRSO", "prso", "Surveillance", "surveillance")
                         .requestMatchers("/api/reward-memos/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "DirectorIntelligence", "AssistantCommissioner",
                                 "Admin", "admin", "Finance")

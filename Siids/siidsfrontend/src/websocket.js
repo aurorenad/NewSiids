@@ -16,7 +16,8 @@ export const connectWebSocket = (employeeId, onNotification, onError) => {
     stompClient = new Client({
         webSocketFactory: () => new SockJS(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/ws-notifications`),
         connectHeaders: {
-            'employee_id': employeeId
+            'employee_id': employeeId,
+            'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
         },
         debug: (str) => {
             console.log('STOMP Debug:', str);

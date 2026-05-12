@@ -2,13 +2,16 @@ package org.example.siidsbackend.Config;
 
 import org.example.siidsbackend.Model.Grade;
 import org.example.siidsbackend.Model.JobMaster;
+import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Model.structures;
 import org.example.siidsbackend.Repository.GradeRepository;
 import org.example.siidsbackend.Repository.JobMasterRepository;
 import org.example.siidsbackend.Repository.StructureRepository;
 import org.example.siidsbackend.Repository.UserRepo;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
@@ -38,7 +41,7 @@ public class DataInitializer implements CommandLineRunner {
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
-    private UserRepo userRepo;
+    private org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
 
     @Override
     public void run(String... args) {
@@ -54,36 +57,12 @@ public class DataInitializer implements CommandLineRunner {
         initializeGrades();
         initializeJobMasters();
 
-        // Initialize default admin user
-        initializeDefaultAdmin();
-
         System.out.println("========================================");
         System.out.println("Data Initialization Completed!");
         System.out.println("========================================");
     }
 
-    private void initializeDefaultAdmin() {
-        System.out.println("→ Checking default admin user...");
-        try {
-            User existing = userRepo.findByUsername("00763");
-            if (existing != null) {
-                System.out.println("✓ Default admin user (00763) already exists. Skipping.");
-                return;
-            }
 
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
-            User admin = new User();
-            admin.setUsername("00763");
-            admin.setPassword(encoder.encode("Rra@123!"));
-            admin.setRole("Admin");
-            admin.setActive(true);
-            userRepo.save(admin);
-
-            System.out.println("✓ Default admin user (00763) created successfully.");
-        } catch (Exception e) {
-            System.err.println("✗ Error creating default admin user: " + e.getMessage());
-        }
-    }
 
     private void fixDatabaseConstraints() {
         System.out.println("→ Checking database constraints...");

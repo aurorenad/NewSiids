@@ -1,0 +1,12 @@
+package org.example.siidsbackend.Model;
+
+public enum PhysicalStockStatus {
+    IN_TEMPORARY_STOCK,
+    PENDING_JUSTIFICATION,
+    RELEASED_FROM_TEMP,
+    ESCALATED,
+    IN_MAIN_STOCK,
+    PENDING_PRSO_EDIT_APPROVAL,
+    PENDING_PRSO_RELEASE_APPROVAL,
+    RELEASED_FROM_MAIN
+}

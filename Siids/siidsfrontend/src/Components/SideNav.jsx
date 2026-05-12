@@ -33,8 +33,8 @@ const Sidebar = () => {
     const { authState } = useContext(AuthContext);
     const [openMenus, setOpenMenus] = useState({});
     const location = useLocation();
-    const role = authState?.role;
-    const isOpsRole = !['StockManager', 'legalAdvisor', 'Admin', 'admin', 'PRSO'].includes(role);
+    const role = (authState?.role || '').toUpperCase().replace('ROLE_', '');
+    const isOpsRole = !['STOCKMANAGER', 'STOCK_MANAGER', 'LEGALADVISOR', 'ADMIN', 'PRSO'].includes(role);
 
     const toggle = (key) => setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
     const isActive = (path) => location.pathname.startsWith(path);
@@ -47,7 +47,7 @@ const Sidebar = () => {
     };
 
     const menuSections = [
-        {
+        /*{
             key: 'intelligence',
             label: 'Intelligence',
             visible: isOpsRole,
@@ -56,38 +56,43 @@ const Sidebar = () => {
                 (role === 'User' || role === 'IntelligenceOfficer') && { to: '/intelligence-officer', label: 'Intelligence Officer' },
                 role === 'Surveillance' && { to: '/surveillence-officer', label: 'Surveillance Officer' },
             ].filter(Boolean),
-        },
+        },*/
         {
             key: 'investigation',
             label: 'Investigation',
             visible: isOpsRole,
             links: [
-                role === 'InvestigationOfficer' && { to: '/investigation-officer', label: 'Investigation Officer' },
-                role === 'DirectorInvestigation' && { to: '/director-investigation', label: 'Director Investigation' },
+                role === 'INVESTIGATIONOFFICER' && { to: '/investigation-officer', label: 'Investigation Officer' },
+                role === 'DIRECTORINVESTIGATION' && { to: '/director-investigation', label: 'Director Investigation' },
             ].filter(Boolean),
         },
         {
             key: 'surveillance',
             label: 'Surveillance',
             visible: isOpsRole,
-            links: [role === 'Surveillance' && { to: '/surveillence-officer/releases', label: 'PRSO' }].filter(Boolean),
+            links: [
+                role === 'DIRECTORINTELLIGENCE' && { to: '/director-intelligence', label: 'Director Intelligence' },
+                (role === 'USER' || role === 'INTELLIGENCEOFFICER') && { to: '/intelligence-officer', label: 'Intelligence Officer' },
+                (role === 'SURVEILLANCE' || role === 'SURVEILLANCE_OFFICER') && { to: '/surveillence-officer', label: 'Surveillance Officer(Incharge)' },
+                (role === 'SURVEILLANCE' || role === 'SURVEILLANCE_OFFICER') && { to: '/pv/temporary-stock', label: 'Temporary Stock' },
+            ].filter(Boolean),
         },
         {
             key: 'commission',
             label: 'Commission',
-            visible: role === 'legalAdvisor',
+            visible: role === 'LEGALADVISOR',
             links: [
-                role === 'legalAdvisor' && { to: '/legal-advisor', label: 'Legal Advisor' },
+                role === 'LEGALADVISOR' && { to: '/legal-advisor', label: 'Legal Advisor' },
             ].filter(Boolean),
         },
     ];
 
     const standaloneLinks = [
-        role === 'AssistantCommissioner' && { to: '/assistant-commissioner', label: 'Assistant Commissioner', icon: <Shield /> },
+        role === 'ASSISTANTCOMMISSIONER' && { to: '/assistant-commissioner', label: 'Assistant Commissioner', icon: <Shield /> },
         role === 'ROLE_AUDITOR' && { to: '/history', label: 'Audit Logs', icon: <History /> },
-        (role === 'Admin' || role === 'admin') && { to: '/system-admin', label: 'System Admin', icon: <AdminPanelSettings /> },
-        role === 'StockManager' && { to: '/stock-management', label: 'Stock Management', icon: <Inventory /> },
-        role === 'PRSO' && { to: '/surveillence-officer/releases', label: 'PRSO', icon: <Visibility /> },
+        role.includes('ADMIN') && { to: '/system-admin', label: 'System Admin', icon: <AdminPanelSettings /> },
+        (role.includes('STOCKMANAGER') || role.includes('STOCK_MANAGER')) && { to: '/stock/inventory', label: 'Main Stock Inventory', icon: <Inventory /> },
+        role.includes('PRSO') && { to: '/prso/approvals', label: 'PRSO Approvals', icon: <Visibility /> },
     ].filter(Boolean);
 
     return (

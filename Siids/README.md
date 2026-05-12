@@ -114,7 +114,29 @@ cd SiidsBackend
 mvn clean install
 mvn spring-boot:run
 ```
-*Note: On the first startup, the application will run the `DataInitializer` and `OrganizationalDataLoader` to populate default users, structures, grades, and job masters. Please refer to [DATA_INITIALIZATION_README.md](./DATA_INITIALIZATION_README.md) for more details.*
+*Note: On the first startup, the application will populate structural data (Grades, Job Masters, etc.). However, for security, the initial Admin account must be created manually. Please refer to the [First-Time Setup](#first-time-setup) section below.*
+
+### 🛠️ First-Time Setup (Crucial)
+
+To log in for the first time on a fresh installation, you must "prime" the database with a master administrator account. 
+
+1. Ensure the Spring Boot backend has started at least once (to create the tables).
+2. Open your database management tool (e.g., pgAdmin or DBeaver).
+3. Execute the contents of the **`setup.sql`** file located in the root directory.
+4. You can now log in using the credentials defined in your `setup.sql` file.
+
+*For security, it is highly recommended to change this password or create a new admin and delete this default account once you have access.*
+
+#### 🔄 Updating Credentials
+If you have already run the setup script and need to change the password later, do not run the `INSERT` script again. Instead, use the `UPDATE` command provided at the bottom of the `setup.sql` file.
+
+#### 🔐 Generating New Hashes
+If you want to use a different password than the default, you must generate a BCrypt hash:
+1. Go to [bcrypt-generator.com](https://bcrypt-generator.com/).
+2. Enter your desired plain-text password.
+3. **Crucial:** Set the **Rounds (Cost)** to **12** (to match the system's security settings).
+4. Click **"Encrypt"** and copy the resulting hash (it will start with `$2a$12$...`).
+5. Paste this hash into your `setup.sql` file before running it.
 
 ### 3. Running the Frontend (React / Vite)
 Open a new terminal in the `siidsfrontend` directory:
@@ -127,8 +149,39 @@ The frontend will start on `http://localhost:5173` (or similar, depending on Vit
 
 ## 🔒 Authentication Flow
 - The application uses JWT (JSON Web Tokens) for authentication.
+- All user credentials are stored securely in the database using BCrypt hashing.
+- **No passwords are hardcoded in the source code.**
 - Upon successful login at `/`, the backend returns a token and user details (Employee ID, Role).
 - The frontend `AuthContext` stores this token and secures protected routes using the `ProtectedRoute` wrapper.
 
 ## 📝 Data Initialization
 To load initial database values for Structures, Grades, and Job Masters, the system uses an `OrganizationalDataLoader`. For instructions on importing custom organizational CSVs or SQL dumps, consult the `DATA_INITIALIZATION_README.md` file in the root directory.
+
+## 🛡️ Security Evolution: Login Overhaul
+
+This project recently underwent a significant architectural change regarding how the initial login and administrative credentials are handled.
+
+### **The Previous Problem**
+Originally, the system used an automatic seeding method (found in `DataInitializer.java`).
+- **Issues**:
+  1. **Hardcoded Secrets**: Sensitive passwords were written directly in the Java source code and `application.properties`.
+  2. **Visibility**: Anyone with access to the code could see the administrative credentials.
+  3. **Forced Resets**: The code would "force-sync" the admin password on every startup, making it impossible for a user to permanently change their password via the UI.
+
+### **The New Approach (Database-First)**
+We have removed all administrative "seeding" logic from the backend. The system now operates in a **"Zero-Knowledge"** mode regarding your credentials.
+- **How it works**: The app expects the database to be the only store for users. 
+- **Setup Script**: We provided a **`setup.sql`** script (located in the root) to "prime" the database once.
+- **Decoupling**: The code no longer "knows" what the admin password is; it simply fetches and verifies whatever is in your local DB.
+
+### **Benefits**
+1. **Industry Standard Security**: Passwords are never stored in the codebase or configuration files, preventing accidental leaks to Git/GitHub.
+2. **Persistence**: Once you change a password in the UI or via SQL, it stays changed. The backend will no longer overwrite it on restart.
+3. **Professional Deployment**: The project is now ready for production environments where security audits are required.
+
+### **Navigation & Key Files**
+If you need to review these changes, you can find them here:
+- **`setup.sql`**: (Line 1) The bootstrap script for creating the first user.
+- **`SiidsBackend/src/main/java/.../Config/DataInitializer.java`**: (Around line 68) All admin creation logic was removed from here.
+- **`SiidsBackend/src/main/resources/application.properties`**: (Around line 34) Hardcoded credentials were removed from here.
+- **`README.md`**: (Line 119) Instructions for the new [First-Time Setup](#first-time-setup).

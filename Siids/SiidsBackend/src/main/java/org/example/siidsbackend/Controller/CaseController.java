@@ -105,6 +105,64 @@ public class CaseController {
         }
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<CaseResponseDTO> updateCase(
+            @PathVariable Integer id,
+            @RequestBody CaseRequestDTO caseRequestDTO,
+            @RequestHeader("employee_id") String employeeId) {
+        try {
+            log.info("Updating case ID: {} for employee: {}", id, employeeId);
+
+            if (caseRequestDTO.getTin() == null || caseRequestDTO.getTin().trim().isEmpty()) {
+                return ResponseEntity.badRequest().build();
+            }
+
+            TaxPayer taxPayer = taxPayerService.findByTIN(caseRequestDTO.getTin().trim())
+                    .orElseGet(() -> {
+                        TaxPayer newTaxPayer = new TaxPayer();
+                        newTaxPayer.setTaxPayerTIN(caseRequestDTO.getTin().trim());
+                        newTaxPayer.setTaxPayerName(caseRequestDTO.getTaxPayerName());
+                        newTaxPayer.setTaxPayerAddress(caseRequestDTO.getTaxPayerAddress());
+                        return taxPayerService.addTaxPayer(newTaxPayer);
+                    });
+
+            Informer informer = null;
+            String informerNationalId = caseRequestDTO.getInformerNationalId();
+            String informerType = caseRequestDTO.getInformerType();
+
+            if (informerNationalId != null && !informerNationalId.trim().isEmpty() &&
+                    !"anonymous".equalsIgnoreCase(informerType)) {
+
+                Optional<Informer> existingInformer = informerService.findByNationalId(informerNationalId.trim());
+
+                if (existingInformer.isPresent()) {
+                    informer = existingInformer.get();
+                } else {
+                    Informer newInformer = new Informer();
+                    newInformer.setNationalId(informerNationalId.trim());
+                    newInformer.setInformerName(caseRequestDTO.getInformerName());
+                    newInformer.setInformerPhoneNum(caseRequestDTO.getInformerPhoneNum());
+                    newInformer.setInformerAddress(caseRequestDTO.getInformerAddress());
+                    newInformer.setInformerEmail(caseRequestDTO.getInformerEmail());
+                    if (caseRequestDTO.getInformerGender() != null) {
+                        newInformer.setInformerGender(caseRequestDTO.getInformerGender());
+                    }
+                    newInformer.setInformerId(newInformer.generateInformerNumber());
+                    informer = informerService.addInformer(newInformer);
+                }
+            }
+
+            CaseResponseDTO updatedCase = caseService.updateCase(id, caseRequestDTO, employeeId, taxPayer, informer);
+            return ResponseEntity.ok(updatedCase);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid argument when updating case", e);
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error updating case", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping
     public ResponseEntity<List<CaseResponseDTO>> getMyCases(
             @RequestHeader("employee_id") String employeeId) {
