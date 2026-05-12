@@ -57,6 +57,9 @@ public class DataInitializer implements CommandLineRunner {
         // Initialize default admin user
         initializeDefaultAdmin();
 
+        // Initialize default admin employee record (needed for login)
+        initializeDefaultEmployee();
+
         System.out.println("========================================");
         System.out.println("Data Initialization Completed!");
         System.out.println("========================================");
@@ -82,6 +85,28 @@ public class DataInitializer implements CommandLineRunner {
             System.out.println("✓ Default admin user (00763) created successfully.");
         } catch (Exception e) {
             System.err.println("✗ Error creating default admin user: " + e.getMessage());
+        }
+    }
+
+    private void initializeDefaultEmployee() {
+        System.out.println("→ Checking default admin employee record...");
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM employees WHERE employee_id = ?",
+                Integer.class, "00763"
+            );
+            if (count != null && count > 0) {
+                System.out.println("✓ Default admin employee (00763) already exists. Skipping.");
+                return;
+            }
+
+            jdbcTemplate.update(
+                "INSERT INTO employees (employee_id, given_name, family_name, gender, phone_number, work_email, personal_email) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "00763", "Theophile", "GUMIRA", "Male", "0788259453", "theophile.gumira@rra.gov.rw", "theo.gumira@gmail.com"
+            );
+            System.out.println("✓ Default admin employee (00763) created successfully.");
+        } catch (Exception e) {
+            System.err.println("✗ Error creating default admin employee: " + e.getMessage());
         }
     }
 
