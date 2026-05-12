@@ -1,6 +1,12 @@
 import React, { createContext, useState, useEffect } from 'react';
 
-export const AuthContext = createContext();
+export const AuthContext = createContext({
+    authState: { profile: {} },
+    currentUser: { profile: {} },
+    loading: true,
+    login: () => {},
+    logout: () => {}
+});
 
 export const AuthProvider = ({ children }) => {
     const [authState, setAuthState] = useState({
@@ -74,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     return (
         <AuthContext.Provider value={{
             authState,
-            currentUser: authState,
+            currentUser: authState || { profile: {} },
             login,
             logout,
             loading
