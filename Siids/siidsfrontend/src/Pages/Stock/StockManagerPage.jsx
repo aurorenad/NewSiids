@@ -149,8 +149,8 @@ const StockManagerPage = () => {
         title={`PV Document ${selectedItem?.pvNumber}`}
         footerActions={
           <>
-            <button className="btn-base btn-outline-blue" onClick={() => setEditModalOpen(true)}>Request Edit</button>
-            <button className="btn-base btn-primary" onClick={() => setReleaseDialog(true)}>Request Release</button>
+            <button className="btn-base btn-outline-blue" onClick={() => { setDrawerOpen(false); setEditModalOpen(true); }}>Request Edit</button>
+            <button className="btn-base btn-primary" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Request Release</button>
           </>
         }
       >
