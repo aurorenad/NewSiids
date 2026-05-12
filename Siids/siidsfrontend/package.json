@@ -18,7 +18,6 @@
     "@mui/material": "^7.0.1",
     "@mui/styled-engine-sc": "^7.0.1",
     "@mui/x-date-pickers": "^8.21.0",
-    "@react-buddy/ide-toolbox": "^2.4.0",
     "@stomp/stompjs": "^7.1.1",
     "@tailwindcss/postcss": "^4.2.4",
     "autoprefixer": "^10.5.0",
