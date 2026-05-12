@@ -533,8 +533,8 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/investigation-officers")
-    public ResponseEntity<List<Employee>> getAvailableInvestigationOfficers(
+    @GetMapping("/available-investigation-officers")
+    public ResponseEntity<List<Employee>> getAvailableInvestigationOfficersWithHeader(
             @RequestHeader("employee_id") String employeeId) {
         try {
             List<Employee> officers = reportService.getAvailableInvestigationOfficers();
