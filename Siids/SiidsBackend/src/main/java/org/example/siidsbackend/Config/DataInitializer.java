@@ -2,12 +2,14 @@ package org.example.siidsbackend.Config;
 
 import org.example.siidsbackend.Model.Grade;
 import org.example.siidsbackend.Model.JobMaster;
+import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Model.structures;
 import org.example.siidsbackend.Repository.GradeRepository;
 import org.example.siidsbackend.Repository.JobMasterRepository;
 import org.example.siidsbackend.Repository.StructureRepository;
 import org.example.siidsbackend.Repository.UserRepo;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
@@ -40,6 +42,9 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private UserRepo userRepo;
 
+    @Autowired
+    private org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
+
     @Override
     public void run(String... args) {
         System.out.println("========================================");
@@ -65,23 +70,44 @@ public class DataInitializer implements CommandLineRunner {
     private void initializeDefaultAdmin() {
         System.out.println("→ Checking default admin user...");
         try {
-            User existing = userRepo.findByUsername("00763");
+            // 1. Create Employee if doesn't exist
+            String adminId = "00763";
+            Optional<Employee> existingEmployee = employeeRepo.findByEmployeeId(adminId);
+            if (existingEmployee.isEmpty()) {
+                Employee adminEmp = new Employee();
+                adminEmp.setEmployeeId(adminId);
+                adminEmp.setGivenName("System");
+                adminEmp.setFamilyName("Administrator");
+                adminEmp.setWorkEmail("admin@siids.com");
+                adminEmp.setPhoneNumber("0000000000");
+                adminEmp.setProfileFlag(true);
+                employeeRepo.save(adminEmp);
+                System.out.println("✓ Default employee (" + adminId + ") created successfully.");
+            }
+
+            // 2. Create or Update User
+            User existing = userRepo.findByUsername(adminId);
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+            
             if (existing != null) {
-                System.out.println("✓ Default admin user (00763) already exists. Skipping.");
+                System.out.println("! Syncing default admin user (" + adminId + ") password...");
+                existing.setPassword(encoder.encode("Rra@123!"));
+                userRepo.save(existing);
+                System.out.println("✓ Default admin user (" + adminId + ") synced successfully.");
                 return;
             }
 
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
             User admin = new User();
-            admin.setUsername("00763");
+            admin.setUsername(adminId);
             admin.setPassword(encoder.encode("Rra@123!"));
             admin.setRole("Admin");
             admin.setActive(true);
             userRepo.save(admin);
 
-            System.out.println("✓ Default admin user (00763) created successfully.");
+            System.out.println("✓ Default admin user (" + adminId + ") created successfully.");
         } catch (Exception e) {
-            System.err.println("✗ Error creating default admin user: " + e.getMessage());
+            System.err.println("✗ Error creating default admin user/employee: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
