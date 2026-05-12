@@ -39,7 +39,7 @@ const Header = () => {
                                 {currentUser?.name?.charAt(0).toUpperCase()}
                             </Avatar>
                             <Typography variant="body2" fontWeight={500} color="text.primary">
-                                {currentUser.name}
+                                {currentUser?.name}
                             </Typography>
                         </Box>
                     )}
