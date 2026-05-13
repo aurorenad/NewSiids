@@ -19,6 +19,8 @@ const Home = () => {
             navigate('/prso/approvals');
         } else if (role.includes('SURVEILLANCE')) {
             navigate('/pv/temporary-stock');
+        } else if (role.includes('ADMIN')) {
+            navigate('/system-admin');
         }
     }, [authState, navigate]);
 

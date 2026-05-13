@@ -32,7 +32,7 @@ const Login = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (authState?.token) {
+        if (authState?.token && authState?.employeeId) {
             navigate('/home', { replace: true });
         }
     }, [authState, navigate]);
@@ -67,7 +67,8 @@ const Login = () => {
             }
         } catch (err) {
             console.error('Login error:', err);
-            setError(err.response?.data?.error || 'Login failed. Please try again.');
+            const message = err.response?.data?.error || err.response?.data?.message || 'Invalid credentials or server error. Please try again.';
+            setError(message);
         } finally {
             setLoading(false);
         }
