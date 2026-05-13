@@ -126,4 +126,90 @@ public class PdfService {
             return outputStream.toByteArray();
         }
     }
+
+    public byte[] generateSeizureNote(org.example.siidsbackend.Model.SeizureNote note) throws IOException {
+        Context context = new Context();
+        context.setVariable("note", note);
+        context.setVariable("location", "KIGALI");
+
+        // --- Add Base64 Images ---
+        try {
+            ClassPathResource logoResource = new ClassPathResource("templates/rra.jpg");
+            if (logoResource.exists()) {
+                byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+                context.setVariable("logoBase64", Base64.getEncoder().encodeToString(logoBytes));
+            }
+
+            ClassPathResource watermarkResource = new ClassPathResource("templates/watermark.png");
+            if (watermarkResource.exists()) {
+                byte[] watermarkBytes = watermarkResource.getInputStream().readAllBytes();
+                context.setVariable("watermarkBase64", Base64.getEncoder().encodeToString(watermarkBytes));
+            }
+
+            if (note.getOfficerSignaturePath() != null) {
+                context.setVariable("officerSignatureBase64", note.getOfficerSignaturePath());
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Could not load images for Seizure Note PDF generation.");
+        }
+
+        String html = templateEngine.process("seizure-note", context);
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            PdfRendererBuilder builder = new PdfRendererBuilder();
+            builder.useFastMode();
+            builder.withHtmlContent(html, null);
+            builder.toStream(outputStream);
+            builder.run();
+            return outputStream.toByteArray();
+        }
+    }
+
+    public byte[] generatePVDocument(org.example.siidsbackend.Model.PVDocument pv, org.example.siidsbackend.Model.Employee stockManager) throws IOException {
+        Context context = new Context();
+        context.setVariable("pv", pv);
+        context.setVariable("stockManager", stockManager);
+
+        // --- Safe Image Loading ---
+        try {
+            ClassPathResource logoResource = new ClassPathResource("templates/rra.jpg");
+            if (logoResource.exists()) {
+                byte[] logoBytes = logoResource.getInputStream().readAllBytes();
+                context.setVariable("logoBase64", Base64.getEncoder().encodeToString(logoBytes));
+            }
+        } catch (Exception e) {
+            System.err.println("Logo load failed: " + e.getMessage());
+        }
+
+        // --- Safe Signature Handling ---
+        try {
+            if (pv != null && pv.getSeizureNote() != null && pv.getSeizureNote().getOfficerSignaturePath() != null) {
+                String sig = pv.getSeizureNote().getOfficerSignaturePath();
+                // Ensure it has the data:image prefix if needed, or handles raw base64
+                context.setVariable("officerSignatureBase64", sig);
+            } else {
+                context.setVariable("officerSignatureBase64", null);
+            }
+        } catch (Exception e) {
+            System.err.println("Signature handling failed: " + e.getMessage());
+            context.setVariable("officerSignatureBase64", null);
+        }
+
+        String html = templateEngine.process("pv-document", context);
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+            PdfRendererBuilder builder = new PdfRendererBuilder();
+            builder.useFastMode(); // Essential for stability
+            builder.withHtmlContent(html, ""); // Provide empty string instead of null for base URL
+            builder.toStream(outputStream);
+            builder.run();
+            return outputStream.toByteArray();
+        } catch (Exception e) {
+            System.err.println("CRITICAL PDF GENERATION ERROR: " + e.getMessage());
+            e.printStackTrace();
+            throw new IOException("Failed to generate PDF document: " + e.getMessage());
+        }
+    }
 }
