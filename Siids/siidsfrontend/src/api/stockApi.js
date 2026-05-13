@@ -6,9 +6,11 @@ export const stockApi = {
     createSeizureNote: (data) => axios.post('/api/stock/temporary/seizure-notes', data),
     releaseFromTemp: (id, data) => axios.post(`/api/stock/temporary/${id}/release`, data),
     escalateToMain: (id, data) => axios.post(`/api/stock/temporary/${id}/escalate`, data),
+    downloadSeizureNote: (id) => axios.get(`/api/stock/temporary/${id}/seizure-note`, { responseType: 'blob' }),
 
     // MAIN STOCK
     getMainStock: () => axios.get('/api/stock/main'),
+    downloadPVPdf: (id) => axios.get(`/api/stock/main/${id}/pv-pdf`, { responseType: 'blob' }),
     requestRelease: (id, data) => axios.post(`/api/stock/main/${id}/release-notes`, data),
     requestEdit: (id, data) => axios.post(`/api/stock/main/${id}/request-edit`, data),
 
