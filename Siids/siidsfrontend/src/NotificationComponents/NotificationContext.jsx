@@ -42,11 +42,7 @@ export const NotificationProvider = ({ children, employeeId }) => {
 
     const markAsRead = async (id) => {
         try {
-            await caseApi.put(`/api/notifications/${id}/read`, {}, {
-                headers: {
-                    'employee_id': employeeId
-                }
-            });
+            await caseApi.put(`/api/notifications/${id}/read`, {});
 
             setNotifications(prev =>
                 prev.map(n => n.id === id ? { ...n, read: true } : n)
@@ -59,11 +55,7 @@ export const NotificationProvider = ({ children, employeeId }) => {
 
     const markAllAsRead = async () => {
         try {
-            await caseApi.put(`/api/notifications/employee/${employeeId}/read-all`, {}, {
-                headers: {
-                    'employee_id': employeeId
-                }
-            });
+            await caseApi.put(`/api/notifications/employee/${employeeId}/read-all`, {});
 
             setNotifications(prev =>
                 prev.map(n => ({ ...n, read: true }))
