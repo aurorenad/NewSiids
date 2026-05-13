@@ -73,6 +73,33 @@ const StockManagerPage = () => {
     fetchStock();
   };
 
+  const handleDownloadPV = async (item) => {
+    try {
+      const response = await stockApi.downloadPVPdf(item.id);
+      
+      // Safety check for response data
+      if (!response.data || response.data.size === 0) {
+        throw new Error('Received empty file');
+      }
+
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Safety check for PV Number formatting
+      const safePvNumber = (item.pvNumber || `PV-DOC-${item.id}`).replace(/\//g, '-');
+      link.setAttribute('download', `${safePvNumber}.pdf`);
+      
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Download failed:', err);
+      toast.error('Failed to download PV document. Please try again.');
+    }
+  };
+
   return (
     <div style={{ padding: '32px 40px', background: 'var(--surface-page)', minHeight: '100vh' }}>
       <Toaster position="top-right" richColors />
@@ -124,6 +151,7 @@ const StockManagerPage = () => {
                   <th>Taxpayer</th>
                   <th>Date In</th>
                   <th>Law Reference</th>
+                  <th style={{ textAlign: 'center' }}>PV Document</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,6 +163,21 @@ const StockManagerPage = () => {
                     <td>{item.seizureNote?.taxpayerName || 'Unknown'}</td>
                     <td className="date">{item.transferDate ? format(new Date(item.transferDate), 'dd MMM yyyy') : '-'}</td>
                     <td>{item.applicableLawReference}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="btn-base" 
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '12px', 
+                          color: 'var(--rra-blue)', 
+                          border: '1px solid var(--rra-blue-tint)',
+                          background: 'var(--rra-blue-tint-light)'
+                        }}
+                        onClick={() => handleDownloadPV(item)}
+                      >
+                        Download PDF
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
