@@ -43,6 +43,7 @@ public class SecurityConfig {
                     ));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     config.setAllowedHeaders(List.of("*"));
+                    config.setExposedHeaders(List.of("Authorization", "X-Auth-User", "X-Auth-Status", "X-Auth-Roles", "X-Auth-Error"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
@@ -53,7 +54,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/api/cases/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
+                                "DirectorIntelligenceCaseReports", "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/reports/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "legalAdvisor",
@@ -78,15 +79,14 @@ public class SecurityConfig {
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .requestMatchers("/api/stock/**")
-                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "PRSO", "prso", "Surveillance", "surveillance")
+                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "STOCKMANAGER", "ROLE_STOCKMANAGER", "PRSO", "prso", "Surveillance", "surveillance", "SURVEILLANCE", "SURVEILLANCE_OFFICER", "ROLE_SURVEILLANCE", "ROLE_SURVEILLANCE_OFFICER")
                         .requestMatchers("/api/reward-memos/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "DirectorIntelligence", "AssistantCommissioner",
                                 "Admin", "admin", "Finance")
                         .requestMatchers("/api/surveillance/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
+                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "surveillance", "SURVEILLANCE", "SURVEILLANCE_OFFICER", "ROLE_SURVEILLANCE", "ROLE_SURVEILLANCE_OFFICER", "DirectorIntelligence",
                                 "AssistantCommissioner", "Admin", "admin")
                         .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
