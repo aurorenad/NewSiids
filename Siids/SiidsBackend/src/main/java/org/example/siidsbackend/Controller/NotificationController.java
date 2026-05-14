@@ -25,6 +25,10 @@ public class NotificationController {
     private final NotificationRepo notificationRepo;
     private final EmployeeRepo employeeRepo;
 
+    private String getCurrentUser() {
+        return org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @MessageMapping("/connect")
     public void handleConnection(@Payload String employeeId, SimpMessageHeaderAccessor headerAccessor) {
         // Store employee ID in session attributes for user-specific messaging
@@ -74,8 +78,8 @@ public class NotificationController {
      */
     @PutMapping("/{notificationId}/read")
     public ResponseEntity<Void> markAsRead(
-            @PathVariable Integer notificationId,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable Integer notificationId) {
+        String employeeId = getCurrentUser();
         try {
             Notification notification = notificationRepo.findById(notificationId)
                     .orElseThrow(() -> new RuntimeException("Notification not found"));
@@ -100,8 +104,8 @@ public class NotificationController {
      */
     @PutMapping("/employee/{employeeId}/read-all")
     public ResponseEntity<Void> markAllAsRead(
-            @PathVariable String employeeId,
-            @RequestHeader("employee_id") String requestingEmployeeId) {
+            @PathVariable String employeeId) {
+        String requestingEmployeeId = getCurrentUser();
         try {
             // Check if the requesting employee is marking their own notifications
             if (!employeeId.equals(requestingEmployeeId)) {
@@ -146,8 +150,8 @@ public class NotificationController {
      */
     @DeleteMapping("/{notificationId}")
     public ResponseEntity<Void> deleteNotification(
-            @PathVariable Integer notificationId,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable Integer notificationId) {
+        String employeeId = getCurrentUser();
         try {
             Notification notification = notificationRepo.findById(notificationId)
                     .orElseThrow(() -> new RuntimeException("Notification not found"));

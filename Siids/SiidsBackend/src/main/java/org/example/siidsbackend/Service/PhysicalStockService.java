@@ -28,6 +28,8 @@ public class PhysicalStockService {
     private final StockRepository stockRepository;
     private final StockAuditService auditService;
     private final WebSocketNotificationService notificationService;
+    private final PdfService pdfService;
+    private final org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
 
     public PhysicalStockService(SeizureNoteRepository seizureNoteRepository,
                                 PVDocumentRepository pvDocumentRepository,
@@ -35,7 +37,9 @@ public class PhysicalStockService {
                                 CaseRepo caseRepo,
                                 StockRepository stockRepository,
                                 StockAuditService auditService,
-                                WebSocketNotificationService notificationService) {
+                                WebSocketNotificationService notificationService,
+                                PdfService pdfService,
+                                org.example.siidsbackend.Repository.EmployeeRepo employeeRepo) {
         this.seizureNoteRepository = seizureNoteRepository;
         this.pvDocumentRepository = pvDocumentRepository;
         this.releaseNoteRepository = releaseNoteRepository;
@@ -43,6 +47,13 @@ public class PhysicalStockService {
         this.stockRepository = stockRepository;
         this.auditService = auditService;
         this.notificationService = notificationService;
+        this.pdfService = pdfService;
+        this.employeeRepo = employeeRepo;
+    }
+
+    public Employee getEmployeeByUsername(String username) {
+        return employeeRepo.findByEmployeeId(username)
+                .orElseThrow(() -> new IllegalStateException("Employee record not found for username: " + username));
     }
 
     // --- LEGACY MAPPING HELPERS ---
@@ -60,6 +71,8 @@ public class PhysicalStockService {
         note.setSeizureReason(stock.getSeizureReason());
         if (stock.getTakenDate() != null) {
             note.setDateTimeSeized(stock.getTakenDate().atStartOfDay());
+        } else {
+            note.setDateTimeSeized(LocalDateTime.now());
         }
         
         if ("ACTIVE".equals(stock.getStatus())) {
@@ -72,21 +85,41 @@ public class PhysicalStockService {
 
     private PVDocument mapLegacyStockToPVDocument(Stock stock) {
         PVDocument pv = new PVDocument();
-        pv.setId(stock.getId() + 1000000);
+        pv.setId(1000000 + stock.getId());
         pv.setPvNumber(stock.getPvNumber() != null ? stock.getPvNumber() : "LEGACY-PV-" + stock.getId());
-        pv.setApplicableLawReference("Legacy Imported Record");
-        pv.setSeizureNote(mapLegacyStockToSeizureNote(stock));
-        if (stock.getReceivedDate() != null) {
-            pv.setTransferDate(stock.getReceivedDate().atStartOfDay());
-            pv.setCreatedAt(stock.getReceivedDate().atStartOfDay());
+        pv.setTransferDate(stock.getReceivedDate() != null ? stock.getReceivedDate().atStartOfDay() : LocalDateTime.now());
+        pv.setCreatedAt(stock.getReceivedDate() != null ? stock.getReceivedDate().atStartOfDay() : LocalDateTime.now());
+        
+        String goods = "";
+        if (stock.getItems() != null && !stock.getItems().isEmpty()) {
+            goods = stock.getItems().stream().map(i -> i.getQuantity() + "x " + i.getItemName()).reduce((a, b) -> a + ", " + b).orElse("");
         }
+        
+        pv.setFormalStatementText("Legacy Imported Record: " + (goods != null && !goods.isEmpty() ? goods : "No items listed."));
+        pv.setApplicableLawReference("EAC Customs Management Act, 2004");
+        
+        SeizureNote note = new SeizureNote();
+        note.setSeizureNumber(stock.getSeizureNumber() != null ? stock.getSeizureNumber() : "LEGACY-SN-" + stock.getId());
+        note.setTaxpayerName(stock.getOwnerName() != null ? stock.getOwnerName() : "N/A");
+        note.setTaxpayerTin("N/A"); // Legacy stock doesn't have TIN field
+        note.setGoodsDescription(goods != null && !goods.isEmpty() ? goods : "N/A");
+        note.setDateTimeSeized(stock.getTakenDate() != null ? stock.getTakenDate().atStartOfDay() : LocalDateTime.now());
+        
+        pv.setSeizureNote(note);
+        
+        Employee legacyOfficer = new Employee();
+        legacyOfficer.setGivenName("Proper");
+        legacyOfficer.setFamilyName("Officer");
+        legacyOfficer.setEmployeeId("LEGACY-OFFICER");
+        pv.setPvInCharge(legacyOfficer);
+        
         return pv;
     }
 
     // --- TEMPORARY STOCK (PV In Charge) ---
 
     public List<SeizureNote> getTemporaryStock() {
-        List<SeizureNote> notes = seizureNoteRepository.findAll();
+        List<SeizureNote> notes = seizureNoteRepository.findByStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
         List<Stock> legacyStocks = stockRepository.findByStatusIsNullOrStatus("ACTIVE");
         if (legacyStocks != null) {
             for (Stock s : legacyStocks) {
@@ -230,7 +263,7 @@ public class PhysicalStockService {
             
             SeizureNote note = mapLegacyStockToSeizureNote(stock);
             note.setId(null);
-            note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK);
+            note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK); // Ensure status is set for the check below
             note = seizureNoteRepository.save(note);
             
             PVDocument pv = mapLegacyStockToPVDocument(stock);
@@ -240,6 +273,8 @@ public class PhysicalStockService {
             
             stock.setStatus("MIGRATED_TO_NEW_MODULE");
             stockRepository.save(stock);
+            
+            // Re-fetch to ensure clean state for recursion
             return requestMainStockRelease(pv.getId(), dto, currentUser);
         }
 
@@ -377,5 +412,35 @@ public class PhysicalStockService {
         notification.setSenderName(prsoUser.getGivenName() + " " + prsoUser.getFamilyName());
         notification.setNotificationType("PV_EDIT_REJECTED");
         notificationService.sendNotificationToDepartment("STOCK_MANAGER", notification);
+    }
+
+    public byte[] generateSeizureNotePdf(Integer seizureId) throws java.io.IOException {
+        if (seizureId > 1000000) {
+            Stock stock = stockRepository.findById(seizureId - 1000000)
+                    .orElseThrow(() -> new IllegalArgumentException("Legacy stock not found"));
+            SeizureNote mapped = mapLegacyStockToSeizureNote(stock);
+            return pdfService.generateSeizureNote(mapped);
+        }
+
+        SeizureNote note = seizureNoteRepository.findById(seizureId)
+                .orElseThrow(() -> new IllegalArgumentException("Seizure note not found"));
+        return pdfService.generateSeizureNote(note);
+    }
+
+    public byte[] generatePVDocumentPdf(Integer pvId, String username) throws java.io.IOException {
+        // Find employee by username (assuming username is the employeeId)
+        Employee stockManager = employeeRepo.findByEmployeeId(username)
+                .orElse(null);
+
+        if (pvId > 1000000) {
+            Stock stock = stockRepository.findById(pvId - 1000000)
+                    .orElseThrow(() -> new IllegalArgumentException("Legacy stock not found"));
+            PVDocument mapped = mapLegacyStockToPVDocument(stock);
+            return pdfService.generatePVDocument(mapped, stockManager);
+        }
+
+        PVDocument pv = pvDocumentRepository.findById(pvId)
+                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
+        return pdfService.generatePVDocument(pv, stockManager);
     }
 }

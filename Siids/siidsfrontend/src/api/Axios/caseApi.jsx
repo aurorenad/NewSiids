@@ -18,9 +18,8 @@ caseApi.interceptors.request.use((config) => {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
 
-    if (employeeId) {
-        config.headers['employee_id'] = employeeId.trim();
-    }
+    // Removed employee_id header dependency
+    return config;
 
     // console.log('Request headers:', config.headers);
     return config;
@@ -49,7 +48,6 @@ caseApi.interceptors.response.use(
                 }
 
                 error.config.headers['Authorization'] = `Bearer ${token}`;
-                error.config.headers['employee_id'] = employeeId;
                 return caseApi.request(error.config);
             } catch (refreshError) {
                 localStorage.removeItem('token');
@@ -201,9 +199,7 @@ export const ReportApi = {
 
     getCasePlansForDirectorInvestigation: () => {
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-        return caseApi.get('/api/reports/director-investigation/case-plans', {
-            headers: { 'employee_id': employeeId }
-        });
+        return caseApi.get('/api/reports/director-investigation/case-plans');
     },
     getCasePlan: (reportId) => {
         return caseApi.get(`/api/reports/${reportId}/case-plan`);
@@ -291,8 +287,7 @@ export const ReportApi = {
                 formData,
                 {
                     headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'employee_id': employeeId
+                        'Content-Type': 'multipart/form-data'
                     }
                 }
             );
@@ -430,9 +425,7 @@ export const ReportApi = {
     },
     getReportsForLegalAdvisor: () => {
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-        return caseApi.get('/api/reports/legal-advisor/my-reports', {
-            headers: { 'employee_id': employeeId }
-        });
+        return caseApi.get('/api/reports/legal-advisor/my-reports');
     },
     getAllReportsWithLegalAdvisors: () => {
         return caseApi.get('/api/reports/legal-advisor/all-reports');

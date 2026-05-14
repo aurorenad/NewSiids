@@ -56,6 +56,21 @@ const PVTemporaryStockPage = () => {
     item.taxpayerName?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const handleDownloadSeizureNote = async (item) => {
+    try {
+      const response = await stockApi.downloadSeizureNote(item.id);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `SeizureNote-${item.seizureNumber.replace(/\//g, '-')}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      toast.error('Failed to download seizure note');
+    }
+  };
+
   return (
     <div style={{ padding: '32px 40px', background: 'var(--surface-page)', minHeight: '100vh' }}>
       <Toaster position="top-right" richColors />
@@ -102,6 +117,7 @@ const PVTemporaryStockPage = () => {
                   <th>Taxpayer</th>
                   <th>Status</th>
                   <th>Date Seized</th>
+                  <th style={{ textAlign: 'center' }}>Seizure Note</th>
                 </tr>
               </thead>
               <tbody>
@@ -122,6 +138,21 @@ const PVTemporaryStockPage = () => {
                       </span>
                     </td>
                     <td className="date">{item.dateTimeSeized ? format(new Date(item.dateTimeSeized), 'dd MMM yyyy') : '-'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="btn-base" 
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '12px', 
+                          color: 'var(--rra-blue)', 
+                          border: '1px solid var(--rra-blue-tint)',
+                          background: 'var(--rra-blue-tint-light)'
+                        }}
+                        onClick={() => handleDownloadSeizureNote(item)}
+                      >
+                        Download PDF
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

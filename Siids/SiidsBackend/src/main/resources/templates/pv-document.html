@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page { size: A4; margin: 25px; }
+        body { font-family: 'Times New Roman', Times, serif; margin: 0; color: #000; font-size: 11px; line-height: 1.4; }
+        
+        .main-border { border: 2px solid #000; padding: 2px; }
+        .inner-content { border: 1px solid #000; padding: 15px; }
+
+        table { width: 100%; border-collapse: collapse; }
+        .header-table td { vertical-align: middle; }
+        .office-box { border: 1px solid #000; padding: 5px; width: 180px; text-align: left; }
+
+        .data-grid td { border: 1px solid #000; padding: 6px; vertical-align: top; width: 33.33%; height: 45px; }
+        .label { font-size: 9px; font-weight: bold; color: #333; display: block; margin-bottom: 2px; text-transform: uppercase; }
+        .value { font-size: 11px; font-weight: bold; }
+
+        .section-header { background-color: #f2f2f2; border: 1px solid #000; padding: 5px; font-weight: bold; margin-top: 12px; font-size: 12px; }
+        .text-box { border: 1px solid #000; padding: 10px; min-height: 100px; font-style: italic; }
+
+        .party-table td { border: 1px solid #000; padding: 8px; width: 50%; height: 90px; vertical-align: top; }
+
+        .sig-section { margin-top: 25px; }
+        .sig-image { width: 130px; height: auto; margin-bottom: 5px; }
+        .sig-line { border-top: 1px dashed #000; display: inline-block; width: 220px; padding-top: 5px; font-weight: bold; margin-top: 5px; }
+
+        .footer { margin-top: 20px; border-top: 1px solid #000; padding-top: 8px; font-size: 9px; color: #444; }
+    </style>
+</head>
+<body>
+    <div class="main-border">
+        <div class="inner-content">
+            <!-- Header -->
+            <table class="header-table" style="margin-bottom: 15px;">
+                <tr>
+                    <td style="width: 70px;">
+                        <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" style="width: 65px;" />
+                    </td>
+                    <td style="text-align: center;">
+                        <div style="font-size: 18px; font-weight: bold;">RWANDA REVENUE AUTHORITY</div>
+                        <div style="font-size: 16px; font-weight: bold; margin-top: 5px;">Customs Arrears and Offences (Statement of Offence)</div>
+                    </td>
+                    <td style="width: 180px;">
+                        <div class="office-box">
+                            <div style="font-size: 9px; font-weight: bold; border-bottom: 1px solid #000; margin-bottom: 4px;">Customs Office</div>
+                            <div style="font-weight: bold;">11GI &#160;&#160; Gikondo (SIID)</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Data Grid -->
+            <table class="data-grid">
+                <tr>
+                    <td>
+                        <span class="label">CD Type</span>
+                        <span class="value">Statement of Offence (PV)</span>
+                    </td>
+                    <td>
+                        <span class="label">PV Number</span>
+                        <span class="value" th:text="${pv?.pvNumber != null ? pv.pvNumber : 'N/A'}">PV-0000</span>
+                    </td>
+                    <td>
+                        <span class="label">Main Declaration Reference</span>
+                        <span class="value">N/A</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="label">CD Office</span>
+                        <span class="value">15 &#160;&#160; SIID</span>
+                    </td>
+                    <td>
+                        <span class="label">Date of PV Establishment</span>
+                        <span class="value" th:text="${pv?.transferDate != null ? #temporals.format(pv.transferDate, 'dd/MM/yyyy') : 'N/A'}">01/01/2026</span>
+                    </td>
+                    <td>
+                        <span class="label">Date of Reception in Stock</span>
+                        <span class="value" th:text="${pv?.createdAt != null ? #temporals.format(pv.createdAt, 'dd/MM/yyyy') : 'N/A'}">01/01/2026</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="label">Date of Offence / Seizure</span>
+                        <span class="value" th:text="${pv?.seizureNote?.dateTimeSeized != null ? #temporals.format(pv.seizureNote.dateTimeSeized, 'dd/MM/yyyy') : 'N/A'}">01/01/2026</span>
+                    </td>
+                    <td>
+                        <span class="label">Seizure Reference (SN)</span>
+                        <span class="value" th:text="${pv?.seizureNote?.seizureNumber != null ? pv.seizureNote.seizureNumber : 'N/A'}">SN-0000</span>
+                    </td>
+                    <td>
+                        <span class="label">Overall Stock Status</span>
+                        <span class="value">CONFISCATED / IN MAIN STOCK</span>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="section-header">Reason for Establishing (Offence Description)</div>
+            <div class="text-box">
+                <div th:text="${pv?.formalStatementText != null ? pv.formalStatementText : 'No formal statement recorded.'}">Statement text...</div>
+                <div style="margin-top: 10px; font-weight: bold; font-style: normal; text-decoration: underline;">Goods Details:</div>
+                <div th:text="${pv?.seizureNote?.goodsDescription != null ? pv.seizureNote.goodsDescription : 'No goods description available.'}">Goods...</div>
+            </div>
+
+            <div class="section-header">Provision of the Law and Sanctions</div>
+            <div class="text-box" style="min-height: 40px;">
+                <div th:text="${pv?.applicableLawReference != null ? pv.applicableLawReference : 'Section 210(a) of the EAC CMA, 2004'}">Law ref...</div>
+            </div>
+
+            <table class="party-table" style="margin-top: 15px;">
+                <tr>
+                    <td>
+                        <span class="label">Importer / Offender Details</span>
+                        <div style="margin-top: 8px; font-weight: bold; font-size: 12px;" th:text="${pv?.seizureNote?.taxpayerName != null ? pv.seizureNote.taxpayerName : 'Unknown'}">Name</div>
+                        <div style="margin-top: 4px;" th:text="'TIN: ' + ${pv?.seizureNote?.taxpayerTin != null ? pv.seizureNote.taxpayerTin : 'N/A'}">TIN</div>
+                    </td>
+                    <td>
+                        <span class="label">Stock Management Officer (Recipient)</span>
+                        <div style="margin-top: 8px; font-weight: bold; font-size: 11px;" th:text="${stockManager != null ? stockManager.givenName + ' ' + stockManager.familyName : 'Officer in Charge of Stock'}">Stock Manager</div>
+                        <div style="margin-top: 4px;" th:text="'ID: ' + ${stockManager != null ? stockManager.employeeId : 'N/A'}">ID</div>
+                        <div style="margin-top: 4px; font-size: 9px; color: #444;">Officer Managing Main Stock Inventory</div>
+                    </td>
+                </tr>
+            </table>
+
+            <table style="margin-top: 25px;">
+                <tr>
+                    <td style="width: 50%;">
+                        <div class="sig-section" style="text-align: left;">
+                             <div class="label" style="margin-bottom: 10px;">Establishing Officer (Surveillance)</div>
+                             <div th:if="${officerSignatureBase64 != null}">
+                                <img th:src="${officerSignatureBase64.startsWith('data:') ? officerSignatureBase64 : 'data:image/png;base64,' + officerSignatureBase64}" class="sig-image" />
+                             </div>
+                             <div th:if="${officerSignatureBase64 == null}" style="height: 60px;"></div>
+                             <div class="sig-line" th:text="${pv?.pvInCharge != null ? pv.pvInCharge.givenName + ' ' + pv.pvInCharge.familyName : 'Establishing Officer'}">Officer Name</div>
+                             <div style="font-size: 9px; color: #555;">Digital Signature of Establishing Officer</div>
+                        </div>
+                    </td>
+                    <td style="width: 50%; vertical-align: bottom;">
+                        <div class="sig-section" style="text-align: right;">
+                             <div class="label" style="margin-bottom: 50px;">Received by (Stock Manager)</div>
+                             <div class="sig-line" th:text="${stockManager != null ? stockManager.givenName + ' ' + stockManager.familyName : 'Stock Manager'}">Recipient Name</div>
+                             <div style="font-size: 9px; color: #555;">Officer Acknowledgement</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <table class="footer">
+                <tr>
+                    <td>
+                        Official RRA SIIDS Generated Document: <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">Date</span>
+                    </td>
+                    <td style="text-align: center;" th:text="${stockManager?.workEmail != null ? stockManager.workEmail : (stockManager?.personalEmail != null ? stockManager.personalEmail : 'siid@rra.gov.rw')}">
+                        email@rra.gov.rw
+                    </td>
+                    <td style="text-align: right;">
+                        Page 1 of 1
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

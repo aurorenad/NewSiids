@@ -34,39 +34,34 @@ export const AuthProvider = ({ children }) => {
                 employeeId,
                 name,
                 role,
-                profile: {}, // Maintain defensive object on restore
+                profile: {}, 
             });
         }
         setLoading(false);
     }, []);
 
     const login = (userId, token, employeeId, name, remember, role) => {
-        if (remember) {
-            localStorage.setItem('token', token);
-            localStorage.setItem('employeeId', employeeId);
-            localStorage.setItem('userId', userId);
-            localStorage.setItem('name', name);
-            localStorage.setItem('role', role);
-        } else {
-            sessionStorage.setItem('token', token);
-            sessionStorage.setItem('employeeId', employeeId);
-            sessionStorage.setItem('userId', userId);
-            sessionStorage.setItem('name', name);
-            sessionStorage.setItem('role', role);
-        }
-        setAuthState({ token, userId, employeeId, name, role, profile: {} });
+        const storage = remember ? localStorage : sessionStorage;
+        
+        storage.setItem('token', token);
+        storage.setItem('employeeId', employeeId);
+        storage.setItem('userId', userId);
+        storage.setItem('name', name);
+        storage.setItem('role', role);
+
+        setAuthState({ 
+            token, 
+            userId, 
+            employeeId, 
+            name, 
+            role, 
+            profile: {} 
+        });
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('employeeId');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('role');
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('employeeId');
-        sessionStorage.removeItem('userId');
-        sessionStorage.removeItem('name');
-        sessionStorage.removeItem('role');
+        localStorage.clear();
+        sessionStorage.clear();
         setAuthState({
             token: null,
             userId: null,
