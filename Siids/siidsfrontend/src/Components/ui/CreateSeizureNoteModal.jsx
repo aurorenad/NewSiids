@@ -55,12 +55,8 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     if (!saveSignature()) return;
     
     try {
-      // Send the date exactly as Jackson expects it
-      const localDateTimeStr = new Date().toISOString().substring(0, 19);
-      
       await stockApi.createSeizureNote({
         ...formData,
-        dateTimeSeized: localDateTimeStr,
         officerSignatureBase64: sigCanvas.current.getCanvas().toDataURL('image/png')
       });
       toast.success('Seizure Note created successfully');

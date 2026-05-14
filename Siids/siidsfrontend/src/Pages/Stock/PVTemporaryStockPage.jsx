@@ -235,8 +235,8 @@ const PVTemporaryStockPage = () => {
         footerActions={
           selectedItem?.status === 'IN_TEMPORARY_STOCK' ? (
             <>
-              <button className="btn-base btn-success" onClick={() => setReleaseDialog(true)}>Release to Owner</button>
-              <button className="btn-base btn-danger" onClick={() => setEscalateDialog(true)}>Escalate to Main Stock</button>
+              <button className="btn-base btn-success" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Release to Owner</button>
+              <button className="btn-base btn-danger" onClick={() => { setDrawerOpen(false); setEscalateDialog(true); }}>Escalate to Main Stock</button>
             </>
           ) : null
         }

@@ -149,7 +149,7 @@ public class PhysicalStockService {
         note.setTaxpayerName(dto.getTaxpayerName());
         note.setGoodsDescription(dto.getGoodsDescription());
         note.setSeizureReason(dto.getSeizureReason());
-        note.setDateTimeSeized(dto.getDateTimeSeized());
+        note.setDateTimeSeized(LocalDateTime.now());
         note.setPvInCharge(currentUser);
         note.setStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
         note.setOfficerSignaturePath(dto.getOfficerSignatureBase64());
