@@ -40,6 +40,13 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.getTemporaryStock());
     }
 
+    @GetMapping("/temporary/history")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_OFFICER') or hasAuthority('Surveillance') or hasAuthority('SURVEILLANCE') or hasAuthority('ROLE_SURVEILLANCE_OFFICER')")
+    public ResponseEntity<?> getSeizureHistory() {
+        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(physicalStockService.getSeizureHistory(physicalStockService.getEmployeeByUsername(username)));
+    }
+
     @PostMapping("/temporary/seizure-notes")
     @PreAuthorize("hasAuthority('SURVEILLANCE_OFFICER') or hasAuthority('Surveillance') or hasAuthority('SURVEILLANCE') or hasAuthority('ROLE_SURVEILLANCE_OFFICER')")
     public ResponseEntity<?> createSeizureNote(@RequestBody SeizureNoteRequestDTO dto) {

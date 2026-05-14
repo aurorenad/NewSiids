@@ -131,6 +131,10 @@ public class PhysicalStockService {
         return notes;
     }
 
+    public List<SeizureNote> getSeizureHistory(Employee officer) {
+        return seizureNoteRepository.findByPvInChargeOrderByCreatedAtDesc(officer);
+    }
+
     @Transactional
     public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
         SeizureNote note = new SeizureNote();
@@ -176,6 +180,7 @@ public class PhysicalStockService {
         }
 
         note.setStatus(PhysicalStockStatus.RELEASED_FROM_TEMP);
+        note.setActionedAt(LocalDateTime.now());
         seizureNoteRepository.save(note);
 
         ReleaseNote release = new ReleaseNote();
@@ -213,6 +218,7 @@ public class PhysicalStockService {
         }
 
         note.setStatus(PhysicalStockStatus.ESCALATED);
+        note.setActionedAt(LocalDateTime.now());
         seizureNoteRepository.save(note);
 
         PVDocument pv = new PVDocument();

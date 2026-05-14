@@ -44,6 +44,7 @@ public class SeizureNote {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime actionedAt;
 
     @PrePersist
     protected void onCreate() {
