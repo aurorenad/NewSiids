@@ -21,6 +21,7 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     taxpayerName: '',
     goodsDescription: '',
     seizureReason: '',
+    dateTimeSeized: new Date().toISOString().split('T')[0],
   });
 
   React.useEffect(() => {
@@ -88,6 +89,7 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     try {
       await stockApi.createSeizureNote({
         ...formData,
+        dateTimeSeized: `${formData.dateTimeSeized}T00:00:00`,
         officerSignatureBase64: sigCanvas.current.getCanvas().toDataURL('image/png')
       });
       toast.success('Seizure Note created successfully');
@@ -156,6 +158,16 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                 <div className="form-field">
                   <label className="form-label">Seizure Reason</label>
                   <input className="form-control" value={formData.seizureReason} onChange={e => setFormData({...formData, seizureReason: e.target.value})} />
+                </div>
+                <div className="form-field">
+                  <label className="form-label">Date Seized <span className="required">*</span></label>
+                  <input 
+                    type="date" 
+                    className="form-control" 
+                    value={formData.dateTimeSeized} 
+                    onChange={e => setFormData({...formData, dateTimeSeized: e.target.value})} 
+                    max={new Date().toISOString().split('T')[0]}
+                  />
                 </div>
               </>
             )}
