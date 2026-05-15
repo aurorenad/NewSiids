@@ -19,7 +19,8 @@ import {
     Chip,
     Grid,
     Card,
-    CardContent
+    CardContent,
+    TablePagination
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -42,6 +43,10 @@ const SurveillanceOfficer = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
     const [showOnlyCreated, setShowOnlyCreated] = useState(false);
+    
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -85,7 +90,21 @@ const SurveillanceOfficer = () => {
             results = results.filter(caseItem => caseItem.status === 'CASE_CREATED');
         }
         setFilteredCases(results);
+        setPage(0); // Reset to page 1 when filter changes
     }, [searchTerm, cases, showOnlyCreated]);
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const paginatedCases = useMemo(() => {
+        return filteredCases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredCases, page, rowsPerPage]);
 
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
@@ -278,8 +297,8 @@ const SurveillanceOfficer = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredCases.length > 0 ? (
-                                filteredCases.map((caseItem) => {
+                            {paginatedCases.length > 0 ? (
+                                paginatedCases.map((caseItem) => {
                                     const statusStyle = getStatusColor(caseItem.status);
                                     return (
                                         <TableRow key={caseItem.caseNum} hover>
@@ -342,6 +361,22 @@ const SurveillanceOfficer = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <TablePagination
+                    rowsPerPageOptions={[10, 20, 50, 100]}
+                    component="div"
+                    count={filteredCases.length}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    sx={{
+                        borderTop: '1px solid #eee',
+                        '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                            fontFamily: "'Outfit', sans-serif",
+                            fontWeight: 500
+                        }
+                    }}
+                />
             </Paper>
 
             <Snackbar

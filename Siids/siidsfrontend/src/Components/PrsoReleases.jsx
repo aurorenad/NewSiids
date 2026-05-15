@@ -3,7 +3,7 @@ import axios from '../api/axios.jsx';
 import {
     Container, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Button, Dialog, DialogTitle,
-    DialogContent, DialogActions, TextField, Alert, Box, Chip
+    DialogContent, DialogActions, TextField, Alert, Box, Chip, TablePagination
 } from '@mui/material';
 import { AuthContext } from '../context/AuthContext';
 
@@ -16,6 +16,10 @@ const PrsoReleases = () => {
     const [openReject, setOpenReject] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [selectedRelease, setSelectedRelease] = useState(null); // { stockId, releaseIndex }
+    
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
     
     const { authState } = useContext(AuthContext);
 
@@ -32,6 +36,7 @@ const PrsoReleases = () => {
             // Filter stocks to only include ones that have releases
             const stockWithReleases = response.data.filter(s => s.releases && s.releases.length > 0);
             setStocks(stockWithReleases);
+            setPage(0);
             setLoading(false);
         } catch (err) {
             console.error('Error fetching stock:', err);
@@ -112,52 +117,66 @@ const PrsoReleases = () => {
                     </TableHead>
                     <TableBody>
                         {stocks.flatMap((stock) => 
-                            stock.releases.map((release, index) => (
-                                <TableRow key={`${stock.id}-${index}`}>
-                                    <TableCell>{stock.seizureNumber}</TableCell>
-                                    <TableCell>{release.dateReleased}</TableCell>
-                                    <TableCell>{release.releasedItemName}</TableCell>
-                                    <TableCell>{release.quantityReleased}</TableCell>
-                                    <TableCell>
-                                        <Chip 
-                                            label={release.status || 'PENDING'} 
-                                            color={release.status === 'APPROVED' ? 'success' : (release.status === 'REJECTED' ? 'error' : 'warning')} 
-                                            size="small" 
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        {(!release.status || release.status === 'PENDING') && (
-                                            <>
-                                                <Button 
-                                                    variant="contained" 
-                                                    color="success" 
-                                                    size="small" 
-                                                    sx={{ mr: 1 }}
-                                                    onClick={() => handleApprove(stock.id, index)}
-                                                >
-                                                    Approve
-                                                </Button>
-                                                <Button 
-                                                    variant="contained" 
-                                                    color="error" 
-                                                    size="small"
-                                                    onClick={() => handleRejectOpen(stock.id, index)}
-                                                >
-                                                    Reject
-                                                </Button>
-                                            </>
-                                        )}
-                                        {release.status === 'REJECTED' && (
-                                            <Typography variant="caption" color="error">
-                                                Reason: {release.rejectionReason}
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
+                            stock.releases.map((release, index) => ({ ...release, stockId: stock.id, seizureNumber: stock.seizureNumber, releaseIndex: index }))
+                        )
+                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                        .map((release) => (
+                            <TableRow key={`${release.stockId}-${release.releaseIndex}`}>
+                                <TableCell>{release.seizureNumber}</TableCell>
+                                <TableCell>{release.dateReleased}</TableCell>
+                                <TableCell>{release.releasedItemName}</TableCell>
+                                <TableCell>{release.quantityReleased}</TableCell>
+                                <TableCell>
+                                    <Chip 
+                                        label={release.status || 'PENDING'} 
+                                        color={release.status === 'APPROVED' ? 'success' : (release.status === 'REJECTED' ? 'error' : 'warning')} 
+                                        size="small" 
+                                    />
+                                </TableCell>
+                                <TableCell>
+                                    {(!release.status || release.status === 'PENDING') && (
+                                        <>
+                                            <Button 
+                                                variant="contained" 
+                                                color="success" 
+                                                size="small" 
+                                                sx={{ mr: 1 }}
+                                                onClick={() => handleApprove(release.stockId, release.releaseIndex)}
+                                            >
+                                                Approve
+                                            </Button>
+                                            <Button 
+                                                variant="contained" 
+                                                color="error" 
+                                                size="small"
+                                                onClick={() => handleRejectOpen(release.stockId, release.releaseIndex)}
+                                            >
+                                                Reject
+                                            </Button>
+                                        </>
+                                    )}
+                                    {release.status === 'REJECTED' && (
+                                        <Typography variant="caption" color="error">
+                                            Reason: {release.rejectionReason}
+                                        </Typography>
+                                    )}
+                                </TableCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
+                <TablePagination
+                    rowsPerPageOptions={[10, 20, 50, 100]}
+                    component="div"
+                    count={stocks.reduce((acc, stock) => acc + (stock.releases?.length || 0), 0)}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={(e, newPage) => setPage(newPage)}
+                    onRowsPerPageChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value, 10));
+                        setPage(0);
+                    }}
+                />
             </TableContainer>
 
             {/* Reject Dialog */}

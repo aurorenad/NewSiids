@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { TablePagination } from '@mui/material';
 import { PlusIcon, MagnifyingGlassIcon, InboxArrowDownIcon } from '@heroicons/react/24/outline';
 import { stockApi } from '../../api/stockApi';
 import CreateSeizureNoteModal from '../../Components/ui/CreateSeizureNoteModal';
@@ -25,6 +26,10 @@ const PVTemporaryStockPage = () => {
   
   const [escalateDialog, setEscalateDialog] = useState(false);
   const [releaseDialog, setReleaseDialog] = useState(false);
+  
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const fetchData = async () => {
     try {
@@ -64,6 +69,23 @@ const PVTemporaryStockPage = () => {
     item.seizureNumber?.toLowerCase().includes(search.toLowerCase()) ||
     item.taxpayerName?.toLowerCase().includes(search.toLowerCase())
   );
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, activeTab]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const paginatedStock = useMemo(() => {
+    return filteredStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [filteredStock, page, rowsPerPage]);
 
   const handleDownloadSeizureNote = async (item) => {
     try {
@@ -199,7 +221,7 @@ const PVTemporaryStockPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStock.map(item => {
+                {paginatedStock.map(item => {
                   const daysLeft = activeTab === 'active' ? calculateDaysLeft(item.dateTimeSeized) : null;
                   
                   return (
@@ -251,6 +273,24 @@ const PVTemporaryStockPage = () => {
                 })}
               </tbody>
             </table>
+            <TablePagination
+              rowsPerPageOptions={[10, 20, 50, 100]}
+              component="div"
+              count={filteredStock.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{
+                borderTop: '1px solid var(--gray-200)',
+                fontFamily: 'var(--font-body)',
+                '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 500,
+                  fontSize: '13px'
+                }
+              }}
+            />
           </div>
         )}
       </div>
