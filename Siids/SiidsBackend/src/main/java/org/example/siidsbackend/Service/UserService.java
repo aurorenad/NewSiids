@@ -44,7 +44,7 @@ public class UserService {
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     private User getSingleUser(String username) {
-        return repo.findByUsername(username);
+        return repo.findByUsername(username).orElse(null);
     }
 
     public User register(User user) {

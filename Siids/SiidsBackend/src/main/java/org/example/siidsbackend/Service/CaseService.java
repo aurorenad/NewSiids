@@ -74,7 +74,7 @@ public class CaseService {
 
         // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED status
         if (existingCase.getCreatedBy() == null || !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAdmin = user != null && "Admin".equals(user.getRole());
             if (!isAdmin) {
                 throw new RuntimeException("Only case creator or Admin can edit the case");
@@ -116,7 +116,7 @@ public class CaseService {
             throw new IllegalArgumentException("Employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findAll().stream()
                     .map(this::mapToCaseResponseDTO)
@@ -133,7 +133,7 @@ public class CaseService {
             throw new IllegalArgumentException("Case ID and Employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findById(caseId)
                     .map(this::mapToCaseResponseDTO);
@@ -158,7 +158,7 @@ public class CaseService {
                 existingCase.getCreatedBy().getEmployeeId().equals(employeeId);
 
         if (!isCreator) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAuthorizedRole = user != null && (
                     "Admin".equals(user.getRole()) ||
                     "DirectorIntelligence".equals(user.getRole()) ||
@@ -188,7 +188,7 @@ public class CaseService {
             throw new IllegalArgumentException("Case number and employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findByCaseNum(caseNum)
                     .map(this::mapToCaseResponseDTO);
@@ -205,7 +205,7 @@ public class CaseService {
             throw new IllegalArgumentException("Status and employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findByStatus(status).stream()
                     .map(this::mapToCaseResponseDTO)

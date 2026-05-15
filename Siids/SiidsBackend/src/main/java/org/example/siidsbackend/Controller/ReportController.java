@@ -301,7 +301,7 @@ public class ReportController {
                     .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
             // Check if employee is Admin
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAdmin = user != null && "Admin".equals(user.getRole());
 
             boolean hasAccess = isAdmin || report.getCreatedBy().getEmployeeId().equals(employeeId) ||
@@ -594,7 +594,7 @@ public class ReportController {
                                     report.getInvestigationOfficer().getEmployeeId().equals(employeeId));
 
             if (!hasAccess) {
-                org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+                org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
                 if (user != null && "Admin".equals(user.getRole())) {
                     hasAccess = true;
                 }
@@ -766,7 +766,7 @@ public class ReportController {
         }
 
         // Check if employee has a privileged role
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null) {
             String role = user.getRole();
             if ("Admin".equals(role) || "DirectorIntelligence".equals(role) ||

@@ -18,5 +18,5 @@ public class SeizureNoteRequestDTO {
     private String goodsDescription;
     private String seizureReason;
     private LocalDateTime dateTimeSeized;
-    private String officerSignatureBase64;
+    private String authorizationPassword;
 }

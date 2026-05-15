@@ -11,9 +11,11 @@ import org.example.siidsbackend.Repository.PVDocumentRepository;
 import org.example.siidsbackend.Repository.ReleaseNoteRepository;
 import org.example.siidsbackend.Repository.SeizureNoteRepository;
 import org.example.siidsbackend.Repository.StockRepository;
+import org.example.siidsbackend.Repository.UserRepo;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.Optional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +32,8 @@ public class PhysicalStockService {
     private final WebSocketNotificationService notificationService;
     private final PdfService pdfService;
     private final org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
+    private final UserRepo userRepo;
+    private final PasswordEncoder passwordEncoder;
 
     public PhysicalStockService(SeizureNoteRepository seizureNoteRepository,
                                 PVDocumentRepository pvDocumentRepository,
@@ -39,7 +43,9 @@ public class PhysicalStockService {
                                 StockAuditService auditService,
                                 WebSocketNotificationService notificationService,
                                 PdfService pdfService,
-                                org.example.siidsbackend.Repository.EmployeeRepo employeeRepo) {
+                                org.example.siidsbackend.Repository.EmployeeRepo employeeRepo,
+                                UserRepo userRepo,
+                                PasswordEncoder passwordEncoder) {
         this.seizureNoteRepository = seizureNoteRepository;
         this.pvDocumentRepository = pvDocumentRepository;
         this.releaseNoteRepository = releaseNoteRepository;
@@ -49,6 +55,8 @@ public class PhysicalStockService {
         this.notificationService = notificationService;
         this.pdfService = pdfService;
         this.employeeRepo = employeeRepo;
+        this.userRepo = userRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public Employee getEmployeeByUsername(String username) {
@@ -158,6 +166,14 @@ public class PhysicalStockService {
 
     @Transactional
     public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
+        // Password-based authorization
+        User user = userRepo.findByUsername(currentUser.getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("User account not found for current employee"));
+
+        if (dto.getAuthorizationPassword() == null || !passwordEncoder.matches(dto.getAuthorizationPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid authorization password");
+        }
+
         SeizureNote note = new SeizureNote();
         note.setSeizureNumber(generateNextSeizureNumber());
         
@@ -200,7 +216,8 @@ public class PhysicalStockService {
         note.setDateTimeSeized(dto.getDateTimeSeized() != null ? dto.getDateTimeSeized() : LocalDateTime.now());
         note.setPvInCharge(currentUser);
         note.setStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
-        note.setOfficerSignaturePath(dto.getOfficerSignatureBase64());
+        // Note: Officer digital signature is verified via password above
+        note.setOfficerSignaturePath("Digital Signature verified via Password");
 
         SeizureNote saved = seizureNoteRepository.save(note);
         auditService.logAction(saved.getSeizureNumber(), "CREATED", "Added to Temporary Stock", currentUser);

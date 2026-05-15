@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import SignatureCanvas from 'react-signature-canvas';
 import { stockApi } from '../../api/stockApi';
 import { CaseService } from '../../api/Axios/caseApi';
 import { toast } from 'sonner';
@@ -51,6 +50,7 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     goodsDescription: '',
     seizureReason: '',
     dateTimeSeized: new Date().toISOString().split('T')[0],
+    authorizationPassword: '',
   });
   const [showRep, setShowRep] = useState(false);
   const [nextRef, setNextRef] = useState('');
@@ -128,33 +128,23 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
   const handleNext = () => setStep(2);
   const handleBack = () => setStep(1);
 
-  const clearSignature = () => {
-    sigCanvas.current.clear();
-    setSignatureData(null);
-  };
-
-  const saveSignature = () => {
-    if (sigCanvas.current.isEmpty()) {
-      toast.error('Please provide a signature');
-      return false;
-    }
-    const dataUrl = sigCanvas.current.getCanvas().toDataURL('image/png');
-    setSignatureData(dataUrl);
-    return true;
-  };
+  // const handleNext = () => setStep(2);
+  // const handleBack = () => setStep(1);
 
   const handleSubmit = async () => {
     if (!formData.goodsDescription) {
       toast.error('Please provide a Goods Description');
       return;
     }
-    if (!saveSignature()) return;
+    if (!formData.authorizationPassword) {
+      toast.error('Please enter your password to authorize');
+      return;
+    }
     
     try {
       await stockApi.createSeizureNote({
         ...formData,
         dateTimeSeized: `${formData.dateTimeSeized}T00:00:00`,
-        officerSignatureBase64: sigCanvas.current.getCanvas().toDataURL('image/png')
       });
       toast.success('Seizure Note created successfully');
       onSuccess();
@@ -414,18 +404,30 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
 
             {step === 2 && (
               <>
-                <p style={{ font: '14px var(--font-body)', color: 'var(--gray-500)', marginBottom: 16 }}>
-                  Please review the details and sign below to officially register these goods into Temporary Stock.
-                </p>
-                <div style={{ border: '1px solid var(--gray-300)', borderRadius: 8, background: '#FFF' }}>
-                  <SignatureCanvas 
-                    ref={sigCanvas} 
-                    penColor="#0D47A1"
-                    canvasProps={{ width: 550, height: 200, className: 'sigCanvas' }} 
-                  />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-                  <button className="btn-ghost btn-sm" onClick={clearSignature}>Clear Signature</button>
+                <div style={{ background: 'var(--rra-blue-tint)', padding: 20, borderRadius: 12, border: '1px solid var(--rra-blue-tint-2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ClipboardIcon style={{ width: 20, color: 'var(--rra-blue)' }} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--gray-900)' }}>Document Authorization</h4>
+                      <p style={{ margin: 0, fontSize: 12, color: 'var(--gray-500)' }}>Enter your account password to digitally sign this seizure note</p>
+                    </div>
+                  </div>
+
+                  <div className="form-field" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Account Password <span className="required">*</span></label>
+                    <input 
+                      type="password" 
+                      className="form-control" 
+                      placeholder="••••••••"
+                      value={formData.authorizationPassword} 
+                      onChange={e => setFormData({...formData, authorizationPassword: e.target.value})} 
+                    />
+                    <p style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 6, fontStyle: 'italic' }}>
+                      By entering your password, you acknowledge and authorize the seizure of goods as described in the previous step.
+                    </p>
+                  </div>
                 </div>
               </>
             )}
