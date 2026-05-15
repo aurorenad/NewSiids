@@ -120,6 +120,7 @@ public class PhysicalStockService {
 
     public List<SeizureNote> getTemporaryStock() {
         List<SeizureNote> notes = seizureNoteRepository.findByStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
+        notes.addAll(seizureNoteRepository.findByStatus(PhysicalStockStatus.RETURNED_FOR_CORRECTION));
         List<Stock> legacyStocks = stockRepository.findByStatusIsNullOrStatus("ACTIVE");
         if (legacyStocks != null) {
             for (Stock s : legacyStocks) {
@@ -157,6 +158,39 @@ public class PhysicalStockService {
         SeizureNote saved = seizureNoteRepository.save(note);
         auditService.logAction(saved.getSeizureNumber(), "CREATED", "Added to Temporary Stock", currentUser);
         return saved;
+    }
+
+    @Transactional
+    public void returnForCorrection(Integer pvId, String reason, Employee stockManager) {
+        PVDocument pv = pvDocumentRepository.findById(pvId)
+                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
+
+        SeizureNote note = pv.getSeizureNote();
+        note.setStatus(PhysicalStockStatus.RETURNED_FOR_CORRECTION);
+        seizureNoteRepository.save(note);
+
+        // Notify the Surveillance Officer
+        NotificationDTO notification = new NotificationDTO();
+        notification.setMessage("Seizure Note " + note.getSeizureNumber() + " returned for correction. Reason: " + reason);
+        notification.setSenderName(stockManager.getGivenName() + " " + stockManager.getFamilyName());
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setNotificationType("SEIZURE_RETURNED");
+
+        if (note.getPvInCharge() != null) {
+            notificationService.sendNotificationToUser(note.getPvInCharge().getEmployeeId(), notification);
+        }
+
+        auditService.logAction(note.getSeizureNumber(), "RETURNED_FOR_CORRECTION", "Returned by Stock Manager. Reason: " + reason, stockManager);
+        
+        // Remove references in ReleaseNotes to allow deletion
+        List<ReleaseNote> relatedReleases = releaseNoteRepository.findByPvDocument(pv);
+        for (ReleaseNote release : relatedReleases) {
+            release.setPvDocument(null);
+            releaseNoteRepository.save(release);
+        }
+
+        // Remove the PV Document as it's no longer in Main Stock
+        pvDocumentRepository.delete(pv);
     }
 
     @Transactional

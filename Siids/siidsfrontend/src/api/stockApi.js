@@ -14,6 +14,7 @@ export const stockApi = {
     downloadPVPdf: (id) => axios.get(`/api/stock/main/${id}/pv-pdf`, { responseType: 'blob' }),
     requestRelease: (id, data) => axios.post(`/api/stock/main/${id}/release-notes`, data),
     requestEdit: (id, data) => axios.post(`/api/stock/main/${id}/request-edit`, data),
+    returnForCorrection: (id, reason) => axios.post(`/api/stock/main/${id}/return-for-correction`, { reason }),
 
     // PRSO APPROVALS
     getPendingApprovals: () => axios.get('/api/stock/main/pending-approvals'),

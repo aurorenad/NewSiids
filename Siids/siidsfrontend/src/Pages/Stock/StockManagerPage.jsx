@@ -14,7 +14,7 @@ const StockManagerPage = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [releaseDialog, setReleaseDialog] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [returnDialog, setReturnDialog] = useState(false);
   
   // Search and Sort State
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +68,7 @@ const StockManagerPage = () => {
 
   const handleModalSuccess = () => {
     setReleaseDialog(false);
-    setEditModalOpen(false);
+    setReturnDialog(false);
     setDrawerOpen(false);
     fetchStock();
   };
@@ -192,7 +192,7 @@ const StockManagerPage = () => {
         title={`PV Document ${selectedItem?.pvNumber}`}
         footerActions={
           <>
-            <button className="btn-base btn-outline-blue" onClick={() => { setDrawerOpen(false); setEditModalOpen(true); }}>Request Edit</button>
+            <button className="btn-base btn-danger" onClick={() => { setDrawerOpen(false); setReturnDialog(true); }}>Return for Correction</button>
             <button className="btn-base btn-primary" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Request Release</button>
           </>
         }
@@ -245,13 +245,25 @@ const StockManagerPage = () => {
         confirmLabel="Send Request to PRSO"
       />
 
-      <RequestEditModal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
-        onSuccess={handleModalSuccess}
-        pvId={selectedItem?.id}
-        pvNumber={selectedItem?.pvNumber}
+      <ConfirmDialog
+        isOpen={returnDialog}
+        onClose={() => setReturnDialog(false)}
+        onConfirm={async (reason) => {
+          try {
+            await stockApi.returnForCorrection(selectedItem.id, reason);
+            toast.success('Seizure note returned to officer for correction');
+            handleModalSuccess();
+          } catch (err) {
+            toast.error('Failed to return for correction');
+          }
+        }}
+        title="Return for Correction"
+        body="This will move the item back to Temporary Stock and notify the Surveillance Officer to correct the seizure note. The current PV Document will be deleted."
+        variant="danger"
+        requiresReason={true}
+        confirmLabel="Return to Officer"
       />
+
     </div>
   );
 };
