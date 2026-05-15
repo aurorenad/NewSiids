@@ -47,6 +47,12 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.getSeizureHistory(physicalStockService.getEmployeeByUsername(username)));
     }
 
+    @GetMapping("/temporary/next-reference")
+    @PreAuthorize("hasAnyAuthority('Surveillance', 'surveillance', 'SURVEILLANCE', 'SURVEILLANCE_OFFICER', 'ROLE_SURVEILLANCE', 'ROLE_SURVEILLANCE_OFFICER', 'Admin', 'admin')")
+    public ResponseEntity<Map<String, String>> getNextReference() {
+        return ResponseEntity.ok(Map.of("nextReference", physicalStockService.generateNextSeizureNumber()));
+    }
+
     @PostMapping("/temporary/seizure-notes")
     @PreAuthorize("hasAnyAuthority('Surveillance', 'surveillance', 'SURVEILLANCE', 'SURVEILLANCE_OFFICER', 'ROLE_SURVEILLANCE', 'ROLE_SURVEILLANCE_OFFICER', 'Admin', 'admin')")
     public ResponseEntity<?> createSeizureNote(@RequestBody SeizureNoteRequestDTO dto) {

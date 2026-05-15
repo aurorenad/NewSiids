@@ -5,6 +5,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { stockApi } from '../../api/stockApi';
 import { CaseService } from '../../api/Axios/caseApi';
 import { toast } from 'sonner';
+import { MagnifyingGlassIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 
 import Portal from './Portal';
 
@@ -23,21 +24,27 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     seizureReason: '',
     dateTimeSeized: new Date().toISOString().split('T')[0],
   });
+  const [nextRef, setNextRef] = useState('');
+  const [caseSearch, setCaseSearch] = useState('');
 
   React.useEffect(() => {
     if (isOpen) {
-      const fetchCases = async () => {
+      const fetchInitialData = async () => {
         try {
           setIsLoadingCases(true);
-          const res = await CaseService.getMyCases();
-          setCases(res.data || []);
+          const [casesRes, refRes] = await Promise.all([
+            CaseService.getMyCases(),
+            stockApi.getNextReference()
+          ]);
+          setCases(casesRes.data || []);
+          setNextRef(refRes.data?.nextReference || '');
         } catch (err) {
-          console.error('Failed to fetch cases:', err);
+          console.error('Failed to fetch initial data:', err);
         } finally {
           setIsLoadingCases(false);
         }
       };
-      fetchCases();
+      fetchInitialData();
     }
   }, [isOpen]);
 
@@ -100,12 +107,26 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     }
   };
 
+  const filteredCases = cases.filter(c => 
+    c.caseNum.toLowerCase().includes(caseSearch.toLowerCase()) ||
+    (c.taxPayer?.name || '').toLowerCase().includes(caseSearch.toLowerCase()) ||
+    (c.taxPayer?.tin || '').toLowerCase().includes(caseSearch.toLowerCase())
+  );
+
   return (
     <Portal>
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-card" onClick={e => e.stopPropagation()}>
           <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--gray-100)' }}>
-            <h2 style={{ font: '600 18px var(--font-display)', margin: 0 }}>Create Seizure Note</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ font: '600 18px var(--font-display)', margin: 0 }}>Create Seizure Note</h2>
+              {nextRef && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--rra-blue-tint)', padding: '4px 10px', borderRadius: 6 }}>
+                  <ClipboardIcon style={{ width: 14, height: 14, color: 'var(--rra-blue)' }} />
+                  <span style={{ font: '600 12px var(--font-mono)', color: 'var(--rra-blue)' }}>{nextRef}</span>
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <div style={{ flex: 1, height: 4, background: 'var(--rra-blue)', borderRadius: 2 }} />
               <div style={{ flex: 1, height: 4, background: step === 2 ? 'var(--rra-blue)' : 'var(--gray-200)', borderRadius: 2 }} />
@@ -116,7 +137,18 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
             {step === 1 && (
               <>
                 <div className="form-field">
-                  <label className="form-label">Investigation Case Reference (Optional)</label>
+                  <label className="form-label">Search & Link Investigation Case (Smart Lookup)</label>
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <MagnifyingGlassIcon style={{ position: 'absolute', left: 12, top: 11, width: 16, color: 'var(--gray-400)' }} />
+                    <input 
+                      type="text"
+                      placeholder="Search by case number, taxpayer name or TIN..."
+                      className="form-control"
+                      style={{ paddingLeft: 36, fontSize: '13px' }}
+                      value={caseSearch}
+                      onChange={e => setCaseSearch(e.target.value)}
+                    />
+                  </div>
                   <select 
                     className="form-control" 
                     value={formData.caseRef} 
@@ -132,14 +164,17 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                       });
                     }}
                   >
-                    <option value="">-- No Case Link --</option>
-                    {cases.map(c => (
+                    <option value="">-- Select from results --</option>
+                    {filteredCases.map(c => (
                       <option key={c.id} value={c.caseNum}>
                         {c.caseNum} - {c.taxPayer?.name || 'Unknown'}
                       </option>
                     ))}
                   </select>
                   {isLoadingCases && <p style={{ fontSize: 11, color: 'var(--rra-blue)', marginTop: 4 }}>Loading cases...</p>}
+                  {!isLoadingCases && filteredCases.length === 0 && caseSearch && (
+                    <p style={{ fontSize: 11, color: 'var(--rra-orange)', marginTop: 4 }}>No cases match your search.</p>
+                  )}
                 </div>
                 <div className="form-grid-2">
                   <div className="form-field">

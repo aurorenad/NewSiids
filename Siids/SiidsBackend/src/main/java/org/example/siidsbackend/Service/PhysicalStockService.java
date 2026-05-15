@@ -136,14 +136,10 @@ public class PhysicalStockService {
         return seizureNoteRepository.findByPvInChargeOrderByCreatedAtDesc(officer);
     }
 
-    @Transactional
-    public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
-        SeizureNote note = new SeizureNote();
-        
-        // Generate Sequential Seizure Number: SN-YYYY-XXXXX
+    public String generateNextSeizureNumber() {
         String currentYear = String.valueOf(LocalDateTime.now().getYear());
         String nextNumber = "00001";
-        
+
         java.util.Optional<SeizureNote> lastNote = seizureNoteRepository.findFirstByOrderByCreatedAtDesc();
         if (lastNote.isPresent()) {
             String lastNum = lastNote.get().getSeizureNumber();
@@ -153,12 +149,17 @@ public class PhysicalStockService {
                     int nextSeq = Integer.parseInt(sequencePart) + 1;
                     nextNumber = String.format("%05d", nextSeq);
                 } catch (Exception e) {
-                    // Fallback if parsing fails
-                    nextNumber = UUID.randomUUID().toString().substring(0, 5).toUpperCase();
+                    nextNumber = java.util.UUID.randomUUID().toString().substring(0, 5).toUpperCase();
                 }
             }
         }
-        note.setSeizureNumber("SN-" + currentYear + "-" + nextNumber);
+        return "SN-" + currentYear + "-" + nextNumber;
+    }
+
+    @Transactional
+    public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
+        SeizureNote note = new SeizureNote();
+        note.setSeizureNumber(generateNextSeizureNumber());
         
         if (dto.getCaseRef() != null && !dto.getCaseRef().isEmpty()) {
             Case c = caseRepo.findByCaseNum(dto.getCaseRef()).orElse(null);
