@@ -101,6 +101,27 @@ const PVTemporaryStockPage = () => {
     return 'PENDING';
   };
 
+  const calculateDaysLeft = (dateSeized) => {
+    if (!dateSeized) return null;
+    const seizedDate = new Date(dateSeized);
+    const dueDate = new Date(seizedDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+    const today = new Date();
+    
+    // Reset hours to compare dates only
+    today.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = dueDate - today;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const getDaysLeftColor = (days) => {
+    if (days <= 5) return 'var(--rra-red)';
+    if (days <= 10) return 'var(--rra-yellow-dark)';
+    return 'var(--gray-500)';
+  };
+
   return (
     <div style={{ padding: '32px 40px', background: 'var(--surface-page)', minHeight: '100vh' }}>
       <Toaster position="top-right" richColors />
@@ -172,49 +193,62 @@ const PVTemporaryStockPage = () => {
                   <th>Taxpayer</th>
                   <th>{activeTab === 'active' ? 'Status' : 'Outcome'}</th>
                   <th>Date Seized</th>
+                  {activeTab === 'active' && <th>Days Left</th>}
                   {activeTab === 'history' && <th>Date Actioned</th>}
                   <th style={{ textAlign: 'center' }}>Seizure Note</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredStock.map(item => (
-                  <tr key={item.id}>
-                    <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
-                      {item.seizureNumber}
-                    </td>
-                    <td>{item.taxpayerName || 'Unknown'}</td>
-                    <td>
-                      <span style={{
-                        padding: '4px 8px', borderRadius: 4, 
-                        ...getStatusStyle(item.status),
-                        font: '600 11px var(--font-display)', textTransform: 'uppercase'
-                      }}>
-                        {activeTab === 'active' ? item.status.replace(/_/g, ' ') : getOutcome(item.status)}
-                      </span>
-                    </td>
-                    <td className="date">{item.dateTimeSeized ? format(new Date(item.dateTimeSeized), 'dd MMM yyyy') : '-'}</td>
-                    {activeTab === 'history' && (
-                      <td className="date">
-                        {item.actionedAt ? format(new Date(item.actionedAt), 'dd MMM yyyy') : '-'}
+                {filteredStock.map(item => {
+                  const daysLeft = activeTab === 'active' ? calculateDaysLeft(item.dateTimeSeized) : null;
+                  
+                  return (
+                    <tr key={item.id}>
+                      <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
+                        {item.seizureNumber}
                       </td>
-                    )}
-                    <td style={{ textAlign: 'center' }}>
-                      <button 
-                        className="btn-base" 
-                        style={{ 
-                          padding: '6px 12px', 
-                          fontSize: '12px', 
-                          color: 'var(--rra-blue)', 
-                          border: '1px solid var(--rra-blue-tint)',
-                          background: 'var(--rra-blue-tint-light)'
-                        }}
-                        onClick={() => handleDownloadSeizureNote(item)}
-                      >
-                        Download PDF
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      <td>{item.taxpayerName || 'Unknown'}</td>
+                      <td>
+                        <span style={{
+                          padding: '4px 8px', borderRadius: 4, 
+                          ...getStatusStyle(item.status),
+                          font: '600 11px var(--font-display)', textTransform: 'uppercase'
+                        }}>
+                          {activeTab === 'active' ? item.status.replace(/_/g, ' ') : getOutcome(item.status)}
+                        </span>
+                      </td>
+                      <td className="date">{item.dateTimeSeized ? format(new Date(item.dateTimeSeized), 'dd MMM yyyy') : '-'}</td>
+                      {activeTab === 'active' && (
+                        <td style={{ 
+                          fontWeight: daysLeft <= 5 ? '700' : '500',
+                          color: getDaysLeftColor(daysLeft)
+                        }}>
+                          {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days` : 'Overdue') : '-'}
+                        </td>
+                      )}
+                      {activeTab === 'history' && (
+                        <td className="date">
+                          {item.actionedAt ? format(new Date(item.actionedAt), 'dd MMM yyyy') : '-'}
+                        </td>
+                      )}
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          className="btn-base" 
+                          style={{ 
+                            padding: '6px 12px', 
+                            fontSize: '12px', 
+                            color: 'var(--rra-blue)', 
+                            border: '1px solid var(--rra-blue-tint)',
+                            background: 'var(--rra-blue-tint-light)'
+                          }}
+                          onClick={() => handleDownloadSeizureNote(item)}
+                        >
+                          Download PDF
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
