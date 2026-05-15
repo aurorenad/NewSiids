@@ -11,9 +11,9 @@ const NewSurveillenceCase = () => {
     const editData = location.state?.caseData;
 
     const [formData, setFormData] = useState({
-        tin: editData?.taxPayer?.tin || editData?.tin || '',
-        taxPayerName: editData?.taxPayer?.name || editData?.taxPayerName || '',
-        taxPayerType: editData?.taxType || 'Individual',
+        tin: editData?.taxPayer?.tin || '',
+        taxPayerName: editData?.taxPayer?.name || '',
+        taxType: editData?.taxType || 'None',
         taxPayerAddress: editData?.taxPayer?.address || '',
         taxPeriod: editData?.taxPeriod || '',
         reportedDate: editData?.createdAt ? new Date(editData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -65,22 +65,22 @@ const NewSurveillenceCase = () => {
     useEffect(() => {
         if (location.state?.caseData) {
             const { caseData } = location.state;
-            const caseSource = caseData.informerId ? 'identified' :
-                caseData.referringOfficerId ? 'referred' : 'anonymous';
+            const caseSource = caseData.informer ? 'identified' :
+                caseData.referringDepartment ? 'referred' : 'anonymous';
 
             setFormData({
-                tin: caseData.tin || '',
-                taxPayerName: caseData.taxPayerName || '',
-                taxPayerType: caseData.taxPayerType || 'Individual',
-                taxPayerAddress: caseData.taxPayerAddress || '',
+                tin: caseData.taxPayer?.tin || '',
+                taxPayerName: caseData.taxPayer?.name || '',
+                taxType: caseData.taxType || 'None',
+                taxPayerAddress: caseData.taxPayer?.address || '',
                 taxPeriod: caseData.taxPeriod || '',
-                reportedDate: caseData.reportedDate || new Date().toISOString().split('T')[0],
+                reportedDate: caseData.createdAt ? new Date(caseData.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                 summaryOfInformationCase: caseData.summaryOfInformationCase || '',
                 caseSource: caseSource,
-                informerId: caseData.informerId ? caseData.informerId.toString() : '',
-                informerName: caseData.informerName || '',
-                referringOfficerId: caseData.referringOfficerId || '',
-                referringOfficerName: caseData.referringOfficerName || ''
+                informerId: caseData.informer?.nationalId || '',
+                informerName: caseData.informer?.name || '',
+                referringOfficerId: caseData.referringDepartment || '',
+                referringOfficerName: ''
             });
         }
     }, [location.state, authState.userId]);
@@ -229,7 +229,7 @@ const NewSurveillenceCase = () => {
             const caseData = {
                 tin: formData.tin,
                 taxPayerName: formData.taxPayerName,
-                taxPayerType: formData.taxPayerType,
+                taxType: formData.taxType,
                 taxPayerAddress: formData.taxPayerAddress,
                 taxPeriod: formData.taxPeriod,
                 reportedDate: new Date(formData.reportedDate).toISOString(),
@@ -333,12 +333,11 @@ const NewSurveillenceCase = () => {
                             />
                         </div>
 
-                        {/* Tax Payer Type */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Type</label>
                             <select
-                                name="taxPayerType"
-                                value={formData.taxPayerType}
+                                name="taxType"
+                                value={formData.taxType}
                                 onChange={handleChange}
                                 className="tax-report-form-input"
                             >

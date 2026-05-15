@@ -284,8 +284,8 @@ const SurveillanceOfficer = () => {
                                     return (
                                         <TableRow key={caseItem.caseNum} hover>
                                             <TableCell sx={{ fontWeight: 500 }}>{caseItem.caseNum}</TableCell>
-                                            <TableCell>{caseItem.taxPayer?.tin || caseItem.tin || '-'}</TableCell>
-                                            <TableCell>{caseItem.taxPayer?.name || caseItem.taxPayerName || '-'}</TableCell>
+                                            <TableCell>{caseItem.taxPayer?.tin || '-'}</TableCell>
+                                            <TableCell>{caseItem.taxPayer?.name || '-'}</TableCell>
                                             <TableCell>
                                                 <Chip 
                                                     label={caseItem.status.replace(/_/g, ' ')} 

@@ -42,10 +42,21 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
 
   // Keep formData in sync if initialCaseRef changes while modal is closed
   React.useEffect(() => {
-    if (initialCaseRef) {
-      setFormData(prev => ({ ...prev, caseRef: initialCaseRef }));
+    if (initialCaseRef && cases.length > 0) {
+      const selectedCase = cases.find(c => c.caseNum === initialCaseRef);
+      if (selectedCase) {
+        setFormData(prev => ({
+          ...prev,
+          caseRef: initialCaseRef,
+          taxpayerTin: selectedCase.taxPayer?.tin || prev.taxpayerTin,
+          taxpayerName: selectedCase.taxPayer?.name || prev.taxpayerName,
+          seizureReason: selectedCase.summaryOfInformationCase || prev.seizureReason
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, caseRef: initialCaseRef }));
+      }
     }
-  }, [initialCaseRef]);
+  }, [initialCaseRef, cases]);
 
   if (!isOpen) return null;
 
@@ -113,15 +124,16 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                       setFormData({
                         ...formData, 
                         caseRef: selectedCaseNum,
-                        taxpayerTin: selectedCase?.tin?.taxPayerTIN || formData.taxpayerTin,
-                        taxpayerName: selectedCase?.tin?.taxPayerName || formData.taxpayerName
+                        taxpayerTin: selectedCase?.taxPayer?.tin || '',
+                        taxpayerName: selectedCase?.taxPayer?.name || '',
+                        seizureReason: selectedCase?.summaryOfInformationCase || ''
                       });
                     }}
                   >
                     <option value="">-- No Case Link --</option>
                     {cases.map(c => (
                       <option key={c.id} value={c.caseNum}>
-                        {c.caseNum} - {c.tin?.taxPayerName || 'Unknown'}
+                        {c.caseNum} - {c.taxPayer?.name || 'Unknown'}
                       </option>
                     ))}
                   </select>

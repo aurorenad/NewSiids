@@ -68,11 +68,11 @@ const SurveillanceCaseView = () => {
                 ...response.data,
                 caseNum: response.data.caseNum || caseNum,
                 surveillanceOfficer: response.data.createdByName || 'N/A',
-                taxPayerAddress: response.data.taxPayerAddress || 'Not available',
+                taxPayerAddress: response.data.taxPayer?.address || 'Not available',
                 summaryOfInformationCase: response.data.summaryOfInformationCase || 'No summary provided',
-                taxPayerName: response.data.taxPayerName || 'N/A',
-                tin: response.data.tin || 'N/A',
-                taxPayerType: response.data.taxPayerType || 'N/A',
+                taxPayerName: response.data.taxPayer?.name || 'N/A',
+                tin: response.data.taxPayer?.tin || 'N/A',
+                taxType: response.data.taxType || 'N/A',
                 reportedDate: response.data.createdAt || 'N/A'
             };
 
@@ -233,7 +233,7 @@ const SurveillanceCaseView = () => {
                     </TableRow>
                     <TableRow>
                         <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
-                        <TableCell>{caseData.taxPayerType}</TableCell>
+                        <TableCell>{caseData.taxType}</TableCell>
                     </TableRow>
                     <TableRow>
                         <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
