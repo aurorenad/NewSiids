@@ -10,6 +10,11 @@ public class SeizureNoteRequestDTO {
     private String taxpayerName;
     private String taxpayerAddress;
     private String taxpayerContact;
+    private String taxpayerType; // KNOWN or UNKNOWN
+    private String nationalId;
+    private String physicalDescription;
+    private String representativeName;
+    private String representativeContact;
     private String goodsDescription;
     private String seizureReason;
     private LocalDateTime dateTimeSeized;

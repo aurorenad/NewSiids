@@ -26,6 +26,14 @@ public class SeizureNote {
     private String taxpayerName;
     private String taxpayerAddress;
     private String taxpayerContact;
+    private String taxpayerType; // KNOWN or UNKNOWN
+    private String nationalId;
+    
+    @Column(columnDefinition = "TEXT")
+    private String physicalDescription;
+    
+    private String representativeName;
+    private String representativeContact;
 
     @Column(columnDefinition = "TEXT")
     private String goodsDescription;

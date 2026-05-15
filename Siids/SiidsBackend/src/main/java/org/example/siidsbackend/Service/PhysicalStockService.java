@@ -171,17 +171,28 @@ public class PhysicalStockService {
                 note.setTaxpayerName(c.getTin().getTaxPayerName());
                 note.setTaxpayerAddress(c.getTin().getTaxPayerAddress());
                 note.setTaxpayerContact(c.getTin().getTaxPayerContact());
+                note.setTaxpayerType("KNOWN");
             } else {
                 note.setTaxpayerTin(dto.getTaxpayerTin());
                 note.setTaxpayerName(dto.getTaxpayerName());
                 note.setTaxpayerAddress(dto.getTaxpayerAddress());
                 note.setTaxpayerContact(dto.getTaxpayerContact());
+                note.setTaxpayerType(dto.getTaxpayerType());
             }
+            note.setNationalId(dto.getNationalId());
+            note.setPhysicalDescription(dto.getPhysicalDescription());
+            note.setRepresentativeName(dto.getRepresentativeName());
+            note.setRepresentativeContact(dto.getRepresentativeContact());
         } else {
             note.setTaxpayerTin(dto.getTaxpayerTin());
             note.setTaxpayerName(dto.getTaxpayerName());
             note.setTaxpayerAddress(dto.getTaxpayerAddress());
             note.setTaxpayerContact(dto.getTaxpayerContact());
+            note.setTaxpayerType(dto.getTaxpayerType());
+            note.setNationalId(dto.getNationalId());
+            note.setPhysicalDescription(dto.getPhysicalDescription());
+            note.setRepresentativeName(dto.getRepresentativeName());
+            note.setRepresentativeContact(dto.getRepresentativeContact());
         }
 
         note.setGoodsDescription(dto.getGoodsDescription());
