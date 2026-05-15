@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import SignatureCanvas from 'react-signature-canvas';
 import { stockApi } from '../../api/stockApi';
+import { CaseService } from '../../api/Axios/caseApi';
 import { toast } from 'sonner';
 
 import Portal from './Portal';
@@ -12,6 +13,8 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
   const [signatureData, setSignatureData] = useState(null);
   const sigCanvas = useRef(null);
 
+  const [cases, setCases] = useState([]);
+  const [isLoadingCases, setIsLoadingCases] = useState(false);
   const [formData, setFormData] = useState({
     caseRef: initialCaseRef || '',
     taxpayerTin: '',
@@ -19,6 +22,23 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     goodsDescription: '',
     seizureReason: '',
   });
+
+  React.useEffect(() => {
+    if (isOpen) {
+      const fetchCases = async () => {
+        try {
+          setIsLoadingCases(true);
+          const res = await CaseService.getMyCases();
+          setCases(res.data || []);
+        } catch (err) {
+          console.error('Failed to fetch cases:', err);
+        } finally {
+          setIsLoadingCases(false);
+        }
+      };
+      fetchCases();
+    }
+  }, [isOpen]);
 
   // Keep formData in sync if initialCaseRef changes while modal is closed
   React.useEffect(() => {
@@ -48,8 +68,8 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
   };
 
   const handleSubmit = async () => {
-    if (!formData.caseRef || !formData.goodsDescription) {
-      toast.error('Please fill in all required fields (Case Reference and Goods Description)');
+    if (!formData.goodsDescription) {
+      toast.error('Please provide a Goods Description');
       return;
     }
     if (!saveSignature()) return;
@@ -83,8 +103,29 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
             {step === 1 && (
               <>
                 <div className="form-field">
-                  <label className="form-label">Case Reference <span className="required">*</span></label>
-                  <input className="form-control" value={formData.caseRef} onChange={e => setFormData({...formData, caseRef: e.target.value})} placeholder="e.g. CS/23/10/45" />
+                  <label className="form-label">Investigation Case Reference (Optional)</label>
+                  <select 
+                    className="form-control" 
+                    value={formData.caseRef} 
+                    onChange={e => {
+                      const selectedCaseNum = e.target.value;
+                      const selectedCase = cases.find(c => c.caseNum === selectedCaseNum);
+                      setFormData({
+                        ...formData, 
+                        caseRef: selectedCaseNum,
+                        taxpayerTin: selectedCase?.tin?.taxPayerTIN || formData.taxpayerTin,
+                        taxpayerName: selectedCase?.tin?.taxPayerName || formData.taxpayerName
+                      });
+                    }}
+                  >
+                    <option value="">-- No Case Link --</option>
+                    {cases.map(c => (
+                      <option key={c.id} value={c.caseNum}>
+                        {c.caseNum} - {c.tin?.taxPayerName || 'Unknown'}
+                      </option>
+                    ))}
+                  </select>
+                  {isLoadingCases && <p style={{ fontSize: 11, color: 'var(--rra-blue)', marginTop: 4 }}>Loading cases...</p>}
                 </div>
                 <div className="form-grid-2">
                   <div className="form-field">

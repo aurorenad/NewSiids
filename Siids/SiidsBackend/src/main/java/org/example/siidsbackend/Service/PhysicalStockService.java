@@ -139,15 +139,48 @@ public class PhysicalStockService {
     @Transactional
     public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
         SeizureNote note = new SeizureNote();
-        note.setSeizureNumber("SN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        
+        // Generate Sequential Seizure Number: SN-YYYY-XXXXX
+        String currentYear = String.valueOf(LocalDateTime.now().getYear());
+        String nextNumber = "00001";
+        
+        java.util.Optional<SeizureNote> lastNote = seizureNoteRepository.findFirstByOrderByCreatedAtDesc();
+        if (lastNote.isPresent()) {
+            String lastNum = lastNote.get().getSeizureNumber();
+            if (lastNum != null && lastNum.startsWith("SN-" + currentYear + "-")) {
+                try {
+                    String sequencePart = lastNum.substring(lastNum.lastIndexOf("-") + 1);
+                    int nextSeq = Integer.parseInt(sequencePart) + 1;
+                    nextNumber = String.format("%05d", nextSeq);
+                } catch (Exception e) {
+                    // Fallback if parsing fails
+                    nextNumber = UUID.randomUUID().toString().substring(0, 5).toUpperCase();
+                }
+            }
+        }
+        note.setSeizureNumber("SN-" + currentYear + "-" + nextNumber);
         
         if (dto.getCaseRef() != null && !dto.getCaseRef().isEmpty()) {
             Case c = caseRepo.findByCaseNum(dto.getCaseRef()).orElse(null);
             note.setRelatedCase(c);
+            
+            // Auto-inherit taxpayer info from case if not provided manually
+            if ((dto.getTaxpayerTin() == null || dto.getTaxpayerTin().isEmpty()) && c != null && c.getTin() != null) {
+                note.setTaxpayerTin(c.getTin().getTaxPayerTIN());
+            } else {
+                note.setTaxpayerTin(dto.getTaxpayerTin());
+            }
+            
+            if ((dto.getTaxpayerName() == null || dto.getTaxpayerName().isEmpty()) && c != null && c.getTin() != null) {
+                note.setTaxpayerName(c.getTin().getTaxPayerName());
+            } else {
+                note.setTaxpayerName(dto.getTaxpayerName());
+            }
+        } else {
+            note.setTaxpayerTin(dto.getTaxpayerTin());
+            note.setTaxpayerName(dto.getTaxpayerName());
         }
 
-        note.setTaxpayerTin(dto.getTaxpayerTin());
-        note.setTaxpayerName(dto.getTaxpayerName());
         note.setGoodsDescription(dto.getGoodsDescription());
         note.setSeizureReason(dto.getSeizureReason());
         note.setDateTimeSeized(LocalDateTime.now());
