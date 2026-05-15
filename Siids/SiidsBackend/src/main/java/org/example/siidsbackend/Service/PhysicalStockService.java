@@ -168,18 +168,20 @@ public class PhysicalStockService {
             // Auto-inherit taxpayer info from case if not provided manually
             if ((dto.getTaxpayerTin() == null || dto.getTaxpayerTin().isEmpty()) && c != null && c.getTin() != null) {
                 note.setTaxpayerTin(c.getTin().getTaxPayerTIN());
+                note.setTaxpayerName(c.getTin().getTaxPayerName());
+                note.setTaxpayerAddress(c.getTin().getTaxPayerAddress());
+                note.setTaxpayerContact(c.getTin().getTaxPayerContact());
             } else {
                 note.setTaxpayerTin(dto.getTaxpayerTin());
-            }
-            
-            if ((dto.getTaxpayerName() == null || dto.getTaxpayerName().isEmpty()) && c != null && c.getTin() != null) {
-                note.setTaxpayerName(c.getTin().getTaxPayerName());
-            } else {
                 note.setTaxpayerName(dto.getTaxpayerName());
+                note.setTaxpayerAddress(dto.getTaxpayerAddress());
+                note.setTaxpayerContact(dto.getTaxpayerContact());
             }
         } else {
             note.setTaxpayerTin(dto.getTaxpayerTin());
             note.setTaxpayerName(dto.getTaxpayerName());
+            note.setTaxpayerAddress(dto.getTaxpayerAddress());
+            note.setTaxpayerContact(dto.getTaxpayerContact());
         }
 
         note.setGoodsDescription(dto.getGoodsDescription());

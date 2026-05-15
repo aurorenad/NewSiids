@@ -24,6 +24,8 @@ public class SeizureNote {
 
     private String taxpayerTin;
     private String taxpayerName;
+    private String taxpayerAddress;
+    private String taxpayerContact;
 
     @Column(columnDefinition = "TEXT")
     private String goodsDescription;

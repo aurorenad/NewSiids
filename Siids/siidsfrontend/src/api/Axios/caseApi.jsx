@@ -99,6 +99,10 @@ export const CaseService = {
 
     deleteCase: (id) => {
         return caseApi.delete(`/api/cases/${id}`);
+    },
+    
+    findTaxPayerByTIN: (tin) => {
+        return caseApi.get(`/api/taxpayers/tin/${tin}`);
     }
 };
 export const ReportApi = {

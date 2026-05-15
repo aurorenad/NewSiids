@@ -8,6 +8,27 @@ import { toast } from 'sonner';
 import { MagnifyingGlassIcon, ClipboardIcon } from '@heroicons/react/24/outline';
 
 import Portal from './Portal';
+import { CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
+
+const GOODS_TYPES = [
+  'Electronics',
+  'Vehicles',
+  'Textiles / Clothing',
+  'Food / Perishables',
+  'Construction Materials',
+  'Spare Parts',
+  'Other (Specify)'
+];
+
+const SEIZURE_REASONS = [
+  'Undeclared Goods',
+  'Under-invoicing',
+  'Misclassification',
+  'Prohibited Items',
+  'Counterfeit Goods',
+  'Expired Permits',
+  'Other (Specify)'
+];
 
 const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) => {
   const [step, setStep] = useState(1);
@@ -20,12 +41,16 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     caseRef: initialCaseRef || '',
     taxpayerTin: '',
     taxpayerName: '',
+    taxpayerAddress: '',
+    taxpayerContact: '',
     goodsDescription: '',
     seizureReason: '',
     dateTimeSeized: new Date().toISOString().split('T')[0],
   });
   const [nextRef, setNextRef] = useState('');
   const [caseSearch, setCaseSearch] = useState('');
+  const [isLookingUpTin, setIsLookingUpTin] = useState(false);
+  const [tinFound, setTinFound] = useState(false);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -58,13 +83,39 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
           caseRef: initialCaseRef,
           taxpayerTin: selectedCase.taxPayer?.tin || prev.taxpayerTin,
           taxpayerName: selectedCase.taxPayer?.name || prev.taxpayerName,
+          taxpayerAddress: selectedCase.taxPayer?.address || prev.taxpayerAddress,
+          taxpayerContact: selectedCase.taxPayer?.contact || prev.taxpayerContact,
           seizureReason: selectedCase.summaryOfInformationCase || prev.seizureReason
         }));
+        if (selectedCase.taxPayer?.tin) setTinFound(true);
       } else {
         setFormData(prev => ({ ...prev, caseRef: initialCaseRef }));
       }
     }
   }, [initialCaseRef, cases]);
+
+  const handleTinLookup = async (tin) => {
+    if (!tin || tin.length < 9) return;
+    try {
+      setIsLookingUpTin(true);
+      const res = await CaseService.findTaxPayerByTIN(tin);
+      if (res.data) {
+        setFormData(prev => ({
+          ...prev,
+          taxpayerName: res.data.taxPayerName || '',
+          taxpayerAddress: res.data.taxPayerAddress || '',
+          taxpayerContact: res.data.taxPayerContact || ''
+        }));
+        setTinFound(true);
+        toast.success('Taxpayer details auto-filled');
+      }
+    } catch (err) {
+      console.log('TIN not found in local registry');
+      setTinFound(false);
+    } finally {
+      setIsLookingUpTin(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -176,23 +227,119 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                     <p style={{ fontSize: 11, color: 'var(--rra-orange)', marginTop: 4 }}>No cases match your search.</p>
                   )}
                 </div>
-                <div className="form-grid-2">
+
+                <div style={{ background: 'var(--gray-50)', padding: 16, borderRadius: 12, marginBottom: 20, border: '1px solid var(--gray-200)' }}>
                   <div className="form-field">
-                    <label className="form-label">Taxpayer TIN</label>
-                    <input className="form-control" value={formData.taxpayerTin} onChange={e => setFormData({...formData, taxpayerTin: e.target.value})} />
+                    <label className="form-label">Taxpayer TIN <span className="required">*</span></label>
+                    <div style={{ position: 'relative' }}>
+                      <input 
+                        className="form-control" 
+                        placeholder="Enter 9-digit TIN"
+                        value={formData.taxpayerTin} 
+                        onChange={e => {
+                          const val = e.target.value;
+                          setFormData({...formData, taxpayerTin: val});
+                          if (val.length === 9) handleTinLookup(val);
+                          else setTinFound(false);
+                        }} 
+                        onBlur={() => handleTinLookup(formData.taxpayerTin)}
+                      />
+                      <div style={{ position: 'absolute', right: 12, top: 11 }}>
+                        {isLookingUpTin && <ArrowPathIcon className="animate-spin" style={{ width: 18, color: 'var(--rra-blue)' }} />}
+                        {tinFound && !isLookingUpTin && <CheckCircleIcon style={{ width: 18, color: 'var(--rra-green)' }} />}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 4 }}>Validating against RRA Registry...</p>
                   </div>
-                  <div className="form-field">
-                    <label className="form-label">Taxpayer Name</label>
-                    <input className="form-control" value={formData.taxpayerName} onChange={e => setFormData({...formData, taxpayerName: e.target.value})} />
+
+                  <div className="form-grid-2">
+                    <div className="form-field">
+                      <label className="form-label">Taxpayer Name</label>
+                      <input 
+                        className="form-control" 
+                        placeholder="Legal Name"
+                        value={formData.taxpayerName} 
+                        onChange={e => setFormData({...formData, taxpayerName: e.target.value})} 
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label className="form-label">Contact / Phone</label>
+                      <input 
+                        className="form-control" 
+                        placeholder="e.g. 078XXXXXXX"
+                        value={formData.taxpayerContact} 
+                        onChange={e => setFormData({...formData, taxpayerContact: e.target.value})} 
+                      />
+                    </div>
+                  </div>
+                  <div className="form-field" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Address</label>
+                    <input 
+                      className="form-control" 
+                      placeholder="Province, District, Sector"
+                      value={formData.taxpayerAddress} 
+                      onChange={e => setFormData({...formData, taxpayerAddress: e.target.value})} 
+                    />
                   </div>
                 </div>
+
                 <div className="form-field">
-                  <label className="form-label">Goods Description <span className="required">*</span></label>
-                  <textarea className="form-control" value={formData.goodsDescription} onChange={e => setFormData({...formData, goodsDescription: e.target.value})} rows={3} />
+                  <label className="form-label">Goods Type / Description <span className="required">*</span></label>
+                  <select 
+                    className="form-control"
+                    value={GOODS_TYPES.includes(formData.goodsDescription) ? formData.goodsDescription : (formData.goodsDescription ? 'Other (Specify)' : '')}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val !== 'Other (Specify)') {
+                        setFormData({...formData, goodsDescription: val});
+                      } else {
+                        setFormData({...formData, goodsDescription: ''});
+                      }
+                    }}
+                  >
+                    <option value="">-- Select Goods Type --</option>
+                    {GOODS_TYPES.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                  {(!GOODS_TYPES.includes(formData.goodsDescription) || formData.goodsDescription === 'Other (Specify)') && (
+                    <div style={{ marginTop: 10 }}>
+                      <textarea 
+                        className="form-control" 
+                        placeholder="Please specify goods details..." 
+                        value={formData.goodsDescription} 
+                        onChange={e => setFormData({...formData, goodsDescription: e.target.value})} 
+                        rows={2} 
+                      />
+                    </div>
+                  )}
                 </div>
+
                 <div className="form-field">
-                  <label className="form-label">Seizure Reason</label>
-                  <input className="form-control" value={formData.seizureReason} onChange={e => setFormData({...formData, seizureReason: e.target.value})} />
+                  <label className="form-label">Seizure Reason <span className="required">*</span></label>
+                  <select 
+                    className="form-control"
+                    value={SEIZURE_REASONS.includes(formData.seizureReason) ? formData.seizureReason : (formData.seizureReason ? 'Other (Specify)' : '')}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val !== 'Other (Specify)') {
+                        setFormData({...formData, seizureReason: val});
+                      } else {
+                        setFormData({...formData, seizureReason: ''});
+                      }
+                    }}
+                  >
+                    <option value="">-- Select Reason --</option>
+                    {SEIZURE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                  {(!SEIZURE_REASONS.includes(formData.seizureReason) || formData.seizureReason === 'Other (Specify)') && (
+                    <div style={{ marginTop: 10 }}>
+                      <input 
+                        className="form-control" 
+                        placeholder="Please describe the reason..." 
+                        value={formData.seizureReason} 
+                        onChange={e => setFormData({...formData, seizureReason: e.target.value})} 
+                      />
+                    </div>
+                  )}
                 </div>
                 <div className="form-field">
                   <label className="form-label">Date Seized <span className="required">*</span></label>
