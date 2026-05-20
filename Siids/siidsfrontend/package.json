@@ -19,7 +19,7 @@
     "@mui/styled-engine-sc": "^7.0.1",
     "@mui/x-date-pickers": "^8.21.0",
     "@stomp/stompjs": "^7.1.1",
-    "@tailwindcss/postcss": "^4.2.4",
+    "@tailwindcss/postcss": "^4.3.0",
     "autoprefixer": "^10.5.0",
     "axios": "^1.10.0",
     "bootstrap": "^5.3.7",

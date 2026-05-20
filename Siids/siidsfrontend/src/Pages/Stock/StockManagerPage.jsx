@@ -243,6 +243,35 @@ const StockManagerPage = () => {
         variant="warning"
         requiresReason={true}
         confirmLabel="Send Request to PRSO"
+        extraButton={
+          <button 
+            className="btn-base" 
+            style={{ border: '1px solid var(--gray-300)', background: 'white', color: 'var(--gray-700)' }}
+            onClick={async (reason) => {
+              try {
+                const res = await stockApi.previewReleaseNotePdf({
+                  pvId: selectedItem.id,
+                  releaseReason: reason,
+                  releaseDestination: 'Auction',
+                  recipientName: selectedItem.seizureNote?.taxpayerName || 'Unknown',
+                  recipientIdPassport: selectedItem.seizureNote?.taxpayerTin || 'N/A'
+                });
+                const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `Draft-ReleaseNote-${selectedItem.pvNumber}.pdf`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                toast.success('Draft release note created');
+              } catch (err) {
+                toast.error('Failed to create draft release note');
+              }
+            }}
+          >
+            Create Release Note
+          </button>
+        }
       />
 
       <ConfirmDialog

@@ -13,7 +13,8 @@ const ConfirmDialog = ({
   isOpen, onClose, onConfirm,
   title, body, variant = 'warning',
   confirmLabel = 'Confirm',
-  requiresReason = false
+  requiresReason = false,
+  extraButton = null
 }) => {
   const [reason, setReason] = useState('');
   const canConfirm = !requiresReason || reason.trim().length >= 15;
@@ -34,7 +35,7 @@ const ConfirmDialog = ({
           
           {requiresReason && (
             <div style={{ padding: '16px 24px 0' }}>
-              <label className="form-label">Reason <span className="required">*</span></label>
+              <label className="form-label" style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: 'block' }}>Reason <span className="required">*</span></label>
               <textarea className="form-control" rows={3}
                 placeholder="Provide a clear reason (min. 15 characters)…"
                 value={reason} onChange={e => setReason(e.target.value)} />
@@ -44,8 +45,14 @@ const ConfirmDialog = ({
             </div>
           )}
           
-          <div style={{ padding: '16px 24px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div style={{ padding: '16px 24px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
             <button className="btn-ghost" onClick={onClose}>Cancel</button>
+            {extraButton && React.cloneElement(extraButton, { 
+              disabled: !canConfirm || extraButton.props.disabled,
+              onClick: (e) => {
+                if (extraButton.props.onClick) extraButton.props.onClick(reason);
+              }
+            })}
             <button className={`btn-base ${cfg.btnClass}`}
               disabled={!canConfirm}
               onClick={() => {
