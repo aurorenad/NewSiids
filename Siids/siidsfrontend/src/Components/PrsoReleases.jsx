@@ -3,7 +3,7 @@ import axios from '../api/axios.jsx';
 import {
     Container, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, Button, Dialog, DialogTitle,
-    DialogContent, DialogActions, TextField, Alert, Box, Chip
+    DialogContent, DialogActions, TextField, Alert, Box, Chip, TablePagination
 } from '@mui/material';
 import { AuthContext } from '../context/AuthContext';
 
@@ -12,10 +12,21 @@ const PrsoReleases = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
-    // Modal state
     const [openReject, setOpenReject] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [selectedRelease, setSelectedRelease] = useState(null); // { stockId, releaseIndex }
+
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
     
     const { authState } = useContext(AuthContext);
 
@@ -88,6 +99,11 @@ const PrsoReleases = () => {
 
     if (loading) return <Typography>Loading...</Typography>;
 
+    const allReleases = stocks.flatMap((stock) => 
+        stock.releases.map((release, index) => ({ stock, release, index }))
+    );
+    const paginatedReleases = allReleases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -111,8 +127,7 @@ const PrsoReleases = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {stocks.flatMap((stock) => 
-                            stock.releases.map((release, index) => (
+                        {paginatedReleases.map(({ stock, release, index }) => (
                                 <TableRow key={`${stock.id}-${index}`}>
                                     <TableCell>{stock.seizureNumber}</TableCell>
                                     <TableCell>{release.dateReleased}</TableCell>
@@ -154,10 +169,18 @@ const PrsoReleases = () => {
                                         )}
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
+                        ))}
                     </TableBody>
                 </Table>
+                <TablePagination
+                    component="div"
+                    count={allReleases.length}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    rowsPerPageOptions={[5, 10, 25, 50]}
+                />
             </TableContainer>
 
             {/* Reject Dialog */}

@@ -9,7 +9,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, MenuItem, Select,
     FormControl, IconButton, Chip, Tooltip, CircularProgress,
-    InputAdornment,
+    InputAdornment, TablePagination
 } from '@mui/material';
 import { FilterListOff, FileDownloadOutlined } from '@mui/icons-material';
 
@@ -25,6 +25,10 @@ const StockManagement = () => {
     const [searchItemName, setSearchItemName] = useState('');
     const [searchTakenDate, setSearchTakenDate] = useState('');
     const [releaseFilter, setReleaseFilter] = useState('all');
+
+    // Pagination State
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005';
     const API_URL = `${BASE_URL}/api/stock`;
@@ -321,6 +325,7 @@ const StockManagement = () => {
         setSearchItemName('');
         setSearchTakenDate('');
         setReleaseFilter('all');
+        setPage(0);
     };
 
     const generateStockPdf = (stock) => {
@@ -376,6 +381,17 @@ const StockManagement = () => {
         if (!unit) return '';
         return unit.charAt(0) + unit.slice(1).toLowerCase();
     };
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const paginatedStocks = filteredStocks.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
     return (
         <Box>
@@ -471,7 +487,7 @@ const StockManagement = () => {
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredStocks.map(stock => (
+                                paginatedStocks.map(stock => (
                                     <TableRow key={stock.id}>
                                         <TableCell>{stock.ownerName}</TableCell>
                                         <TableCell>
@@ -574,6 +590,15 @@ const StockManagement = () => {
                             )}
                         </TableBody>
                     </Table>
+                    <TablePagination
+                        component="div"
+                        count={filteredStocks.length}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        rowsPerPage={rowsPerPage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                        rowsPerPageOptions={[5, 10, 25, 50]}
+                    />
                 </TableContainer>
             )}
 
