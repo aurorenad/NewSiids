@@ -12,12 +12,11 @@ export const stockApi = {
     getMainStock: () => axios.get('/api/stock/main'),
     downloadPVPdf: (id) => axios.get(`/api/stock/main/${id}/pv-pdf`, { responseType: 'blob' }),
     requestRelease: (id, data) => axios.post(`/api/stock/main/${id}/release-notes`, data),
-    requestEdit: (id, data) => axios.post(`/api/stock/main/${id}/request-edit`, data),
+    returnToOfficer: (id, data) => axios.post(`/api/stock/main/${id}/return-to-officer`, data),
+    resubmitPv: (id, data) => axios.post(`/api/stock/main/${id}/resubmit`, data),
 
     // PRSO APPROVALS
     getPendingApprovals: () => axios.get('/api/stock/main/pending-approvals'),
     approveRelease: (id) => axios.post(`/api/stock/main/release-notes/${id}/approve`),
     rejectRelease: (id, reason) => axios.post(`/api/stock/main/release-notes/${id}/reject`, { reason }),
-    approveEdit: (id) => axios.post(`/api/stock/main/edit-requests/${id}/approve`),
-    rejectEdit: (id, reason) => axios.post(`/api/stock/main/edit-requests/${id}/reject`, { reason }),
 };
