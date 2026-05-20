@@ -78,6 +78,6 @@ Write-Host "Created: $outputFile" -ForegroundColor Green
 Write-Host ""
 Write-Host "To import into PostgreSQL, run:" -ForegroundColor Cyan
 Write-Host "  psql -U postgres -d siidsDB -f $outputFile" -ForegroundColor White
-Write-Host "  Password: 123" -ForegroundColor White
+Write-Host "  Password: Rra#123" -ForegroundColor White
 Write-Host ""
 Write-Host "=" * 70
