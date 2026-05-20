@@ -343,76 +343,74 @@ public class PhysicalStockService {
     }
 
     @Transactional
-    public PVDocument requestMainStockEdit(Integer pvId, EditRequestDTO dto, Employee currentUser) {
+    public PVDocument returnToOfficer(Integer pvId, EditRequestDTO dto, Employee currentUser) {
         PVDocument pv = pvDocumentRepository.findById(pvId)
                 .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
 
         SeizureNote note = pv.getSeizureNote();
-        note.setStatus(PhysicalStockStatus.PENDING_PRSO_EDIT_APPROVAL);
+        note.setStatus(PhysicalStockStatus.RETURNED_TO_OFFICER);
         seizureNoteRepository.save(note);
         
         pv.setPendingEditReason(dto.getReason());
         pvDocumentRepository.save(pv);
 
-        auditService.logAction(pv.getPvNumber(), "EDIT_REQUESTED", "Requested PV edit. Reason: " + dto.getReason(), currentUser);
+        String linkedToken = UUID.randomUUID().toString();
+        auditService.logActionWithToken(pv.getPvNumber(), "RETURNED_TO_OFFICER", "Returned to officer for correction. Reason: " + dto.getReason(), currentUser, linkedToken);
 
-        // Send Notification to PRSO topic
+        // Send Notification to Surveillance Officer
         NotificationDTO notification = new NotificationDTO();
-        notification.setMessage("Edit requested for PV: " + pv.getPvNumber() + ". Reason: " + dto.getReason());
+        notification.setMessage("Your PV " + pv.getPvNumber() + " was returned for correction. Reason: " + dto.getReason());
         notification.setSenderName(currentUser.getGivenName() + " " + currentUser.getFamilyName());
         notification.setCreatedAt(LocalDateTime.now());
-        notification.setNotificationType("PV_EDIT_REQUEST");
+        notification.setNotificationType("PV_RETURNED");
         
-        notificationService.sendNotificationToDepartment("PRSO", notification);
+        if (pv.getPvInCharge() != null) {
+            notificationService.sendNotificationToUser(pv.getPvInCharge().getEmployeeId(), notification);
+        }
 
         return pv;
     }
 
     @Transactional
-    public PVDocument approveMainStockEdit(Integer pvId, Employee prsoUser) {
+    public PVDocument resubmitPv(Integer pvId, EditRequestDTO dto, Employee currentUser) {
         PVDocument pv = pvDocumentRepository.findById(pvId)
                 .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
 
         SeizureNote note = pv.getSeizureNote();
-        note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK); // Revert to active but we've logged the approval
-        seizureNoteRepository.save(note);
+        if (note.getStatus() != PhysicalStockStatus.RETURNED_TO_OFFICER) {
+            throw new IllegalStateException("PV is not in RETURNED_TO_OFFICER state");
+        }
 
+        note.setStatus(PhysicalStockStatus.CORRECTED_AND_RESUBMITTED);
+        seizureNoteRepository.save(note);
+        
         pv.setPendingEditReason(null);
         pvDocumentRepository.save(pv);
 
-        auditService.logAction(pv.getPvNumber(), "EDIT_APPROVED", "PRSO Approved PV edit request", prsoUser);
-        
+        // Find the linkedToken from the latest RETURNED_TO_OFFICER log for this PV
+        List<StockAuditLog> logs = auditService.getLogsForReference(pv.getPvNumber());
+        String linkedToken = null;
+        for (StockAuditLog log : logs) {
+            if ("RETURNED_TO_OFFICER".equals(log.getActionType()) && log.getLinkedToken() != null) {
+                linkedToken = log.getLinkedToken();
+                break;
+            }
+        }
+
+        auditService.logActionWithToken(pv.getPvNumber(), "CORRECTED_AND_RESUBMITTED", "Officer resubmitted the PV after correction. Details: " + dto.getReason(), currentUser, linkedToken);
+
         // Notify Stock Manager
         NotificationDTO notification = new NotificationDTO();
-        notification.setMessage("Edit request for PV " + pv.getPvNumber() + " has been APPROVED.");
-        notification.setSenderName(prsoUser.getGivenName() + " " + prsoUser.getFamilyName());
-        notification.setNotificationType("PV_EDIT_APPROVED");
+        notification.setMessage("PV " + pv.getPvNumber() + " has been corrected and resubmitted.");
+        notification.setSenderName(currentUser.getGivenName() + " " + currentUser.getFamilyName());
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setNotificationType("PV_RESUBMITTED");
         notificationService.sendNotificationToDepartment("STOCK_MANAGER", notification);
 
         return pv;
     }
 
-    @Transactional
-    public void rejectMainStockEdit(Integer pvId, String reason, Employee prsoUser) {
-        PVDocument pv = pvDocumentRepository.findById(pvId)
-                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
 
-        SeizureNote note = pv.getSeizureNote();
-        note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK);
-        seizureNoteRepository.save(note);
-
-        pv.setPendingEditReason(null);
-        pvDocumentRepository.save(pv);
-
-        auditService.logAction(pv.getPvNumber(), "EDIT_REJECTED", "PRSO Rejected PV edit. Reason: " + reason, prsoUser);
-        
-        // Notify Stock Manager
-        NotificationDTO notification = new NotificationDTO();
-        notification.setMessage("Edit request for PV " + pv.getPvNumber() + " was REJECTED. Reason: " + reason);
-        notification.setSenderName(prsoUser.getGivenName() + " " + prsoUser.getFamilyName());
-        notification.setNotificationType("PV_EDIT_REJECTED");
-        notificationService.sendNotificationToDepartment("STOCK_MANAGER", notification);
-    }
 
     public byte[] generateSeizureNotePdf(Integer seizureId) throws java.io.IOException {
         if (seizureId > 1000000) {

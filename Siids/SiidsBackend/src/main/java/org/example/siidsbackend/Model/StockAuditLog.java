@@ -22,6 +22,9 @@ public class StockAuditLog {
     @Column(columnDefinition = "TEXT")
     private String details; // e.g., "Transferred to Main Stock", "PRSO Approved Release"
 
+    private String linkedToken; // Used to trace a chain of events like return and correction
+
+
     @ManyToOne
     @JoinColumn(name = "actor_id", referencedColumnName = "employee_id")
     private Employee actor; // The user who performed the action

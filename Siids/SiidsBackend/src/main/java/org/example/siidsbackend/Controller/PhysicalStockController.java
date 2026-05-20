@@ -114,11 +114,18 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.requestMainStockRelease(id, dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
-    @PostMapping("/main/{id}/request-edit")
+    @PostMapping("/main/{id}/return-to-officer")
     @PreAuthorize("hasAuthority('STOCK_MANAGER') or hasAuthority('StockManager') or hasAuthority('STOCKMANAGER')")
-    public ResponseEntity<?> requestMainStockEdit(@PathVariable Integer id, @RequestBody EditRequestDTO dto) {
+    public ResponseEntity<?> returnToOfficer(@PathVariable Integer id, @RequestBody EditRequestDTO dto) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(physicalStockService.requestMainStockEdit(id, dto, physicalStockService.getEmployeeByUsername(username)));
+        return ResponseEntity.ok(physicalStockService.returnToOfficer(id, dto, physicalStockService.getEmployeeByUsername(username)));
+    }
+
+    @PostMapping("/main/{id}/resubmit")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_OFFICER') or hasAuthority('Surveillance') or hasAuthority('SURVEILLANCE') or hasAuthority('ROLE_SURVEILLANCE_OFFICER')")
+    public ResponseEntity<?> resubmitPv(@PathVariable Integer id, @RequestBody EditRequestDTO dto) {
+        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(physicalStockService.resubmitPv(id, dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
     // --- PRSO APPROVALS ---
@@ -141,18 +148,5 @@ public class PhysicalStockController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/main/edit-requests/{id}/approve")
-    @PreAuthorize("hasAuthority('PRSO')")
-    public ResponseEntity<?> approveEdit(@PathVariable Integer id) {
-        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(physicalStockService.approveMainStockEdit(id, physicalStockService.getEmployeeByUsername(username)));
-    }
 
-    @PostMapping("/main/edit-requests/{id}/reject")
-    @PreAuthorize("hasAuthority('PRSO')")
-    public ResponseEntity<?> rejectEdit(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
-        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        physicalStockService.rejectMainStockEdit(id, payload.get("reason"), physicalStockService.getEmployeeByUsername(username));
-        return ResponseEntity.ok().build();
-    }
 }

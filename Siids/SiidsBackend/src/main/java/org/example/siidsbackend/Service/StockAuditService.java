@@ -17,11 +17,16 @@ public class StockAuditService {
     }
 
     public void logAction(String referenceId, String actionType, String details, Employee actor) {
+        logActionWithToken(referenceId, actionType, details, actor, null);
+    }
+
+    public void logActionWithToken(String referenceId, String actionType, String details, Employee actor, String linkedToken) {
         StockAuditLog log = new StockAuditLog();
         log.setReferenceId(referenceId);
         log.setActionType(actionType);
         log.setDetails(details);
         log.setActor(actor);
+        log.setLinkedToken(linkedToken);
         auditLogRepository.save(log);
     }
 
