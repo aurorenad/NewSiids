@@ -7,6 +7,7 @@ import ReleaseGoodsModal from '../../Components/ui/ReleaseGoodsModal';
 import EscalatePVModal from '../../Components/ui/EscalatePVModal';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
+import { TablePagination } from '@mui/material';
 
 import { useLocation } from 'react-router-dom';
 
@@ -23,6 +24,18 @@ const PVTemporaryStockPage = () => {
   
   const [escalateDialog, setEscalateDialog] = useState(false);
   const [releaseDialog, setReleaseDialog] = useState(false);
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   const fetchStock = async () => {
     try {
@@ -121,7 +134,7 @@ const PVTemporaryStockPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredStock.map(item => (
+                {filteredStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(item => (
                   <tr key={item.id}>
                     <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
                       {item.seizureNumber}
@@ -157,6 +170,15 @@ const PVTemporaryStockPage = () => {
                 ))}
               </tbody>
             </table>
+            <TablePagination
+              component="div"
+              count={filteredStock.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
           </div>
         )}
       </div>
@@ -175,8 +197,8 @@ const PVTemporaryStockPage = () => {
         footerActions={
           selectedItem?.status === 'IN_TEMPORARY_STOCK' ? (
             <>
-              <button className="btn-base btn-success" onClick={() => setReleaseDialog(true)}>Release to Owner</button>
-              <button className="btn-base btn-danger" onClick={() => setEscalateDialog(true)}>Escalate to Main Stock</button>
+              <button className="btn-base btn-success" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Release to Owner</button>
+              <button className="btn-base btn-danger" onClick={() => { setDrawerOpen(false); setEscalateDialog(true); }}>Escalate to Main Stock</button>
             </>
           ) : null
         }

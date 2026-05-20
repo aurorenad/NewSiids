@@ -5,6 +5,7 @@ import ConfirmDialog from '../../Components/ui/ConfirmDialog';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
 import { InboxIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { TablePagination } from '@mui/material';
 
 const PRSOApprovalsPage = () => {
   const [requests, setRequests] = useState([]);
@@ -13,6 +14,18 @@ const PRSOApprovalsPage = () => {
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [approveDialog, setApproveDialog] = useState(false);
   const [rejectDialog, setRejectDialog] = useState(false);
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   useEffect(() => {
     fetchApprovals();
@@ -31,14 +44,9 @@ const PRSOApprovalsPage = () => {
   };
 
   const handleApprove = async () => {
-    const isEdit = selectedItem.seizureNote?.status === 'PENDING_PRSO_EDIT_APPROVAL';
     try {
-      if (isEdit) {
-        await stockApi.approveEdit(selectedItem.id);
-      } else {
-        await stockApi.approveRelease(selectedItem.id);
-      }
-      toast.success(isEdit ? 'Edit Approved' : 'Release Approved');
+      await stockApi.approveRelease(selectedItem.id);
+      toast.success('Release Approved');
       setApproveDialog(false);
       setDrawerOpen(false);
       fetchApprovals();
@@ -48,14 +56,9 @@ const PRSOApprovalsPage = () => {
   };
 
   const handleReject = async (reason) => {
-    const isEdit = selectedItem.seizureNote?.status === 'PENDING_PRSO_EDIT_APPROVAL';
     try {
-      if (isEdit) {
-        await stockApi.rejectEdit(selectedItem.id, reason);
-      } else {
-        await stockApi.rejectRelease(selectedItem.id, reason);
-      }
-      toast.success(isEdit ? 'Edit Rejected' : 'Release Rejected');
+      await stockApi.rejectRelease(selectedItem.id, reason);
+      toast.success('Release Rejected');
       setRejectDialog(false);
       setDrawerOpen(false);
       fetchApprovals();
@@ -93,16 +96,15 @@ const PRSOApprovalsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {requests.map(item => {
-                  const isEdit = item.seizureNote?.status === 'PENDING_PRSO_EDIT_APPROVAL';
+                {requests.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map(item => {
                   return (
                     <tr key={item.id}>
                       <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
                         {item.pvNumber}
                       </td>
                       <td>
-                        <span className={`badge ${isEdit ? 'badge-blue' : 'badge-orange'}`}>
-                          {isEdit ? 'Edit Request' : 'Release Request'}
+                        <span className={`badge badge-orange`}>
+                          Release Request
                         </span>
                       </td>
                       <td>{item.pvInCharge?.givenName || 'Stock Manager'}</td>
@@ -121,6 +123,15 @@ const PRSOApprovalsPage = () => {
                 })}
               </tbody>
             </table>
+            <TablePagination
+              component="div"
+              count={requests.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
           </div>
         )}
       </div>
@@ -142,8 +153,8 @@ const PRSOApprovalsPage = () => {
               <h3 className="drawer-section-title">Request Context</h3>
               <div className="drawer-field">
                 <span className="drawer-field-label">Type</span>
-                <span className="drawer-field-value" style={{ fontWeight: 600, color: selectedItem.seizureNote?.status === 'PENDING_PRSO_EDIT_APPROVAL' ? 'var(--blue-600)' : 'var(--orange-600)' }}>
-                  {selectedItem.seizureNote?.status === 'PENDING_PRSO_EDIT_APPROVAL' ? 'PV EDIT' : 'WAREHOUSE RELEASE'}
+                <span className="drawer-field-value" style={{ fontWeight: 600, color: 'var(--orange-600)' }}>
+                  WAREHOUSE RELEASE
                 </span>
               </div>
               <div className="drawer-field">

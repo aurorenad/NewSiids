@@ -3,7 +3,8 @@ import { MagnifyingGlassIcon, InboxIcon } from '@heroicons/react/24/outline';
 import { stockApi } from '../../api/stockApi';
 import RightDrawer from '../../Components/ui/RightDrawer';
 import ConfirmDialog from '../../Components/ui/ConfirmDialog';
-import RequestEditModal from '../../Components/ui/RequestEditModal';
+import ReturnToOfficerModal from '../../Components/ui/ReturnToOfficerModal';
+import { TablePagination } from '@mui/material';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
 
@@ -19,6 +20,10 @@ const StockManagerPage = () => {
   // Search and Sort State
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc'); // default newest first
+
+  // Pagination State
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
@@ -37,6 +42,15 @@ const StockManagerPage = () => {
   useEffect(() => { 
     fetchStock(); 
   }, [employeeId]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   // Derived filtered and sorted list
   const getProcessedStock = () => {
@@ -65,6 +79,8 @@ const StockManagerPage = () => {
   };
 
   const processedStock = getProcessedStock();
+  
+  const paginatedStock = processedStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   const handleModalSuccess = () => {
     setReleaseDialog(false);
@@ -155,7 +171,7 @@ const StockManagerPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {processedStock.map(item => (
+                {paginatedStock.map(item => (
                   <tr key={item.id}>
                     <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
                       {item.pvNumber}
@@ -182,6 +198,15 @@ const StockManagerPage = () => {
                 ))}
               </tbody>
             </table>
+            <TablePagination
+              component="div"
+              count={processedStock.length}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[5, 10, 25, 50]}
+            />
           </div>
         )}
       </div>
@@ -192,8 +217,8 @@ const StockManagerPage = () => {
         title={`PV Document ${selectedItem?.pvNumber}`}
         footerActions={
           <>
-            <button className="btn-base btn-outline-blue" onClick={() => setEditModalOpen(true)}>Request Edit</button>
-            <button className="btn-base btn-primary" onClick={() => setReleaseDialog(true)}>Request Release</button>
+            <button className="btn-base btn-outline-blue" onClick={() => { setDrawerOpen(false); setEditModalOpen(true); }}>Return to Officer</button>
+            <button className="btn-base btn-primary" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Request Release</button>
           </>
         }
       >
@@ -245,7 +270,7 @@ const StockManagerPage = () => {
         confirmLabel="Send Request to PRSO"
       />
 
-      <RequestEditModal
+      <ReturnToOfficerModal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
         onSuccess={handleModalSuccess}
