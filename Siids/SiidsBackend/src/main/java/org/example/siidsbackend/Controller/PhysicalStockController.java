@@ -60,6 +60,13 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.createSeizureNote(dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
+    @PutMapping("/temporary/seizure-notes/{id}")
+    @PreAuthorize("hasAnyAuthority('Surveillance', 'surveillance', 'SURVEILLANCE', 'SURVEILLANCE_OFFICER', 'ROLE_SURVEILLANCE', 'ROLE_SURVEILLANCE_OFFICER', 'Admin', 'admin')")
+    public ResponseEntity<?> updateSeizureNote(@PathVariable Integer id, @RequestBody SeizureNoteRequestDTO dto) {
+        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return ResponseEntity.ok(physicalStockService.updateSeizureNote(id, dto, physicalStockService.getEmployeeByUsername(username)));
+    }
+
     @GetMapping("/temporary/{id}/seizure-note")
     @PreAuthorize("hasAnyAuthority('Surveillance', 'surveillance', 'SURVEILLANCE', 'SURVEILLANCE_OFFICER', 'ROLE_SURVEILLANCE', 'ROLE_SURVEILLANCE_OFFICER', 'Admin', 'admin')")
     public ResponseEntity<?> downloadSeizureNote(@PathVariable Integer id) {

@@ -225,12 +225,54 @@ public class PhysicalStockService {
     }
 
     @Transactional
+    public SeizureNote updateSeizureNote(Integer id, SeizureNoteRequestDTO dto, Employee currentUser) {
+        // Password-based authorization
+        User user = userRepo.findByUsername(currentUser.getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("User account not found for current employee"));
+
+        if (dto.getAuthorizationPassword() == null || !passwordEncoder.matches(dto.getAuthorizationPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid authorization password");
+        }
+
+        SeizureNote note = seizureNoteRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Seizure note not found"));
+
+        if (note.getStatus() != PhysicalStockStatus.IN_TEMPORARY_STOCK && note.getStatus() != PhysicalStockStatus.RETURNED_FOR_CORRECTION) {
+            throw new IllegalStateException("Cannot edit seizure note in status: " + note.getStatus());
+        }
+
+        note.setTaxpayerTin(dto.getTaxpayerTin());
+        note.setTaxpayerName(dto.getTaxpayerName());
+        note.setTaxpayerAddress(dto.getTaxpayerAddress());
+        note.setTaxpayerContact(dto.getTaxpayerContact());
+        note.setTaxpayerType(dto.getTaxpayerType());
+        note.setNationalId(dto.getNationalId());
+        note.setPhysicalDescription(dto.getPhysicalDescription());
+        note.setRepresentativeName(dto.getRepresentativeName());
+        note.setRepresentativeContact(dto.getRepresentativeContact());
+        note.setGoodsDescription(dto.getGoodsDescription());
+        note.setSeizureReason(dto.getSeizureReason());
+        if (dto.getDateTimeSeized() != null) {
+            note.setDateTimeSeized(dto.getDateTimeSeized());
+        }
+        
+        // Reset status back to IN_TEMPORARY_STOCK and clear return reason
+        note.setStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
+        note.setReturnReason(null);
+
+        SeizureNote saved = seizureNoteRepository.save(note);
+        auditService.logAction(saved.getSeizureNumber(), "UPDATED", "Corrected and saved", currentUser);
+        return saved;
+    }
+
+    @Transactional
     public void returnForCorrection(Integer pvId, String reason, Employee stockManager) {
         PVDocument pv = pvDocumentRepository.findById(pvId)
                 .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
 
         SeizureNote note = pv.getSeizureNote();
         note.setStatus(PhysicalStockStatus.RETURNED_FOR_CORRECTION);
+        note.setReturnReason(reason);
         seizureNoteRepository.save(note);
 
         // Notify the Surveillance Officer
@@ -311,11 +353,14 @@ public class PhysicalStockService {
         SeizureNote note = seizureNoteRepository.findById(seizureId)
                 .orElseThrow(() -> new IllegalArgumentException("Seizure note not found"));
 
-        if (note.getStatus() != PhysicalStockStatus.IN_TEMPORARY_STOCK && note.getStatus() != PhysicalStockStatus.PENDING_JUSTIFICATION) {
+        if (note.getStatus() != PhysicalStockStatus.IN_TEMPORARY_STOCK && 
+            note.getStatus() != PhysicalStockStatus.PENDING_JUSTIFICATION && 
+            note.getStatus() != PhysicalStockStatus.RETURNED_FOR_CORRECTION) {
             throw new IllegalStateException("Cannot escalate from current status: " + note.getStatus());
         }
 
         note.setStatus(PhysicalStockStatus.ESCALATED);
+        note.setReturnReason(null);
         note.setActionedAt(LocalDateTime.now());
         seizureNoteRepository.save(note);
 

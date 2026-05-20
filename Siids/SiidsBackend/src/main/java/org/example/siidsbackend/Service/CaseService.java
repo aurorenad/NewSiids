@@ -286,7 +286,7 @@ public class CaseService {
         responseDTO.setReferringDepartment(caseEntity.getReferringDepartment());
 
         if (caseEntity.getCaseNum() != null) {
-            reportRepo.findByRelatedCase_CaseNum(caseEntity.getCaseNum())
+            reportRepo.findFirstByRelatedCase_CaseNumOrderByCreatedAtDesc(caseEntity.getCaseNum())
                     .ifPresent(report -> responseDTO.setReportId(report.getId()));
         }
 
