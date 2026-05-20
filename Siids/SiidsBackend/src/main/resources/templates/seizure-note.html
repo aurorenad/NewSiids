@@ -4,7 +4,7 @@
     <meta charset="UTF-8"/>
     <style>
         @page { size: A4; margin: 0; }
-        body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 40px; position: relative; color: #1a1a1a; }
+        body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 40px; position: relative; color: #000000; }
         
         .header-table { width: 100%; border: none; margin-bottom: 5px; border-collapse: collapse; }
         .logo-cell { width: 70px; vertical-align: middle; }
@@ -25,7 +25,7 @@
 
         .info-row { margin-bottom: 15px; font-size: 14px; }
         .label { display: inline-block; min-width: 30px; }
-        .dotted-value { border-bottom: 1px dotted #333; display: inline-block; min-width: 300px; padding-left: 10px; font-weight: bold; }
+        .dotted-value { border-bottom: 1.5px dotted #000; display: inline-block; min-width: 300px; padding-left: 10px; font-weight: bold; color: #000; }
 
         .content-box { margin-top: 25px; line-height: 1.8; font-size: 14px; text-align: justify; }
         .goods-area { border: 1px solid #ddd; padding: 15px; background: #fafafa; min-height: 100px; margin: 10px 0; white-space: pre-wrap; font-weight: bold; }
@@ -72,7 +72,7 @@
     </table>
 
     <div class="serial-section">
-        Serial N° <span th:text="${note.seizureNumber}" style="color: #c00;">48716</span>
+        Serial N° <span th:text="${note.seizureNumber ?: 'SN-PENDING'}" style="color: #c00;">48716</span>
     </div>
 
     <div class="form-title">Notice of Seizure</div>
@@ -80,23 +80,23 @@
     <!-- To / Of -->
     <div class="info-row">
         <span class="label">To:</span>
-        <span class="dotted-value" th:text="${note.taxpayerName}">[Taxpayer Name]</span>
+        <span class="dotted-value" th:text="${note.taxpayerName ?: 'N/A'}">[Taxpayer Name]</span>
     </div>
     <div class="info-row">
         <span class="label">of:</span>
-        <span class="dotted-value" th:text="${note.taxpayerTin}">[Taxpayer TIN / Address]</span>
+        <span class="dotted-value" th:text="${note.taxpayerTin ?: 'N/A'}">[Taxpayer TIN / Address]</span>
     </div>
 
     <!-- Content -->
     <div class="content-box">
         <p>1. Take notice that the following goods / items:</p>
-        <div class="goods-area" th:text="${note.goodsDescription}">[Description of Goods]</div>
+        <div class="goods-area" th:text="${note.goodsDescription ?: 'No description available.'}">[Description of Goods]</div>
         
         <p>have been seized and are liable to forfeiture in accordance with the provisions of the East African Community Customs Management Act, on the following grounds:</p>
         
         <div class="grounds-section">
             <p><strong>GROUNDS:</strong></p>
-            <div style="border-bottom: 1px solid #eee; padding: 10px; min-height: 60px; font-style: italic;" th:text="${note.seizureReason}">
+            <div style="border-bottom: 1px solid #eee; padding: 10px; min-height: 60px; font-style: italic;" th:text="${note.seizureReason ?: 'N/A'}">
                 [Seizure Reasons / Grounds]
             </div>
         </div>
@@ -107,9 +107,9 @@
 
         <p style="margin-top: 30px;">
             Dated at <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${location != null ? location : 'KIGALI'}">KIGALI</span> 
-            this <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${#temporals.format(note.dateTimeSeized, 'dd')}">04</span> 
-            day of <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${#temporals.format(note.dateTimeSeized, 'MMMM')}">April</span> 
-            20<span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${#temporals.format(note.dateTimeSeized, 'yy')}">26</span>
+            this <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'dd') : '---'}">04</span> 
+            day of <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'MMMM') : '---'}">April</span> 
+            20<span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'yy') : '--'}">26</span>
         </p>
     </div>
 

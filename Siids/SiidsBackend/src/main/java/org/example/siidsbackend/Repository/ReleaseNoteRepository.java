@@ -12,4 +12,6 @@ import java.util.List;
 public interface ReleaseNoteRepository extends JpaRepository<ReleaseNote, Integer> {
     List<ReleaseNote> findByPvDocument(PVDocument pv);
     List<ReleaseNote> findBySeizureNote(SeizureNote note);
+    List<ReleaseNote> findByStatus(String status);
+    List<ReleaseNote> findByStatusInOrderByCreatedAtDesc(List<String> statuses);
 }

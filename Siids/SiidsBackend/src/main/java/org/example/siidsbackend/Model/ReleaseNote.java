@@ -44,10 +44,15 @@ public class ReleaseNote {
     
     private LocalDateTime prsoApprovalDate;
     private LocalDateTime releaseDate;
+    private String status; // PENDING, APPROVED, REJECTED
+    private String rejectionReason;
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = "PENDING";
+        }
     }
 }

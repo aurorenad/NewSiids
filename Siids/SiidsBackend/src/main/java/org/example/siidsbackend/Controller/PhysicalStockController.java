@@ -1,16 +1,13 @@
 package org.example.siidsbackend.Controller;
 
-import org.example.siidsbackend.DTO.Request.EditRequestDTO;
 import org.example.siidsbackend.DTO.Request.EscalateRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReleaseNoteRequestDTO;
 import org.example.siidsbackend.DTO.Request.SeizureNoteRequestDTO;
 import org.example.siidsbackend.Model.Employee;
-import org.example.siidsbackend.Model.UserPrincipal;
 import org.example.siidsbackend.Service.employeeService;
 import org.example.siidsbackend.Service.PhysicalStockService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -27,10 +24,7 @@ public class PhysicalStockController {
         this.employeeServiceObj = employeeServiceObj;
     }
 
-    private Employee getCurrentEmployee(String employeeId) {
-        return employeeServiceObj.findById(employeeId)
-                .orElseThrow(() -> new IllegalStateException("Employee not found with ID: " + employeeId));
-    }
+
 
     // --- TEMPORARY STOCK (PV In Charge) ---
 
@@ -68,7 +62,7 @@ public class PhysicalStockController {
     }
 
     @GetMapping("/temporary/{id}/seizure-note")
-    @PreAuthorize("hasAnyAuthority('Surveillance', 'surveillance', 'SURVEILLANCE', 'SURVEILLANCE_OFFICER', 'ROLE_SURVEILLANCE', 'ROLE_SURVEILLANCE_OFFICER', 'Admin', 'admin')")
+    @PreAuthorize("hasAnyAuthority('Surveillance', 'surveillance', 'SURVEILLANCE', 'SURVEILLANCE_OFFICER', 'ROLE_SURVEILLANCE', 'ROLE_SURVEILLANCE_OFFICER', 'Admin', 'admin', 'PRSO')")
     public ResponseEntity<?> downloadSeizureNote(@PathVariable Integer id) {
         try {
             byte[] pdf = physicalStockService.generateSeizureNotePdf(id);
@@ -98,7 +92,7 @@ public class PhysicalStockController {
     // --- MAIN STOCK (Stock Manager) ---
 
     @GetMapping("/main")
-    @PreAuthorize("hasAnyAuthority('StockManager', 'stockmanager', 'STOCK_MANAGER', 'STOCKMANAGER', 'ROLE_STOCKMANAGER', 'Admin', 'admin')")
+    @PreAuthorize("hasAnyAuthority('StockManager', 'stockmanager', 'STOCK_MANAGER', 'STOCKMANAGER', 'ROLE_STOCKMANAGER', 'Admin', 'admin', 'PRSO')")
     public ResponseEntity<?> getMainStock() {
         return ResponseEntity.ok(physicalStockService.getMainStock());
     }
@@ -127,6 +121,12 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.getPendingApprovals());
     }
 
+    @GetMapping("/main/approval-history")
+    @PreAuthorize("hasAuthority('PRSO')")
+    public ResponseEntity<?> getApprovalHistory() {
+        return ResponseEntity.ok(physicalStockService.getApprovalHistory());
+    }
+
     @PostMapping("/main/{id}/release-notes")
     @PreAuthorize("hasAnyAuthority('StockManager', 'stockmanager', 'STOCK_MANAGER', 'STOCKMANAGER', 'ROLE_STOCKMANAGER', 'Admin', 'admin')")
     public ResponseEntity<?> requestMainStockRelease(@PathVariable Integer id, @RequestBody ReleaseNoteRequestDTO dto) {
@@ -134,12 +134,7 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.requestMainStockRelease(id, dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
-    @PostMapping("/main/{id}/request-edit")
-    @PreAuthorize("hasAnyAuthority('StockManager', 'stockmanager', 'STOCK_MANAGER', 'STOCKMANAGER', 'ROLE_STOCKMANAGER', 'Admin', 'admin')")
-    public ResponseEntity<?> requestMainStockEdit(@PathVariable Integer id, @RequestBody EditRequestDTO dto) {
-        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(physicalStockService.requestMainStockEdit(id, dto, physicalStockService.getEmployeeByUsername(username)));
-    }
+
 
     @PostMapping("/main/{id}/return-for-correction")
     @PreAuthorize("hasAnyAuthority('StockManager', 'stockmanager', 'STOCK_MANAGER', 'STOCKMANAGER', 'ROLE_STOCKMANAGER', 'Admin', 'admin')")
@@ -169,18 +164,33 @@ public class PhysicalStockController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/main/edit-requests/{id}/approve")
-    @PreAuthorize("hasAuthority('PRSO')")
-    public ResponseEntity<?> approveEdit(@PathVariable Integer id) {
-        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(physicalStockService.approveMainStockEdit(id, physicalStockService.getEmployeeByUsername(username)));
+    // Edit request endpoints removed as per requirements
+
+    @GetMapping("/main/release-notes/{id}/pdf")
+    @PreAuthorize("hasAuthority('PRSO') or hasAuthority('SURVEILLANCE_OFFICER') or hasAuthority('Surveillance')")
+    public ResponseEntity<?> getReleaseNotePdf(@PathVariable Integer id) {
+        try {
+            byte[] pdf = physicalStockService.generateReleaseNotePdf(id);
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ReleaseNote-" + id + ".pdf\"")
+                    .body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error generating PDF: " + e.getMessage());
+        }
     }
 
-    @PostMapping("/main/edit-requests/{id}/reject")
-    @PreAuthorize("hasAuthority('PRSO')")
-    public ResponseEntity<?> rejectEdit(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
-        String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        physicalStockService.rejectMainStockEdit(id, payload.get("reason"), physicalStockService.getEmployeeByUsername(username));
-        return ResponseEntity.ok().build();
+    @PostMapping("/main/release-notes/preview")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_OFFICER') or hasAuthority('Surveillance') or hasAuthority('PRSO')")
+    public ResponseEntity<?> previewReleaseNote(@RequestBody java.util.Map<String, String> payload) {
+        try {
+            byte[] pdf = physicalStockService.generateReleaseNotePreview(payload);
+            return ResponseEntity.ok()
+                    .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"Draft-ReleaseNote.pdf\"")
+                    .body(pdf);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error generating PDF preview: " + e.getMessage());
+        }
     }
 }

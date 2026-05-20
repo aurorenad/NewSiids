@@ -107,6 +107,7 @@ public class PhysicalStockService {
         pv.setApplicableLawReference("EAC Customs Management Act, 2004");
         
         SeizureNote note = new SeizureNote();
+        note.setId(1000000 + stock.getId());
         note.setSeizureNumber(stock.getSeizureNumber() != null ? stock.getSeizureNumber() : "LEGACY-SN-" + stock.getId());
         note.setTaxpayerName(stock.getOwnerName() != null ? stock.getOwnerName() : "N/A");
         note.setTaxpayerTin("N/A"); // Legacy stock doesn't have TIN field
@@ -114,12 +115,6 @@ public class PhysicalStockService {
         note.setDateTimeSeized(stock.getTakenDate() != null ? stock.getTakenDate().atStartOfDay() : LocalDateTime.now());
         
         pv.setSeizureNote(note);
-        
-        Employee legacyOfficer = new Employee();
-        legacyOfficer.setGivenName("Proper");
-        legacyOfficer.setFamilyName("Officer");
-        legacyOfficer.setEmployeeId("LEGACY-OFFICER");
-        pv.setPvInCharge(legacyOfficer);
         
         return pv;
     }
@@ -306,6 +301,7 @@ public class PhysicalStockService {
             SeizureNote mapped = mapLegacyStockToSeizureNote(stock);
             mapped.setId(null);
             mapped.setStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
+            mapped.setPvInCharge(currentUser);
             mapped = seizureNoteRepository.save(mapped);
             stock.setStatus("MIGRATED_TO_NEW_MODULE");
             stockRepository.save(stock);
@@ -344,6 +340,7 @@ public class PhysicalStockService {
             SeizureNote mapped = mapLegacyStockToSeizureNote(stock);
             mapped.setId(null);
             mapped.setStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
+            mapped.setPvInCharge(currentUser);
             mapped = seizureNoteRepository.save(mapped);
             stock.setStatus("MIGRATED_TO_NEW_MODULE");
             stockRepository.save(stock);
@@ -385,11 +382,12 @@ public class PhysicalStockService {
 
     // --- MAIN STOCK (Stock Manager & PRSO) ---
 
-    public List<PVDocument> getPendingApprovals() {
-        return pvDocumentRepository.findAll().stream()
-                .filter(pv -> pv.getSeizureNote().getStatus() == PhysicalStockStatus.PENDING_PRSO_RELEASE_APPROVAL ||
-                             pv.getSeizureNote().getStatus() == PhysicalStockStatus.PENDING_PRSO_EDIT_APPROVAL)
-                .toList();
+    public List<ReleaseNote> getPendingApprovals() {
+        return releaseNoteRepository.findByStatus("PENDING");
+    }
+
+    public List<ReleaseNote> getApprovalHistory() {
+        return releaseNoteRepository.findByStatusInOrderByCreatedAtDesc(List.of("APPROVED", "REJECTED"));
     }
 
     public List<PVDocument> getMainStock() {
@@ -413,11 +411,13 @@ public class PhysicalStockService {
             SeizureNote note = mapLegacyStockToSeizureNote(stock);
             note.setId(null);
             note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK); // Ensure status is set for the check below
+            note.setPvInCharge(currentUser); // Set persistent user
             note = seizureNoteRepository.save(note);
             
             PVDocument pv = mapLegacyStockToPVDocument(stock);
             pv.setId(null);
             pv.setSeizureNote(note);
+            pv.setPvInCharge(currentUser); // Ensure persistent employee is set
             pv = pvDocumentRepository.save(pv);
             
             stock.setStatus("MIGRATED_TO_NEW_MODULE");
@@ -447,6 +447,7 @@ public class PhysicalStockService {
         release.setRecipientName(dto.getRecipientName());
         release.setRecipientIdPassport(dto.getRecipientIdPassport());
         release.setReleasedBy(currentUser);
+        release.setSeizureNote(note); // Link to SN for direct access
 
         ReleaseNote savedRelease = releaseNoteRepository.save(release);
         auditService.logAction(pv.getPvNumber(), "RELEASE_REQUESTED", "Release request submitted to PRSO", currentUser);
@@ -469,6 +470,7 @@ public class PhysicalStockService {
 
         release.setPrsoApprover(prsoUser);
         release.setPrsoApprovalDate(java.time.LocalDateTime.now());
+        release.setStatus("APPROVED");
         releaseNoteRepository.save(release);
 
         note.setStatus(PhysicalStockStatus.RELEASED_FROM_MAIN);
@@ -484,84 +486,19 @@ public class PhysicalStockService {
                 .orElseThrow(() -> new IllegalArgumentException("Release note not found"));
 
         SeizureNote note = release.getPvDocument().getSeizureNote();
-        note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK); // Revert status
+        note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK); // Revert status for note
         seizureNoteRepository.save(note);
+
+        release.setStatus("REJECTED");
+        release.setRejectionReason(reason);
+        release.setPrsoApprover(prsoUser);
+        release.setPrsoApprovalDate(java.time.LocalDateTime.now());
+        releaseNoteRepository.save(release);
 
         auditService.logAction(release.getPvDocument().getPvNumber(), "RELEASE_REJECTED", "PRSO Rejected Release. Reason: " + reason, prsoUser);
-        releaseNoteRepository.delete(release); // Discard the request
     }
 
-    @Transactional
-    public PVDocument requestMainStockEdit(Integer pvId, EditRequestDTO dto, Employee currentUser) {
-        PVDocument pv = pvDocumentRepository.findById(pvId)
-                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
-
-        SeizureNote note = pv.getSeizureNote();
-        note.setStatus(PhysicalStockStatus.PENDING_PRSO_EDIT_APPROVAL);
-        seizureNoteRepository.save(note);
-        
-        pv.setPendingEditReason(dto.getReason());
-        pvDocumentRepository.save(pv);
-
-        auditService.logAction(pv.getPvNumber(), "EDIT_REQUESTED", "Requested PV edit. Reason: " + dto.getReason(), currentUser);
-
-        // Send Notification to PRSO topic
-        NotificationDTO notification = new NotificationDTO();
-        notification.setMessage("Edit requested for PV: " + pv.getPvNumber() + ". Reason: " + dto.getReason());
-        notification.setSenderName(currentUser.getGivenName() + " " + currentUser.getFamilyName());
-        notification.setCreatedAt(LocalDateTime.now());
-        notification.setNotificationType("PV_EDIT_REQUEST");
-        
-        notificationService.sendNotificationToDepartment("PRSO", notification);
-
-        return pv;
-    }
-
-    @Transactional
-    public PVDocument approveMainStockEdit(Integer pvId, Employee prsoUser) {
-        PVDocument pv = pvDocumentRepository.findById(pvId)
-                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
-
-        SeizureNote note = pv.getSeizureNote();
-        note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK); // Revert to active but we've logged the approval
-        seizureNoteRepository.save(note);
-
-        pv.setPendingEditReason(null);
-        pvDocumentRepository.save(pv);
-
-        auditService.logAction(pv.getPvNumber(), "EDIT_APPROVED", "PRSO Approved PV edit request", prsoUser);
-        
-        // Notify Stock Manager
-        NotificationDTO notification = new NotificationDTO();
-        notification.setMessage("Edit request for PV " + pv.getPvNumber() + " has been APPROVED.");
-        notification.setSenderName(prsoUser.getGivenName() + " " + prsoUser.getFamilyName());
-        notification.setNotificationType("PV_EDIT_APPROVED");
-        notificationService.sendNotificationToDepartment("STOCK_MANAGER", notification);
-
-        return pv;
-    }
-
-    @Transactional
-    public void rejectMainStockEdit(Integer pvId, String reason, Employee prsoUser) {
-        PVDocument pv = pvDocumentRepository.findById(pvId)
-                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
-
-        SeizureNote note = pv.getSeizureNote();
-        note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK);
-        seizureNoteRepository.save(note);
-
-        pv.setPendingEditReason(null);
-        pvDocumentRepository.save(pv);
-
-        auditService.logAction(pv.getPvNumber(), "EDIT_REJECTED", "PRSO Rejected PV edit. Reason: " + reason, prsoUser);
-        
-        // Notify Stock Manager
-        NotificationDTO notification = new NotificationDTO();
-        notification.setMessage("Edit request for PV " + pv.getPvNumber() + " was REJECTED. Reason: " + reason);
-        notification.setSenderName(prsoUser.getGivenName() + " " + prsoUser.getFamilyName());
-        notification.setNotificationType("PV_EDIT_REJECTED");
-        notificationService.sendNotificationToDepartment("STOCK_MANAGER", notification);
-    }
+    // Edit request methods removed as per requirements
 
     public byte[] generateSeizureNotePdf(Integer seizureId) throws java.io.IOException {
         if (seizureId > 1000000) {
@@ -591,5 +528,29 @@ public class PhysicalStockService {
         PVDocument pv = pvDocumentRepository.findById(pvId)
                 .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
         return pdfService.generatePVDocument(pv, stockManager);
+    }
+
+    public byte[] generateReleaseNotePdf(Integer releaseId) throws java.io.IOException {
+        ReleaseNote release = releaseNoteRepository.findById(releaseId)
+                .orElseThrow(() -> new IllegalArgumentException("Release note not found"));
+        return pdfService.generateReleaseNote(release);
+    }
+    public byte[] generateReleaseNotePreview(java.util.Map<String, String> payload) throws java.io.IOException {
+        Integer pvId = Integer.parseInt(payload.get("pvId"));
+        PVDocument pv = pvDocumentRepository.findById(pvId)
+                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
+
+        ReleaseNote draft = new ReleaseNote();
+        draft.setReleaseNumber("RN-DRAFT-" + System.currentTimeMillis() % 10000);
+        draft.setReleaseReason(payload.get("releaseReason"));
+        draft.setReleaseDestination(payload.get("releaseDestination"));
+        draft.setRecipientName(payload.get("recipientName"));
+        draft.setRecipientIdPassport(payload.get("recipientIdPassport"));
+        draft.setPvDocument(pv);
+        draft.setSeizureNote(pv.getSeizureNote());
+        draft.setCreatedAt(java.time.LocalDateTime.now());
+        draft.setStatus("DRAFT");
+
+        return pdfService.generateReleaseNote(draft);
     }
 }
