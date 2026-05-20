@@ -1,11 +1,8 @@
-import React, { useState, useRef } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import React, { useState, useEffect } from 'react';
 import { stockApi } from '../../api/stockApi';
 import { CaseService } from '../../api/Axios/caseApi';
 import { toast } from 'sonner';
 import { MagnifyingGlassIcon, ClipboardIcon } from '@heroicons/react/24/outline';
-
 import Portal from './Portal';
 import { CheckCircleIcon, ArrowPathIcon } from '@heroicons/react/24/solid';
 
@@ -29,13 +26,14 @@ const SEIZURE_REASONS = [
   'Other (Specify)'
 ];
 
-const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) => {
+const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, editItem }) => {
   const [step, setStep] = useState(1);
-  const [signatureData, setSignatureData] = useState(null);
-  const sigCanvas = useRef(null);
-
   const [cases, setCases] = useState([]);
   const [isLoadingCases, setIsLoadingCases] = useState(false);
+  
+  const [selectedGoodsType, setSelectedGoodsType] = useState('');
+  const [selectedSeizureReason, setSelectedSeizureReason] = useState('');
+
   const [formData, setFormData] = useState({
     caseRef: initialCaseRef || '',
     taxpayerType: 'KNOWN',
@@ -52,20 +50,23 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     dateTimeSeized: new Date().toISOString().split('T')[0],
     authorizationPassword: '',
   });
+
   const [showRep, setShowRep] = useState(false);
   const [nextRef, setNextRef] = useState('');
   const [caseSearch, setCaseSearch] = useState('');
   const [isLookingUpTin, setIsLookingUpTin] = useState(false);
   const [tinFound, setTinFound] = useState(false);
 
-  React.useEffect(() => {
+  // Fetch Cases and Next Reference
+  useEffect(() => {
     if (isOpen) {
+      setStep(1);
       const fetchInitialData = async () => {
         try {
           setIsLoadingCases(true);
           const [casesRes, refRes] = await Promise.all([
             CaseService.getMyCases(),
-            stockApi.getNextReference()
+            editItem ? Promise.resolve({ data: { nextReference: editItem.seizureNumber } }) : stockApi.getNextReference()
           ]);
           setCases(casesRes.data || []);
           setNextRef(refRes.data?.nextReference || '');
@@ -76,14 +77,83 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
         }
       };
       fetchInitialData();
-    }
-  }, [isOpen]);
 
-  // Keep formData in sync if initialCaseRef changes while modal is closed
-  React.useEffect(() => {
-    if (initialCaseRef && cases.length > 0) {
+      if (editItem) {
+        setFormData({
+          caseRef: editItem.relatedCase?.caseNum || '',
+          taxpayerType: editItem.taxpayerType || 'KNOWN',
+          taxpayerTin: editItem.taxpayerTin || '',
+          taxpayerName: editItem.taxpayerName || '',
+          taxpayerAddress: editItem.taxpayerAddress || '',
+          taxpayerContact: editItem.taxpayerContact || '',
+          nationalId: editItem.nationalId || '',
+          physicalDescription: editItem.physicalDescription || '',
+          representativeName: editItem.representativeName || '',
+          representativeContact: editItem.representativeContact || '',
+          goodsDescription: editItem.goodsDescription || '',
+          seizureReason: editItem.seizureReason || '',
+          dateTimeSeized: editItem.dateTimeSeized ? editItem.dateTimeSeized.split('T')[0] : new Date().toISOString().split('T')[0],
+          authorizationPassword: '',
+        });
+
+        // Initialize Goods Type dropdown
+        if (GOODS_TYPES.includes(editItem.goodsDescription)) {
+          setSelectedGoodsType(editItem.goodsDescription);
+        } else if (editItem.goodsDescription) {
+          setSelectedGoodsType('Other (Specify)');
+        } else {
+          setSelectedGoodsType('');
+        }
+
+        // Initialize Seizure Reason dropdown
+        if (SEIZURE_REASONS.includes(editItem.seizureReason)) {
+          setSelectedSeizureReason(editItem.seizureReason);
+        } else if (editItem.seizureReason) {
+          setSelectedSeizureReason('Other (Specify)');
+        } else {
+          setSelectedSeizureReason('');
+        }
+
+        if (editItem.taxpayerTin) {
+          setTinFound(true);
+        }
+        if (editItem.representativeName || editItem.representativeContact) {
+          setShowRep(true);
+        } else {
+          setShowRep(false);
+        }
+      } else {
+        // Clear form for creation mode
+        setFormData({
+          caseRef: initialCaseRef || '',
+          taxpayerType: 'KNOWN',
+          taxpayerTin: '',
+          taxpayerName: '',
+          taxpayerAddress: '',
+          taxpayerContact: '',
+          nationalId: '',
+          physicalDescription: '',
+          representativeName: '',
+          representativeContact: '',
+          goodsDescription: '',
+          seizureReason: '',
+          dateTimeSeized: new Date().toISOString().split('T')[0],
+          authorizationPassword: '',
+        });
+        setSelectedGoodsType('');
+        setSelectedSeizureReason('');
+        setTinFound(false);
+        setShowRep(false);
+      }
+    }
+  }, [isOpen, editItem, initialCaseRef]);
+
+  // Sync formData and dropdown states on initialCaseRef or cases change (only for non-edit mode)
+  useEffect(() => {
+    if (initialCaseRef && cases.length > 0 && !editItem) {
       const selectedCase = cases.find(c => c.caseNum === initialCaseRef);
       if (selectedCase) {
+        const initialReason = selectedCase.summaryOfInformationCase || '';
         setFormData(prev => ({
           ...prev,
           caseRef: initialCaseRef,
@@ -91,14 +161,40 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
           taxpayerName: selectedCase.taxPayer?.name || prev.taxpayerName,
           taxpayerAddress: selectedCase.taxPayer?.address || prev.taxpayerAddress,
           taxpayerContact: selectedCase.taxPayer?.contact || prev.taxpayerContact,
-          seizureReason: selectedCase.summaryOfInformationCase || prev.seizureReason
+          seizureReason: initialReason
         }));
         if (selectedCase.taxPayer?.tin) setTinFound(true);
+
+        // Pre-fill Seizure Reason Dropdown
+        if (SEIZURE_REASONS.includes(initialReason)) {
+          setSelectedSeizureReason(initialReason);
+        } else if (initialReason) {
+          setSelectedSeizureReason('Other (Specify)');
+        }
       } else {
         setFormData(prev => ({ ...prev, caseRef: initialCaseRef }));
       }
     }
-  }, [initialCaseRef, cases]);
+  }, [initialCaseRef, cases, editItem]);
+
+  // Sync Dropdown Options to description/reason fields
+  const handleGoodsTypeChange = (val) => {
+    setSelectedGoodsType(val);
+    if (val !== 'Other (Specify)') {
+      setFormData(prev => ({ ...prev, goodsDescription: val }));
+    } else {
+      setFormData(prev => ({ ...prev, goodsDescription: '' }));
+    }
+  };
+
+  const handleSeizureReasonChange = (val) => {
+    setSelectedSeizureReason(val);
+    if (val !== 'Other (Specify)') {
+      setFormData(prev => ({ ...prev, seizureReason: val }));
+    } else {
+      setFormData(prev => ({ ...prev, seizureReason: '' }));
+    }
+  };
 
   const handleTinLookup = async (tin) => {
     if (!tin || tin.length < 9) return;
@@ -125,32 +221,58 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
 
   if (!isOpen) return null;
 
-  const handleNext = () => setStep(2);
-  const handleBack = () => setStep(1);
+  const handleNext = () => {
+    if (step === 1) {
+      // Validations
+      if (formData.taxpayerType === 'KNOWN' && !formData.taxpayerTin) {
+        toast.error('Taxpayer TIN is required');
+        return;
+      }
+      if (formData.taxpayerType === 'UNKNOWN' && !formData.physicalDescription) {
+        toast.error('Physical Description is required for unknown taxpayer');
+        return;
+      }
+      if (!formData.goodsDescription) {
+        toast.error('Please specify the Goods Description');
+        return;
+      }
+      if (!formData.seizureReason) {
+        toast.error('Please specify the Seizure Reason');
+        return;
+      }
+      setStep(2);
+    } else if (step === 2) {
+      setStep(3);
+    }
+  };
 
-  // const handleNext = () => setStep(2);
-  // const handleBack = () => setStep(1);
+  const handleBack = () => {
+    if (step === 3) setStep(2);
+    else if (step === 2) setStep(1);
+  };
 
   const handleSubmit = async () => {
-    if (!formData.goodsDescription) {
-      toast.error('Please provide a Goods Description');
-      return;
-    }
     if (!formData.authorizationPassword) {
       toast.error('Please enter your password to authorize');
       return;
     }
     
     try {
-      await stockApi.createSeizureNote({
+      const payload = {
         ...formData,
         dateTimeSeized: `${formData.dateTimeSeized}T00:00:00`,
-      });
-      toast.success('Seizure Note created successfully');
+      };
+      if (editItem) {
+        await stockApi.updateSeizureNote(editItem.id, payload);
+        toast.success('Seizure Note updated successfully');
+      } else {
+        await stockApi.createSeizureNote(payload);
+        toast.success('Seizure Note created successfully');
+      }
       onSuccess();
     } catch (err) {
-      console.error('Failed to create Seizure Note:', err.response?.data || err);
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to create Seizure Note');
+      console.error('Failed to save Seizure Note:', err.response?.data || err);
+      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to save Seizure Note');
     }
   };
 
@@ -164,9 +286,10 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
     <Portal>
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal-card" onClick={e => e.stopPropagation()}>
+          {/* Modal Header */}
           <div style={{ padding: '24px 24px 16px', borderBottom: '1px solid var(--gray-100)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ font: '600 18px var(--font-display)', margin: 0 }}>Create Seizure Note</h2>
+              <h2 style={{ font: '600 18px var(--font-display)', margin: 0 }}>{editItem ? 'Edit Seizure Note' : 'Create Seizure Note'}</h2>
               {nextRef && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--rra-blue-tint)', padding: '4px 10px', borderRadius: 6 }}>
                   <ClipboardIcon style={{ width: 14, height: 14, color: 'var(--rra-blue)' }} />
@@ -174,13 +297,18 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                 </div>
               )}
             </div>
+            {/* Steps Visual Tracker */}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <div style={{ flex: 1, height: 4, background: 'var(--rra-blue)', borderRadius: 2 }} />
-              <div style={{ flex: 1, height: 4, background: step === 2 ? 'var(--rra-blue)' : 'var(--gray-200)', borderRadius: 2 }} />
+              <div style={{ flex: 1, height: 4, background: step >= 2 ? 'var(--rra-blue)' : 'var(--gray-200)', borderRadius: 2 }} />
+              <div style={{ flex: 1, height: 4, background: step === 3 ? 'var(--rra-blue)' : 'var(--gray-200)', borderRadius: 2 }} />
             </div>
           </div>
 
-          <div style={{ padding: 24 }}>
+          {/* Modal Content */}
+          <div style={{ padding: 24, maxHeight: '60vh', overflowY: 'auto' }}>
+            
+            {/* STEP 1: Details Intake Form */}
             {step === 1 && (
               <>
                 <div style={{ marginBottom: 20 }}>
@@ -219,6 +347,7 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                         onChange={e => {
                           const selectedCaseNum = e.target.value;
                           const selectedCase = cases.find(c => c.caseNum === selectedCaseNum);
+                          const initialReason = selectedCase?.summaryOfInformationCase || '';
                           setFormData({
                             ...formData, 
                             caseRef: selectedCaseNum,
@@ -226,8 +355,14 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                             taxpayerName: selectedCase?.taxPayer?.name || '',
                             taxpayerAddress: selectedCase?.taxPayer?.address || '',
                             taxpayerContact: selectedCase?.taxPayer?.contact || '',
-                            seizureReason: selectedCase?.summaryOfInformationCase || ''
+                            seizureReason: initialReason
                           });
+                          
+                          if (SEIZURE_REASONS.includes(initialReason)) {
+                            setSelectedSeizureReason(initialReason);
+                          } else if (initialReason) {
+                            setSelectedSeizureReason('Other (Specify)');
+                          }
                         }}
                       >
                         <option value="">-- Select from results --</option>
@@ -331,24 +466,18 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                   </div>
                 )}
 
+                {/* Goods Type Dropdown */}
                 <div className="form-field">
-                  <label className="form-label">Goods Type / Description <span className="required">*</span></label>
+                  <label className="form-label">Goods Type <span className="required">*</span></label>
                   <select 
                     className="form-control"
-                    value={GOODS_TYPES.includes(formData.goodsDescription) ? formData.goodsDescription : (formData.goodsDescription ? 'Other (Specify)' : '')}
-                    onChange={e => {
-                      const val = e.target.value;
-                      if (val !== 'Other (Specify)') {
-                        setFormData({...formData, goodsDescription: val});
-                      } else {
-                        setFormData({...formData, goodsDescription: ''});
-                      }
-                    }}
+                    value={selectedGoodsType}
+                    onChange={e => handleGoodsTypeChange(e.target.value)}
                   >
                     <option value="">-- Select Goods Type --</option>
                     {GOODS_TYPES.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
-                  {(!GOODS_TYPES.includes(formData.goodsDescription) || formData.goodsDescription === 'Other (Specify)') && (
+                  {selectedGoodsType === 'Other (Specify)' && (
                     <div style={{ marginTop: 10 }}>
                       <textarea 
                         className="form-control" 
@@ -361,24 +490,18 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                   )}
                 </div>
 
+                {/* Seizure Reason Dropdown */}
                 <div className="form-field">
                   <label className="form-label">Seizure Reason <span className="required">*</span></label>
                   <select 
                     className="form-control"
-                    value={SEIZURE_REASONS.includes(formData.seizureReason) ? formData.seizureReason : (formData.seizureReason ? 'Other (Specify)' : '')}
-                    onChange={e => {
-                      const val = e.target.value;
-                      if (val !== 'Other (Specify)') {
-                        setFormData({...formData, seizureReason: val});
-                      } else {
-                        setFormData({...formData, seizureReason: ''});
-                      }
-                    }}
+                    value={selectedSeizureReason}
+                    onChange={e => handleSeizureReasonChange(e.target.value)}
                   >
                     <option value="">-- Select Reason --</option>
                     {SEIZURE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
                   </select>
-                  {(!SEIZURE_REASONS.includes(formData.seizureReason) || formData.seizureReason === 'Other (Specify)') && (
+                  {selectedSeizureReason === 'Other (Specify)' && (
                     <div style={{ marginTop: 10 }}>
                       <input 
                         className="form-control" 
@@ -389,6 +512,7 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
                     </div>
                   )}
                 </div>
+
                 <div className="form-field">
                   <label className="form-label">Date Seized <span className="required">*</span></label>
                   <input 
@@ -402,7 +526,87 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
               </>
             )}
 
+            {/* STEP 2: Live Written Document Preview */}
             {step === 2 && (
+              <div>
+                <p style={{ margin: '0 0 16px 0', fontSize: 13, color: 'var(--gray-500)' }}>
+                  Review the seizure note styled as an official RRA Notice of Seizure before digital authorization:
+                </p>
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid var(--gray-200)',
+                  borderRadius: 12,
+                  padding: '30px 40px',
+                  fontFamily: "'Times New Roman', Times, serif",
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
+                  color: '#1a1a1a',
+                  lineHeight: '1.6',
+                  fontSize: '14px',
+                  textAlign: 'justify'
+                }}>
+                  {/* Official Letterhead */}
+                  <div style={{ textAlign: 'center', borderBottom: '2px solid var(--rra-blue)', paddingBottom: 8, marginBottom: 12 }}>
+                    <h3 style={{ margin: '0 0 4px 0', color: 'var(--rra-blue)', font: '700 16px var(--font-display)', letterSpacing: '0.5px' }}>RWANDA REVENUE AUTHORITY</h3>
+                    <span style={{ color: 'var(--rra-green)', font: '600 9px var(--font-display)', textTransform: 'uppercase', letterSpacing: '1px' }}>Taxes for Growth and Development</span>
+                  </div>
+                  
+                  {/* Decorative Banner Stripes */}
+                  <div style={{ display: 'flex', height: 4, width: '100%', marginBottom: 15 }}>
+                    <div style={{ flex: 3, background: 'var(--rra-blue)' }} />
+                    <div style={{ flex: 2, background: 'var(--rra-green)' }} />
+                    <div style={{ flex: 3, background: 'var(--rra-blue)' }} />
+                    <div style={{ flex: 2, background: '#E05C00' }} />
+                  </div>
+
+                  <div style={{ textAlign: 'right', font: '600 12px var(--font-mono)', color: 'var(--rra-red)', marginBottom: 15 }}>
+                    Serial N°: <span style={{ textDecoration: 'underline' }}>{nextRef || 'SN-2026-PENDING'}</span>
+                  </div>
+
+                  <h4 style={{ textAlign: 'center', textTransform: 'uppercase', textDecoration: 'underline', font: '700 15px var(--font-display)', margin: '15px 0' }}>Notice of Seizure</h4>
+
+                  <div style={{ marginBottom: 15, fontSize: '13px' }}>
+                    <strong>To:</strong> <span style={{ borderBottom: '1px dotted #333', display: 'inline-block', minWidth: '220px', paddingLeft: 5, fontWeight: 'bold' }}>{formData.taxpayerName || '____________________'}</span>
+                    <br />
+                    <strong>of:</strong> <span style={{ borderBottom: '1px dotted #333', display: 'inline-block', minWidth: '220px', paddingLeft: 5, fontWeight: 'bold' }}>
+                      {formData.taxpayerType === 'KNOWN' ? (formData.taxpayerTin || '____________________') : 'UNKNOWN TAXPAYER'}
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: '13px' }}>
+                    <p style={{ margin: '0 0 10px 0' }}>1. Take notice that the following goods / items:</p>
+                    <div style={{ background: '#fafafa', border: '1px solid #ddd', padding: '10px 15px', fontWeight: 'bold', fontStyle: 'italic', margin: '10px 0', whiteSpace: 'pre-wrap', borderLeft: '4px solid var(--rra-green)' }}>
+                      {formData.goodsDescription || 'No goods specified.'}
+                    </div>
+                    <p style={{ margin: '10px 0' }}>
+                      have been seized and are liable to forfeiture in accordance with the provisions of the East African Community Customs Management Act, on the following grounds:
+                    </p>
+                    
+                    <div style={{ margin: '15px 0', padding: '10px 15px', borderLeft: '4px solid var(--rra-blue)', background: 'var(--rra-blue-tint)', fontStyle: 'italic' }}>
+                      <strong>GROUNDS / REASON:</strong><br />
+                      {formData.seizureReason || 'No grounds specified.'}
+                    </div>
+
+                    <p style={{ margin: '10px 0 20px 0' }}>
+                      2. If you claim or intend to claim that the things seized are not liable to forfeiture you should, within one calendar month from the date of this notice, give notice in writing of your claim in accordance with the provisions of section 214 of the Act.
+                    </p>
+
+                    <div style={{ marginTop: 25, borderTop: '1px dashed var(--gray-200)', paddingTop: 15, display: 'flex', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontStyle: 'italic', color: 'var(--gray-500)', fontSize: '11px' }}>Offender / Representative Signature</div>
+                        <div style={{ height: 30, borderBottom: '1px solid var(--gray-300)', width: 140, marginTop: 5 }} />
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontStyle: 'italic', color: 'var(--gray-500)', fontSize: '11px' }}>Authorized Proper Officer</div>
+                        <div style={{ font: '600 12px var(--font-display)', color: 'var(--rra-blue)', marginTop: 5 }}>[Digitally Signed via Password]</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: Document Authorization (Password confirmation) */}
+            {step === 3 && (
               <>
                 <div style={{ background: 'var(--rra-blue-tint)', padding: 20, borderRadius: 12, border: '1px solid var(--rra-blue-tint-2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
@@ -433,14 +637,19 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef }) 
             )}
           </div>
 
+          {/* Modal Footer Controls */}
           <div style={{ padding: '16px 24px', borderTop: '1px solid var(--gray-100)', display: 'flex', justifyContent: 'space-between' }}>
             <button className="btn-ghost" onClick={step === 1 ? onClose : handleBack}>
               {step === 1 ? 'Cancel' : 'Back'}
             </button>
-            {step === 1 ? (
-              <button className="btn-primary" onClick={handleNext}>Next: Signature</button>
+            {step < 3 ? (
+              <button className="btn-primary" onClick={handleNext}>
+                {step === 1 ? 'Next: Review Preview' : 'Next: Sign'}
+              </button>
             ) : (
-              <button className="btn-success" onClick={handleSubmit}>Submit Seizure Note</button>
+              <button className="btn-success" onClick={handleSubmit}>
+                {editItem ? 'Update Seizure Note' : 'Submit Seizure Note'}
+              </button>
             )}
           </div>
         </div>

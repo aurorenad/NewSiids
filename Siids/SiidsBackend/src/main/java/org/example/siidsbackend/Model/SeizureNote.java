@@ -52,6 +52,9 @@ public class SeizureNote {
     @Column(columnDefinition = "TEXT")
     private String officerSignaturePath; // Path or Base64
 
+    @Column(columnDefinition = "TEXT")
+    private String returnReason;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime actionedAt;

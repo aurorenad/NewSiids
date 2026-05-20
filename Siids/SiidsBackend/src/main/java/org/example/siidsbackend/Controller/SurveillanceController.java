@@ -69,7 +69,6 @@ public class SurveillanceController {
             @RequestPart("stockData") StockRequestDTO stockData,
             @RequestPart("documents") List<MultipartFile> documents,
             @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument) {
-        String employeeId = getCurrentUser();
         try {
             // Check if user is Surveillance or Store staff
             Stock stock = stockService.createStock(stockData, documents, anotherDocument, null);

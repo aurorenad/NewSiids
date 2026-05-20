@@ -63,7 +63,8 @@ public class ReportController {
     public ResponseEntity<?> createReport(
             @RequestPart("reportData") String reportDataJson,
             @RequestPart(value = "attachments", required = false) MultipartFile[] attachments, // Change to array
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
 
         try {
             ReportRequestDTO reportData = objectMapper.readValue(reportDataJson, ReportRequestDTO.class);
@@ -97,7 +98,8 @@ public class ReportController {
     @GetMapping("/{id}/attachment")
     public ResponseEntity<?> downloadAttachment(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
 
         try {
             Report report = reportService.getReport(id);
@@ -201,7 +203,8 @@ public class ReportController {
             @PathVariable Integer id,
             @RequestPart("findingsData") String findingsDataJson,
             @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
-            @RequestHeader("employee_id") String officerId) {
+            Authentication authentication) {
+        String officerId = authentication.getName();
         try {
             ObjectMapper objectMapper = new ObjectMapper();
             FindingsRequestDTO findingsDTO = objectMapper.readValue(findingsDataJson, FindingsRequestDTO.class);
@@ -225,7 +228,8 @@ public class ReportController {
     public ResponseEntity<?> downloadFindingsAttachmentByName(
             @PathVariable Integer id,
             @PathVariable String filename,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.getReport(id);
             validateAttachmentAccess(report, employeeId);
@@ -261,7 +265,8 @@ public class ReportController {
 
     @GetMapping("/my-reports")
     public ResponseEntity<List<ReportResponseDTO>> getMyReports(
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsByEmployee(employeeId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -278,7 +283,7 @@ public class ReportController {
     @GetMapping("/{id}")
     public ResponseEntity<ReportResponseDTO> getReport(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
         try {
             Report report = reportService.getReport(id);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -292,7 +297,8 @@ public class ReportController {
     @GetMapping("/{id}/participants")
     public ResponseEntity<Map<String, String>> getReportParticipants(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.getReport(id);
 
@@ -349,7 +355,7 @@ public class ReportController {
     @PostMapping("/{id}/send-to-director-intelligence")
     public ResponseEntity<?> sendToDirectorIntelligence(
             @PathVariable("id") Integer reportId,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
         try {
 
             Report report = reportService.sendToDirectorIntelligence(reportId);
@@ -363,7 +369,7 @@ public class ReportController {
     @PostMapping("/{id}/send-to-commissioner-intelligence")
     public ResponseEntity<?> sendToAssistantCommissioner(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
         try {
 
             Report report = reportService.sendToAssistantCommissioner(id);
@@ -377,7 +383,7 @@ public class ReportController {
     @PostMapping("/{id}/send-to-director-investigation")
     public ResponseEntity<?> sendToDirectorInvestigation(
             @PathVariable("id") Integer reportId,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
         try {
 
             Report report = reportService.sendToDirectorInvestigation(reportId);
@@ -393,7 +399,8 @@ public class ReportController {
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
             @RequestParam String returnReason,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
 
             if (returnReason == null || returnReason.trim().isEmpty()) {
@@ -413,7 +420,8 @@ public class ReportController {
 
     @GetMapping("/director-intelligence/reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsForDirectorIntelligence(
-            @RequestHeader("employee_id") String directorId) {
+            Authentication authentication) {
+        String directorId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsForDirectorIntelligence(directorId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -433,7 +441,8 @@ public class ReportController {
     @PostMapping("/{id}/approve")
     public ResponseEntity<?> approveReport(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
 
             Report report = reportService.approveReport(id, employeeId);
@@ -448,7 +457,8 @@ public class ReportController {
     public ResponseEntity<?> rejectReport(
             @PathVariable Integer id,
             @RequestParam(required = false) String rejectionReason,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
 
             Report report = reportService.rejectReport(id, rejectionReason, employeeId);
@@ -481,7 +491,8 @@ public class ReportController {
 
     @GetMapping("/director-investigation/approved-reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(
-            @RequestHeader("employee_id") String directorId) {
+            Authentication authentication) {
+        String directorId = authentication.getName();
         try {
             List<Report> reports = reportService
                     .getReportsApprovedByAssistantCommissionerForDirectorInvestigation(directorId);
@@ -503,7 +514,8 @@ public class ReportController {
     public ResponseEntity<?> updateInvestigationStatus(
             @PathVariable Integer id,
             @RequestBody Map<String, String> payload,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             String status = payload.get("status");
             String notes = payload.get("notes");
@@ -519,7 +531,8 @@ public class ReportController {
     public ResponseEntity<?> assignToInvestigationOfficer(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
 
             String specificOfficerId = requestBody.get("specificOfficerId");
@@ -535,7 +548,8 @@ public class ReportController {
 
     @GetMapping("/available-investigation-officers")
     public ResponseEntity<List<Employee>> getAvailableInvestigationOfficersWithHeader(
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             List<Employee> officers = reportService.getAvailableInvestigationOfficers();
             return ResponseEntity.ok(officers);
@@ -548,7 +562,8 @@ public class ReportController {
 
     @GetMapping("/investigation-officer/assigned-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAssignedReportsForInvestigationOfficer(
-            @RequestHeader("employee_id") String officerId) {
+            Authentication authentication) {
+        String officerId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -569,7 +584,8 @@ public class ReportController {
     @GetMapping("/{id}/findings")
     public ResponseEntity<ReportResponseDTO> getFindings(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.getReport(id);
 
@@ -858,8 +874,7 @@ public class ReportController {
     @GetMapping("/by-case")
     public ResponseEntity<List<ReportResponseDTO>> getReportsByCaseNum(
             @RequestParam String caseNum,
-            @RequestHeader("employee_id") String employeeId) {
-
+            Authentication authentication) {
         try {
             log.info("Fetching reports for case: {}", caseNum);
             caseRepo.findByCaseNum(caseNum)
@@ -888,7 +903,8 @@ public class ReportController {
 
     @GetMapping("/director-intelligence/all-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorIntelligence(
-            @RequestHeader("employee_id") String directorId) {
+            Authentication authentication) {
+        String directorId = authentication.getName();
         try {
             List<Report> reports = reportService.getAllReportsForDirectorIntelligence(directorId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -906,7 +922,8 @@ public class ReportController {
 
     @GetMapping("/assistant-commissioner/all-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForAssistantCommissioner(
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsHandledByAssistantCommissioner(employeeId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -924,7 +941,8 @@ public class ReportController {
 
     @GetMapping("/director-investigation/all-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
-            @RequestHeader("employee_id") String directorId) {
+            Authentication authentication) {
+        String directorId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsHandledByDirectorInvestigation(directorId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -944,7 +962,8 @@ public class ReportController {
     public ResponseEntity<ReportResponseDTO> updateReturnedReport(
             @PathVariable Integer id,
             @RequestBody ReportRequestDTO reportData,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             // Verify the employee is the creator of the report
             Report report = reportService.getReport(id);
@@ -975,7 +994,8 @@ public class ReportController {
 
     @GetMapping("/assistant-commissioner/fines-report")
     public ResponseEntity<FinesReportDTO> getFinesReportForAssistantCommissioner(
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             FinesReportDTO reportDTO = reportService.generateFinesReportForAssistantCommissioner(employeeId);
             return ResponseEntity.ok(reportDTO);
@@ -990,7 +1010,8 @@ public class ReportController {
 
     @GetMapping("/assistant-commissioner/penalties-report")
     public ResponseEntity<FinesReportDTO> getPenaltiesReportForAssistantCommissioner(
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             FinesReportDTO reportDTO = reportService.generatePenaltiesReportForAssistantCommissioner(employeeId);
             return ResponseEntity.ok(reportDTO);
@@ -1005,7 +1026,8 @@ public class ReportController {
 
     @GetMapping("/director-intelligence/case-reports")
     public ResponseEntity<List<DirectorIntelligenceReportDTO>> getDirectorIntelligenceCaseReports(
-            @RequestHeader("employee_id") String directorId) {
+            Authentication authentication) {
+        String directorId = authentication.getName();
         try {
             List<DirectorIntelligenceReportDTO> reports = reportService.getDirectorIntelligenceReport(directorId);
             return ResponseEntity.ok(reports);
@@ -1029,28 +1051,10 @@ public class ReportController {
         }
     }
 
-    // @GetMapping("/investigation-officer/active-reports")
-    // public ResponseEntity<List<ReportResponseDTO>>
-    // getActiveReportsForInvestigationOfficer(
-    // @RequestHeader("employee_id") String officerId) {
-    // try {
-    // List<Report> reports =
-    // reportService.getReportsAssignedToInvestigationOfficer(officerId);
-    // List<ReportResponseDTO> responseList = reports.stream()
-    // .map(reportService::toResponseDTO)
-    // .collect(Collectors.toList());
-    // return ResponseEntity.ok(responseList);
-    // } catch (RuntimeException e) {
-    // log.error("Error getting active reports: {}", e.getMessage());
-    // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    // } catch (Exception e) {
-    // log.error("Error getting reports: {}", e.getMessage(), e);
-    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    // }
-    // }
     @GetMapping("/investigation-officer/active-reports")
     public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
-            @RequestHeader("employee_id") String officerId) {
+            Authentication authentication) {
+        String officerId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -1068,10 +1072,10 @@ public class ReportController {
 
     @GetMapping("/investigation-officer/all-reports")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
-            @RequestHeader("employee_id") String officerId) {
+            Authentication authentication) {
+        String officerId = authentication.getName();
         try {
-            List<Report> reports = reportService.getHistoricalReportsForInvestigationOfficer(officerId); // Updated
-                                                                                                         // method name
+            List<Report> reports = reportService.getHistoricalReportsForInvestigationOfficer(officerId); 
             List<ReportResponseDTO> responseList = reports.stream()
                     .map(reportService::toResponseDTO)
                     .collect(Collectors.toList());
@@ -1084,26 +1088,6 @@ public class ReportController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
-
-    // @GetMapping("/investigation-officer/all-reports")
-    // public ResponseEntity<List<ReportResponseDTO>>
-    // getAllReportsForInvestigationOfficer(
-    // @RequestHeader("employee_id") String officerId) {
-    // try {
-    // List<Report> reports =
-    // reportService.getAllReportsForInvestigationOfficer(officerId);
-    // List<ReportResponseDTO> responseList = reports.stream()
-    // .map(reportService::toResponseDTO)
-    // .collect(Collectors.toList());
-    // return ResponseEntity.ok(responseList);
-    // } catch (RuntimeException e) {
-    // log.error("Error getting all reports: {}", e.getMessage());
-    // return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-    // } catch (Exception e) {
-    // log.error("Error getting reports: {}", e.getMessage(), e);
-    // return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-    // }
-    // }
 
     @GetMapping("/investigation-officers/assigned-reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsAssignedToInvestigationOfficers(
@@ -1149,7 +1133,8 @@ public class ReportController {
     @PostMapping("/{id}/send-to-legal-advisor")
     public ResponseEntity<ReportResponseDTO> sendToLegalAdvisor(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             log.info("Sending report {} to legal advisor, requested by employee {}", id, employeeId);
             Report report = reportService.sendToLegalAdvisor(id);
@@ -1164,7 +1149,8 @@ public class ReportController {
 
     @GetMapping("/legal-advisor/my-reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsForLegalAdvisor(
-            @RequestHeader("employee_id") String legalAdvisorId) {
+            Authentication authentication) {
+        String legalAdvisorId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsForLegalAdvisor(legalAdvisorId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -1198,7 +1184,8 @@ public class ReportController {
     public ResponseEntity<?> returnToAssistantCommissioner(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
-            @RequestHeader("employee_id") String legalAdvisorId) {
+            Authentication authentication) {
+        String legalAdvisorId = authentication.getName();
         try {
             // Verify the user is a legal advisor
             List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
@@ -1235,7 +1222,8 @@ public class ReportController {
             @RequestParam String returnToEmployeeId,
             @RequestParam(required = false) String returnReason,
             @RequestPart(value = "returnDocument", required = false) MultipartFile returnDocument,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
 
         try {
 
@@ -1311,7 +1299,8 @@ public class ReportController {
     @GetMapping("/{id}/return-document")
     public ResponseEntity<Resource> downloadReturnDocument(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
 
         try {
             Report report = reportService.getReport(id);
@@ -1382,7 +1371,8 @@ public class ReportController {
             @PathVariable Integer id,
             @RequestPart("reportData") String reportDataJson,
             @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
 
         try {
             ReportRequestDTO reportData = objectMapper.readValue(reportDataJson, ReportRequestDTO.class);
@@ -1434,7 +1424,8 @@ public class ReportController {
     @GetMapping("/{id}/edit-permission")
     public ResponseEntity<Map<String, Object>> checkEditPermission(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
 
         try {
             Report report = reportService.getReport(id);
@@ -1493,7 +1484,8 @@ public class ReportController {
             @PathVariable Integer id,
             @RequestPart(value = "casePlanText", required = false) String casePlanDescription,
             @RequestPart(value = "casePlanAttachment", required = false) MultipartFile casePlanAttachment,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.submitCasePlan(id, casePlanDescription, casePlanAttachment, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -1507,9 +1499,10 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-case-plan-to-director-investigation")
-    public ResponseEntity<?> sendCasePlanToDirectorInvestigation(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+    public ResponseEntity<?> sendToDirectorInvestigationFromLegal(
+            @PathVariable("id") Integer id,
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.sendCasePlanToDirectorInvestigation(id, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -1524,7 +1517,8 @@ public class ReportController {
 
     @GetMapping("/director-investigation/case-plans")
     public ResponseEntity<List<ReportResponseDTO>> getCasePlansForDirectorInvestigation(
-            @RequestHeader("employee_id") String directorId) {
+            Authentication authentication) {
+        String directorId = authentication.getName();
         try {
             List<Report> reports = reportService.getCasePlansForDirectorInvestigation(directorId);
             List<ReportResponseDTO> responseList = reports.stream()
@@ -1543,7 +1537,8 @@ public class ReportController {
     @GetMapping("/{id}/case-plan")
     public ResponseEntity<ReportResponseDTO> getCasePlan(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.getReport(id);
             List<Employee> directors = reportRepo.DirectorsOfInvestigation();
@@ -1563,8 +1558,9 @@ public class ReportController {
 
     @PostMapping("/{id}/approve-case-plan")
     public ResponseEntity<?> approveCasePlan(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable("id") Integer id,
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.approveCasePlan(id, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -1580,8 +1576,9 @@ public class ReportController {
     @PostMapping("/{id}/reject-case-plan")
     public ResponseEntity<?> rejectCasePlan(
             @PathVariable Integer id,
-            @RequestParam String rejectionReason,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestParam(required = false) String rejectionReason,
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.rejectCasePlan(id, rejectionReason, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -1597,7 +1594,8 @@ public class ReportController {
     @PostMapping("/{id}/approve-investigation-report")
     public ResponseEntity<?> approveInvestigationReport(
             @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.approveInvestigationReport(id, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -1614,7 +1612,8 @@ public class ReportController {
     public ResponseEntity<?> rejectInvestigationReport(
             @PathVariable Integer id,
             @RequestParam String rejectionReason,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             Report report = reportService.rejectInvestigationReport(id, rejectionReason, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
@@ -1631,7 +1630,8 @@ public class ReportController {
     public ResponseEntity<?> returnInvestigationReport(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
-            @RequestHeader("employee_id") String employeeId) {
+            Authentication authentication) {
+        String employeeId = authentication.getName();
         try {
             String returnReason = requestBody.get("returnReason");
             if (returnReason == null || returnReason.trim().isEmpty()) {
