@@ -6,6 +6,7 @@ export const stockApi = {
     getSeizureHistory: () => axios.get('/api/stock/temporary/history'),
     getNextReference: () => axios.get('/api/stock/temporary/next-reference'),
     createSeizureNote: (data) => axios.post('/api/stock/temporary/seizure-notes', data),
+    updateSeizureNote: (id, data) => axios.put(`/api/stock/temporary/seizure-notes/${id}`, data),
     releaseFromTemp: (id, data) => axios.post(`/api/stock/temporary/${id}/release`, data),
     escalateToMain: (id, data) => axios.post(`/api/stock/temporary/${id}/escalate`, data),
     downloadSeizureNote: (id) => axios.get(`/api/stock/temporary/${id}/seizure-note`, { responseType: 'blob' }),
