@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { connectWebSocket, disconnectWebSocket } from '../websocket.js';
 import caseApi from '../api/Axios/caseApi';
+import { toast } from 'sonner';
 
 export const NotificationContext = createContext();
 
@@ -33,6 +34,12 @@ export const NotificationProvider = ({ children, employeeId }) => {
             (notification) => {
                 setNotifications(prev => [notification, ...prev]);
                 setUnreadCount(prev => prev + 1);
+                
+                // Trigger toast notification
+                toast.info(notification.message, {
+                    description: notification.senderName ? `From: ${notification.senderName}` : '',
+                    duration: 5000,
+                });
             },
             (error) => console.error('WebSocket error:', error)
         );

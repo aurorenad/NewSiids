@@ -86,7 +86,7 @@ const TaxReportView = () => {
                 taxPayerName: response.data.taxPayer?.name || 'N/A',
                 taxPayerTIN: response.data.taxPayer?.tin || 'N/A',
                 taxPayerAddress: response.data.taxPayer?.address || 'N/A',
-                taxPayerType: response.data.taxType || 'N/A',
+                taxType: response.data.taxType || 'N/A',
                 informerId: response.data.informer?.informerId || 'N/A',
                 informerName: response.data.informer?.name || 'N/A',
                 informerNationalId: response.data.informer?.nationalId || 'N/A'
@@ -230,7 +230,7 @@ const TaxReportView = () => {
                     <TableBody>
                         <TableRow><TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Taxpayer Name</TableCell><TableCell>{caseData.taxPayerName}</TableCell></TableRow>
                         <TableRow><TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell><TableCell>{caseData.taxPayerTIN}</TableCell></TableRow>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell><TableCell>{caseData.taxPayerType}</TableCell></TableRow>
+                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell><TableCell>{caseData.taxType}</TableCell></TableRow>
                         <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell><TableCell>{caseData.taxPayerAddress}</TableCell></TableRow>
                     </TableBody>
                 </Table>

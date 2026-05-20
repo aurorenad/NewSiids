@@ -11,9 +11,11 @@ import org.example.siidsbackend.Repository.PVDocumentRepository;
 import org.example.siidsbackend.Repository.ReleaseNoteRepository;
 import org.example.siidsbackend.Repository.SeizureNoteRepository;
 import org.example.siidsbackend.Repository.StockRepository;
+import org.example.siidsbackend.Repository.UserRepo;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.Optional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +32,8 @@ public class PhysicalStockService {
     private final WebSocketNotificationService notificationService;
     private final PdfService pdfService;
     private final org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
+    private final UserRepo userRepo;
+    private final PasswordEncoder passwordEncoder;
 
     public PhysicalStockService(SeizureNoteRepository seizureNoteRepository,
                                 PVDocumentRepository pvDocumentRepository,
@@ -39,7 +43,9 @@ public class PhysicalStockService {
                                 StockAuditService auditService,
                                 WebSocketNotificationService notificationService,
                                 PdfService pdfService,
-                                org.example.siidsbackend.Repository.EmployeeRepo employeeRepo) {
+                                org.example.siidsbackend.Repository.EmployeeRepo employeeRepo,
+                                UserRepo userRepo,
+                                PasswordEncoder passwordEncoder) {
         this.seizureNoteRepository = seizureNoteRepository;
         this.pvDocumentRepository = pvDocumentRepository;
         this.releaseNoteRepository = releaseNoteRepository;
@@ -49,6 +55,8 @@ public class PhysicalStockService {
         this.notificationService = notificationService;
         this.pdfService = pdfService;
         this.employeeRepo = employeeRepo;
+        this.userRepo = userRepo;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public Employee getEmployeeByUsername(String username) {
@@ -120,6 +128,7 @@ public class PhysicalStockService {
 
     public List<SeizureNote> getTemporaryStock() {
         List<SeizureNote> notes = seizureNoteRepository.findByStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
+        notes.addAll(seizureNoteRepository.findByStatus(PhysicalStockStatus.RETURNED_FOR_CORRECTION));
         List<Stock> legacyStocks = stockRepository.findByStatusIsNullOrStatus("ACTIVE");
         if (legacyStocks != null) {
             for (Stock s : legacyStocks) {
@@ -131,28 +140,121 @@ public class PhysicalStockService {
         return notes;
     }
 
+    public List<SeizureNote> getSeizureHistory(Employee officer) {
+        return seizureNoteRepository.findByPvInChargeOrderByCreatedAtDesc(officer);
+    }
+
+    public String generateNextSeizureNumber() {
+        String currentYear = String.valueOf(LocalDateTime.now().getYear());
+        String nextNumber = "00001";
+
+        java.util.Optional<SeizureNote> lastNote = seizureNoteRepository.findFirstByOrderByCreatedAtDesc();
+        if (lastNote.isPresent()) {
+            String lastNum = lastNote.get().getSeizureNumber();
+            if (lastNum != null && lastNum.startsWith("SN-" + currentYear + "-")) {
+                try {
+                    String sequencePart = lastNum.substring(lastNum.lastIndexOf("-") + 1);
+                    int nextSeq = Integer.parseInt(sequencePart) + 1;
+                    nextNumber = String.format("%05d", nextSeq);
+                } catch (Exception e) {
+                    nextNumber = java.util.UUID.randomUUID().toString().substring(0, 5).toUpperCase();
+                }
+            }
+        }
+        return "SN-" + currentYear + "-" + nextNumber;
+    }
+
     @Transactional
     public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
+        // Password-based authorization
+        User user = userRepo.findByUsername(currentUser.getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("User account not found for current employee"));
+
+        if (dto.getAuthorizationPassword() == null || !passwordEncoder.matches(dto.getAuthorizationPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid authorization password");
+        }
+
         SeizureNote note = new SeizureNote();
-        note.setSeizureNumber("SN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        note.setSeizureNumber(generateNextSeizureNumber());
         
         if (dto.getCaseRef() != null && !dto.getCaseRef().isEmpty()) {
             Case c = caseRepo.findByCaseNum(dto.getCaseRef()).orElse(null);
             note.setRelatedCase(c);
+            
+            // Auto-inherit taxpayer info from case if not provided manually
+            if ((dto.getTaxpayerTin() == null || dto.getTaxpayerTin().isEmpty()) && c != null && c.getTin() != null) {
+                note.setTaxpayerTin(c.getTin().getTaxPayerTIN());
+                note.setTaxpayerName(c.getTin().getTaxPayerName());
+                note.setTaxpayerAddress(c.getTin().getTaxPayerAddress());
+                note.setTaxpayerContact(c.getTin().getTaxPayerContact());
+                note.setTaxpayerType("KNOWN");
+            } else {
+                note.setTaxpayerTin(dto.getTaxpayerTin());
+                note.setTaxpayerName(dto.getTaxpayerName());
+                note.setTaxpayerAddress(dto.getTaxpayerAddress());
+                note.setTaxpayerContact(dto.getTaxpayerContact());
+                note.setTaxpayerType(dto.getTaxpayerType());
+            }
+            note.setNationalId(dto.getNationalId());
+            note.setPhysicalDescription(dto.getPhysicalDescription());
+            note.setRepresentativeName(dto.getRepresentativeName());
+            note.setRepresentativeContact(dto.getRepresentativeContact());
+        } else {
+            note.setTaxpayerTin(dto.getTaxpayerTin());
+            note.setTaxpayerName(dto.getTaxpayerName());
+            note.setTaxpayerAddress(dto.getTaxpayerAddress());
+            note.setTaxpayerContact(dto.getTaxpayerContact());
+            note.setTaxpayerType(dto.getTaxpayerType());
+            note.setNationalId(dto.getNationalId());
+            note.setPhysicalDescription(dto.getPhysicalDescription());
+            note.setRepresentativeName(dto.getRepresentativeName());
+            note.setRepresentativeContact(dto.getRepresentativeContact());
         }
 
-        note.setTaxpayerTin(dto.getTaxpayerTin());
-        note.setTaxpayerName(dto.getTaxpayerName());
         note.setGoodsDescription(dto.getGoodsDescription());
         note.setSeizureReason(dto.getSeizureReason());
-        note.setDateTimeSeized(dto.getDateTimeSeized());
+        note.setDateTimeSeized(dto.getDateTimeSeized() != null ? dto.getDateTimeSeized() : LocalDateTime.now());
         note.setPvInCharge(currentUser);
         note.setStatus(PhysicalStockStatus.IN_TEMPORARY_STOCK);
-        note.setOfficerSignaturePath(dto.getOfficerSignatureBase64());
+        // Note: Officer digital signature is verified via password above
+        note.setOfficerSignaturePath("Digital Signature verified via Password");
 
         SeizureNote saved = seizureNoteRepository.save(note);
         auditService.logAction(saved.getSeizureNumber(), "CREATED", "Added to Temporary Stock", currentUser);
         return saved;
+    }
+
+    @Transactional
+    public void returnForCorrection(Integer pvId, String reason, Employee stockManager) {
+        PVDocument pv = pvDocumentRepository.findById(pvId)
+                .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
+
+        SeizureNote note = pv.getSeizureNote();
+        note.setStatus(PhysicalStockStatus.RETURNED_FOR_CORRECTION);
+        seizureNoteRepository.save(note);
+
+        // Notify the Surveillance Officer
+        NotificationDTO notification = new NotificationDTO();
+        notification.setMessage("Seizure Note " + note.getSeizureNumber() + " returned for correction. Reason: " + reason);
+        notification.setSenderName(stockManager.getGivenName() + " " + stockManager.getFamilyName());
+        notification.setCreatedAt(LocalDateTime.now());
+        notification.setNotificationType("SEIZURE_RETURNED");
+
+        if (note.getPvInCharge() != null) {
+            notificationService.sendNotificationToUser(note.getPvInCharge().getEmployeeId(), notification);
+        }
+
+        auditService.logAction(note.getSeizureNumber(), "RETURNED_FOR_CORRECTION", "Returned by Stock Manager. Reason: " + reason, stockManager);
+        
+        // Remove references in ReleaseNotes to allow deletion
+        List<ReleaseNote> relatedReleases = releaseNoteRepository.findByPvDocument(pv);
+        for (ReleaseNote release : relatedReleases) {
+            release.setPvDocument(null);
+            releaseNoteRepository.save(release);
+        }
+
+        // Remove the PV Document as it's no longer in Main Stock
+        pvDocumentRepository.delete(pv);
     }
 
     @Transactional
@@ -176,6 +278,7 @@ public class PhysicalStockService {
         }
 
         note.setStatus(PhysicalStockStatus.RELEASED_FROM_TEMP);
+        note.setActionedAt(LocalDateTime.now());
         seizureNoteRepository.save(note);
 
         ReleaseNote release = new ReleaseNote();
@@ -213,6 +316,7 @@ public class PhysicalStockService {
         }
 
         note.setStatus(PhysicalStockStatus.ESCALATED);
+        note.setActionedAt(LocalDateTime.now());
         seizureNoteRepository.save(note);
 
         PVDocument pv = new PVDocument();

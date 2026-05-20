@@ -79,7 +79,7 @@ public class SecurityConfig {
                                 "legalAdvisor", "Admin", "admin")
                         .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
                         .requestMatchers("/api/stock/**")
-                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "STOCKMANAGER", "ROLE_STOCKMANAGER", "PRSO", "prso", "Surveillance", "surveillance", "SURVEILLANCE", "SURVEILLANCE_OFFICER", "ROLE_SURVEILLANCE", "ROLE_SURVEILLANCE_OFFICER")
+                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "STOCK_MANAGER", "STOCKMANAGER", "ROLE_STOCKMANAGER", "PRSO", "prso", "Surveillance", "surveillance", "SURVEILLANCE", "SURVEILLANCE_OFFICER", "ROLE_SURVEILLANCE", "ROLE_SURVEILLANCE_OFFICER")
                         .requestMatchers("/api/reward-memos/**")
                         .hasAnyAuthority("User", "IntelligenceOfficer", "DirectorIntelligence", "AssistantCommissioner",
                                 "Admin", "admin", "Finance")
@@ -92,11 +92,16 @@ public class SecurityConfig {
                 .build();
     }
 
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
     @SuppressWarnings("deprecation")
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setPasswordEncoder(new BCryptPasswordEncoder(12));
+        provider.setPasswordEncoder(passwordEncoder());
         provider.setUserDetailsService(userDetailsService);
         return provider;
     }

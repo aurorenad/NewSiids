@@ -24,6 +24,16 @@ public class SeizureNote {
 
     private String taxpayerTin;
     private String taxpayerName;
+    private String taxpayerAddress;
+    private String taxpayerContact;
+    private String taxpayerType; // KNOWN or UNKNOWN
+    private String nationalId;
+    
+    @Column(columnDefinition = "TEXT")
+    private String physicalDescription;
+    
+    private String representativeName;
+    private String representativeContact;
 
     @Column(columnDefinition = "TEXT")
     private String goodsDescription;
@@ -44,6 +54,7 @@ public class SeizureNote {
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime actionedAt;
 
     @PrePersist
     protected void onCreate() {
