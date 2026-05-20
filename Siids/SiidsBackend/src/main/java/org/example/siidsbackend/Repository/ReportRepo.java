@@ -139,6 +139,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     Optional<Report> findByRelatedCase_CaseNum(String caseNum);
     Optional<Report> findFirstByRelatedCase_CaseNumOrderByCreatedAtDesc(String caseNum);
+    List<Report> findAllByRelatedCase_CaseNum(String caseNum);
 
 
     @Query("SELECT r FROM Report r WHERE r.principleAmount IS NOT NULL AND r.principleAmount > 0 " +
