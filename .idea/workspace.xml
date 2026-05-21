@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="a2c458e0-9190-45c4-aada-ef71277f3975" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/Siids/SiidsBackend/.env.example" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Siids/SiidsBackend/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/Siids/SiidsBackend/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Siids/SiidsBackend/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/Siids/SiidsBackend/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Siids/siidsfrontend/src/Components/StockManagement.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Siids/siidsfrontend/src/Components/StockManagement.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Siids/siidsfrontend/src/Components/SystemAdmin.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Siids/siidsfrontend/src/Components/SystemAdmin.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Siids/siidsfrontend/src/Pages/Stock/StockManagerPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/Siids/siidsfrontend/src/Pages/Stock/StockManagerPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Siids/siidsfrontend/src/theme/mdcTheme.js" beforeDir="false" afterPath="$PROJECT_DIR$/Siids/siidsfrontend/src/theme/mdcTheme.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MavenImportPreferences">
+    <option name="generalSettings">
+      <MavenGeneralSettings>
+        <option name="mavenHomeTypeForPersistence" value="WRAPPER" />
+      </MavenGeneralSettings>
+    </option>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="3E1eyxnd4lhpRif0mPas32Sr66Q" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RequestMappingsPanelOrder0": "0",
+    "RequestMappingsPanelOrder1": "1",
+    "RequestMappingsPanelWidth0": "75",
+    "RequestMappingsPanelWidth1": "75",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Spring Boot.SiidsBackendApplication (1).executor": "Run",
+    "Spring Boot.SiidsBackendApplication.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
+    "git-widget-placeholder": "salomon",
+    "junie.onboarding.icon.badge.shown": "true",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/home/salomon/Pictures/Screenshots/Screenshot from 2026-05-21 14-40-07.png",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.0",
+    "project.structure.side.proportion": "0.0",
+    "to.speed.mode.migration.done": "true",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql"
+    ]
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration default="true" type="JetRunConfigurationType">
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="KotlinStandaloneScriptRunConfigurationType">
+      <option name="filePath" />
+      <method v="2" />
+    </configuration>
+    <configuration name="SiidsBackendApplication (1)" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" temporary="true" nameIsGenerated="true">
+      <option name="FRAME_DEACTIVATION_UPDATE_POLICY" value="UpdateClassesAndResources" />
+      <module name="SiidsBackend" />
+      <option name="SPRING_BOOT_MAIN_CLASS" value="org.example.siidsbackend.SiidsBackendApplication" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.example.siidsbackend.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Spring Boot.SiidsBackendApplication (1)" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="a2c458e0-9190-45c4-aada-ef71277f3975" name="Changes" comment="" />
+      <created>1779350762781</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1779350762781</updated>
+      <workItem from="1779350765417" duration="8596000" />
+      <workItem from="1779360459658" duration="7721000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+</project>

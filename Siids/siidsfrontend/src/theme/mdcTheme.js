@@ -1,6 +1,12 @@
 import { createTheme } from '@mui/material/styles';
 
 export const mdcTheme = createTheme({
+  zIndex: {
+    drawer: 1200,
+    modal: 1400,
+    snackbar: 1500,
+    tooltip: 1600,
+  },
   palette: {
     mode: 'light',
     primary: {
@@ -152,6 +158,9 @@ export const mdcTheme = createTheme({
           border: 'none',
           boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
         },
+      },
+      defaultProps: {
+        disablePortal: false,
       },
     },
     MuiDialogTitle: {
