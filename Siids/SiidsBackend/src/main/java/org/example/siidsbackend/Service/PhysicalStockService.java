@@ -160,14 +160,15 @@ public class PhysicalStockService {
     }
 
     @Transactional
-    public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, Employee currentUser) {
-        // Password-based authorization
-        User user = userRepo.findByUsername(currentUser.getEmployeeId())
-                .orElseThrow(() -> new RuntimeException("User account not found for current employee"));
+    public SeizureNote createSeizureNote(SeizureNoteRequestDTO dto, String username) {
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User account not found. Username: " + username));
 
         if (dto.getAuthorizationPassword() == null || !passwordEncoder.matches(dto.getAuthorizationPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid authorization password");
         }
+
+        Employee currentUser = getEmployeeByUsername(username);
 
         SeizureNote note = new SeizureNote();
         note.setSeizureNumber(generateNextSeizureNumber());
@@ -220,14 +221,15 @@ public class PhysicalStockService {
     }
 
     @Transactional
-    public SeizureNote updateSeizureNote(Integer id, SeizureNoteRequestDTO dto, Employee currentUser) {
-        // Password-based authorization
-        User user = userRepo.findByUsername(currentUser.getEmployeeId())
-                .orElseThrow(() -> new RuntimeException("User account not found for current employee"));
+    public SeizureNote updateSeizureNote(Integer id, SeizureNoteRequestDTO dto, String username) {
+        User user = userRepo.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User account not found. Username: " + username));
 
         if (dto.getAuthorizationPassword() == null || !passwordEncoder.matches(dto.getAuthorizationPassword(), user.getPassword())) {
             throw new RuntimeException("Invalid authorization password");
         }
+
+        Employee currentUser = getEmployeeByUsername(username);
 
         SeizureNote note = seizureNoteRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Seizure note not found"));

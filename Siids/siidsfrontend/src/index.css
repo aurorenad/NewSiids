@@ -169,11 +169,14 @@
 .MuiDialog-root {
   z-index: 9000 !important;
 }
-.MuiBackdrop-root {
-  z-index: 8999 !important;
-}
 .MuiDrawer-root {
   z-index: 3000 !important; /* Sidebar should stay below our custom overlays */
+}
+.MuiPopover-root {
+  z-index: 9100 !important; /* Ensure dropdowns (Select, Menu) appear above Dialogs */
+}
+.MuiTooltip-root {
+  z-index: 9200 !important; /* Ensure tooltips appear above everything */
 }
 
 .drawer-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
