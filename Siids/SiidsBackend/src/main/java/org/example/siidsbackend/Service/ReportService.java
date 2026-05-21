@@ -1537,9 +1537,10 @@ public class ReportService {
                 "Finance", WorkflowStatus.REPORT_SENT_TO_FINANCE,
                 "Strategy and Risk Analysis", WorkflowStatus.REPORT_SENT_TO_STRATEGIC_AND_RISK_ANALYSIS,
                 "Internal Audit and Integrity", WorkflowStatus.REPORT_SENT_TO_INTERNAL_AUDIT_AND_INTEGRITY,
-                "IT and Digital Transformation", WorkflowStatus.REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION);
+                "IT and Digital Transformation", WorkflowStatus.REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION,
+                "Domestic Taxes", WorkflowStatus.REPORT_SENT_TO_DOMESTIC_TAXES);
         
-        List<structures> departments = structureRepo.findByStructureType("department");
+        List<structures> departments = structureRepo.findByStructureType("Department");
         boolean validDepartment = departments.stream()
                 .anyMatch(d -> d.getStructureName().equalsIgnoreCase(normalizedDept));
 

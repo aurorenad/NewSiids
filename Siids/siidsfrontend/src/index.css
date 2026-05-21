@@ -169,9 +169,6 @@
 .MuiDialog-root {
   z-index: 9000 !important;
 }
-.MuiBackdrop-root {
-  z-index: 8999 !important;
-}
 .MuiDrawer-root {
   z-index: 3000 !important; /* Sidebar should stay below our custom overlays */
 }

@@ -546,7 +546,7 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/available-investigation-officers")
+    @GetMapping({"/available-investigation-officers", "/investigation-officers"})
     public ResponseEntity<List<Employee>> getAvailableInvestigationOfficersWithHeader(
             Authentication authentication) {
         String employeeId = authentication.getName();
