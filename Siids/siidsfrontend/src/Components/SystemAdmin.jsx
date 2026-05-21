@@ -110,8 +110,8 @@ const SystemAdmin = () => {
             await axios.put(`/users/${selectedUser.id}/role`, { role: newRole }, { headers: { Authorization: `Bearer ${token}` } });
             setOpenRole(false);
             fetchUsers();
-        } catch {
-            setError('Error updating role.');
+        } catch (err) {
+            setError(err.response?.data?.error || err.response?.data?.message || 'Error updating role.');
         }
     };
 

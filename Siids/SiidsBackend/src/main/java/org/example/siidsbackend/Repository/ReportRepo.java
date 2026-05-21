@@ -121,6 +121,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "WHERE r.currentRecipient.employeeId = :directorId " +
             "OR r.directorInvestigation.employeeId = :directorId " +
             "OR (c.status IN (" +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION, " +
             "org.example.siidsbackend.Model.WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER, " +
             "org.example.siidsbackend.Model.WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER, " +
             "org.example.siidsbackend.Model.WorkflowStatus.INVESTIGATION_IN_PROGRESS, " +
