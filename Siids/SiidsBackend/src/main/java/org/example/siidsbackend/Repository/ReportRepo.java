@@ -20,15 +20,15 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
     List<Report> findByCreatedByOrderByCreatedAtDesc(Employee employee);
 
     @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
-            "(SELECT u.username FROM User u WHERE u.role = 'DirectorIntelligence' AND u.active = true)")
+            "(SELECT u.username FROM User u WHERE LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) = 'directorintelligence' AND (u.active = true OR u.active IS NULL))")
     List<Employee> DirectorsOfIntelligence();
 
     @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
-            "(SELECT u.username FROM User u WHERE u.role = 'DirectorInvestigation' AND u.active = true)")
+            "(SELECT u.username FROM User u WHERE LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) = 'directorinvestigation' AND (u.active = true OR u.active IS NULL))")
     List<Employee> DirectorsOfInvestigation();
 
     @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
-            "(SELECT u.username FROM User u WHERE u.role IN ('AssistantCommissioner', 'Assistant Commissioner') AND u.active = true)")
+            "(SELECT u.username FROM User u WHERE LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) = 'assistantcommissioner' AND (u.active = true OR u.active IS NULL))")
     List<Employee> assistantCommissioner();
 
     @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
@@ -42,8 +42,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     List<Report> findByRelatedCaseStatus(WorkflowStatus workflowStatus);
 
-    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
-            "(SELECT u.username FROM User u WHERE u.role = 'InvestigationOfficer' AND u.active = true)")
+    @Query(value = "SELECT * FROM employees WHERE department = 10", nativeQuery = true)
     List<Employee> findAvailableT3Officers();
 
     @Query("SELECT COUNT(r) FROM Report r JOIN r.relatedCase c " +

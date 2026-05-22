@@ -1898,6 +1898,7 @@ public class ReportService {
             try {
                 validateCasePlanAttachment(casePlanAttachment);
                 casePlanAttachmentPath = storeCasePlanAttachment(casePlanAttachment);
+                report.setCasePlan(casePlanAttachmentPath);
                 if (report.getFindingsAttachmentPaths() == null) {
                     report.setFindingsAttachmentPaths(new ArrayList<>());
                 }
@@ -2031,8 +2032,13 @@ public class ReportService {
 
         if (!lowerFilename.endsWith(".pdf") &&
                 !lowerFilename.endsWith(".doc") &&
-                !lowerFilename.endsWith(".docx")) {
-            throw new RuntimeException("Only PDF, DOC, and DOCX files are allowed for case plans");
+                !lowerFilename.endsWith(".docx") &&
+                !lowerFilename.endsWith(".xls") &&
+                !lowerFilename.endsWith(".xlsx") &&
+                !lowerFilename.endsWith(".png") &&
+                !lowerFilename.endsWith(".jpg") &&
+                !lowerFilename.endsWith(".jpeg")) {
+            throw new RuntimeException("Only PDF, Word (.doc, .docx), Excel (.xls, .xlsx), and Images (.png, .jpg, .jpeg) are allowed for case plans");
         }
     }
 

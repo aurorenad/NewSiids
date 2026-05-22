@@ -70,6 +70,10 @@ public class DataInitializer implements CommandLineRunner {
             // Drop the check constraint if it exists to allow new Enum values like MUTATION and CYAMUNARA
             jdbcTemplate.execute("ALTER TABLE stock DROP CONSTRAINT IF EXISTS stock_release_reason_check");
             System.out.println("✓ Database constraint 'stock_release_reason_check' dropped or handled.");
+
+            // Drop the check constraint on "case" table to allow new WorkflowStatus values
+            jdbcTemplate.execute("ALTER TABLE \"case\" DROP CONSTRAINT IF EXISTS case_status_check");
+            System.out.println("✓ Database constraint 'case_status_check' dropped or handled.");
         } catch (Exception e) {
             System.err.println("✗ Error fixing database constraints: " + e.getMessage());
         }

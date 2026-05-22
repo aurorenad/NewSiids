@@ -22,6 +22,7 @@ import {
     FormControl,
     InputLabel,
     Typography,
+    Autocomplete,
     Box,
     Tooltip,
     List,
@@ -133,7 +134,7 @@ const DirectorInvestigation = () => {
                 const mappedOfficers = officersResponse.data.map(officer => ({
                     _id: officer.employeeId,
                     name: `${officer.givenName} ${officer.familyName}`,
-                    email: officer.email || '',
+                    email: officer.workEmail || officer.personalEmail || officer.email || '',
                     ...officer
                 }));
 
@@ -1313,21 +1314,43 @@ const DirectorInvestigation = () => {
                         Selected Officer: {officers.find(o => o._id === selectedOfficer)?.name || 'None selected'}
                     </Typography>
 
-                    <FormControl fullWidth sx={{ mt: 2 }}>
-                        <InputLabel>Select Investigation Officer</InputLabel>
-                        <Select
-                            value={selectedOfficer || ''}
-                            onChange={(e) => setSelectedOfficer(e.target.value)}
-                            label="Select Investigation Officer"
-                        >
-                            <MenuItem value=""><em>None</em></MenuItem>
-                            {officers.map((officer) => (
-                                <MenuItem key={officer._id} value={officer._id}>
-                                    {officer.name} ({officer.email})
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                    {officers.length === 0 && (
+                        <Alert severity="warning" sx={{ mt: 2, mb: 1 }}>
+                            No active investigation officers found. Please ensure that officers are registered and active in the System Admin panel.
+                        </Alert>
+                    )}
+
+                    <Autocomplete
+                        fullWidth
+                        disablePortal
+                        sx={{ mt: 2 }}
+                        options={officers}
+                        getOptionLabel={(option) => {
+                            if (typeof option === 'string') return option;
+                            return `${option.name} ${option.email ? `(${option.email})` : ''}`;
+                        }}
+                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                        value={officers.find(o => o._id === selectedOfficer) || null}
+                        onChange={(event, newValue) => {
+                            setSelectedOfficer(newValue ? newValue._id : '');
+                        }}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Select Investigation Officer"
+                                variant="outlined"
+                                placeholder={officers.length === 0 ? "No officers found" : "Search and select officer..."}
+                            />
+                        )}
+                        ListboxProps={{
+                            style: {
+                                maxHeight: '250px'
+                            }
+                        }}
+                        disabled={officers.length === 0}
+                        noOptionsText="No active investigation officers found"
+                        loading={officersLoading}
+                    />
 
                     <TextField
                         autoFocus
@@ -1787,6 +1810,7 @@ const DirectorInvestigation = () => {
                 open={snackbar.open}
                 autoHideDuration={6000}
                 onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
                 <Alert
                     severity={snackbar.severity}
