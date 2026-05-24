@@ -560,22 +560,19 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/investigation-officer/assigned-reports")
+    @GetMapping("/investigation-officer/dashboard-worklist")
     public ResponseEntity<List<ReportResponseDTO>> getAssignedReportsForInvestigationOfficer(
             Authentication authentication) {
         String officerId = authentication.getName();
         try {
-            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
+            log.info("API: Fetching operational worklist for IO: {}", officerId);
+            List<Report> reports = reportService.fetchDashboardDataForIO(officerId);
             List<ReportResponseDTO> responseList = reports.stream()
                     .map(reportService::toResponseDTO)
                     .collect(Collectors.toList());
             return ResponseEntity.ok(responseList);
-        } catch (RuntimeException e) {
-            System.err.println("Error getting assigned reports: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
-            System.err.println("Error getting reports: " + e.getMessage());
-            e.printStackTrace();
+            log.error("CRITICAL: Error getting reports: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -1051,12 +1048,26 @@ public class ReportController {
         }
     }
 
+    @PostMapping("/{id}/receive-case")
+    public ResponseEntity<ReportResponseDTO> receiveCase(
+            @PathVariable Integer id,
+            Authentication authentication) {
+        String officerId = authentication.getName();
+        try {
+            Report report = reportService.receiveCase(id, officerId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            log.error("Error receiving case: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
     @GetMapping("/investigation-officer/active-reports")
     public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
             Authentication authentication) {
         String officerId = authentication.getName();
         try {
-            List<Report> reports = reportService.getReportsAssignedToInvestigationOfficer(officerId);
+            List<Report> reports = reportService.fetchDashboardDataForIO(officerId);
             List<ReportResponseDTO> responseList = reports.stream()
                     .map(reportService::toResponseDTO)
                     .collect(Collectors.toList());
