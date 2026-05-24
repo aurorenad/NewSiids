@@ -292,7 +292,7 @@ public class ReportService {
         if (report.getRelatedCase() == null) return false;
         WorkflowStatus currentStatus = report.getRelatedCase().getStatus();
 
-        // Allowed statuses for submitting findings
+        // Allowed statuses for submitting findings - expanded for maximum flexibility
         return currentStatus == WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER ||
                 currentStatus == WorkflowStatus.INVESTIGATION_IN_PROGRESS ||
                 currentStatus == WorkflowStatus.CASE_PLAN_SUBMITTED ||
@@ -301,7 +301,10 @@ public class ReportService {
                 currentStatus == WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER ||
                 currentStatus == WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER ||
                 currentStatus == WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER ||
-                currentStatus == WorkflowStatus.INVESTIGATION_COMPLETED;
+                currentStatus == WorkflowStatus.INVESTIGATION_FINDINGS_SUBMITTED ||
+                currentStatus == WorkflowStatus.INVESTIGATION_COMPLETED ||
+                currentStatus == WorkflowStatus.CASE_RECEIVED_BY_INVESTIGATION_OFFICER ||
+                currentStatus == WorkflowStatus.TAX_ASSESSMENT_IN_PROGRESS;
     }
 
     public boolean canSubmitCasePlan(Report report) {
@@ -715,6 +718,32 @@ public class ReportService {
         return reportRepo.findByCreatedByOrderByCreatedAtDesc(employee);
     }
 
+    @Transactional
+    public Report receiveCase(Integer reportId, String officerId) {
+        Report report = getReport(reportId);
+        
+        // Verify officer is the assigned one or current recipient
+        if (report.getInvestigationOfficer() == null || !report.getInvestigationOfficer().getEmployeeId().equals(officerId)) {
+            if (report.getCurrentRecipient() == null || !report.getCurrentRecipient().getEmployeeId().equals(officerId)) {
+                throw new RuntimeException("You are not the assigned investigation officer for this report");
+            }
+        }
+
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_RECEIVED_BY_INVESTIGATION_OFFICER);
+        caseRepo.save(relatedCase);
+        
+        report.setUpdatedAt(LocalDateTime.now());
+        Report savedReport = reportRepo.save(report);
+
+        auditService.logAction(
+                WorkflowStatus.CASE_RECEIVED_BY_INVESTIGATION_OFFICER,
+                "Report #" + savedReport.getId() + " received and acknowledged by investigation officer " + officerId,
+                report.getInvestigationOfficer());
+
+        return savedReport;
+    }
+
     public List<Report> getReportsForDirectorIntelligence(String directorId) {
         List<Employee> directors = reportRepo.DirectorsOfIntelligence();
         boolean isDirector = directors.stream()
@@ -727,7 +756,7 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findReportsSubmittedToDirectorIntelligence(directorId);
+        return reportRepo.findReportsSubmittedToDirectorIntelligence();
     }
 
     @Transactional
@@ -1439,76 +1468,41 @@ public class ReportService {
         return result;
     }
 
-    public List<Report> getReportsAssignedToInvestigationOfficer(String officerId) {
-        List<Employee> officers = reportRepo.findAvailableT3Officers();
-        boolean isValidOfficer = officers.stream()
-                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
+    public List<Report> fetchDashboardDataForIO(String officerId) {
+        log.info("Fetching operational dashboard data for officer: '{}'", officerId);
+        
+        List<String> activeStatuses = Arrays.asList(
+                WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER.name(),
+                WorkflowStatus.INVESTIGATION_IN_PROGRESS.name(),
+                WorkflowStatus.CASE_PLAN_SUBMITTED.name(),
+                WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION.name(),
+                WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION.name(),
+                WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION.name(),
+                WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER.name(),
+                WorkflowStatus.INVESTIGATION_COMPLETED.name(),
+                WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION.name(),
+                WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER.name(),
+                WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER.name(),
+                WorkflowStatus.CASE_RECEIVED_BY_INVESTIGATION_OFFICER.name(),
+                WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION.name(),
+                "REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE"
+        );
 
-        if (!isValidOfficer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
-                throw new RuntimeException("Employee is not a T3 Investigation Officer");
-            }
-        }
-
-        // Define specific statuses that mean the case is actively being worked on by the officer
-        List<WorkflowStatus> activeStatuses = Arrays.asList(
-                WorkflowStatus.REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER,
-                WorkflowStatus.INVESTIGATION_IN_PROGRESS,
-                WorkflowStatus.CASE_PLAN_SUBMITTED,
-                WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION,
-                WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION,
-                WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION,
-                WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER,
-                WorkflowStatus.INVESTIGATION_COMPLETED,
-                WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION);
-
-        return reportRepo.findActiveReportsForInvestigationOfficer(officerId, activeStatuses);
+        List<Report> reports = reportRepo.queryActiveInvestigations(officerId.trim(), activeStatuses);
+        log.info("Dashboard query returned {} results for officer '{}'", reports.size(), officerId);
+        return reports;
     }
 
     public List<Report> getReportsAssignedToInvestigationOfficers(String officerId) {
-        List<Employee> t3Officers = reportRepo.findAvailableT3Officers();
-        boolean isT3Officer = t3Officers.stream()
-                .anyMatch(o -> o.getEmployeeId().equals(officerId));
-
-        if (!isT3Officer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
-                throw new RuntimeException("Employee is not a T3 Investigation Officer");
-            }
-        }
-
-        return reportRepo.findReportsAssignedToInvestigationOfficer(officerId);
+        return reportRepo.findReportsByInvestigationOfficer(officerId.trim());
     }
 
     public List<Report> getHistoricalReportsForInvestigationOfficer(String officerId) {
-        List<Employee> officers = reportRepo.findAvailableT3Officers();
-        boolean isValidOfficer = officers.stream()
-                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
-
-        if (!isValidOfficer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
-                throw new RuntimeException("Employee is not a T3 Investigation Officer");
-            }
-        }
-
-        return reportRepo.findReportsAssignedToInvestigationOfficers(officerId);
+        return reportRepo.findReportsByInvestigationOfficer(officerId.trim());
     }
 
     public List<Report> getAllReportsForInvestigationOfficer(String officerId) {
-        List<Employee> officers = reportRepo.findAvailableT3Officers();
-        boolean isValidOfficer = officers.stream()
-                .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
-
-        if (!isValidOfficer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
-                throw new RuntimeException("Employee is not a T3 Investigation Officer");
-            }
-        }
-
-        return reportRepo.findReportsByInvestigationOfficer(officerId);
+        return reportRepo.findReportsByInvestigationOfficer(officerId.trim());
     }
 
     @Transactional
