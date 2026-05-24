@@ -166,14 +166,8 @@
 }
 
 /* ── MUI Override for Stacking Context ── */
-.MuiDialog-root {
-  z-index: 9000 !important;
-}
-.MuiBackdrop-root {
-  z-index: 8999 !important;
-}
 .MuiDrawer-root {
-  z-index: 3000 !important; /* Sidebar should stay below our custom overlays */
+  z-index: 3000; /* Sidebar should stay below our custom overlays */
 }
 
 .drawer-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
