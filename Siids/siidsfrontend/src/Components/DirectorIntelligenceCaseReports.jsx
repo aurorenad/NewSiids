@@ -124,6 +124,13 @@ const DirectorIntelligenceCaseReports = () => {
                         value={statusFilter}
                         onChange={(e) => setStatusFilter(e.target.value)}
                         label="Status"
+                        MenuProps={{
+                            PaperProps: {
+                                sx: {
+                                    zIndex: 5000 // Higher than sidebar (3000)
+                                }
+                            }
+                        }}
                     >
                         <MenuItem value="all">All Statuses</MenuItem>
                         <MenuItem value="INVESTIGATION_COMPLETED">Investigation Completed</MenuItem>
