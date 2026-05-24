@@ -264,6 +264,28 @@ public class PhysicalStockService {
 
     @Transactional
     public void returnForCorrection(Integer pvId, String reason, Employee stockManager) {
+        if (pvId > 1000000) {
+            Stock stock = stockRepository.findById(pvId - 1000000).orElseThrow(() -> new IllegalArgumentException("Legacy stock not found"));
+            
+            SeizureNote note = mapLegacyStockToSeizureNote(stock);
+            note.setId(null);
+            note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK);
+            note.setPvInCharge(stockManager);
+            note = seizureNoteRepository.save(note);
+            
+            PVDocument pv = mapLegacyStockToPVDocument(stock);
+            pv.setId(null);
+            pv.setSeizureNote(note);
+            pv.setPvInCharge(stockManager);
+            pv = pvDocumentRepository.save(pv);
+            
+            stock.setStatus("MIGRATED_TO_NEW_MODULE");
+            stockRepository.save(stock);
+            
+            returnForCorrection(pv.getId(), reason, stockManager);
+            return;
+        }
+
         PVDocument pv = pvDocumentRepository.findById(pvId)
                 .orElseThrow(() -> new IllegalArgumentException("PV Document not found"));
 
