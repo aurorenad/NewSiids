@@ -65,35 +65,42 @@ const AssistantCommissioner = () => {
         return map[status] || status?.replace(/_/g, ' ') || 'Unknown';
     };
 
-    const handleApproveAction = async () => {
+    const handleApproveAction = async (report) => {
         try {
             if (activeTab === 1) {
-                await ReportApi.approveCasePlanByAssistantCommissioner(menuReport.id);
+                await ReportApi.approveCasePlanByAssistantCommissioner(report.id);
             } else {
-                await ReportApi.approveReport(menuReport.id);
+                await ReportApi.approveReport(report.id);
             }
             showSnackbar("Operational approval granted");
-            handleMenuClose();
             fetchAllData();
-        } catch (err) { showSnackbar("Approval failed", "error"); }
-    };
-
-    const handleSendToDept = async (dept) => {
-        try {
-            await ReportApi.sendReport(menuReport.id, dept);
-            showSnackbar(`Dossier transmitted to ${dept}`);
-            handleMenuClose();
-            fetchAllData();
-        } catch (err) { showSnackbar("Transmission failed", "error"); }
+        } catch (err) { 
+            const errorMsg = err.response?.data || "Approval failed";
+            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Approval failed", "error"); 
+        }
     };
 
     const handleRejectFinal = async () => {
         try {
-            await ReportApi.rejectReport(selectedReport.id, closeReason);
-            showSnackbar("Dossier rejected and closed");
+            if (activeTab === 2 && selectedReport.directorInvestigationId) {
+                // Reject Investigation Results -> Send back to Director of Investigation
+                await ReportApi.returnReport(selectedReport.id, selectedReport.directorInvestigationId, closeReason);
+                showSnackbar("Investigation results returned to Director of Investigation");
+            } else if (selectedReport.directorIntelligenceId) {
+                // Reject Case Intake -> Send back to Director of Intelligence
+                await ReportApi.returnReport(selectedReport.id, selectedReport.directorIntelligenceId, closeReason);
+                showSnackbar("Dossier returned to Director of Intelligence");
+            } else {
+                // Fallback: Full rejection and closure
+                await ReportApi.rejectReport(selectedReport.id, closeReason);
+                showSnackbar("Dossier rejected and closed");
+            }
             setCloseDialogOpen(false);
             fetchAllData();
-        } catch (err) { showSnackbar("Rejection failed", "error"); }
+        } catch (err) { 
+            const errorMsg = err.response?.data || "Action failed";
+            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Action failed", "error");
+        }
     };
 
     const handleMenuOpen = (e, r) => { setAnchorEl(e.currentTarget); setMenuReport(r); };
@@ -122,7 +129,8 @@ const AssistantCommissioner = () => {
             <Paper sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                 <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ px: 2, pt: 1, backgroundColor: '#fff' }}>
                     <Tab icon={<Description />} label="Case Intake" iconPosition="start" sx={{ fontWeight: 700 }} />
-                    <Tab icon={<Assignment />} label="Strategic Plans" iconPosition="start" sx={{ fontWeight: 700 }} />
+                    {/* Hiding tabs as requested for current focus */}
+                    {/* <Tab icon={<Assignment />} label="Strategic Plans" iconPosition="start" sx={{ fontWeight: 700 }} /> */}
                     <Tab icon={<Assessment />} label="Investigation Results" iconPosition="start" sx={{ fontWeight: 700 }} />
                 </Tabs>
 
@@ -144,7 +152,7 @@ const AssistantCommissioner = () => {
                                 <TableCell sx={{ fontWeight: 700 }}>Operational ID</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Lead Personnel</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Workflow State</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>{activeTab === 2 ? 'Tax Assessment' : 'Intelligence Summary'}</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Intelligence Summary</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }} align="center">Critical Actions</TableCell>
                             </TableRow>
                         </TableHead>
@@ -164,26 +172,46 @@ const AssistantCommissioner = () => {
                                         <Chip label={formatStatus(r.status)} size="small" sx={{ fontWeight: 700 }} color={r.status.includes('APPROVED') ? 'success' : 'primary'} />
                                     </TableCell>
                                     <TableCell>
-                                        {activeTab === 2 ? (
-                                            <Box>
-                                                <Typography variant="caption" display="block"><strong>Base:</strong> {r.principleAmount?.toLocaleString()}</Typography>
-                                                <Typography variant="caption" display="block"><strong>Penalty:</strong> {r.penaltiesAmount?.toLocaleString()}</Typography>
-                                            </Box>
-                                        ) : (
-                                            <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>{r.description || r.casePlanDescription || 'N/A'}</Typography>
-                                        )}
+                                        <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>{r.description || r.casePlanDescription || 'N/A'}</Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                                            <Tooltip title="Examine Dossier">
-                                                <IconButton color="info" onClick={() => navigate(`/reports/${r.id}/${activeTab === 2 ? 'findings' : ''}`)}><Visibility /></IconButton>
-                                            </Tooltip>
-                                            {(r.status.includes('SUBMITTED') || r.status.includes('SENT') || r.status.includes('DIRECTOR_INVESTIGATION')) && (
-                                                <>
-                                                    <IconButton color="success" onClick={(e) => handleMenuOpen(e, r)}><Check /></IconButton>
-                                                    <IconButton color="error" onClick={() => { setSelectedReport(r); setCloseDialogOpen(true); }}><Close /></IconButton>
-                                                </>
-                                            )}
+                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                            <Button
+                                                variant="outlined"
+                                                color="primary"
+                                                size="small"
+                                                startIcon={<Description />}
+                                                onClick={() => navigate(`/view-report/${r.id}`)}
+                                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                View
+                                            </Button>
+
+                                            <Button
+                                                variant="contained"
+                                                color="success"
+                                                size="small"
+                                                startIcon={<Check />}
+                                                onClick={() => handleApproveAction(r)}
+                                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Approve
+                                            </Button>
+                                            
+                                            <Button
+                                                variant="contained"
+                                                color="error"
+                                                size="small"
+                                                startIcon={<Undo />}
+                                                onClick={() => {
+                                                    setSelectedReport(r);
+                                                    setCloseReason("");
+                                                    setCloseDialogOpen(true);
+                                                }}
+                                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Reject
+                                            </Button>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
