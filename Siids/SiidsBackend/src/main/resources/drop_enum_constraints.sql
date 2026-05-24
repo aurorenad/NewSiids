@@ -3,3 +3,4 @@
 
 ALTER TABLE stock_item DROP CONSTRAINT IF EXISTS stock_item_measurement_unit_check;
 ALTER TABLE stock_item DROP CONSTRAINT IF EXISTS stock_item_item_check;
+ALTER TABLE "case" DROP CONSTRAINT IF EXISTS case_status_check;

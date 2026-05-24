@@ -167,6 +167,9 @@ export const ReportApi = {
             throw error.response?.data || error.message;
         }
     },
+    receiveCase: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/receive-case`, {});
+    },
     getAssignedReportsForInvestigationOfficer: () => {
         return caseApi.get('/api/reports/investigation-officer/assigned-reports');
     },

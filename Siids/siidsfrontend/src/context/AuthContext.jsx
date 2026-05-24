@@ -72,10 +72,18 @@ export const AuthProvider = ({ children }) => {
         });
     };
 
+    const getSafeAuth = (state) => {
+        if (!state) return { profile: {} };
+        return {
+            ...state,
+            profile: state.profile || {}
+        };
+    };
+
     return (
         <AuthContext.Provider value={{
-            authState,
-            currentUser: authState || { profile: {} },
+            authState: getSafeAuth(authState),
+            currentUser: getSafeAuth(authState),
             login,
             logout,
             loading
