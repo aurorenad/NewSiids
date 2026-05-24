@@ -1,11 +1,13 @@
 import React from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 
+import Portal from './Portal';
+
 const RightDrawer = ({ isOpen, onClose, title, children, footerActions }) => {
   if (!isOpen) return null;
 
   return (
-    <>
+    <Portal>
       <div className="drawer-overlay" onClick={onClose} />
       <div className="drawer-panel" onClick={e => e.stopPropagation()}>
         
@@ -28,7 +30,7 @@ const RightDrawer = ({ isOpen, onClose, title, children, footerActions }) => {
           </div>
         )}
       </div>
-    </>
+    </Portal>
   );
 };
 

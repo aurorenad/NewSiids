@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page { size: A4; margin: 0; }
+        body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 45px; position: relative; color: #000000; line-height: 1.6; }
+        
+        .header-table { width: 100%; border: none; margin-bottom: 5px; border-collapse: collapse; }
+        .logo-cell { width: 75px; vertical-align: middle; }
+        .title-cell { vertical-align: middle; padding-left: 20px; }
+        .reg-cell { width: 150px; text-align: right; vertical-align: top; font-size: 11px; }
+
+        .rra-title { color: #003DA5; font-size: 20px; margin: 0; font-weight: bold; letter-spacing: 1px; }
+        .rra-subtitle { color: #009A44; font-size: 10px; margin: 0; font-weight: bold; }
+
+        .colored-bar { width: 100%; border-spacing: 0; margin: 20px 0; }
+        .colored-bar td { padding: 0; height: 5px; }
+        .c-blue { background-color: #003DA5; }
+        .c-green { background-color: #009A44; }
+        .c-orange { background-color: #E05C00; }
+
+        .ref-section { text-align: right; margin-top: 15px; font-size: 14px; font-weight: bold; }
+        .form-title { text-align: center; margin: 35px 0; text-decoration: underline; font-weight: bold; font-size: 18px; text-transform: uppercase; }
+
+        .content-area { margin-top: 40px; font-size: 14px; text-align: justify; }
+        .dynamic-text { font-weight: bold; color: #000; text-transform: uppercase; }
+        
+        .goods-block { padding: 20px; background-color: #fcfcfc; border: 1.5px solid #eee; margin: 20px 0; font-weight: bold; font-style: normal; }
+
+        .signature-table { margin-top: 80px; width: 100%; border-collapse: collapse; }
+        .sig-box { width: 50%; vertical-align: top; }
+        .sig-image { width: 150px; height: auto; display: block; margin-bottom: 12px; }
+        .sig-label { font-size: 11px; color: #555; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.5px; border-top: 1.5px solid #000; padding-top: 8px; width: 240px; }
+        .officer-name { font-size: 14px; font-weight: bold; color: #000; margin-bottom: 4px; }
+
+        .footer { position: fixed; bottom: 40px; left: 45px; right: 45px; text-align: center; font-size: 10px; color: #777; border-top: 1px solid #ddd; padding-top: 15px; }
+    </style>
+</head>
+<body>
+    <div th:if="${watermarkBase64 != null}" style="position: absolute; top: 25%; left: 15%; z-index: -1;">
+        <img th:src="'data:image/png;base64,' + ${watermarkBase64}" style="width: 520px; opacity: 0.04;" />
+    </div>
+
+    <!-- Header -->
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" style="width: 85px;" />
+            </td>
+            <td class="title-cell">
+                <h1 class="rra-title">RWANDA REVENUE AUTHORITY</h1>
+                <p class="rra-subtitle">TAXES FOR GROWTH AND DEVELOPMENT</p>
+            </td>
+            <td class="reg-cell">
+                Customs Office: GIKONDO (SIID)<br/>
+                Regulation 200 (C. 42)
+            </td>
+        </tr>
+    </table>
+
+    <table class="colored-bar">
+        <tr>
+            <td class="c-blue" style="width: 35%"></td>
+            <td class="c-green" style="width: 25%"></td>
+            <td class="c-blue" style="width: 25%"></td>
+            <td class="c-orange" style="width: 15%"></td>
+        </tr>
+    </table>
+
+    <div class="ref-section">
+        PV Reference: <span th:text="${pv?.pvNumber ?: 'PV-PENDING'}" style="color: #c00;">PV-2026-00001</span><br/>
+        SN Reference: <span th:text="${pv?.seizureNote?.seizureNumber ?: 'N/A'}" style="font-size: 12px; color: #555;">SN-2026-00001</span>
+    </div>
+
+    <div class="form-title">Statement of Offence &amp; Confiscation Record</div>
+
+    <div class="content-area">
+        <p>
+            This official Statement of Offence (Procès-Verbal) is established concerning <span class="dynamic-text" th:text="${pv?.seizureNote?.taxpayerName ?: 'UNKNOWN TAXPAYER'}">[Taxpayer Name]</span>, 
+            bearing identification number <span class="dynamic-text" th:text="${pv?.seizureNote?.taxpayerTin ?: 'N/A'}">[TIN]</span>.
+        </p>
+
+        <p>
+            On this <span class="dynamic-text" th:text="${pv?.transferDate != null ? #temporals.format(pv.transferDate, 'dd') : '--'}">04</span> 
+            day of <span class="dynamic-text" th:text="${pv?.transferDate != null ? #temporals.format(pv.transferDate, 'MMMM') : '---'}">April</span>, 
+            20<span class="dynamic-text" th:text="${pv?.transferDate != null ? #temporals.format(pv.transferDate, 'yy') : '--'}">26</span>, 
+            the following goods and items were formally received into the Main Stock inventory of the Strategic Intelligence and Investigation Division (SIID):
+        </p>
+
+        <div class="goods-block">
+            <span th:text="${pv?.seizureNote?.goodsDescription ?: 'No detailed goods description available.'}">[Detailed list of confiscated items]</span>
+        </div>
+
+        <p>
+            The confiscation of the aforementioned items is based on the following formal statement of offence:
+            <span style="font-style: italic; font-weight: bold;" th:text="${pv?.formalStatementText ?: 'No specific statement provided.'}">[Offence description]</span>.
+        </p>
+
+        <p>
+            This action is taken in strict accordance with <span class="dynamic-text" th:text="${pv?.applicableLawReference ?: 'Section 210(a) of the EAC Customs Management Act, 2004'}">EAC CMA, 2004</span> 
+            and related regulations governing customs arrears and offences.
+        </p>
+
+        <p style="margin-top: 35px;">
+            The items remain in the official custody of the Rwanda Revenue Authority pending further legal proceedings or final disposal 
+            as directed by the Commissioner for Customs.
+        </p>
+    </div>
+
+    <!-- Dual Signature Section -->
+    <table class="signature-table">
+        <tr>
+            <td class="sig-box">
+                <div style="text-align: left;">
+                    <div th:if="${officerSignatureBase64 != null}">
+                        <img th:src="${officerSignatureBase64.startsWith('data:') ? officerSignatureBase64 : 'data:image/png;base64,' + officerSignatureBase64}" class="sig-image" />
+                    </div>
+                    <div th:if="${officerSignatureBase64 == null}" style="height: 65px;"></div>
+                    
+                    <div class="officer-name" th:text="${pv?.pvInCharge != null ? ( (pv.pvInCharge.givenName ?: '') + ' ' + (pv.pvInCharge.familyName ?: '') ).trim().toUpperCase() : 'ESTABLISHING OFFICER'}">SURVEILLANCE OFFICER</div>
+                    <div class="sig-label">Establishing Officer (Surveillance)</div>
+                </div>
+            </td>
+            <td class="sig-box">
+                <div style="text-align: right; display: inline-block; float: right;">
+                    <div style="height: 65px;"></div>
+                    <div class="officer-name" th:text="${stockManager != null ? ( (stockManager.givenName ?: '') + ' ' + (stockManager.familyName ?: '') ).trim().toUpperCase() : 'STOCK MANAGER'}">STOCK MANAGER NAME</div>
+                    <div class="sig-label">Received by (Stock Management Officer)</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer">
+        Strategic Intelligence and Investigation Division (SIID) • Rwanda Revenue Authority • Generated on <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm')}">Date</span>
+    </div>
+</body>
+</html>

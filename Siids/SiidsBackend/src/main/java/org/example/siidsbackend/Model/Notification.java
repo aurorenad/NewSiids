@@ -20,8 +20,12 @@ public class Notification {
     private Employee recipient;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "report_id")
+    @JoinColumn(name = "report_id", nullable = true)
     private Report report;
+
+    private String relatedReference;
+
+    private String senderName;
 
     private LocalDateTime createdAt;
 

@@ -72,17 +72,21 @@ public class CaseService {
         Case existingCase = caseRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
 
-        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED status
+        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED or REPORT_SUBMITTED status
         if (existingCase.getCreatedBy() == null || !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAdmin = user != null && "Admin".equals(user.getRole());
             if (!isAdmin) {
                 throw new RuntimeException("Only case creator or Admin can edit the case");
             }
         }
 
-        if (existingCase.getStatus() != WorkflowStatus.CASE_CREATED) {
-            throw new RuntimeException("Cannot edit a case that is no longer in CASE_CREATED status");
+        // Allow editing in initial stages
+        boolean isEditableStatus = existingCase.getStatus() == WorkflowStatus.CASE_CREATED || 
+                                   existingCase.getStatus() == WorkflowStatus.REPORT_SUBMITTED;
+        
+        if (!isEditableStatus) {
+            throw new RuntimeException("Cannot edit a case that is already in " + existingCase.getStatus() + " status");
         }
 
         existingCase.setInformerId(informer);
@@ -116,7 +120,7 @@ public class CaseService {
             throw new IllegalArgumentException("Employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findAll().stream()
                     .map(this::mapToCaseResponseDTO)
@@ -133,7 +137,7 @@ public class CaseService {
             throw new IllegalArgumentException("Case ID and Employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findById(caseId)
                     .map(this::mapToCaseResponseDTO);
@@ -158,7 +162,7 @@ public class CaseService {
                 existingCase.getCreatedBy().getEmployeeId().equals(employeeId);
 
         if (!isCreator) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAuthorizedRole = user != null && (
                     "Admin".equals(user.getRole()) ||
                     "DirectorIntelligence".equals(user.getRole()) ||
@@ -188,7 +192,7 @@ public class CaseService {
             throw new IllegalArgumentException("Case number and employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findByCaseNum(caseNum)
                     .map(this::mapToCaseResponseDTO);
@@ -205,7 +209,7 @@ public class CaseService {
             throw new IllegalArgumentException("Status and employee ID cannot be null");
         }
 
-        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+        org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null && "Admin".equals(user.getRole())) {
             return caseRepo.findByStatus(status).stream()
                     .map(this::mapToCaseResponseDTO)
@@ -286,7 +290,7 @@ public class CaseService {
         responseDTO.setReferringDepartment(caseEntity.getReferringDepartment());
 
         if (caseEntity.getCaseNum() != null) {
-            reportRepo.findByRelatedCase_CaseNum(caseEntity.getCaseNum())
+            reportRepo.findFirstByRelatedCase_CaseNumOrderByCreatedAtDesc(caseEntity.getCaseNum())
                     .ifPresent(report -> responseDTO.setReportId(report.getId()));
         }
 

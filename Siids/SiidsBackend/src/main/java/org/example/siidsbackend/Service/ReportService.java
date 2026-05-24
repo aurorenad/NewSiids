@@ -721,7 +721,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
@@ -922,7 +922,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
         if (!isAssistantCommissioner) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             if (user == null) {
                 log.error("Access denied: User not found for username: {}", employeeId);
                 throw new RuntimeException("User account not found for: " + employeeId);
@@ -949,7 +949,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
@@ -1058,7 +1058,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
@@ -1254,7 +1254,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
@@ -1269,7 +1269,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
         if (!isAssistantCommissioner) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             if (user == null || (!"Admin".equalsIgnoreCase(user.getRole()) && !"AssistantCommissioner".equalsIgnoreCase(user.getRole()))) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
@@ -1285,7 +1285,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
@@ -1360,7 +1360,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(employeeId));
 
         if (!isAssistantCommissioner) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             if (user == null || (!"Admin".equalsIgnoreCase(user.getRole()) && !"AssistantCommissioner".equalsIgnoreCase(user.getRole()))) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
@@ -1410,7 +1410,7 @@ public class ReportService {
                 .anyMatch(d -> d.getEmployeeId().equals(directorId));
 
         if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
@@ -1445,7 +1445,7 @@ public class ReportService {
                 .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
 
         if (!isValidOfficer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
@@ -1472,7 +1472,7 @@ public class ReportService {
                 .anyMatch(o -> o.getEmployeeId().equals(officerId));
 
         if (!isT3Officer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
@@ -1487,7 +1487,7 @@ public class ReportService {
                 .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
 
         if (!isValidOfficer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
@@ -1502,7 +1502,7 @@ public class ReportService {
                 .anyMatch(officer -> officer.getEmployeeId().equals(officerId));
 
         if (!isValidOfficer) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(officerId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"InvestigationOfficer".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a T3 Investigation Officer");
             }
@@ -1624,7 +1624,7 @@ public class ReportService {
                 .anyMatch(la -> la.getEmployeeId().equals(legalAdvisorId));
 
         if (!isLegalAdvisor) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(legalAdvisorId);
+            org.example.siidsbackend.Model.User user = userRepo.findByUsername(legalAdvisorId).orElse(null);
             if (user == null || (!"Admin".equals(user.getRole()) && !"legalAdvisor".equals(user.getRole()))) {
                 throw new RuntimeException("Employee is not a Legal Advisor");
             }

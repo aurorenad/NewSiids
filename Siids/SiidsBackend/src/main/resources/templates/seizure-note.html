@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page { size: A4; margin: 0; }
+        body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 40px; position: relative; color: #000000; }
+        
+        .header-table { width: 100%; border: none; margin-bottom: 5px; border-collapse: collapse; }
+        .logo-cell { width: 70px; vertical-align: middle; }
+        .title-cell { vertical-align: middle; padding-left: 15px; }
+        .reg-cell { width: 120px; text-align: right; vertical-align: top; font-size: 11px; }
+
+        .rra-title { color: #003DA5; font-size: 18px; margin: 0; font-weight: bold; letter-spacing: 1px; }
+        .rra-subtitle { color: #009A44; font-size: 9px; margin: 0; font-weight: bold; }
+
+        .colored-bar { width: 100%; border-spacing: 0; margin: 15px 0; }
+        .colored-bar td { padding: 0; height: 4px; }
+        .c-blue { background-color: #003DA5; }
+        .c-green { background-color: #009A44; }
+        .c-orange { background-color: #E05C00; }
+
+        .serial-section { text-align: right; margin-top: 10px; font-size: 14px; font-weight: bold; }
+        .form-title { text-align: center; margin: 25px 0; text-decoration: underline; font-weight: bold; font-size: 16px; text-transform: uppercase; }
+
+        .content-box { margin-top: 30px; line-height: 1.8; font-size: 14px; text-align: justify; }
+        .dynamic-text { font-weight: bold; color: #000; text-transform: uppercase; }
+
+        .signature-section { margin-top: 80px; width: 100%; border-collapse: collapse; }
+        .sig-block { width: 50%; vertical-align: top; }
+        .sig-image { width: 140px; height: auto; display: block; margin-bottom: 10px; }
+        .sig-label { font-size: 11px; color: #666; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid #000; padding-top: 5px; width: 220px; }
+        .officer-name { font-size: 14px; font-weight: bold; color: #000; margin-bottom: 5px; }
+
+        .footer { position: fixed; bottom: 30px; left: 40px; right: 40px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+    <div th:if="${watermarkBase64 != null}" style="position: absolute; top: 25%; left: 15%; z-index: -1;">
+        <img th:src="'data:image/png;base64,' + ${watermarkBase64}" style="width: 500px; opacity: 0.05;" />
+    </div>
+
+    <!-- Header -->
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" style="width: 80px;" />
+            </td>
+            <td class="title-cell">
+                <h1 class="rra-title">RWANDA REVENUE AUTHORITY</h1>
+                <p class="rra-subtitle">TAXES FOR GROWTH AND DEVELOPMENT</p>
+            </td>
+            <td class="reg-cell">
+                C. 42<br/>
+                Regulation 200
+            </td>
+        </tr>
+    </table>
+
+    <table class="colored-bar">
+        <tr>
+            <td class="c-blue" style="width: 30%"></td>
+            <td class="c-green" style="width: 20%"></td>
+            <td class="c-blue" style="width: 30%"></td>
+            <td class="c-orange" style="width: 20%"></td>
+        </tr>
+    </table>
+
+    <div class="serial-section">
+        Reference Number: <span th:text="${note.seizureNumber ?: 'SN-PENDING'}" style="color: #c00;">SN-2026-00001</span>
+    </div>
+
+    <div class="form-title">Notice of Seizure</div>
+
+    <div class="content-box">
+        <p>
+            This notice is issued to <span class="dynamic-text" th:text="${note.taxpayerName ?: 'N/A'}">[Taxpayer Name]</span>, 
+            bearing TIN <span class="dynamic-text" th:text="${note.taxpayerTin ?: 'N/A'}">[Taxpayer TIN]</span>.
+        </p>
+
+        <p>
+            Pursuant to the provisions of the East African Community Customs Management Act, you are hereby notified that the following 
+            described goods and items have been seized:
+        </p>
+
+        <div style="padding: 15px; background-color: #f9f9f9; border: 1px solid #efefef; margin: 15px 0; font-weight: bold; color: #000;">
+            <span th:text="${note.goodsDescription ?: 'No description available.'}">[Detailed list of seized goods]</span>
+        </div>
+
+        <p>
+            The aforementioned goods have been seized and are liable to forfeiture on the grounds that:
+            <span style="font-weight: bold; font-style: italic;" th:text="${note.seizureReason ?: 'N/A'}">[Legal grounds and reason for seizure]</span>.
+        </p>
+
+        <p>
+            In accordance with section 214 of the Act, if you claim or intend to claim that the things seized are not liable to forfeiture, 
+            you must, within one calendar month from the date of this notice, give notice in writing of your claim to the Commissioner. 
+            In the absence of such a claim, the things seized will be deemed to have been lawfully condemned and will be liable to be disposed of in 
+            such a manner as the Commissioner may direct.
+        </p>
+
+        <p style="margin-top: 40px;">
+            Issued at <span class="dynamic-text" th:text="${location != null ? location : 'KIGALI'}">KIGALI</span> 
+            on this <span class="dynamic-text" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'dd') : '--'}">04</span> 
+            day of <span class="dynamic-text" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'MMMM') : '---'}">April</span>, 
+            20<span class="dynamic-text" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'yy') : '--'}">26</span>.
+        </p>
+    </div>
+
+    <!-- Signatures -->
+    <table class="signature-section">
+        <tr>
+            <td class="sig-block">
+                <div style="height: 60px;"></div>
+                <div class="sig-label">Signature of Offender / Representative</div>
+            </td>
+            <td class="sig-block" style="text-align: right;">
+                <div style="display: inline-block; text-align: left;">
+                    <div th:if="${officerSignatureBase64 != null}">
+                        <img th:src="${officerSignatureBase64.startsWith('data:') ? officerSignatureBase64 : 'data:image/png;base64,' + officerSignatureBase64}" class="sig-image" />
+                    </div>
+                    <div th:if="${officerSignatureBase64 == null}" style="height: 60px;"></div>
+                    
+                    <div class="officer-name" th:text="${note.pvInCharge != null ? ( (note.pvInCharge.givenName ?: '') + ' ' + (note.pvInCharge.familyName ?: '') ).trim().toUpperCase() : 'PROPER OFFICER'}">PROPER OFFICER NAME</div>
+                    <div class="sig-label">Proper Officer Name &amp; Signature</div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="footer">
+        Strategic Intelligence and Investigation Division (SIID) • Rwanda Revenue Authority • Generated by SIIDS System
+    </div>
+</body>
+</html>

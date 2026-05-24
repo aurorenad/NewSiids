@@ -56,7 +56,7 @@ public class UserController {
             }
 
             // Check if user already exists
-            User existingUser = userRepo.findByUsername(username);
+            User existingUser = userRepo.findByUsername(username).orElse(null);
             if (existingUser != null) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("error", "A user account for this Employee ID already exists."));

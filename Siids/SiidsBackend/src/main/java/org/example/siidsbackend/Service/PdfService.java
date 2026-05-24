@@ -1,82 +1,26 @@
 package org.example.siidsbackend.Service;
 
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
-import lombok.RequiredArgsConstructor;
-import org.example.siidsbackend.Model.ReleaseReason;
-import org.example.siidsbackend.Model.Stock;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.io.ByteArrayOutputStream;
-import java.util.Base64;
 import java.io.IOException;
+import java.util.Base64;
+import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor
 public class PdfService {
 
     private final TemplateEngine templateEngine;
 
-    public byte[] generateReleaseDocument(Stock stock) throws IOException {
-        return generateReleaseDocument(stock, null);
+    public PdfService(TemplateEngine templateEngine) {
+        this.templateEngine = templateEngine;
     }
 
-    public byte[] generateReleaseDocument(Stock stock, org.example.siidsbackend.Model.StockRelease release)
-            throws IOException {
-        Context context = new Context();
-        context.setVariable("stock", stock);
-        context.setVariable("release", release);
-
-        String releasedBy = release != null && release.getReleasedBy() != null ? release.getReleasedBy()
-                : (stock.getReleasedBy() != null ? stock.getReleasedBy() : stock.getTakeoverName());
-        context.setVariable("releasedBy", releasedBy);
-
-        ReleaseReason rReason = release != null && release.getReleaseReason() != null ? release.getReleaseReason()
-                : stock.getReleaseReason();
-
-        String templateName;
-        if (rReason == ReleaseReason.CYAMUNARA) {
-            templateName = "release-note-auction";
-            // Extra variables for auction template
-            context.setVariable("lotNumber", "02");
-            var dReleased = release != null ? release.getDateReleased() : stock.getDateReleased();
-            context.setVariable("auctionDate", dReleased != null ? dReleased.minusDays(2).toString() : "");
-            context.setVariable("location", "MASORO");
-            String reason = release != null ? release.getReason() : stock.getReason();
-            context.setVariable("bidderName", (reason != null && reason.contains(":")) ? reason.split(":")[0] : "");
-            context.setVariable("bidderTin", "");
-        } else {
-            templateName = "release-note-vehicle";
-            // Extra variables for vehicle template
-            // Try to get old plate number
-            String oldPlate = "";
-            if (stock.getItems() != null) {
-                String rItemName = release != null ? release.getReleasedItemName() : stock.getReleasedItem();
-                if ("ALL".equalsIgnoreCase(rItemName) || rItemName == null) {
-                    oldPlate = stock.getItems().stream()
-                            .filter(item -> "VEHICLE".equals(item.getItem()))
-                            .map(item -> item.getPlateNumber())
-                            .findFirst()
-                            .orElse("");
-                } else {
-                    oldPlate = stock.getItems().stream()
-                            .filter(item -> "VEHICLE".equals(item.getItem()) && rItemName.equals(item.getItemName()))
-                            .map(item -> item.getPlateNumber())
-                            .findFirst()
-                            .orElse("");
-                }
-            }
-            context.setVariable("oldPlateNumber", oldPlate);
-
-            String newOwner = release != null && release.getNewOwner() != null ? release.getNewOwner()
-                    : stock.getNewOwner();
-            context.setVariable("newOwner",
-                    newOwner != null ? newOwner : (stock.getTakeoverName() != null ? stock.getTakeoverName() : ""));
-        }
-
-        // --- Add Base64 Images ---
+    private void addCommonImages(Context context) {
         try {
             ClassPathResource logoResource = new ClassPathResource("templates/rra.jpg");
             if (logoResource.exists()) {
@@ -90,40 +34,116 @@ public class PdfService {
                 context.setVariable("watermarkBase64", Base64.getEncoder().encodeToString(watermarkBytes));
             }
 
+            ClassPathResource stampResource = new ClassPathResource("templates/stamp.png");
+            if (stampResource.exists()) {
+                byte[] stampBytes = stampResource.getInputStream().readAllBytes();
+                context.setVariable("prsoStampBase64", Base64.getEncoder().encodeToString(stampBytes));
+            }
+
+            ClassPathResource signatureResource = new ClassPathResource("templates/signature.png");
+            if (signatureResource.exists()) {
+                byte[] sigBytes = signatureResource.getInputStream().readAllBytes();
+                context.setVariable("prsoSignatureBase64", Base64.getEncoder().encodeToString(sigBytes));
+            }
+
             ClassPathResource footerResource = new ClassPathResource("templates/footer.png");
             if (footerResource.exists()) {
                 byte[] footerBytes = footerResource.getInputStream().readAllBytes();
                 context.setVariable("footerBase64", Base64.getEncoder().encodeToString(footerBytes));
             }
-
-            if (release != null && "APPROVED".equals(release.getStatus())) {
-                ClassPathResource signatureResource = new ClassPathResource("templates/signature.png");
-                if (signatureResource.exists()) {
-                    byte[] sigBytes = signatureResource.getInputStream().readAllBytes();
-                    context.setVariable("prsoSignatureBase64", Base64.getEncoder().encodeToString(sigBytes));
-                }
-                ClassPathResource stampResource = new ClassPathResource("templates/stamp.png");
-                if (stampResource.exists()) {
-                    byte[] stampBytes = stampResource.getInputStream().readAllBytes();
-                    context.setVariable("prsoStampBase64", Base64.getEncoder().encodeToString(stampBytes));
-                }
-                context.setVariable("prsoApprovedBy", release.getPrsoApprovedBy());
-            }
-
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("Could not load images for PDF generation.");
+            System.err.println("Failed to load common images: " + e.getMessage());
         }
+    }
 
-        String html = templateEngine.process(templateName, context);
-
+    private byte[] renderHtmlToPdf(String html) throws IOException {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
-            builder.useFastMode();
-            builder.withHtmlContent(html, null);
+            builder.withHtmlContent(html, new ClassPathResource("templates/").getURL().toString());
             builder.toStream(outputStream);
             builder.run();
             return outputStream.toByteArray();
         }
+    }
+
+    public byte[] generateSeizureNote(org.example.siidsbackend.Model.SeizureNote note) throws IOException {
+        Context context = new Context();
+        context.setVariable("note", note);
+        addCommonImages(context);
+        
+        if (note.getOfficerSignaturePath() != null) {
+            context.setVariable("officerSignatureBase64", note.getOfficerSignaturePath());
+        }
+
+        String html = templateEngine.process("seizure-note", context);
+        return renderHtmlToPdf(html);
+    }
+
+    public byte[] generatePVDocument(org.example.siidsbackend.Model.PVDocument pv, org.example.siidsbackend.Model.Employee stockManager) throws IOException {
+        Context context = new Context();
+        context.setVariable("pv", pv);
+        context.setVariable("stockManager", stockManager);
+        addCommonImages(context);
+
+        if (pv != null && pv.getSeizureNote() != null && pv.getSeizureNote().getOfficerSignaturePath() != null) {
+            context.setVariable("officerSignatureBase64", pv.getSeizureNote().getOfficerSignaturePath());
+        }
+
+        String html = templateEngine.process("pv-document", context);
+        return renderHtmlToPdf(html);
+    }
+
+    public byte[] generateReleaseNote(org.example.siidsbackend.Model.ReleaseNote release) throws IOException {
+        Context context = new Context();
+        context.setVariable("release", release);
+        context.setVariable("releasedBy", release.getReleasedBy() != null ? 
+            release.getReleasedBy().getGivenName() + " " + release.getReleasedBy().getFamilyName() : "N/A");
+        addCommonImages(context);
+        
+        if ("APPROVED".equals(release.getStatus())) {
+            context.setVariable("prsoApprovedBy", release.getPrsoApprover() != null ? 
+                release.getPrsoApprover().getGivenName() + " " + release.getPrsoApprover().getFamilyName() : "N/A");
+        }
+
+        String html = templateEngine.process("release-note-general", context);
+        return renderHtmlToPdf(html);
+    }
+
+    // --- Legacy Stock Methods (Used by StockService) ---
+
+    public byte[] generateReleaseDocument(org.example.siidsbackend.Model.Stock stock) throws IOException {
+        return generateReleaseDocument(stock, null);
+    }
+
+    public byte[] generateReleaseDocument(org.example.siidsbackend.Model.Stock stock, org.example.siidsbackend.Model.StockRelease release) throws IOException {
+        Context context = new Context();
+        context.setVariable("stock", stock);
+        context.setVariable("release", release);
+        addCommonImages(context);
+
+        context.setVariable("releasedBy", release != null ? release.getReleasedBy() : stock.getReleasedBy());
+        context.setVariable("prsoApprovedBy", release != null ? release.getPrsoApprovedBy() : "JBC MURANGIRA");
+
+        String templateName = "release-note-vehicle";
+        if (release != null && release.getReleaseReason() == org.example.siidsbackend.Model.ReleaseReason.CYAMUNARA) {
+            templateName = "release-note-auction";
+            context.setVariable("lotNumber", "02"); 
+            context.setVariable("auctionDate", release.getDateReleased() != null ? release.getDateReleased() : stock.getDateReleased());
+            context.setVariable("location", "KIGALI");
+            context.setVariable("bidderName", release.getNewOwner());
+            context.setVariable("bidderTin", "N/A");
+        }
+
+        if (templateName.equals("release-note-vehicle")) {
+            String plate = "";
+            if (stock.getItems() != null && !stock.getItems().isEmpty()) {
+                plate = stock.getItems().get(0).getPlateNumber();
+            }
+            context.setVariable("oldPlateNumber", plate);
+            context.setVariable("newOwner", release != null ? release.getNewOwner() : stock.getNewOwner());
+        }
+
+        String html = templateEngine.process(templateName, context);
+        return renderHtmlToPdf(html);
     }
 }

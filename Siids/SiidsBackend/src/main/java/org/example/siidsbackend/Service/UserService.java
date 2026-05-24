@@ -44,7 +44,7 @@ public class UserService {
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     private User getSingleUser(String username) {
-        return repo.findByUsername(username);
+        return repo.findByUsername(username).orElse(null);
     }
 
     public User register(User user) {
@@ -103,17 +103,17 @@ public class UserService {
             }
         } catch (BadCredentialsException e) {
             System.err.println("Bad credentials for user " + user.getUsername() + ": " + e.getMessage());
-            response.put("error", "Authentication failed");
+            response.put("error", "Invalid username or password");
             return response;
         } catch (AuthenticationException e) {
             System.err.println("Authentication exception for user " + user.getUsername() + ": " + e.getMessage());
-            response.put("error", "Authentication failed");
+            response.put("error", "Authentication error: " + e.getMessage());
             return response;
         } catch (Exception e) {
             System.err.println(
                     "Unexpected error during authentication for user " + user.getUsername() + ": " + e.getMessage());
             e.printStackTrace();
-            response.put("error", "Authentication failed");
+            response.put("error", "Server authentication error");
             return response;
         }
     }

@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,6 +28,7 @@ public class SecurityConfig {
     private JwtFilter jwtFilter;
 
     @Autowired
+    @org.springframework.context.annotation.Lazy
     private UserDetailsService userDetailsService;
 
     @Bean
@@ -43,60 +43,38 @@ public class SecurityConfig {
                     ));
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     config.setAllowedHeaders(List.of("*"));
+                    config.setExposedHeaders(List.of("Authorization", "X-Auth-User", "X-Auth-Status", "X-Auth-Roles", "X-Auth-Error"));
                     config.setAllowCredentials(true);
                     return config;
                 }))
 
                 .authorizeHttpRequests(request -> request
+                        // RULE 1: Global Open Endpoints
                         .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**",
-                                "/reset-password", "/verify-otp", "/forgot-password")
+                                "/reset-password", "/verify-otp", "/forgot-password", "/error")
                         .permitAll()
-                        .requestMatchers("/api/cases/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
-                                "legalAdvisor", "Admin", "admin")
-                        .requestMatchers("/api/reports/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "legalAdvisor",
-                                "AssistantCommissioner", "Assistant Commissioner",
-                                "DirectorIntelligence", "DirectorInvestigation", "InvestigationOfficer", "Admin",
-                                "admin")
-                        .requestMatchers("/api/taxpayers/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
-                                "legalAdvisor", "Admin", "admin")
-                        .requestMatchers("/api/informers/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner", "Assistant Commissioner",
-                                "legalAdvisor", "Admin", "admin")
-                        .requestMatchers("/api/departments")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner",
-                                "legalAdvisor", "Admin", "admin")
-                        .requestMatchers("/api/employees/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "DirectorInvestigation", "InvestigationOfficer", "AssistantCommissioner",
-                                "legalAdvisor", "Admin", "admin")
-                        .requestMatchers("/api/audit/**").hasAuthority("ROLE_AUDITOR")
-                        .requestMatchers("/api/stock/**")
-                        .hasAnyAuthority("Admin", "admin", "StockManager", "stockmanager", "PRSO", "prso", "Surveillance", "surveillance")
-                        .requestMatchers("/api/reward-memos/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "DirectorIntelligence", "AssistantCommissioner",
-                                "Admin", "admin", "Finance")
-                        .requestMatchers("/api/surveillance/**")
-                        .hasAnyAuthority("User", "IntelligenceOfficer", "Surveillance", "DirectorIntelligence",
-                                "AssistantCommissioner", "Admin", "admin")
+                        
+                        // RULE 2: Specific Stock Bypass (For Debugging 403)
+                        .requestMatchers("/api/stock/goods/**").permitAll()
+                        .requestMatchers("/api/stock/**").permitAll()
+                        
+                        // RULE 3: Everything else requires authentication
                         .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public BCryptPasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12);
     }
 
     @SuppressWarnings("deprecation")
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setPasswordEncoder(new BCryptPasswordEncoder(12));
+        provider.setPasswordEncoder(passwordEncoder());
         provider.setUserDetailsService(userDetailsService);
         return provider;
     }

@@ -18,9 +18,9 @@ instance.interceptors.request.use(
     (config) => {
         // Skip auth for unauthenticated endpoints
         // Use exact path matching to avoid catching sub-paths like /admin/register-user
-        const path = config.url.split('?')[0];
+        const path = (config.url || '').split('?')[0].toLowerCase();
         const isUnauthenticated = UNAUTHENTICATED_ENDPOINTS.some(endpoint => 
-            path === endpoint || path.endsWith(endpoint)
+            path === endpoint.toLowerCase() || path.endsWith(endpoint.toLowerCase())
         );
 
         if (isUnauthenticated) {
@@ -33,12 +33,6 @@ instance.interceptors.request.use(
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        // Add employee ID if available
-        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-        if (employeeId) {
-            config.headers['employee_id'] = employeeId.trim();
         }
 
         return config;
@@ -56,52 +50,51 @@ instance.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        // Log error for debugging
-        console.error('API Error:', {
+        // Log error for debugging safely
+        let errorMessage = error.message;
+        if (error.response?.data) {
+            if (typeof error.response.data === 'string') {
+                errorMessage = error.response.data;
+            } else if (error.response.data.message) {
+                errorMessage = error.response.data.message;
+            }
+        }
+
+        const errorDetails = {
             url: originalRequest.url,
             status: error.response?.status,
-            message: error.response?.data?.message || error.message,
-            data: error.response?.data
-        });
+            message: errorMessage,
+            roles: error.response?.headers?.['x-auth-roles'] || 'None'
+        };
+
+        console.error(`🔴 API Error [${errorDetails.status}]: ${errorDetails.url} - ${errorDetails.message}`);
+        if (errorDetails.status === 403) {
+            console.warn(`🔒 Access Denied. Your detected roles: ${errorDetails.roles}`);
+        }
 
         // Handle 401 Unauthorized (token expired)
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
+            const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
+            
+            if (!refreshToken) {
+                // No refresh token, just fail the request - don't force redirect here
+                return Promise.reject(error);
+            }
 
             try {
-                const refreshToken = localStorage.getItem('refreshToken') || sessionStorage.getItem('refreshToken');
-                if (!refreshToken) {
-                    throw new Error('No refresh token available');
-                }
-
-                const response = await axios.post(`${instance.defaults.baseURL}/api/auth/refresh`, {
-                    refreshToken
-                });
-
+                const response = await instance.post('/api/auth/refresh', { refreshToken });
                 const { token, employeeId } = response.data;
 
-                // Store the new token
-                if (localStorage.getItem('token')) {
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('employeeId', employeeId);
-                } else {
-                    sessionStorage.setItem('token', token);
-                    sessionStorage.setItem('employeeId', employeeId);
-                }
+                const storage = localStorage.getItem('token') ? localStorage : sessionStorage;
+                storage.setItem('token', token);
+                if (employeeId) storage.setItem('employeeId', employeeId);
 
-                // Retry the original request with new token
                 originalRequest.headers['Authorization'] = `Bearer ${token}`;
-                originalRequest.headers['employee_id'] = employeeId;
                 return instance(originalRequest);
             } catch (refreshError) {
-                // If refresh fails, clear storage and redirect to login
-                localStorage.removeItem('token');
-                localStorage.removeItem('employeeId');
-                localStorage.removeItem('refreshToken');
-                sessionStorage.removeItem('token');
-                sessionStorage.removeItem('employeeId');
-                sessionStorage.removeItem('refreshToken');
-                window.location.href = '/';
+                // If refresh fails, then we can consider redirecting
+                console.error('Session expired, please login again.');
                 return Promise.reject(refreshError);
             }
         }

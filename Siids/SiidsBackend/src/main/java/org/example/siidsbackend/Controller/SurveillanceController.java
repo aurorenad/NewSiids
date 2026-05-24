@@ -21,10 +21,14 @@ public class SurveillanceController {
     private final SurveillanceService surveillanceService;
     private final StockService stockService;
 
+    private String getCurrentUser() {
+        return org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @PostMapping("/mapping")
     public ResponseEntity<SurveillanceMapping> createMapping(
-            @RequestBody Map<String, Object> body,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestBody Map<String, Object> body) {
+        String employeeId = getCurrentUser();
         try {
             String target = (String) body.get("targetName");
             String location = (String) body.get("location");
@@ -49,8 +53,8 @@ public class SurveillanceController {
             @RequestParam("pvNumber") String pvNumber,
             @RequestParam("seizureNumber") String seizureNumber,
             @RequestParam(value = "stockId", required = false) Integer stockId,
-            @RequestParam(value = "attachments", required = false) List<String> attachments,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestParam(value = "attachments", required = false) List<String> attachments) {
+        String employeeId = getCurrentUser();
         try {
             SurveillanceReport report = surveillanceService.submitReport(mappingId, findings, interrogation, pvNumber, seizureNumber, stockId, attachments, employeeId);
             return ResponseEntity.ok(report);
@@ -64,8 +68,7 @@ public class SurveillanceController {
     public ResponseEntity<Stock> handoverToStore(
             @RequestPart("stockData") StockRequestDTO stockData,
             @RequestPart("documents") List<MultipartFile> documents,
-            @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestPart(value = "anotherDocument", required = false) MultipartFile anotherDocument) {
         try {
             // Check if user is Surveillance or Store staff
             Stock stock = stockService.createStock(stockData, documents, anotherDocument, null);
@@ -83,8 +86,8 @@ public class SurveillanceController {
 
     @PostMapping("/reports/{id}/approve-prso")
     public ResponseEntity<SurveillanceReport> approvePRSO(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable Integer id) {
+        String employeeId = getCurrentUser();
         return ResponseEntity.ok(surveillanceService.approveReportPRSO(id, employeeId));
     }
 

@@ -82,19 +82,44 @@ public class WebSocketNotificationService {
     }
 
     public void createAndSendNotification(Report report, String message, Employee recipient) {
+        String senderName = (report != null && report.getCreatedBy() != null) ? 
+            report.getCreatedBy().getGivenName() + " " + report.getCreatedBy().getFamilyName() : null;
+        saveAndSend(report, null, message, recipient, "REPORT_UPDATE", senderName);
+    }
+
+    public void createAndSendStockNotification(String message, Employee recipient, String type, String reference, String senderName) {
+        saveAndSend(null, reference, message, recipient, type, senderName);
+    }
+
+    private void saveAndSend(Report report, String reference, String message, Employee recipient, String type, String senderName) {
         try {
             // Save notification in database
             Notification notification = new Notification();
             notification.setMessage(message);
             notification.setRecipient(recipient);
             notification.setReport(report);
+            notification.setRelatedReference(reference);
+            notification.setSenderName(senderName);
             notification.setCreatedAt(LocalDateTime.now());
             notification.setRead(false);
 
             Notification savedNotification = notificationRepo.save(notification);
 
             // Create DTO for real-time notification
-            NotificationDTO notificationDTO = createNotificationDTO(savedNotification);
+            NotificationDTO notificationDTO = new NotificationDTO();
+            notificationDTO.setId(savedNotification.getId());
+            notificationDTO.setMessage(message);
+            if (report != null) {
+                notificationDTO.setReportId(report.getId());
+                notificationDTO.setReportStatus(report.getStatus());
+            }
+            notificationDTO.setRecipientId(recipient.getEmployeeId());
+            notificationDTO.setRecipientName(recipient.getGivenName() + " " + recipient.getFamilyName());
+            notificationDTO.setCreatedAt(savedNotification.getCreatedAt());
+            notificationDTO.setRead(false);
+            notificationDTO.setNotificationType(type);
+            notificationDTO.setRelatedReference(reference);
+            notificationDTO.setSenderName(senderName);
 
             // Send real-time notification
             sendNotificationToUser(recipient.getEmployeeId(), notificationDTO);
@@ -108,14 +133,18 @@ public class WebSocketNotificationService {
         NotificationDTO dto = new NotificationDTO();
         dto.setId(notification.getId());
         dto.setMessage(notification.getMessage());
-        dto.setReportId(notification.getReport().getId());
+        if (notification.getReport() != null) {
+            dto.setReportId(notification.getReport().getId());
+            dto.setReportStatus(notification.getReport().getStatus());
+            dto.setReportDescription(notification.getReport().getDescription());
+        }
         dto.setRecipientId(notification.getRecipient().getEmployeeId());
         dto.setRecipientName(notification.getRecipient().getGivenName() + " " +
                 notification.getRecipient().getFamilyName());
         dto.setCreatedAt(notification.getCreatedAt());
         dto.setRead(notification.isRead());
-        dto.setReportStatus(notification.getReport().getStatus());
-        dto.setReportDescription(notification.getReport().getDescription());
+        dto.setRelatedReference(notification.getRelatedReference());
+        dto.setSenderName(notification.getSenderName());
         return dto;
     }
 

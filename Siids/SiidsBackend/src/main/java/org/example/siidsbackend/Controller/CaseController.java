@@ -27,10 +27,14 @@ public class CaseController {
     private final InformerService informerService;
     private final ReportService reportService;
 
+    private String getCurrentUser() {
+        return org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @PostMapping
     public ResponseEntity<CaseResponseDTO> createCase(
-            @RequestBody CaseRequestDTO caseRequestDTO,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestBody CaseRequestDTO caseRequestDTO) {
+        String employeeId = getCurrentUser();
         try {
             log.info("Creating case for employee: {}, with TIN: {}", employeeId, caseRequestDTO.getTin());
 
@@ -108,8 +112,8 @@ public class CaseController {
     @PutMapping("/{id}")
     public ResponseEntity<CaseResponseDTO> updateCase(
             @PathVariable Integer id,
-            @RequestBody CaseRequestDTO caseRequestDTO,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestBody CaseRequestDTO caseRequestDTO) {
+        String employeeId = getCurrentUser();
         try {
             log.info("Updating case ID: {} for employee: {}", id, employeeId);
 
@@ -164,8 +168,8 @@ public class CaseController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CaseResponseDTO>> getMyCases(
-            @RequestHeader("employee_id") String employeeId) {
+    public ResponseEntity<List<CaseResponseDTO>> getMyCases() {
+        String employeeId = getCurrentUser();
         try {
             List<CaseResponseDTO> response = caseService.getCasesByCreator(employeeId.trim());
             return ResponseEntity.ok(response);
@@ -177,8 +181,8 @@ public class CaseController {
 
     @GetMapping("/{id}")
     public ResponseEntity<CaseResponseDTO> getCaseById(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable Integer id) {
+        String employeeId = getCurrentUser();
         try {
             Optional<CaseResponseDTO> caseResponse = caseService.getCaseIfCreator(id, employeeId);
             return caseResponse
@@ -193,8 +197,8 @@ public class CaseController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<CaseResponseDTO> updateCaseStatus(
             @PathVariable Integer id,
-            @RequestBody Map<String, String> statusUpdate,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestBody Map<String, String> statusUpdate) {
+        String employeeId = getCurrentUser();
         try {
             String newStatus = statusUpdate.get("status");
             if (newStatus == null || newStatus.trim().isEmpty()) {
@@ -222,8 +226,8 @@ public class CaseController {
 
     @GetMapping("/caseNum/**")
     public ResponseEntity<CaseResponseDTO> getCaseByCaseNum(
-            @RequestHeader("employee_id") String employeeId,
             HttpServletRequest request) {
+        String employeeId = getCurrentUser();
         try {
             String requestURI = request.getRequestURI();
             String caseNumPath = "/api/cases/caseNum/";
@@ -248,8 +252,8 @@ public class CaseController {
 
     @GetMapping("/{caseId}/reports")
     public ResponseEntity<List<Report>> getCaseReports(
-            @PathVariable Integer caseId,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable Integer caseId) {
+        String employeeId = getCurrentUser();
         try {
             // Verify the requester has access to the case
             Optional<CaseResponseDTO> caseResponse = caseService.getCaseIfCreator(caseId, employeeId);
@@ -267,8 +271,8 @@ public class CaseController {
 
     @GetMapping("/status/{status}")
     public ResponseEntity<List<CaseResponseDTO>> getCasesByStatus(
-            @PathVariable String status,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable String status) {
+        String employeeId = getCurrentUser();
         try {
             WorkflowStatus workflowStatus = WorkflowStatus.valueOf(status.toUpperCase());
             List<CaseResponseDTO> response = caseService.getCasesByStatus(workflowStatus, employeeId);
@@ -283,8 +287,8 @@ public class CaseController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCase(
-            @PathVariable Integer id,
-            @RequestHeader("employee_id") String employeeId) {
+            @PathVariable Integer id) {
+        String employeeId = getCurrentUser();
         try {
             caseService.deleteCase(id, employeeId);
             return ResponseEntity.noContent().build();
@@ -299,8 +303,8 @@ public class CaseController {
 
     @PostMapping("/informers/register")
     public ResponseEntity<Informer> registerInformer(
-            @RequestBody InformerRegistrationDTO registrationDTO,
-            @RequestHeader("employee_id") String employeeId) {
+            @RequestBody InformerRegistrationDTO registrationDTO) {
+        String employeeId = getCurrentUser();
         try {
             // Check if informer already exists
             Optional<Informer> existingInformer = informerService.findByNationalId(registrationDTO.getNationalId());

@@ -19,7 +19,8 @@ import {
     Chip,
     Grid,
     Card,
-    CardContent
+    CardContent,
+    TablePagination
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -33,6 +34,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService } from '../../api/Axios/caseApi.jsx';
+import { stockApi } from '../../api/stockApi';
 
 const SurveillanceOfficer = () => {
     const [cases, setCases] = useState([]);
@@ -42,6 +44,11 @@ const SurveillanceOfficer = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
     const [showOnlyCreated, setShowOnlyCreated] = useState(false);
+    const [tempStock, setTempStock] = useState([]);
+    
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -49,9 +56,13 @@ const SurveillanceOfficer = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await CaseService.getMyCases();
-                setCases(response.data);
-                setFilteredCases(response.data);
+                const [casesRes, tempStockRes] = await Promise.all([
+                    CaseService.getMyCases(),
+                    stockApi.getTemporaryStock()
+                ]);
+                setCases(casesRes.data || []);
+                setFilteredCases(casesRes.data || []);
+                setTempStock(tempStockRes.data || []);
             } catch (err) {
                 console.error('Failed to load data:', err);
                 setError(err.response?.data?.message || 'Failed to load data');
@@ -85,7 +96,21 @@ const SurveillanceOfficer = () => {
             results = results.filter(caseItem => caseItem.status === 'CASE_CREATED');
         }
         setFilteredCases(results);
+        setPage(0); // Reset to page 1 when filter changes
     }, [searchTerm, cases, showOnlyCreated]);
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
+
+    const paginatedCases = useMemo(() => {
+        return filteredCases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+    }, [filteredCases, page, rowsPerPage]);
 
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
@@ -114,6 +139,28 @@ const SurveillanceOfficer = () => {
             closed: cases.filter(c => c.status === 'CLOSED').length
         };
     }, [cases]);
+
+    const calculateDaysLeft = (dateSeized) => {
+        if (!dateSeized) return null;
+        const seizedDate = new Date(dateSeized);
+        const dueDate = new Date(seizedDate);
+        dueDate.setDate(dueDate.getDate() + 30);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        dueDate.setHours(0, 0, 0, 0);
+        const diffTime = dueDate - today;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    const dashboardAlerts = useMemo(() => {
+        const returned = tempStock.filter(item => item.status === 'RETURNED_FOR_CORRECTION');
+        const critical = tempStock.filter(item => {
+            if (item.status !== 'IN_TEMPORARY_STOCK' && item.status !== 'RETURNED_FOR_CORRECTION') return false;
+            const days = calculateDaysLeft(item.dateTimeSeized);
+            return days !== null && days <= 5;
+        });
+        return { returned, critical };
+    }, [tempStock]);
 
     if (loading) {
         return (
@@ -176,6 +223,53 @@ const SurveillanceOfficer = () => {
                     </Button>
                 </Box>
             </Box>
+
+            {/* Action Required Banner */}
+            {(dashboardAlerts.returned.length > 0 || dashboardAlerts.critical.length > 0) && (
+                <Alert 
+                    severity="warning" 
+                    sx={{ 
+                        mb: 4, 
+                        borderRadius: 3, 
+                        boxShadow: '0 4px 12px rgba(245, 168, 0, 0.1)',
+                        borderLeft: '5px solid #F5A800',
+                        backgroundColor: '#fffbeb',
+                        fontFamily: "'Outfit', sans-serif",
+                        '& .MuiAlert-message': {
+                            width: '100%'
+                        }
+                    }}
+                >
+                    <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+                        <Box>
+                            <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#b45309', fontFamily: "'Outfit', sans-serif" }}>
+                                Action Required in Temporary Stock
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#d97706', mt: 0.5, fontFamily: "'Outfit', sans-serif" }}>
+                                {dashboardAlerts.returned.length > 0 && `• You have ${dashboardAlerts.returned.length} seizure note(s) returned for correction.`}
+                                {dashboardAlerts.returned.length > 0 && dashboardAlerts.critical.length > 0 && <br />}
+                                {dashboardAlerts.critical.length > 0 && `• You have ${dashboardAlerts.critical.length} item(s) nearing their 30-day justification deadline.`}
+                            </Typography>
+                        </Box>
+                        <Button 
+                            variant="contained" 
+                            size="small"
+                            onClick={() => navigate('/pv/temporary-stock')}
+                            sx={{ 
+                                backgroundColor: '#F5A800', 
+                                color: '#fff',
+                                '&:hover': { backgroundColor: '#d99400' },
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                borderRadius: 1.5,
+                                fontFamily: "'Outfit', sans-serif"
+                            }}
+                        >
+                            Go to Temporary Stock
+                        </Button>
+                    </Box>
+                </Alert>
+            )}
 
             {/* Summary Cards */}
             <Grid container spacing={3} mb={4}>
@@ -278,14 +372,14 @@ const SurveillanceOfficer = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredCases.length > 0 ? (
-                                filteredCases.map((caseItem) => {
+                            {paginatedCases.length > 0 ? (
+                                paginatedCases.map((caseItem) => {
                                     const statusStyle = getStatusColor(caseItem.status);
                                     return (
                                         <TableRow key={caseItem.caseNum} hover>
                                             <TableCell sx={{ fontWeight: 500 }}>{caseItem.caseNum}</TableCell>
-                                            <TableCell>{caseItem.taxPayer?.tin || caseItem.tin || '-'}</TableCell>
-                                            <TableCell>{caseItem.taxPayer?.name || caseItem.taxPayerName || '-'}</TableCell>
+                                            <TableCell>{caseItem.taxPayer?.tin || '-'}</TableCell>
+                                            <TableCell>{caseItem.taxPayer?.name || '-'}</TableCell>
                                             <TableCell>
                                                 <Chip 
                                                     label={caseItem.status.replace(/_/g, ' ')} 
@@ -300,6 +394,17 @@ const SurveillanceOfficer = () => {
                                             </TableCell>
                                             <TableCell align="right">
                                                 <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
+                                                    {(caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
+                                                        <Tooltip title="Edit Case">
+                                                            <IconButton
+                                                                onClick={() => navigate('/surveillence-officer/edit-case', { state: { caseData: caseItem } })}
+                                                                size="small"
+                                                                sx={{ color: 'var(--rra-blue)', backgroundColor: 'rgba(0, 61, 165, 0.05)' }}
+                                                            >
+                                                                <AssignmentIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Button
                                                         variant="contained"
                                                         size="small"
@@ -314,7 +419,7 @@ const SurveillanceOfficer = () => {
                                                             borderRadius: 1.5
                                                         }}
                                                     >
-                                                        Seize Goods
+                                                        Seize
                                                     </Button>
                                                     <Tooltip title="View Case">
                                                         <IconButton
@@ -342,6 +447,22 @@ const SurveillanceOfficer = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <TablePagination
+                    rowsPerPageOptions={[10, 20, 50, 100]}
+                    component="div"
+                    count={filteredCases.length}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    sx={{
+                        borderTop: '1px solid #eee',
+                        '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
+                            fontFamily: "'Outfit', sans-serif",
+                            fontWeight: 500
+                        }
+                    }}
+                />
             </Paper>
 
             <Snackbar

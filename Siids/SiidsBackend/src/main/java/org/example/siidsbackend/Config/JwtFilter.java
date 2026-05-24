@@ -1,6 +1,5 @@
 package org.example.siidsbackend.Config;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Service.JWTService;
 import jakarta.servlet.FilterChain;
@@ -18,12 +17,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JWTService jwtService;
     private final UserDetailsService userDetailsService;
+
+    public JwtFilter(JWTService jwtService, @org.springframework.context.annotation.Lazy UserDetailsService userDetailsService) {
+        this.jwtService = jwtService;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -43,6 +46,7 @@ public class JwtFilter extends OncePerRequestFilter {
         final String username;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("JwtFilter: Missing or invalid Authorization header for path: {}", path);
             filterChain.doFilter(request, response);
             return;
         }
@@ -50,7 +54,7 @@ public class JwtFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
         try {
             username = jwtService.extractUsername(jwt);
-            log.debug("JwtFilter: Extracted username [{}] from token", username);
+            log.info("JwtFilter: Processing request for user [{}] on path [{}]", username, path);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
@@ -59,16 +63,27 @@ public class JwtFilter extends OncePerRequestFilter {
                             userDetails,
                             null,
                             userDetails.getAuthorities());
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request));
+                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.info("JwtFilter: User {} authenticated successfully", username);
+                    log.info("JwtFilter: User {} authenticated successfully with authorities: {}", username, userDetails.getAuthorities());
+                    
+                    // DIAGNOSTIC HEADERS
+                    response.addHeader("X-Auth-User", username);
+                    response.addHeader("X-Auth-Status", "Authenticated");
+                    response.addHeader("X-Auth-Roles", userDetails.getAuthorities().toString());
                 } else {
-                    log.warn("JwtFilter: Token validation failed for user {}", username);
+                    log.warn("JwtFilter: Token validation failed for user {} on path {}", username, path);
+                    response.addHeader("X-Auth-Status", "Token-Invalid");
                 }
+            } else if (SecurityContextHolder.getContext().getAuthentication() != null) {
+                response.addHeader("X-Auth-Status", "Already-Authenticated");
+            } else {
+                response.addHeader("X-Auth-Status", "Anonymous");
             }
         } catch (Exception e) {
-            log.error("JwtFilter: Error processing JWT: {}", e.getMessage());
+            log.error("JwtFilter: Critical error processing JWT for path {}: {}", path, e.getMessage());
+            response.addHeader("X-Auth-Error", e.getMessage());
+            e.printStackTrace();
         }
         filterChain.doFilter(request, response);
     }
