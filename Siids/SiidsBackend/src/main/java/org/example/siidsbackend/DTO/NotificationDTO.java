@@ -18,4 +18,5 @@ public class NotificationDTO {
     private WorkflowStatus reportStatus;
     private String reportDescription;
     private String notificationType;
+    private String relatedReference;
 }

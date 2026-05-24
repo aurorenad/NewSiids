@@ -33,6 +33,8 @@ public class ReleaseNote {
     
     private String recipientName;
     private String recipientIdPassport;
+    private String recipientPhone;
+    private Double auctionAmount;
 
     @ManyToOne
     @JoinColumn(name = "released_by_id", referencedColumnName = "employee_id")

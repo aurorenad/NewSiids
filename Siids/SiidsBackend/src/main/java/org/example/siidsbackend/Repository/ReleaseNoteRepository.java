@@ -13,5 +13,6 @@ public interface ReleaseNoteRepository extends JpaRepository<ReleaseNote, Intege
     List<ReleaseNote> findByPvDocument(PVDocument pv);
     List<ReleaseNote> findBySeizureNote(SeizureNote note);
     List<ReleaseNote> findByStatus(String status);
+    List<ReleaseNote> findBySeizureNoteAndStatus(SeizureNote note, String status);
     List<ReleaseNote> findByStatusInOrderByCreatedAtDesc(List<String> statuses);
 }

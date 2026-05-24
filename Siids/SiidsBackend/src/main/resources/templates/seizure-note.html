@@ -23,26 +23,21 @@
         .serial-section { text-align: right; margin-top: 10px; font-size: 14px; font-weight: bold; }
         .form-title { text-align: center; margin: 25px 0; text-decoration: underline; font-weight: bold; font-size: 16px; text-transform: uppercase; }
 
-        .info-row { margin-bottom: 15px; font-size: 14px; }
-        .label { display: inline-block; min-width: 30px; }
-        .dotted-value { border-bottom: 1.5px dotted #000; display: inline-block; min-width: 300px; padding-left: 10px; font-weight: bold; color: #000; }
+        .content-box { margin-top: 30px; line-height: 1.8; font-size: 14px; text-align: justify; }
+        .dynamic-text { font-weight: bold; color: #000; text-transform: uppercase; }
 
-        .content-box { margin-top: 25px; line-height: 1.8; font-size: 14px; text-align: justify; }
-        .goods-area { border: 1px solid #ddd; padding: 15px; background: #fafafa; min-height: 100px; margin: 10px 0; white-space: pre-wrap; font-weight: bold; }
-
-        .grounds-section { margin-top: 20px; }
-        
-        .signature-section { margin-top: 50px; width: 100%; border-collapse: collapse; }
+        .signature-section { margin-top: 80px; width: 100%; border-collapse: collapse; }
         .sig-block { width: 50%; vertical-align: top; }
-        .sig-image { width: 140px; height: auto; display: block; margin: 5px 0; }
-        .sig-label { font-size: 12px; font-weight: bold; margin-top: 10px; border-top: 1px solid #333; padding-top: 5px; width: 180px; }
+        .sig-image { width: 140px; height: auto; display: block; margin-bottom: 10px; }
+        .sig-label { font-size: 11px; color: #666; margin-top: 5px; text-transform: uppercase; letter-spacing: 0.5px; border-top: 1px solid #000; padding-top: 5px; width: 220px; }
+        .officer-name { font-size: 14px; font-weight: bold; color: #000; margin-bottom: 5px; }
 
         .footer { position: fixed; bottom: 30px; left: 40px; right: 40px; text-align: center; font-size: 10px; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
     </style>
 </head>
 <body>
     <div th:if="${watermarkBase64 != null}" style="position: absolute; top: 25%; left: 15%; z-index: -1;">
-        <img th:src="'data:image/png;base64,' + ${watermarkBase64}" style="width: 500px; opacity: 0.06;" />
+        <img th:src="'data:image/png;base64,' + ${watermarkBase64}" style="width: 500px; opacity: 0.05;" />
     </div>
 
     <!-- Header -->
@@ -72,44 +67,43 @@
     </table>
 
     <div class="serial-section">
-        Serial N° <span th:text="${note.seizureNumber ?: 'SN-PENDING'}" style="color: #c00;">48716</span>
+        Reference Number: <span th:text="${note.seizureNumber ?: 'SN-PENDING'}" style="color: #c00;">SN-2026-00001</span>
     </div>
 
     <div class="form-title">Notice of Seizure</div>
 
-    <!-- To / Of -->
-    <div class="info-row">
-        <span class="label">To:</span>
-        <span class="dotted-value" th:text="${note.taxpayerName ?: 'N/A'}">[Taxpayer Name]</span>
-    </div>
-    <div class="info-row">
-        <span class="label">of:</span>
-        <span class="dotted-value" th:text="${note.taxpayerTin ?: 'N/A'}">[Taxpayer TIN / Address]</span>
-    </div>
-
-    <!-- Content -->
     <div class="content-box">
-        <p>1. Take notice that the following goods / items:</p>
-        <div class="goods-area" th:text="${note.goodsDescription ?: 'No description available.'}">[Description of Goods]</div>
-        
-        <p>have been seized and are liable to forfeiture in accordance with the provisions of the East African Community Customs Management Act, on the following grounds:</p>
-        
-        <div class="grounds-section">
-            <p><strong>GROUNDS:</strong></p>
-            <div style="border-bottom: 1px solid #eee; padding: 10px; min-height: 60px; font-style: italic;" th:text="${note.seizureReason ?: 'N/A'}">
-                [Seizure Reasons / Grounds]
-            </div>
-        </div>
-
-        <p style="margin-top: 25px;">
-            2. If you claim or intend to claim that the things seized are not liable to forfeiture you should, within one calendar month from the date of this notice, give notice in writing of your claim in accordance with the provisions of section 214 of the Act. In default of such notice the things seized will be deemed to have been lawfully condemned and will be liable to be disposed of in such manner as the Commissioner may direct.
+        <p>
+            This notice is issued to <span class="dynamic-text" th:text="${note.taxpayerName ?: 'N/A'}">[Taxpayer Name]</span>, 
+            bearing TIN <span class="dynamic-text" th:text="${note.taxpayerTin ?: 'N/A'}">[Taxpayer TIN]</span>.
         </p>
 
-        <p style="margin-top: 30px;">
-            Dated at <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${location != null ? location : 'KIGALI'}">KIGALI</span> 
-            this <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'dd') : '---'}">04</span> 
-            day of <span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'MMMM') : '---'}">April</span> 
-            20<span style="font-weight: bold; border-bottom: 1px solid #333;" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'yy') : '--'}">26</span>
+        <p>
+            Pursuant to the provisions of the East African Community Customs Management Act, you are hereby notified that the following 
+            described goods and items have been seized:
+        </p>
+
+        <div style="padding: 15px; background-color: #f9f9f9; border: 1px solid #efefef; margin: 15px 0; font-weight: bold; color: #000;">
+            <span th:text="${note.goodsDescription ?: 'No description available.'}">[Detailed list of seized goods]</span>
+        </div>
+
+        <p>
+            The aforementioned goods have been seized and are liable to forfeiture on the grounds that:
+            <span style="font-weight: bold; font-style: italic;" th:text="${note.seizureReason ?: 'N/A'}">[Legal grounds and reason for seizure]</span>.
+        </p>
+
+        <p>
+            In accordance with section 214 of the Act, if you claim or intend to claim that the things seized are not liable to forfeiture, 
+            you must, within one calendar month from the date of this notice, give notice in writing of your claim to the Commissioner. 
+            In the absence of such a claim, the things seized will be deemed to have been lawfully condemned and will be liable to be disposed of in 
+            such a manner as the Commissioner may direct.
+        </p>
+
+        <p style="margin-top: 40px;">
+            Issued at <span class="dynamic-text" th:text="${location != null ? location : 'KIGALI'}">KIGALI</span> 
+            on this <span class="dynamic-text" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'dd') : '--'}">04</span> 
+            day of <span class="dynamic-text" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'MMMM') : '---'}">April</span>, 
+            20<span class="dynamic-text" th:text="${note.dateTimeSeized != null ? #temporals.format(note.dateTimeSeized, 'yy') : '--'}">26</span>.
         </p>
     </div>
 
@@ -117,25 +111,25 @@
     <table class="signature-section">
         <tr>
             <td class="sig-block">
-                <div style="height: 80px;"></div>
-                <div class="sig-label">Signature and Names of the offender</div>
+                <div style="height: 60px;"></div>
+                <div class="sig-label">Signature of Offender / Representative</div>
             </td>
             <td class="sig-block" style="text-align: right;">
                 <div style="display: inline-block; text-align: left;">
-                    <div th:if="${officerSignatureBase64 != null}" style="margin-bottom: 5px;">
+                    <div th:if="${officerSignatureBase64 != null}">
                         <img th:src="${officerSignatureBase64.startsWith('data:') ? officerSignatureBase64 : 'data:image/png;base64,' + officerSignatureBase64}" class="sig-image" />
                     </div>
                     <div th:if="${officerSignatureBase64 == null}" style="height: 60px;"></div>
                     
-                    <div style="font-size: 14px; font-weight: bold;" th:text="${note.pvInCharge != null ? note.pvInCharge.givenName + ' ' + note.pvInCharge.familyName : 'Proper Officer'}">Proper Officer Name</div>
-                    <div class="sig-label">Proper Officer Name/Signature</div>
+                    <div class="officer-name" th:text="${note.pvInCharge != null ? ( (note.pvInCharge.givenName ?: '') + ' ' + (note.pvInCharge.familyName ?: '') ).trim().toUpperCase() : 'PROPER OFFICER'}">PROPER OFFICER NAME</div>
+                    <div class="sig-label">Proper Officer Name &amp; Signature</div>
                 </div>
             </td>
         </tr>
     </table>
 
     <div class="footer">
-        Strategic Intelligence and Investigation Division (SIID) • Rwanda Revenue Authority • Confidential
+        Strategic Intelligence and Investigation Division (SIID) • Rwanda Revenue Authority • Generated by SIIDS System
     </div>
 </body>
 </html>

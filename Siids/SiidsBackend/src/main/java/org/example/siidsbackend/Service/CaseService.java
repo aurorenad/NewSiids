@@ -72,7 +72,7 @@ public class CaseService {
         Case existingCase = caseRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
 
-        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED status
+        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED or REPORT_SUBMITTED status
         if (existingCase.getCreatedBy() == null || !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAdmin = user != null && "Admin".equals(user.getRole());
@@ -81,8 +81,12 @@ public class CaseService {
             }
         }
 
-        if (existingCase.getStatus() != WorkflowStatus.CASE_CREATED) {
-            throw new RuntimeException("Cannot edit a case that is no longer in CASE_CREATED status");
+        // Allow editing in initial stages
+        boolean isEditableStatus = existingCase.getStatus() == WorkflowStatus.CASE_CREATED || 
+                                   existingCase.getStatus() == WorkflowStatus.REPORT_SUBMITTED;
+        
+        if (!isEditableStatus) {
+            throw new RuntimeException("Cannot edit a case that is already in " + existingCase.getStatus() + " status");
         }
 
         existingCase.setInformerId(informer);

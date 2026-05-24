@@ -5,501 +5,345 @@ import ConfirmDialog from '../../Components/ui/ConfirmDialog';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
 import { 
-  InboxIcon, 
-  CheckCircleIcon, 
-  XCircleIcon, 
-  EyeIcon,
-  MagnifyingGlassIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ArchiveBoxIcon,
-  ClockIcon,
-  DocumentArrowDownIcon
-} from '@heroicons/react/24/outline';
-
-const ITEMS_PER_PAGE = 10;
+  Box, Typography, Paper, Grid, TextField, Button, 
+  IconButton, InputAdornment, Chip, CircularProgress, Tooltip,
+  Tabs, Tab, Divider, Alert, TablePagination
+} from '@mui/material';
+import { 
+  Search, CheckCircle, Cancel, Visibility, Download, 
+  Gavel, Info, Description, LocalShipping, HourglassEmpty,
+  History, HistoryEdu, Person, MonetizationOn
+} from '@mui/icons-material';
 
 const PRSOApprovalsPage = () => {
-  const [activeTab, setActiveTab] = useState('pending');
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [mainStock, setMainStock] = useState([]);
-  const [history, setHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState(0); // 0: Pending Release, 1: Approval History
+  const [goodsList, setGoodsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Search & Pagination
-  const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-
-  // Interaction State
   const [selectedItem, setSelectedItem] = useState(null);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [approveDialog, setApproveDialog] = useState(false);
   const [rejectDialog, setRejectDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  const fetchData = async () => {
+  const fetchGoods = async () => {
     try {
       setIsLoading(true);
-      setCurrentPage(1); // Reset page on tab change
-      if (activeTab === 'pending') {
-        const res = await stockApi.getPendingApprovals();
-        setPendingRequests(res.data || []);
-      } else if (activeTab === 'inventory') {
-        const res = await stockApi.getMainStock();
-        setMainStock(res.data || []);
-      } else if (activeTab === 'history') {
-        const res = await stockApi.getApprovalHistory();
-        setHistory(res.data || []);
-      }
+      const res = await stockApi.getMainStock();
+      setGoodsList(res.data || []);
     } catch (err) {
-      toast.error('Failed to fetch data');
+      toast.error('Failed to load stock data');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleApprove = async () => {
+  useEffect(() => { 
+    fetchGoods(); 
+  }, []);
+
+  const filteredGoods = useMemo(() => {
+    let list = activeTab === 0 
+      ? goodsList.filter(i => i.status === 'PENDING_RELEASE' || i.status === 'PENDING_PRSO_RELEASE_APPROVAL')
+      : goodsList.filter(i => i.status === 'RELEASED' || i.status === 'RELEASED_FROM_MAIN');
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(item => 
+        item.pvNumber?.toLowerCase().includes(q) ||
+        item.taxpayerName?.toLowerCase().includes(q) ||
+        item.goodsDescription?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [goodsList, activeTab, searchQuery]);
+
+  const paginatedGoods = useMemo(() => {
+    return filteredGoods.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [filteredGoods, page, rowsPerPage]);
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleActionSuccess = () => {
+    setApproveDialog(false);
+    setRejectDialog(false);
+    setDrawerOpen(false);
+    fetchGoods();
+  };
+
+  const handleApproveRelease = async () => {
     try {
-      await stockApi.approveRelease(selectedItem.id);
-      toast.success('Release Approved');
-      setApproveDialog(false);
-      setDrawerOpen(false);
-      fetchData();
+      await stockApi.approveReleaseMachine(selectedItem.id);
+      toast.success('Release Authorized successfully');
+      handleActionSuccess();
     } catch (err) {
-      toast.error('Failed to approve');
+      toast.error('Failed to authorize release');
     }
   };
 
-  const handleReject = async (reason) => {
+  const handleRejectRelease = async (reason) => {
     try {
-      await stockApi.rejectRelease(selectedItem.id, reason);
-      toast.success('Release Rejected');
-      setRejectDialog(false);
-      setDrawerOpen(false);
-      fetchData();
+      await stockApi.rejectReleaseMachine(selectedItem.id, reason);
+      toast.success('Release Request Rejected');
+      handleActionSuccess();
     } catch (err) {
-      toast.error('Failed to reject');
+      toast.error('Failed to reject release');
     }
   };
 
-  const downloadFile = async (type, id) => {
+  const downloadDoc = async (type, id, ref) => {
+    if (!id) return;
+    const loadingToast = toast.loading(`Generating document...`);
     try {
       let res;
-      let filename;
-      if (type === 'seizure') {
-        res = await stockApi.downloadSeizureNote(id);
-        filename = `SeizureNote-${id}.pdf`;
-      } else if (type === 'pv') {
-        res = await stockApi.downloadPVPdf(id);
-        filename = `PV-Document-${id}.pdf`;
-      } else if (type === 'release') {
-        res = await stockApi.downloadReleaseNotePdf(id);
-        filename = `ReleaseNote-${id}.pdf`;
-      }
-
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      if (type === 'sn') res = await stockApi.downloadSeizureNote(id);
+      else if (type === 'pv') res = await stockApi.downloadPVPdf(id);
+      
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', filename);
+      link.setAttribute('download', `${type.toUpperCase()}-${ref.replace(/\//g, '-')}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      toast.dismiss(loadingToast);
     } catch (err) {
-      toast.error('Failed to download document');
+      toast.dismiss(loadingToast);
+      toast.error('Download failed');
     }
   };
 
-  // Filtering Logic
-  const filteredData = useMemo(() => {
-    const data = activeTab === 'pending' ? pendingRequests : activeTab === 'inventory' ? mainStock : history;
-    if (!searchQuery) return data;
-    
-    const query = searchQuery.toLowerCase();
-    return data.filter(item => {
-      const pvNum = (item.pvNumber || item.pvDocument?.pvNumber || '').toLowerCase();
-      const snNum = (item.seizureNote?.seizureNumber || '').toLowerCase();
-      const owner = (item.seizureNote?.taxpayerName || '').toLowerCase();
-      return pvNum.includes(query) || snNum.includes(query) || owner.includes(query);
-    });
-  }, [activeTab, pendingRequests, mainStock, history, searchQuery]);
-
-  // Pagination Logic
-  const paginatedData = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredData.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredData, currentPage]);
-
-  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
-
   return (
-    <div style={{ padding: '32px 40px', background: 'var(--surface-page)', minHeight: '100vh' }}>
+    <Box sx={{ p: 4, bgcolor: 'var(--surface-page)', minHeight: '100vh' }}>
       <Toaster position="top-right" richColors />
       
-      <div style={{ marginBottom: 32 }}>
-        <h1 className="type-page-title">Physical Stock Operations (PRSO)</h1>
-        <p className="type-body" style={{ color: 'var(--gray-500)' }}>Manage inventory, approve releases, and view transaction history</p>
-      </div>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" fontWeight={800} color="var(--gray-900)">PRSO Verification Dashboard</Typography>
+        <Typography variant="body1" color="var(--gray-500)">Final authorization and legal verification for confiscated goods disposal</Typography>
+      </Box>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: 32, borderBottom: '1px solid var(--gray-200)', marginBottom: 24 }}>
-        <TabButton 
-          label="Pending Approvals" 
-          active={activeTab === 'pending'} 
-          onClick={() => setActiveTab('pending')} 
-          count={pendingRequests.length}
-          icon={<ClockIcon style={{ width: 20 }} />}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Tabs value={activeTab} onChange={(e, val) => { setActiveTab(val); setPage(0); }}>
+          <Tab label={`Pending Authorization (${goodsList.filter(i => i.status === 'PENDING_RELEASE' || i.status === 'PENDING_PRSO_RELEASE_APPROVAL').length})`} sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label="Release History" sx={{ textTransform: 'none', fontWeight: 600 }} />
+        </Tabs>
+        
+        <TextField
+          size="small"
+          placeholder="Search items..."
+          value={searchQuery}
+          onChange={e => { setSearchQuery(e.target.value); setPage(0); }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search fontSize="small" sx={{ color: 'var(--gray-400)' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ width: 300, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'white' } }}
         />
-        <TabButton 
-          label="Main Stock Inventory" 
-          active={activeTab === 'inventory'} 
-          onClick={() => setActiveTab('inventory')} 
-          icon={<ArchiveBoxIcon style={{ width: 20 }} />}
-        />
-        <TabButton 
-          label="Approval History" 
-          active={activeTab === 'history'} 
-          onClick={() => setActiveTab('history')} 
-          icon={<CheckCircleIcon style={{ width: 20 }} />}
-        />
-      </div>
+      </Box>
 
-      {/* Filters & Search */}
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ position: 'relative', width: 320 }}>
-          <MagnifyingGlassIcon style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 18, color: 'var(--gray-400)' }} />
-          <input 
-            type="text" 
-            placeholder="Search by PV, SN or Owner..." 
-            className="input-base"
-            style={{ paddingLeft: 40 }}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="type-small" style={{ color: 'var(--gray-500)' }}>
-          Showing {paginatedData.length} of {filteredData.length} items
-        </div>
-      </div>
-
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <Paper sx={{ 
+        borderRadius: 4, overflow: 'hidden', background: 'rgba(255, 255, 255, 0.7)', 
+        backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)',
+        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.08)'
+      }}>
         {isLoading ? (
-          <p style={{ textAlign: 'center', padding: 40, color: 'var(--gray-500)' }}>Loading...</p>
-        ) : filteredData.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 0' }}>
-            <InboxIcon style={{ width: 48, height: 48, color: 'var(--gray-300)', margin: '0 auto 16px' }} />
-            <p className="type-body" style={{ color: 'var(--gray-500)' }}>No records found.</p>
-          </div>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>
+        ) : filteredGoods.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 10 }}>
+            <HistoryEdu sx={{ fontSize: 64, color: 'var(--gray-200)', mb: 2 }} />
+            <Typography variant="h6" color="var(--gray-400)">No pending authorizations found</Typography>
+          </Box>
         ) : (
-          <div className="stock-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>{activeTab === 'pending' || activeTab === 'history' ? 'RN Number' : 'PV Number'}</th>
-                  <th>Owner / Taxpayer</th>
-                  <th>Date</th>
-                  {activeTab === 'history' && <th>Status</th>}
-                  {activeTab === 'history' && <th>PRSO</th>}
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedData.map(item => (
-                  <tr key={item.id}>
-                    <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
-                      {activeTab === 'inventory' ? item.pvNumber : item.releaseNumber}
-                    </td>
-                    <td>{item.seizureNote?.taxpayerName || item.pvDocument?.seizureNote?.taxpayerName || 'N/A'}</td>
-                    <td className="date">
-                      {(() => {
-                        const dateVal = activeTab === 'history' 
-                          ? (item.prsoApprovalDate || item.createdAt) 
-                          : (item.createdAt || item.transferDate);
-                        try {
-                          return dateVal ? format(new Date(dateVal), 'dd MMM yyyy') : 'N/A';
-                        } catch (e) {
-                          return 'N/A';
-                        }
-                      })()}
-                    </td>
-                    {activeTab === 'history' && (
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <span className={`badge ${item.status === 'APPROVED' ? 'badge-green' : 'badge-red'}`} style={{ width: 'fit-content' }}>
-                            {item.status}
-                          </span>
-                          {item.status === 'REJECTED' && item.rejectionReason && (
-                            <span className="type-body-sm" style={{ color: 'var(--rra-red)', fontStyle: 'italic', display: 'block', maxWidth: '200px', wordBreak: 'break-word', marginTop: 2 }}>
-                              Reason: {item.rejectionReason}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    )}
-                    {activeTab === 'history' && (
-                      <td>
-                        {item.prsoApprover 
-                          ? `${item.prsoApprover.givenName || ''} ${item.prsoApprover.familyName || ''}`.trim() 
-                          : 'N/A'}
-                      </td>
-                    )}
-                    <td>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button 
-                          className="btn-ghost" 
-                          title="View Details"
-                          style={{ padding: 6 }}
-                          onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}
-                        >
-                          <EyeIcon style={{ width: 18, color: 'var(--rra-blue)' }} />
-                        </button>
-                        
-                        {activeTab === 'pending' && (
-                          <>
-                            <button 
-                              className="btn-ghost" 
-                              title="Approve"
-                              style={{ padding: 6 }}
-                              onClick={() => { setSelectedItem(item); setApproveDialog(true); }}
-                            >
-                              <CheckCircleIcon style={{ width: 18, color: 'var(--green-600)' }} />
-                            </button>
-                            <button 
-                              className="btn-ghost" 
-                              title="Reject"
-                              style={{ padding: 6 }}
-                              onClick={() => { setSelectedItem(item); setRejectDialog(true); }}
-                            >
-                              <XCircleIcon style={{ width: 18, color: 'var(--red-600)' }} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+          <>
+            <Box sx={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(0, 61, 165, 0.03)' }}>
+                    <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">References</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">Taxpayer Entity</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">Verification Status</th>
+                    <th style={{ padding: '16px 24px', textAlign: 'center' }} className="type-caption uppercase bold gray-500">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {paginatedGoods.map(item => (
+                    <tr key={item.id} style={{ borderTop: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.2s' }}>
+                      <td style={{ padding: '16px 24px' }}>
+                        <Typography variant="body2" fontWeight={700} color="var(--rra-blue)">{item.pvNumber || 'N/A'}</Typography>
+                        <Typography variant="caption" color="var(--gray-400)">SN: {item.seizureNumber}</Typography>
+                      </td>
+                      <td style={{ padding: '16px 24px' }}>
+                        <Typography variant="body2" fontWeight={600}>{item.taxpayerName}</Typography>
+                        <Typography variant="caption" color="var(--gray-500)">TIN: {item.taxpayerTin}</Typography>
+                      </td>
+                      <td style={{ padding: '16px 24px' }}>
+                        {item.status === 'RELEASED' ? (
+                           <Chip label="Authorized" color="success" size="small" icon={<CheckCircle fontSize="small"/>} />
+                        ) : (
+                          <Chip label="Pending Verification" color="warning" size="small" variant="outlined" icon={<HourglassEmpty fontSize="small"/>} />
+                        )}
+                      </td>
+                      <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                        <Box display="flex" gap={1} justifyContent="center">
+                          <Tooltip title="Examine Evidence">
+                            <IconButton onClick={() => { setSelectedItem(item); setDrawerOpen(true); }} sx={{ color: 'var(--rra-blue)', bgcolor: 'rgba(0, 61, 165, 0.05)' }}>
+                              <Visibility fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          {(item.status === 'PENDING_RELEASE' || item.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
+                            <>
+                              <Tooltip title="Authorize Release">
+                                <IconButton onClick={() => { setSelectedItem(item); setApproveDialog(true); }} sx={{ color: 'var(--green-600)', bgcolor: 'rgba(22, 101, 52, 0.05)' }}>
+                                  <CheckCircle fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                              <Tooltip title="Deny Authorization">
+                                <IconButton onClick={() => { setSelectedItem(item); setRejectDialog(true); }} sx={{ color: 'var(--rra-red)', bgcolor: 'rgba(185, 28, 28, 0.05)' }}>
+                                  <Cancel fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            </>
+                          )}
+                        </Box>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Box>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={filteredGoods.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              sx={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}
+            />
+          </>
         )}
-      </div>
+      </Paper>
 
-      {/* Pagination Footer */}
-      {filteredData.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, marginTop: 24 }}>
-          <button 
-            className="btn-base btn-ghost btn-sm" 
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-          >
-            <ChevronLeftIcon style={{ width: 20 }} />
-          </button>
-          <span className="type-small">Page {currentPage} of {Math.max(1, totalPages)}</span>
-          <button 
-            className="btn-base btn-ghost btn-sm" 
-            disabled={currentPage === totalPages || totalPages === 0}
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-          >
-            <ChevronRightIcon style={{ width: 20 }} />
-          </button>
-        </div>
-      )}
-
-      {/* Detail Drawer */}
+      {/* Details Drawer */}
       <RightDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title={activeTab === 'inventory' ? 'Inventory Item Details' : 'Release Request Details'}
+        title={`Legal Audit: ${selectedItem?.pvNumber || selectedItem?.seizureNumber}`}
         footerActions={
-          activeTab === 'pending' && (
-            <>
-              <button className="btn-base btn-outline-red" onClick={() => setRejectDialog(true)}>Reject</button>
-              <button className="btn-base btn-primary" onClick={() => setApproveDialog(true)}>Approve</button>
-            </>
+          (selectedItem?.status === 'PENDING_RELEASE' || selectedItem?.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
+            <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
+              <Button 
+                fullWidth variant="outlined" color="error" startIcon={<Cancel />} 
+                onClick={() => { setDrawerOpen(false); setRejectDialog(true); }}
+              >
+                Deny
+              </Button>
+              <Button 
+                fullWidth variant="contained" color="success" startIcon={<CheckCircle />} 
+                onClick={() => { setDrawerOpen(false); setApproveDialog(true); }}
+                sx={{ bgcolor: '#009A44' }}
+              >
+                Authorize Release
+              </Button>
+            </Box>
           )
         }
       >
         {selectedItem && (
-          <div className="drawer-content">
-            {(() => {
-              const seizureNote = selectedItem.seizureNote || selectedItem.pvDocument?.seizureNote;
-              const pvId = activeTab === 'inventory' ? selectedItem.id : selectedItem.pvDocument?.id;
-              
-              return (
-                <>
-                  <div className="drawer-section">
-                    <h3 className="drawer-section-title">Record Information</h3>
-                    <div className="drawer-field">
-                      <span className="drawer-field-label">System Ref</span>
-                      <span className="drawer-field-value" style={{ fontWeight: 600, color: 'var(--rra-blue)' }}>
-                        {activeTab === 'inventory' ? selectedItem.pvNumber : selectedItem.releaseNumber}
-                      </span>
-                    </div>
-                    {activeTab !== 'inventory' && (
-                      <div className="drawer-field">
-                        <span className="drawer-field-label">Status</span>
-                        <span className={`badge ${selectedItem.status === 'APPROVED' ? 'badge-green' : selectedItem.status === 'REJECTED' ? 'badge-red' : 'badge-orange'}`}>
-                          {selectedItem.status || 'PENDING'}
-                        </span>
-                      </div>
-                    )}
-                    {selectedItem.rejectionReason && (
-                      <div className="drawer-field">
-                        <span className="drawer-field-label" style={{ color: 'var(--red-600)' }}>Rejection Reason</span>
-                        <span className="drawer-field-value" style={{ fontStyle: 'italic' }}>{selectedItem.rejectionReason}</span>
-                      </div>
-                    )}
-                  </div>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              Verification step required. Review original Seizure Note and established Statement of Offence (PV) before final authorization.
+            </Alert>
 
-                  <div className="drawer-section">
-                    <h3 className="drawer-section-title">Confiscated Goods</h3>
-                    <div className="drawer-field">
-                      <span className="drawer-field-label">Owner</span>
-                      <span className="drawer-field-value">{seizureNote?.taxpayerName || 'N/A'}</span>
-                    </div>
-                    <div className="drawer-field">
-                      <span className="drawer-field-label">Description</span>
-                      <span className="drawer-field-value">{seizureNote?.goodsDescription || 'N/A'}</span>
-                    </div>
-                    <div className="drawer-field">
-                      <span className="drawer-field-label">Seizure Date</span>
-                      <span className="drawer-field-value">
-                        {seizureNote?.dateTimeSeized ? format(new Date(seizureNote.dateTimeSeized), 'PPP p') : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
+            <Box>
+              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--rra-blue)', mb: 2, textTransform: 'uppercase', fontWeight: 700 }}>
+                <HistoryEdu fontSize="small" /> Evidence & Confiscation
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f9fafb', borderRadius: 2 }}>
+                <Typography variant="caption" color="var(--gray-500)" display="block" sx={{ mb: 0.5 }}>LEGAL BASIS</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>{selectedItem.formalStatementText || 'Standard Confiscation Record'}</Typography>
+                <Divider sx={{ my: 1.5 }} />
+                <Typography variant="caption" color="var(--gray-500)" display="block" sx={{ mb: 0.5 }}>INVENTORIED GOODS</Typography>
+                <Typography variant="body2" fontWeight={700} sx={{ color: '#92400E' }}>{selectedItem.goodsDescription}</Typography>
+              </Paper>
+            </Box>
 
-                  <div className="drawer-section">
-                    <h3 className="drawer-section-title">Available Documents</h3>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      <DocLink 
-                        label="Seizure Note" 
-                        onClick={() => downloadFile('seizure', seizureNote?.id)} 
-                        exists={!!seizureNote}
-                      />
-                      <DocLink 
-                        label="PV Document" 
-                        onClick={() => downloadFile('pv', pvId)} 
-                        exists={!!pvId}
-                      />
-                      {(activeTab === 'pending' || activeTab === 'history') && (
-                        <DocLink 
-                          label="Release Note" 
-                          onClick={() => downloadFile('release', selectedItem.id)} 
-                          exists={true}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  
-                  {(activeTab === 'pending' || activeTab === 'history') && (
-                    <div className="drawer-section">
-                      <h3 className="drawer-section-title">Release Context</h3>
-                      <div className="drawer-field"><span className="drawer-field-label">Destination</span><span className="drawer-field-value">{selectedItem.releaseDestination}</span></div>
-                      <div className="drawer-field"><span className="drawer-field-label">Reason</span><span className="drawer-field-value">{selectedItem.releaseReason}</span></div>
-                      <div className="drawer-field"><span className="drawer-field-label">Recipient</span><span className="drawer-field-value">{selectedItem.recipientName} ({selectedItem.recipientIdPassport})</span></div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-          </div>
+            <Box>
+              <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--rra-blue)', mb: 2, textTransform: 'uppercase', fontWeight: 700 }}>
+                <Description fontSize="small" /> Document Inspection
+              </Typography>
+              <Box display="flex" flexDirection="column" gap={1.5}>
+                 <Button fullWidth variant="outlined" startIcon={<Download />} onClick={() => downloadDoc('sn', selectedItem.id, selectedItem.seizureNumber)}>Review Seizure Note (SN)</Button>
+                 {selectedItem.pvNumber && (
+                    <Button fullWidth variant="outlined" startIcon={<Download />} onClick={() => downloadDoc('pv', selectedItem.id, selectedItem.pvNumber)}>Review Statement of Offence (PV)</Button>
+                 )}
+              </Box>
+            </Box>
+
+            {(selectedItem.status === 'PENDING_RELEASE' || selectedItem.status === 'PENDING_PRSO_RELEASE_APPROVAL' || selectedItem.status === 'RELEASED') && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--green-600)', mb: 2, textTransform: 'uppercase', fontWeight: 700 }}>
+                  <MonetizationOn fontSize="small" /> Disposal & Auction Details
+                </Typography>
+                <Paper sx={{ p: 2, bgcolor: 'rgba(34, 197, 94, 0.05)', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                  <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography variant="caption">Winner / Recipient:</Typography>
+                    <Typography variant="body2" fontWeight={700}>{selectedItem.recipientName || 'N/A'}</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
+                    <Typography variant="caption">Contact / ID:</Typography>
+                    <Typography variant="body2">{selectedItem.recipientPhone || selectedItem.recipientIdPassport || 'N/A'}</Typography>
+                  </Box>
+                  <Box display="flex" justifyContent="space-between">
+                    <Typography variant="caption">Total Proceeds:</Typography>
+                    <Typography variant="body2" fontWeight={700} color="var(--green-700)">RWF {selectedItem.auctionAmount?.toLocaleString()}</Typography>
+                  </Box>
+                </Paper>
+              </Box>
+            )}
+          </Box>
         )}
       </RightDrawer>
-      
+
+      {/* specialized Approval Modal */}
       <ConfirmDialog
         isOpen={approveDialog}
         onClose={() => setApproveDialog(false)}
-        onConfirm={handleApprove}
-        title="Approve Release"
-        body="This will permanently authorize the goods to leave the warehouse."
+        onConfirm={handleApproveRelease}
+        title="Approve Release Authorization"
+        body={`By approving, you authorize the physical release of these goods to ${selectedItem?.recipientName || 'the recipient'}. This action is irreversible.`}
         variant="success"
-        confirmLabel="Approve"
+        confirmLabel="Authorize Release"
       />
 
       <ConfirmDialog
         isOpen={rejectDialog}
         onClose={() => setRejectDialog(false)}
-        onConfirm={handleReject}
-        title="Reject Release"
-        body="Please provide a reason for rejecting this release request."
+        onConfirm={handleRejectRelease}
+        title="Deny Release Authorization"
+        body="Provide a formal legal or administrative reason for denying this release request."
         variant="danger"
         requiresReason={true}
-        confirmLabel="Reject"
+        confirmLabel="Deny Authorization"
       />
-    </div>
+
+    </Box>
   );
 };
-
-// Sub-components
-const TabButton = ({ label, active, onClick, count, icon }) => (
-  <button 
-    onClick={onClick}
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      padding: '12px 4px',
-      border: 'none',
-      background: 'none',
-      borderBottom: active ? '2px solid var(--rra-blue)' : '2px solid transparent',
-      color: active ? 'var(--rra-blue)' : 'var(--gray-500)',
-      fontWeight: active ? 600 : 400,
-      cursor: 'pointer',
-      transition: 'all 0.2s'
-    }}
-  >
-    {icon}
-    <span>{label}</span>
-    {count !== undefined && (
-      <span style={{ 
-        background: active ? 'var(--rra-blue)' : 'var(--gray-200)', 
-        color: active ? 'white' : 'var(--gray-600)',
-        padding: '2px 8px',
-        borderRadius: 12,
-        fontSize: 12
-      }}>
-        {count}
-      </span>
-    )}
-  </button>
-);
-
-const DocLink = ({ label, onClick, exists }) => (
-  <button 
-    disabled={!exists}
-    onClick={onClick}
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: 12,
-      padding: '12px 16px',
-      background: exists ? 'var(--rra-blue-tint)' : 'var(--gray-50)',
-      border: '1px solid',
-      borderColor: exists ? 'var(--rra-blue-tint-2)' : 'var(--gray-200)',
-      borderRadius: 10,
-      width: '100%',
-      cursor: exists ? 'pointer' : 'not-allowed',
-      opacity: exists ? 1 : 0.6,
-      transition: 'all 0.2s',
-      textAlign: 'left'
-    }}
-    onMouseEnter={(e) => exists && (e.currentTarget.style.borderColor = 'var(--rra-blue)')}
-    onMouseLeave={(e) => exists && (e.currentTarget.style.borderColor = 'var(--rra-blue-tint-2)')}
-  >
-    <div style={{ 
-      background: exists ? 'white' : 'transparent',
-      padding: 6,
-      borderRadius: 6,
-      display: 'flex',
-      boxShadow: exists ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-    }}>
-      <DocumentArrowDownIcon style={{ width: 20, color: exists ? 'var(--rra-blue)' : 'var(--gray-400)' }} />
-    </div>
-    <span className="type-body-sm" style={{ fontWeight: 600, color: exists ? 'var(--gray-900)' : 'var(--gray-400)' }}>{label}</span>
-  </button>
-);
 
 export default PRSOApprovalsPage;

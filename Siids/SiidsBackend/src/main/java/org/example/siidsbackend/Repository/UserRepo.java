@@ -14,6 +14,8 @@ import java.time.LocalDateTime;
 @Repository
 public interface UserRepo extends JpaRepository<User, Integer> {
     Optional<User> findByUsername(String username);
+    java.util.List<User> findByRole(String role);
+    java.util.List<User> findByRoleIn(java.util.List<String> roles);
 
     @Modifying
     @Transactional

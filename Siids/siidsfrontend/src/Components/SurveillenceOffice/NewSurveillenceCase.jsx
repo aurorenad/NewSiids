@@ -3,7 +3,9 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { CaseService } from '../../api/Axios/caseApi.jsx';
 import { AuthContext } from '../../context/AuthContext';
 import caseApi from '../../api/Axios/caseApi.jsx';
-import '../../Styles/NewSurveillenceCases.css';
+import { Box, Paper, Typography, TextField, MenuItem, Button, Grid, InputAdornment, CircularProgress, IconButton } from '@mui/material';
+import { ArrowBack, Save, Search, Person, Info, ContactPage, HistoryEdu } from '@mui/icons-material';
+import { toast } from 'sonner';
 
 const NewSurveillenceCase = () => {
     const { authState } = useContext(AuthContext);
@@ -26,9 +28,6 @@ const NewSurveillenceCase = () => {
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [timeoutId, setTimeoutId] = useState(null);
     const [isSearchingTaxPayer, setIsSearchingTaxPayer] = useState(false);
     const [isSearchingInformer, setIsSearchingInformer] = useState(false);
     const [isSearchingReferringOfficer, setIsSearchingReferringOfficer] = useState(false);
@@ -39,27 +38,10 @@ const NewSurveillenceCase = () => {
         'Capital gains','Consumption Tax','Immovable Property Tax', 'Payroll Tax', 'Trading Tax'];
 
     const caseSources = [
-        { value: 'anonymous', label: 'Anonymous' },
-        { value: 'referred', label: 'Referred Case' },
+        { value: 'anonymous', label: 'Anonymous Source' },
+        { value: 'referred', label: 'Referred by Dept/Officer' },
         { value: 'identified', label: 'Identified Informer' }
     ];
-
-    // Authentication check
-    useEffect(() => {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-        if (!token) {
-            setError('No authentication token found. Please log in again.');
-            setTimeout(() => navigate('/login'), 2000);
-            return;
-        }
-
-        if (!employeeId) {
-            setError('Employee ID not found. Please ensure you are properly logged in.');
-            return;
-        }
-    }, [authState.userId, navigate]);
 
     // Load case data if in edit mode
     useEffect(() => {
@@ -82,8 +64,31 @@ const NewSurveillenceCase = () => {
                 referringOfficerId: caseData.referringDepartment || '',
                 referringOfficerName: ''
             });
+            
+            // If it's a referred case, try to look up the officer name
+            if (caseSource === 'referred' && caseData.referringDepartment) {
+                lookupReferringOfficer(caseData.referringDepartment);
+            }
         }
-    }, [location.state, authState.userId]);
+    }, [location.state]);
+
+    const lookupReferringOfficer = async (id) => {
+        if (!id) return;
+        setIsSearchingReferringOfficer(true);
+        try {
+            const response = await caseApi.get(`/api/employees/${id.trim()}`);
+            if (response.data) {
+                setFormData(prev => ({
+                    ...prev,
+                    referringOfficerName: `${response.data.givenName} ${response.data.familyName}`.trim()
+                }));
+            }
+        } catch (error) {
+            console.error('Error fetching referring officer:', error);
+        } finally {
+            setIsSearchingReferringOfficer(false);
+        }
+    };
 
     // Tax payer lookup by TIN
     const handleTinChange = async (e) => {
@@ -109,12 +114,11 @@ const NewSurveillenceCase = () => {
         }
     };
 
-
     const handleInformerIdChange = async (e) => {
         const { value } = e.target;
         handleChange(e);
 
-        if (value) {
+        if (value.length >= 5) {
             setIsSearchingInformer(true);
             try {
                 const response = await caseApi.get(`/api/informers/${value}`);
@@ -132,51 +136,25 @@ const NewSurveillenceCase = () => {
         }
     };
 
-    // Referring officer lookup by ID
     const handleReferringOfficerChange = async (e) => {
         const { value } = e.target;
-
-        // Update the form data first
-        setFormData(prev => ({
-            ...prev,
-            referringOfficerId: value,
-            referringOfficerName: '' // Clear the name while searching
-        }));
-
-        // Clear any previous error
+        setFormData(prev => ({ ...prev, referringOfficerId: value, referringOfficerName: '' }));
         setReferringOfficerError('');
 
-        // Only search if there's a value and it's not just whitespace
-        if (value && value.trim().length > 0) {
+        if (value && value.trim().length >= 3) {
             setIsSearchingReferringOfficer(true);
             try {
                 const response = await caseApi.get(`/api/employees/${value.trim()}`);
-
                 if (response.data) {
-                    const fullName = `${response.data.givenName} ${response.data.familyName}`.trim();
                     setFormData(prev => ({
                         ...prev,
-                        referringOfficerName: fullName
+                        referringOfficerName: `${response.data.givenName} ${response.data.familyName}`.trim()
                     }));
                 } else {
                     setReferringOfficerError('Employee not found');
                 }
             } catch (error) {
-                console.error('Error fetching referring officer:', error);
-
-                if (error.response?.status === 404) {
-                    setReferringOfficerError('Employee not found with this ID');
-                } else if (error.response?.status === 401) {
-                    setReferringOfficerError('Unauthorized access. Please check your permissions.');
-                } else {
-                    setReferringOfficerError('Error searching for employee. Please try again.');
-                }
-
-                // Clear the officer name if there was an error
-                setFormData(prev => ({
-                    ...prev,
-                    referringOfficerName: ''
-                }));
+                setReferringOfficerError('Employee not found');
             } finally {
                 setIsSearchingReferringOfficer(false);
             }
@@ -188,40 +166,13 @@ const NewSurveillenceCase = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const validateForm = () => {
-        if (!formData.tin) {
-            setError('Tax Payer TIN is required');
-            return false;
-        }
-        if (!formData.taxPayerName) {
-            setError('Tax Payer Name is required');
-            return false;
-        }
-        if (!formData.summaryOfInformationCase) {
-            setError('Summary of information is required');
-            return false;
-        }
-        if (formData.caseSource === 'identified' && !formData.informerId) {
-            setError('Informer ID is required for identified informers');
-            return false;
-        }
-        if (formData.caseSource === 'referred' && !formData.referringOfficerId) {
-            setError('Referring officer ID is required for referred cases');
-            return false;
-        }
-        if (formData.caseSource === 'referred' && !formData.referringOfficerName) {
-            setError('Please enter a valid referring officer ID');
-            return false;
-        }
-        return true;
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
-
-        if (!validateForm()) return;
+        
+        if (!formData.tin || !formData.taxPayerName || !formData.summaryOfInformationCase) {
+            toast.error('Please fill in all required fields');
+            return;
+        }
 
         setIsSubmitting(true);
 
@@ -235,298 +186,294 @@ const NewSurveillenceCase = () => {
                 reportedDate: new Date(formData.reportedDate).toISOString(),
                 summaryOfInformationCase: formData.summaryOfInformationCase,
                 informerType: formData.caseSource === 'anonymous' ? 'anonymous' : 'identified',
-                informerNationalId: formData.caseSource === 'identified' ? parseInt(formData.informerId) : null,
+                informerNationalId: formData.caseSource === 'identified' ? formData.informerId : null,
                 informerName: formData.caseSource === 'identified' ? formData.informerName : null,
-                informerPhoneNum: formData.caseSource === 'identified' ? '' : null,
-                informerAddress: formData.caseSource === 'identified' ? '' : null,
-                informerEmail: formData.caseSource === 'identified' ? '' : null,
-                referringOfficerId: formData.caseSource === 'referred' ? formData.referringOfficerId : null,
+                informerPhoneNum: '',
+                informerAddress: '',
+                informerEmail: '',
+                referringDepartment: formData.caseSource === 'referred' ? formData.referringOfficerId : null,
             };
 
             let response;
-            if (location.state?.caseData?.id) {
-                console.log('Updating surveillance case data:', caseData);
-                response = await CaseService.updateCase(location.state.caseData.id, caseData);
+            if (editData?.id) {
+                response = await CaseService.updateCase(editData.id, caseData);
+                toast.success('Surveillance case updated successfully!');
             } else {
-                console.log('Submitting surveillance case data:', caseData);
                 response = await CaseService.createCase(caseData);
+                toast.success('Surveillance case created successfully!');
             }
 
-            console.log('Response received:', response.data); // Debug log
-
             if (response.data) {
-                setSuccess(location.state?.caseData ? 'Surveillance case updated successfully!' : 'Surveillance case created successfully!');
-                const id = setTimeout(() => navigate('/surveillence-officer'), 2000);
-                setTimeoutId(id);
+                setTimeout(() => navigate('/surveillence-officer'), 1500);
             }
         } catch (err) {
             console.error('Error saving case:', err);
-            if (err.response?.status === 401) {
-                setError('Session expired. Please log in again.');
-                const id = setTimeout(() => navigate('/login'), 2000);
-                setTimeoutId(id);
-            } else if (err.response?.data?.message) {
-                setError(err.response.data.message);
-            } else {
-                setError('Failed to save case. Please try again.');
-            }
+            const message = err.response?.data?.message || 'Failed to save case. Please check your data and try again.';
+            toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    useEffect(() => {
-        return () => {
-            if (timeoutId) clearTimeout(timeoutId);
-        };
-    }, [timeoutId]);
-
     return (
-        <div className="tax-report-form-container">
-            <div className="tax-report-form-card">
-                <div className="tax-report-form-header">
-                    <h1>{location.state?.caseData ? 'Edit Surveillance Case' : 'New Surveillance Case'}</h1>
-                </div>
+        <Box sx={{ p: 4, minHeight: '100vh', bgcolor: 'var(--surface-page)' }}>
+            <Box sx={{ maxWidth: 1000, mx: 'auto' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
+                    <IconButton onClick={() => navigate(-1)} sx={{ bgcolor: 'white', '&:hover': { bgcolor: '#f5f5f5' } }}>
+                        <ArrowBack />
+                    </IconButton>
+                    <Box>
+                        <Typography variant="h4" fontWeight={700} color="var(--gray-900)">
+                            {editData ? 'Edit Case' : 'New Surveillance Case'}
+                        </Typography>
+                        <Typography variant="body1" color="var(--gray-500)">
+                            {editData ? `Updating case ref: ${editData.caseNum}` : 'Record a new intelligence report or surveillance case'}
+                        </Typography>
+                    </Box>
+                </Box>
 
-                {error && (
-                    <div className="alert alert-error">
-                        <i className="fas fa-exclamation-circle"></i> {error}
-                    </div>
-                )}
+                <Paper sx={{ 
+                    p: 4, 
+                    borderRadius: 4, 
+                    background: 'rgba(255, 255, 255, 0.7)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255, 255, 255, 0.3)',
+                    boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.15)'
+                }}>
+                    <form onSubmit={handleSubmit}>
+                        <Grid container spacing={4}>
+                            {/* Section: Taxpayer Information */}
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--rra-blue)', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                    <ContactPage fontSize="small" /> Taxpayer Information
+                                </Typography>
+                            </Grid>
+                            
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Taxpayer TIN"
+                                    name="tin"
+                                    value={formData.tin}
+                                    onChange={handleTinChange}
+                                    required
+                                    InputProps={{
+                                        endAdornment: isSearchingTaxPayer && (
+                                            <InputAdornment position="end">
+                                                <CircularProgress size={20} />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Grid>
+                            
+                            <Grid item xs={12} md={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Taxpayer Name"
+                                    name="taxPayerName"
+                                    value={formData.taxPayerName}
+                                    onChange={handleChange}
+                                    required
+                                />
+                            </Grid>
 
-                {success && (
-                    <div className="alert alert-success">
-                        <i className="fas fa-check-circle"></i> {success}
-                    </div>
-                )}
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    fullWidth
+                                    select
+                                    label="Tax Type"
+                                    name="taxType"
+                                    value={formData.taxType}
+                                    onChange={handleChange}
+                                >
+                                    {taxPayerTypes.map(type => (
+                                        <MenuItem key={type} value={type}>{type}</MenuItem>
+                                    ))}
+                                </TextField>
+                            </Grid>
 
-                <form onSubmit={handleSubmit} className="tax-report-form">
-                    <div className="tax-report-form-grid">
-                        {/* TIN Field */}
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Tax Payer TIN*</label>
-                            <input
-                                type="text"
-                                name="tin"
-                                value={formData.tin}
-                                onChange={handleTinChange}
-                                className="tax-report-form-input"
-                                placeholder="Enter tax identification number"
-                                required
-                            />
-                            {isSearchingTaxPayer && (
-                                <div className="search-indicator">Searching tax payer...</div>
-                            )}
-                        </div>
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    fullWidth
+                                    label="Tax Period"
+                                    name="taxPeriod"
+                                    value={formData.taxPeriod}
+                                    onChange={handleChange}
+                                    placeholder="e.g. FY 2023"
+                                />
+                            </Grid>
 
-                        {/* Tax Payer Name */}
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Tax Payer Name*</label>
-                            <input
-                                type="text"
-                                name="taxPayerName"
-                                value={formData.taxPayerName}
-                                onChange={handleChange}
-                                className="tax-report-form-input"
-                                placeholder="Enter tax payer name"
-                                required
-                            />
-                        </div>
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    fullWidth
+                                    type="date"
+                                    label="Reported Date"
+                                    name="reportedDate"
+                                    value={formData.reportedDate}
+                                    onChange={handleChange}
+                                    InputLabelProps={{ shrink: true }}
+                                />
+                            </Grid>
 
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Tax Type</label>
-                            <select
-                                name="taxType"
-                                value={formData.taxType}
-                                onChange={handleChange}
-                                className="tax-report-form-input"
-                            >
-                                {taxPayerTypes.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
-                        </div>
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Taxpayer Address"
+                                    name="taxPayerAddress"
+                                    value={formData.taxPayerAddress}
+                                    onChange={handleChange}
+                                    multiline
+                                    rows={1}
+                                />
+                            </Grid>
 
-                        {/* Tax Payer Address */}
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Tax Payer Address</label>
-                            <input
-                                type="text"
-                                name="taxPayerAddress"
-                                value={formData.taxPayerAddress}
-                                onChange={handleChange}
-                                className="tax-report-form-input"
-                                placeholder="Enter tax payer address"
-                            />
-                        </div>
+                            {/* Section: Source Information */}
+                            <Grid item xs={12} sx={{ mt: 2 }}>
+                                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--rra-blue)', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                    <Info fontSize="small" /> Intelligence Source
+                                </Typography>
+                            </Grid>
 
-                        {/* Tax Period */}
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Tax Period</label>
-                            <input
-                                type="text"
-                                name="taxPeriod"
-                                value={formData.taxPeriod}
-                                onChange={handleChange}
-                                className="tax-report-form-input"
-                                placeholder="e.g. March 2023, Q2 2023, FY2023"
-                            />
-                        </div>
+                            <Grid item xs={12} md={4}>
+                                <TextField
+                                    fullWidth
+                                    select
+                                    label="Case Source"
+                                    name="caseSource"
+                                    value={formData.caseSource}
+                                    onChange={(e) => {
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            caseSource: e.target.value,
+                                            informerId: '',
+                                            informerName: '',
+                                            referringOfficerId: '',
+                                            referringOfficerName: '',
+                                        }));
+                                    }}
+                                >
+                                    {caseSources.map(source => (
+                                        <MenuItem key={source.value} value={source.value}>{source.label}</MenuItem>
+                                    ))}
+                                </TextField>
+                            </Grid>
 
-                        {/* Reported Date */}
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Reported Date</label>
-                            <input
-                                type="date"
-                                name="reportedDate"
-                                value={formData.reportedDate}
-                                onChange={handleChange}
-                                className="tax-report-form-input"
-                            />
-                        </div>
-
-                        {/* Case Source Dropdown */}
-                        <div className="form-group">
-                            <label className="tax-report-form-label">Case Source*</label>
-                            <select
-                                name="caseSource"
-                                value={formData.caseSource}
-                                onChange={(e) => {
-                                    setFormData(prev => ({
-                                        ...prev,
-                                        caseSource: e.target.value,
-                                        informerId: '',
-                                        informerName: '',
-                                        referringOfficerId: '',
-                                        referringOfficerName: '',
-                                    }));
-                                    // Clear referring officer error when changing case source
-                                    setReferringOfficerError('');
-                                }}
-                                className="tax-report-form-input"
-                                required
-                            >
-                                {caseSources.map(source => (
-                                    <option key={source.value} value={source.value}>{source.label}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Identified Informer Fields */}
-                        {formData.caseSource === 'identified' && (
-                            <>
-                                <div className="form-group">
-                                    <label className="tax-report-form-label">Informer ID*</label>
-                                    <input
-                                        type="text"
-                                        name="informerId"
-                                        value={formData.informerId}
-                                        onChange={handleInformerIdChange}
-                                        className="tax-report-form-input"
-                                        placeholder="Enter national ID number"
-                                        required
-                                    />
-                                    {isSearchingInformer && (
-                                        <div className="search-indicator">Searching informer...</div>
-                                    )}
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="tax-report-form-label">Informer Name</label>
-                                    <input
-                                        type="text"
-                                        name="informerName"
-                                        value={formData.informerName}
-                                        onChange={handleChange}
-                                        className="tax-report-form-input"
-                                        placeholder="Enter informer name"
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        {/* Referred Case Fields */}
-                        {formData.caseSource === 'referred' && (
-                            <>
-                                <div className="form-group">
-                                    <label className="tax-report-form-label">Referring Officer ID*</label>
-                                    <input
-                                        type="text"
-                                        name="referringOfficerId"
-                                        value={formData.referringOfficerId}
-                                        onChange={handleReferringOfficerChange}
-                                        className={`tax-report-form-input ${referringOfficerError ? 'error' : ''}`}
-                                        placeholder="Enter referring officer ID"
-                                        required
-                                    />
-                                    {isSearchingReferringOfficer && (
-                                        <div className="search-indicator">
-                                            <i className="fas fa-spinner fa-spin"></i> Searching officer...
-                                        </div>
-                                    )}
-                                    {referringOfficerError && (
-                                        <div className="field-error">
-                                            <i className="fas fa-exclamation-triangle"></i> {referringOfficerError}
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="tax-report-form-label">Referring Officer Name</label>
-                                    <input
-                                        type="text"
-                                        name="referringOfficerName"
-                                        value={formData.referringOfficerName}
-                                        onChange={handleChange}
-                                        className="tax-report-form-input"
-                                        placeholder="Officer name will appear here"
-                                        readOnly
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        {/* Summary of Information */}
-                        <div className="form-group full-width">
-                            <label className="tax-report-form-label">Summary of Information Provided*</label>
-                            <textarea
-                                name="summaryOfInformationCase"
-                                value={formData.summaryOfInformationCase}
-                                onChange={handleChange}
-                                rows="4"
-                                className="tax-report-form-textarea"
-                                placeholder="Detailed description of the case"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="tax-report-form-buttons">
-                        <button
-                            type="button"
-                            className="tax-report-form-button tax-report-form-button-cancel"
-                            onClick={() => navigate(-1)}
-                            disabled={isSubmitting}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="tax-report-form-button tax-report-form-button-save"
-                            disabled={isSubmitting}
-                        >
-                            {isSubmitting ? (
+                            {formData.caseSource === 'identified' && (
                                 <>
-                                    <i className="fas fa-spinner fa-spin"></i> Processing...
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Informer ID"
+                                            name="informerId"
+                                            value={formData.informerId}
+                                            onChange={handleInformerIdChange}
+                                            required
+                                            InputProps={{
+                                                endAdornment: isSearchingInformer && (
+                                                    <InputAdornment position="end">
+                                                        <CircularProgress size={20} />
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Informer Name"
+                                            name="informerName"
+                                            value={formData.informerName}
+                                            onChange={handleChange}
+                                        />
+                                    </Grid>
                                 </>
-                            ) : (
-                                location.state?.caseData ? 'Save Changes' : 'Create Surveillance Case'
                             )}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+
+                            {formData.caseSource === 'referred' && (
+                                <>
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Referring Officer ID"
+                                            name="referringOfficerId"
+                                            value={formData.referringOfficerId}
+                                            onChange={handleReferringOfficerChange}
+                                            error={!!referringOfficerError}
+                                            helperText={referringOfficerError}
+                                            required
+                                            InputProps={{
+                                                endAdornment: isSearchingReferringOfficer && (
+                                                    <InputAdornment position="end">
+                                                        <CircularProgress size={20} />
+                                                    </InputAdornment>
+                                                ),
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Referring Officer Name"
+                                            value={formData.referringOfficerName}
+                                            disabled
+                                            placeholder="Officer name will appear here"
+                                        />
+                                    </Grid>
+                                </>
+                            )}
+
+                            {/* Section: Case Summary */}
+                            <Grid item xs={12} sx={{ mt: 2 }}>
+                                <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--rra-blue)', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                    <HistoryEdu fontSize="small" /> Case Summary
+                                </Typography>
+                            </Grid>
+
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Summary of Information Provided"
+                                    name="summaryOfInformationCase"
+                                    value={formData.summaryOfInformationCase}
+                                    onChange={handleChange}
+                                    required
+                                    multiline
+                                    rows={5}
+                                    placeholder="Provide detailed information about the intelligence or case..."
+                                />
+                            </Grid>
+
+                            {/* Buttons */}
+                            <Grid item xs={12} sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                                <Button 
+                                    variant="outlined" 
+                                    onClick={() => navigate(-1)}
+                                    disabled={isSubmitting}
+                                    sx={{ borderRadius: 2, px: 4 }}
+                                >
+                                    Cancel
+                                </Button>
+                                <Button 
+                                    type="submit" 
+                                    variant="contained" 
+                                    disabled={isSubmitting}
+                                    startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <Save />}
+                                    sx={{ 
+                                        borderRadius: 2, 
+                                        px: 6, 
+                                        bgcolor: 'var(--rra-blue)',
+                                        '&:hover': { bgcolor: 'var(--rra-blue-dark)' }
+                                    }}
+                                >
+                                    {isSubmitting ? 'Processing...' : (editData ? 'Save Changes' : 'Create Case')}
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </form>
+                </Paper>
+            </Box>
+        </Box>
     );
 };
 

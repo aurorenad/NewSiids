@@ -7,5 +7,7 @@ public class ReleaseNoteRequestDTO {
     private String releaseReason;
     private String recipientName;
     private String recipientIdPassport;
-    private String releaseDestination; // For Main Stock (e.g. Auction, Destruction)
+    private String recipientPhone;
+    private Double auctionAmount;
+    private String releaseDestination; // Auction, destruction, etc.
 }
