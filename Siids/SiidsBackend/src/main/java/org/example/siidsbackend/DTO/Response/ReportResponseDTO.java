@@ -34,7 +34,9 @@ public class ReportResponseDTO {
     private List<String> findingsAttachmentPaths;
     private String assistantCommissioner;
     private String directorInvestigation;
+    private String directorInvestigationId;
     private String directorIntelligence;
+    private String directorIntelligenceId;
     @Data
     public static class OfficerDTO {
         private String employeeId;
