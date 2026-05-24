@@ -272,7 +272,8 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
       onSuccess();
     } catch (err) {
       console.error('Failed to save Seizure Note:', err.response?.data || err);
-      toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to save Seizure Note');
+      const msg = err.response?.data?.message || err.response?.data?.error || err.response?.data || 'Failed to save Seizure Note';
+      toast.error(typeof msg === 'string' ? msg : 'Failed to save Seizure Note');
     }
   };
 

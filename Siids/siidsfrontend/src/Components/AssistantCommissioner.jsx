@@ -596,18 +596,19 @@ const AssistantCommissioner = () => {
 
     const handleMenuClose = () => {
         setAnchorEl(null);
-        setMenuReport(null);
     };
 
     const handleSendToDepartment = async (departmentName) => {
+        if (!menuReport) return;
+        const reportId = menuReport.id;
         try {
-            setActionLoading(prev => ({ ...prev, [menuReport.id]: true }));
+            setActionLoading(prev => ({ ...prev, [reportId]: true }));
             console.log('Sending to department:', departmentName);
 
-            await ReportApi.sendReport(menuReport.id, departmentName);
+            await ReportApi.sendReport(reportId, departmentName);
 
             setReports(prev => prev.map(r =>
-                r.id === menuReport.id ? {
+                r.id === reportId ? {
                     ...r,
                     status: `REPORT_SENT_TO_${departmentName.toUpperCase().replace(/\s+/g, '_')}`
                 } : r
@@ -618,18 +619,21 @@ const AssistantCommissioner = () => {
             console.error("Error response:", err.response?.data);
             showSnackbar(err.response?.data?.message || "Failed to send report", "error");
         } finally {
-            setActionLoading(prev => ({ ...prev, [menuReport.id]: false }));
+            setActionLoading(prev => ({ ...prev, [reportId]: false }));
+            setMenuReport(null);
             handleMenuClose();
         }
     };
 
     const handleApproveOnly = async () => {
+        if (!menuReport) return;
+        const reportId = menuReport.id;
         try {
-            setActionLoading(prev => ({ ...prev, [menuReport.id]: true }));
-            await ReportApi.approveReport(menuReport.id);
+            setActionLoading(prev => ({ ...prev, [reportId]: true }));
+            await ReportApi.approveReport(reportId);
 
             setReports(prev => prev.map(r =>
-                r.id === menuReport.id ? {
+                r.id === reportId ? {
                     ...r,
                     status: "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER"
                 } : r
@@ -639,7 +643,8 @@ const AssistantCommissioner = () => {
             console.error("Failed to approve report:", err);
             showSnackbar(err.response?.data?.message || "Failed to approve report", "error");
         } finally {
-            setActionLoading(prev => ({ ...prev, [menuReport.id]: false }));
+            setActionLoading(prev => ({ ...prev, [reportId]: false }));
+            setMenuReport(null);
             handleMenuClose();
         }
     };
@@ -658,6 +663,7 @@ const AssistantCommissioner = () => {
             "REPORT_SENT_TO_STRATEGIC_AND_RISK_ANALYSIS": "Sent to Strategic and Risk Analysis",
             "REPORT_SENT_TO_INTERNAL_AUDIT_AND_INTEGRITY": "Sent to Internal Audit",
             "REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION": "Sent to IT",
+            "REPORT_SENT_TO_DOMESTIC_TAXES": "Sent to Domestic Taxes",
             "REPORT_SENT_TO_LEGAL_TEAM": "Sent to Legal Advisor",
             // Case Plan Statuses
             "CASE_PLAN_SUBMITTED": "Case Plan Submitted",
