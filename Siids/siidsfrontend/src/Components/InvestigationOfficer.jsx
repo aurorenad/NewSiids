@@ -3,7 +3,7 @@ import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     TextField, IconButton, Button, Typography, Box, CircularProgress,
     Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-    MenuItem, Tooltip, Chip, Tabs, Tab
+    MenuItem, Tooltip, Chip, Tabs, Tab, List, ListItem, ListItemIcon, ListItemText
 } from "@mui/material";
 import {
     Search, Description, Send, Check, AttachFile, Delete, NoteAdd,
@@ -22,7 +22,7 @@ const InvestigationOfficer = () => {
 
     // Dialog States
     const [casePlanDialog, setCasePlanDialog] = useState({ open: false, report: null, text: "", file: null });
-    const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", files: [] });
+    const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
 
     useEffect(() => { fetchReports(); }, [activeTab]);
 
@@ -50,11 +50,20 @@ const InvestigationOfficer = () => {
             const formData = new FormData();
             formData.append("casePlanText", casePlanDialog.text);
             if (casePlanDialog.file) formData.append("casePlanAttachment", casePlanDialog.file);
+            
+            // First save the plan
             await ReportApi.submitCasePlan(casePlanDialog.report.id, formData);
-            setSnackbar({ open: true, message: "Case plan saved", severity: "success" });
+            
+            // Then immediately send to Director for review
+            await ReportApi.sendCasePlanToDirectorInvestigation(casePlanDialog.report.id);
+            
+            setSnackbar({ open: true, message: "Case plan sent to Director", severity: "success" });
             fetchReports();
             setCasePlanDialog({ open: false, report: null, text: "", file: null });
-        } catch (err) { setSnackbar({ open: true, message: "Failed to save plan", severity: "error" }); }
+        } catch (err) { 
+            const errorMsg = typeof err === 'string' ? err : "Failed to transmit case plan";
+            setSnackbar({ open: true, message: errorMsg, severity: "error" }); 
+        }
     };
 
     const handleFinalReportSubmit = async () => {
@@ -62,13 +71,15 @@ const InvestigationOfficer = () => {
             const formData = new FormData();
             formData.append("findingsData", JSON.stringify({
                 findings: findingsDialog.text,
-                recommendations: findingsDialog.recs
+                recommendations: findingsDialog.recs,
+                principleAmount: parseFloat(findingsDialog.principleAmount) || 0,
+                penaltiesAmount: parseFloat(findingsDialog.penaltiesAmount) || 0
             }));
             findingsDialog.files.forEach(f => formData.append("attachments", f));
             await ReportApi.submitFindings(findingsDialog.report.id, formData);
             setSnackbar({ open: true, message: "Report submitted successfully", severity: "success" });
             fetchReports();
-            setFindingsDialog({ open: false, report: null, text: "", recs: "", files: [] });
+            setFindingsDialog({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
         } catch (err) { setSnackbar({ open: true, message: "Failed to submit report", severity: "error" }); }
     };
 
@@ -114,24 +125,20 @@ const InvestigationOfficer = () => {
                                             <IconButton color="info" onClick={() => navigate(`/view-report/${r.id}`)}><Visibility /></IconButton>
                                         </Tooltip>
                                         
-                                        {activeTab === 0 && (
-                                            <>
-                                                <Tooltip title="Create/Edit Plan">
-                                                    <IconButton color="primary" onClick={() => setCasePlanDialog({ open: true, report: r, text: r.casePlanDescription || "", file: null })}><NoteAdd /></IconButton>
-                                                </Tooltip>
-                                                
-                                                <Button
-                                                    variant="contained"
-                                                    color="success"
-                                                    size="small"
-                                                    startIcon={<Assessment />}
-                                                    onClick={() => setFindingsDialog({ open: true, report: r, text: "", recs: "", files: [] })}
-                                                    sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold' }}
-                                                >
-                                                    Final Report
-                                                </Button>
-                                            </>
-                                        )}
+                                        <Tooltip title="Create/Edit Plan">
+                                            <IconButton color="primary" onClick={() => setCasePlanDialog({ open: true, report: r, text: r.casePlanDescription || "", file: null })}><NoteAdd /></IconButton>
+                                        </Tooltip>
+                                        
+                                        <Button
+                                            variant="contained"
+                                            color="success"
+                                            size="small"
+                                            startIcon={<Assessment />}
+                                            onClick={() => setFindingsDialog({ open: true, report: r, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] })}
+                                            sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
+                                        >
+                                            Create Final Report
+                                        </Button>
                                     </Box>
                                 </TableCell>
                             </TableRow>
@@ -140,15 +147,46 @@ const InvestigationOfficer = () => {
                 </Table>
             </TableContainer>
 
-            {/* CASE PLAN DIALOG */}
             <Dialog open={casePlanDialog.open} onClose={() => setCasePlanDialog({ ...casePlanDialog, open: false })} fullWidth>
-                <DialogTitle>Case Plan - {casePlanDialog.report?.caseId}</DialogTitle>
-                <DialogContent>
-                    <TextField fullWidth multiline rows={6} label="Plan Details" value={casePlanDialog.text} onChange={(e) => setCasePlanDialog({ ...casePlanDialog, text: e.target.value })} sx={{ mt: 2 }} />
+                <DialogTitle sx={{ bgcolor: '#1976d2', color: '#fff' }}>Case Plan - {casePlanDialog.report?.caseId}</DialogTitle>
+                <DialogContent sx={{ mt: 2 }}>
+                    <TextField 
+                        fullWidth 
+                        multiline 
+                        rows={6} 
+                        label="Plan Details" 
+                        placeholder="Detail your strategy for this investigation..."
+                        value={casePlanDialog.text} 
+                        onChange={(e) => setCasePlanDialog({ ...casePlanDialog, text: e.target.value })} 
+                        sx={{ mt: 1, mb: 2 }} 
+                    />
+                    
+                    <Box sx={{ p: 2, border: '1px dashed #ccc', borderRadius: 2, bgcolor: '#f9f9f9' }}>
+                        <Typography variant="subtitle2" gutterBottom>Plan Attachment (Optional)</Typography>
+                        <Button variant="outlined" component="label" fullWidth startIcon={<AttachFile />}>
+                            {casePlanDialog.file ? casePlanDialog.file.name : "Select File"}
+                            <input type="file" hidden onChange={(e) => setCasePlanDialog({ ...casePlanDialog, file: e.target.files[0] })} />
+                        </Button>
+                        {casePlanDialog.file && (
+                            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center' }}>
+                                <Typography variant="caption" sx={{ flexGrow: 1 }}>{casePlanDialog.file.name}</Typography>
+                                <IconButton size="small" color="error" onClick={() => setCasePlanDialog({ ...casePlanDialog, file: null })}><Delete fontSize="small" /></IconButton>
+                            </Box>
+                        )}
+                    </Box>
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCasePlanDialog({ ...casePlanDialog, open: false })}>Cancel</Button>
-                    <Button onClick={handleCasePlanSubmit} variant="contained">Save Plan</Button>
+                    <Button 
+                        onClick={handleCasePlanSubmit} 
+                        variant="contained" 
+                        color="primary"
+                        startIcon={<Send />}
+                        disabled={!casePlanDialog.text}
+                        sx={{ fontWeight: 'bold' }}
+                    >
+                        Save & Send to Director
+                    </Button>
                 </DialogActions>
             </Dialog>
 
@@ -156,16 +194,34 @@ const InvestigationOfficer = () => {
             <Dialog open={findingsDialog.open} onClose={() => setFindingsDialog({ ...findingsDialog, open: false })} fullWidth maxWidth="md">
                 <DialogTitle sx={{ backgroundColor: '#2e7d32', color: 'white' }}>Final Investigation Report - {findingsDialog.report?.caseId}</DialogTitle>
                 <DialogContent sx={{ mt: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 }}>
+                        <TextField 
+                            fullWidth 
+                            type="number" 
+                            label="Principle Amount (RWF)" 
+                            value={findingsDialog.principleAmount} 
+                            onChange={(e) => setFindingsDialog({ ...findingsDialog, principleAmount: e.target.value })} 
+                        />
+                        <TextField 
+                            fullWidth 
+                            type="number" 
+                            label="Penalties Amount (RWF)" 
+                            value={findingsDialog.penaltiesAmount} 
+                            onChange={(e) => setFindingsDialog({ ...findingsDialog, penaltiesAmount: e.target.value })} 
+                        />
+                    </Box>
                     <TextField 
                         fullWidth multiline rows={6} 
-                        label="Findings" 
+                        label="Investigation Findings" 
+                        placeholder="Detail what you investigated and found..."
                         value={findingsDialog.text} 
                         onChange={(e) => setFindingsDialog({ ...findingsDialog, text: e.target.value })} 
-                        sx={{ mt: 2, mb: 2 }} 
+                        sx={{ mb: 2 }} 
                     />
                     <TextField 
                         fullWidth multiline rows={3} 
                         label="Recommendations" 
+                        placeholder="Proposed actions or next steps..."
                         value={findingsDialog.recs} 
                         onChange={(e) => setFindingsDialog({ ...findingsDialog, recs: e.target.value })} 
                     />
