@@ -171,7 +171,9 @@ const DirectorInvestigation = () => {
 
     const getInvestigationReportStatus = (status) => {
         if (!status) return 'none';
-        if (status.includes('FINDINGS_SUBMITTED') || status.includes('INVESTIGATION_REPORT_SUBMITTED')) return 'submitted';
+        if (status.includes('FINDINGS_SUBMITTED') || 
+            status.includes('INVESTIGATION_REPORT_SUBMITTED') || 
+            status === 'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') return 'submitted';
         if (status.includes('INVESTIGATION_REPORT_APPROVED')) return 'approved';
         if (status.includes('INVESTIGATION_REPORT_REJECTED')) return 'rejected';
         if (status.includes('INVESTIGATION_REPORT_RETURNED')) return 'returned';
@@ -825,12 +827,13 @@ const DirectorInvestigation = () => {
             {/* Tabs for filtering */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
                 <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
-                    <Tab label="All Cases" />
-                    <Tab label="Pending Review" />
-                    <Tab label="Investigation Reports" />
-                    <Tab label="Case Plans" />
+                    <Tab label="All Operations" />
+                    <Tab label="Pending Assignment" />
+                    <Tab label="Investigation Reports Review" />
+                    <Tab label="Strategic Plans Review" />
                 </Tabs>
             </Box>
+
 
             <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
