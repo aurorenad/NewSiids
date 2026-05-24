@@ -121,7 +121,7 @@ const IntelligenceOfficer = () => {
 
         // Pending Cases (Under review)
         const pendingReviewCases = casesData.filter(c =>
-            c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
+            c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'
         );
 
         // Returned Cases (Sent back for revision)
@@ -189,7 +189,7 @@ const IntelligenceOfficer = () => {
                 break;
             case 'pending':
                 results = results.filter(c =>
-                    c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
+                    c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'
                 );
                 break;
             case 'returned':
@@ -453,7 +453,7 @@ const IntelligenceOfficer = () => {
             );
 
             const pendingReviewCases = filteredReportData.filter(c =>
-                c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
+                c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'
             );
 
             const returnedCases = filteredReportData.filter(c =>
@@ -684,7 +684,7 @@ const IntelligenceOfficer = () => {
         switch (status) {
             case 'CASE_CREATED': return '#1976d2';
             case 'REPORT_SUBMITTED': return '#ff9800';
-            case 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE': return '#4caf50';
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': return '#4caf50';
             case 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': return '#f44336';
             case 'REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION': return '#f44336';
             case 'REPORT_RETURNED_ASSISTANT_COMMISSIONER': return '#f44336';
@@ -731,7 +731,7 @@ const IntelligenceOfficer = () => {
             case 'CASE_CREATED':
             case 'REPORT_SUBMITTED':
                 return <AddIcon sx={{ color: '#1976d2' }} />;
-            case 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE':
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE':
                 return <PendingIcon sx={{ color: '#4caf50' }} />;
             case 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE':
             case 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER':
@@ -1495,7 +1495,7 @@ const IntelligenceOfficer = () => {
                                                         <MenuItem value="">All Status</MenuItem>
                                                         <MenuItem value="CASE_CREATED">Case Created</MenuItem>
                                                         <MenuItem value="REPORT_SUBMITTED">Report Submitted</MenuItem>
-                                                        <MenuItem value="REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE">With Director</MenuItem>
+                                                        <MenuItem value="REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE">With Director</MenuItem>
                                                         <MenuItem value="REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE">Approved by Director</MenuItem>
                                                         <MenuItem value="REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER">Approved by Commissioner</MenuItem>
                                                         <MenuItem value="REPORT_RETURNED_TO_INTELLIGENCE_OFFICER">Returned</MenuItem>
