@@ -14,6 +14,7 @@ import { useLocation } from 'react-router-dom';
 const PVTemporaryStockPage = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
+  const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL', 'ESCALATED', 'RETURNED'
   const [stockList, setStockList] = useState([]);
   const [historyList, setHistoryList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,15 +65,33 @@ const PVTemporaryStockPage = () => {
     fetchData();
   };
 
-  const displayList = activeTab === 'active' ? stockList : historyList;
+  const displayList = useMemo(() => {
+    let list = activeTab === 'active' ? stockList : historyList;
+    
+    // Apply filtering ONLY to Operation History as requested
+    if (activeTab === 'history' && filterStatus !== 'ALL') {
+      if (filterStatus === 'ESCALATED') {
+        list = list.filter(item => item.status === 'ESCALATED' || item.status === 'IN_MAIN_STOCK' || item.status === 'PENDING_REVIEW' || item.status === 'IN_STOCK');
+      } else if (filterStatus === 'RETURNED') {
+        list = list.filter(item => item.status === 'RETURNED_FOR_CORRECTION' || item.status === 'RETURNED');
+      } else if (filterStatus === 'RELEASED') {
+        list = list.filter(item => item.status.includes('RELEASED'));
+      }
+    }
+    return list;
+  }, [activeTab, stockList, historyList, filterStatus]);
 
-  const filteredStock = displayList.filter(item => 
-    item.seizureNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    item.taxpayerName?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredStock = useMemo(() => {
+    return displayList.filter(item => 
+      item.seizureNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      item.taxpayerName?.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [displayList, search]);
 
   useEffect(() => {
     setPage(0);
+    // Reset filter status when switching tabs if needed, or keep it.
+    // User wants it on history, so let's keep it separate.
   }, [search, activeTab]);
 
   const handleChangePage = (event, newPage) => {
@@ -123,6 +142,7 @@ const PVTemporaryStockPage = () => {
   const getOutcome = (status) => {
     if (status.includes('RELEASED')) return 'RELEASED';
     if (status === 'ESCALATED' || status.includes('MAIN_STOCK') || status.includes('PRSO')) return 'ESCALATED';
+    if (status === 'RETURNED_FOR_CORRECTION') return 'RETURNED';
     return 'PENDING';
   };
 
@@ -141,10 +161,11 @@ const PVTemporaryStockPage = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const getDaysLeftColor = (days) => {
-    if (days <= 5) return 'var(--rra-red)';
-    if (days <= 10) return 'var(--rra-yellow-dark)';
-    return 'var(--gray-500)';
+  const getDaysLeftStyle = (days) => {
+    if (days === null) return { background: 'var(--gray-100)', color: 'var(--gray-600)' };
+    if (days > 20) return { background: '#DCFCE7', color: '#166534' }; // Green background
+    if (days >= 10) return { background: '#F5F3FF', color: '#7C3AED' }; // Violet background
+    return { background: '#FEE2E2', color: '#991B1B' }; // Red background for < 10
   };
 
   const returnedItems = useMemo(() => {
@@ -167,8 +188,8 @@ const PVTemporaryStockPage = () => {
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 className="type-page-title">Temporary Stock</h1>
-          <p className="type-body" style={{ color: 'var(--gray-500)' }}>Manage seized goods pending justification</p>
+          <h1 className="type-page-title">Surveillance Officer Dashboard</h1>
+          <p className="type-body" style={{ color: 'var(--gray-500)' }}>Manage seized goods and track operation history</p>
         </div>
         <button className="btn-base btn-primary" onClick={() => setCreateModalOpen(true)}>
           <PlusIcon style={{ width: 16, height: 16 }} />
@@ -176,7 +197,7 @@ const PVTemporaryStockPage = () => {
         </button>
       </div>
 
-      {/* Alert Banners */}
+      {/* Alert Banners ... */}
       {activeTab === 'active' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
           {returnedItems.map(item => (
@@ -302,29 +323,84 @@ const PVTemporaryStockPage = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button 
-          onClick={() => setActiveTab('active')}
-          className={`btn-base ${activeTab === 'active' ? 'btn-primary' : ''}`}
-          style={activeTab !== 'active' ? { 
-            background: 'transparent', 
-            color: 'var(--rra-blue)', 
-            border: '1px solid var(--rra-blue)' 
-          } : {}}
-        >
-          Active Items
-        </button>
-        <button 
-          onClick={() => setActiveTab('history')}
-          className={`btn-base ${activeTab === 'history' ? 'btn-primary' : ''}`}
-          style={activeTab !== 'history' ? { 
-            background: 'transparent', 
-            color: 'var(--rra-blue)', 
-            border: '1px solid var(--rra-blue)' 
-          } : {}}
-        >
-          Seizure History
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button 
+            onClick={() => { setActiveTab('active'); setFilterStatus('ALL'); }}
+            className={`btn-base ${activeTab === 'active' ? 'btn-primary' : ''}`}
+            style={activeTab !== 'active' ? { 
+              background: 'transparent', 
+              color: 'var(--rra-blue)', 
+              border: '1px solid var(--rra-blue)' 
+            } : {}}
+          >
+            Temporary Stock
+          </button>
+          <button 
+            onClick={() => setActiveTab('history')}
+            className={`btn-base ${activeTab === 'history' ? 'btn-primary' : ''}`}
+            style={activeTab !== 'history' ? { 
+              background: 'transparent', 
+              color: 'var(--rra-blue)', 
+              border: '1px solid var(--rra-blue)' 
+            } : {}}
+          >
+            Operation History
+          </button>
+        </div>
+
+        {activeTab === 'history' && (
+          <div style={{ display: 'flex', gap: 8, background: 'var(--gray-50)', padding: 4, borderRadius: 8, border: '1px solid var(--gray-200)' }}>
+            <button 
+              onClick={() => setFilterStatus('ALL')}
+              style={{ 
+                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                background: filterStatus === 'ALL' ? 'white' : 'transparent',
+                color: filterStatus === 'ALL' ? 'var(--rra-blue)' : 'var(--gray-500)',
+                boxShadow: filterStatus === 'ALL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              All
+            </button>
+            <button 
+              onClick={() => setFilterStatus('ESCALATED')}
+              style={{ 
+                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                background: filterStatus === 'ESCALATED' ? 'white' : 'transparent',
+                color: filterStatus === 'ESCALATED' ? 'var(--rra-blue)' : 'var(--gray-500)',
+                boxShadow: filterStatus === 'ESCALATED' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Escalated
+            </button>
+            <button 
+              onClick={() => setFilterStatus('RETURNED')}
+              style={{ 
+                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                background: filterStatus === 'RETURNED' ? 'white' : 'transparent',
+                color: filterStatus === 'RETURNED' ? 'var(--rra-blue)' : 'var(--gray-500)',
+                boxShadow: filterStatus === 'RETURNED' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Returned
+            </button>
+            <button 
+              onClick={() => setFilterStatus('RELEASED')}
+              style={{ 
+                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                background: filterStatus === 'RELEASED' ? 'white' : 'transparent',
+                color: filterStatus === 'RELEASED' ? 'var(--rra-blue)' : 'var(--gray-500)',
+                boxShadow: filterStatus === 'RELEASED' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                cursor: 'pointer'
+              }}
+            >
+              Released
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ padding: 20 }}>
@@ -384,11 +460,19 @@ const PVTemporaryStockPage = () => {
                       </td>
                       <td className="date">{item.dateTimeSeized ? format(new Date(item.dateTimeSeized), 'dd MMM yyyy') : '-'}</td>
                       {activeTab === 'active' && (
-                        <td style={{ 
-                          fontWeight: daysLeft <= 5 ? '700' : '500',
-                          color: getDaysLeftColor(daysLeft)
-                        }}>
-                          {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days` : 'Overdue') : '-'}
+                        <td>
+                          <span style={{ 
+                            padding: '4px 10px', 
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            display: 'inline-block',
+                            minWidth: '70px',
+                            textAlign: 'center',
+                            ...getDaysLeftStyle(daysLeft)
+                          }}>
+                            {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days` : 'Overdue') : '-'}
+                          </span>
                         </td>
                       )}
                       {activeTab === 'history' && (
