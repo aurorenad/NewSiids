@@ -394,6 +394,17 @@ const SurveillanceOfficer = () => {
                                             </TableCell>
                                             <TableCell align="right">
                                                 <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
+                                                    {(caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
+                                                        <Tooltip title="Edit Case">
+                                                            <IconButton
+                                                                onClick={() => navigate('/surveillence-officer/edit-case', { state: { caseData: caseItem } })}
+                                                                size="small"
+                                                                sx={{ color: 'var(--rra-blue)', backgroundColor: 'rgba(0, 61, 165, 0.05)' }}
+                                                            >
+                                                                <AssignmentIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Button
                                                         variant="contained"
                                                         size="small"
@@ -408,7 +419,7 @@ const SurveillanceOfficer = () => {
                                                             borderRadius: 1.5
                                                         }}
                                                     >
-                                                        Seize Goods
+                                                        Seize
                                                     </Button>
                                                     <Tooltip title="View Case">
                                                         <IconButton

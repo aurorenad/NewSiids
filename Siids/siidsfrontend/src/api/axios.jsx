@@ -60,11 +60,17 @@ instance.interceptors.response.use(
             }
         }
 
-        console.error('API Error:', {
+        const errorDetails = {
             url: originalRequest.url,
             status: error.response?.status,
-            message: errorMessage
-        });
+            message: errorMessage,
+            roles: error.response?.headers?.['x-auth-roles'] || 'None'
+        };
+
+        console.error(`🔴 API Error [${errorDetails.status}]: ${errorDetails.url} - ${errorDetails.message}`);
+        if (errorDetails.status === 403) {
+            console.warn(`🔒 Access Denied. Your detected roles: ${errorDetails.roles}`);
+        }
 
         // Handle 401 Unauthorized (token expired)
         if (error.response?.status === 401 && !originalRequest._retry) {

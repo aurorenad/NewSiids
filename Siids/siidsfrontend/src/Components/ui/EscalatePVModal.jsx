@@ -23,7 +23,7 @@ const EscalatePVModal = ({ isOpen, onClose, onSuccess, seizureId, seizureNumber 
 
     setIsSubmitting(true);
     try {
-      await stockApi.escalateToMain(seizureId, formData);
+      await stockApi.escalateToMainStock(seizureId, formData);
       toast.success('Successfully created PV Document and escalated to Main Stock');
       onSuccess();
     } catch (err) {

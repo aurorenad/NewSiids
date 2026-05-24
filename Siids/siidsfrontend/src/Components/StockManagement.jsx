@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import { Edit, Trash2, Download, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
-import '../styles/StockManagement.css';
+import '../Styles/StockManagement.css';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, MenuItem, Select,

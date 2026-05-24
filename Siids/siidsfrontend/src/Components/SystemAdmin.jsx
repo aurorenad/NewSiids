@@ -195,7 +195,7 @@ const SystemAdmin = () => {
                         />
                         <FormControl fullWidth margin="dense" required>
                             <InputLabel>Role</InputLabel>
-                            <Select name="role" value={formData.role} label="Role" onChange={handleFormChange}>
+                            <Select name="role" value={formData.role} label="Role" onChange={handleFormChange} MenuProps={{ sx: { zIndex: 99999 } }}>
                                 {ROLES.map((r) => (
                                     <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
                                 ))}
@@ -215,7 +215,7 @@ const SystemAdmin = () => {
                 <DialogContent>
                     <FormControl fullWidth margin="dense" sx={{ mt: 1 }}>
                         <InputLabel>Role</InputLabel>
-                        <Select value={newRole} label="Role" onChange={(e) => setNewRole(e.target.value)}>
+                        <Select value={newRole} label="Role" onChange={(e) => setNewRole(e.target.value)} MenuProps={{ sx: { zIndex: 99999 } }}>
                             {ROLES.map((r) => (
                                 <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
                             ))}

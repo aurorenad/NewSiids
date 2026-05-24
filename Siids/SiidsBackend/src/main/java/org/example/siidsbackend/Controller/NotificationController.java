@@ -176,16 +176,27 @@ public class NotificationController {
         NotificationDTO dto = new NotificationDTO();
         dto.setId(notification.getId());
         dto.setMessage(notification.getMessage());
-        dto.setReportId(notification.getReport().getId());
+        
+        if (notification.getReport() != null) {
+            dto.setReportId(notification.getReport().getId());
+            dto.setReportStatus(notification.getReport().getStatus());
+            dto.setReportDescription(notification.getReport().getDescription());
+            if (notification.getReport().getCreatedBy() != null) {
+                dto.setSenderName(notification.getReport().getCreatedBy().getGivenName() + " " +
+                        notification.getReport().getCreatedBy().getFamilyName());
+            }
+        }
+        
+        if (notification.getSenderName() != null) {
+            dto.setSenderName(notification.getSenderName());
+        }
+
         dto.setRecipientId(notification.getRecipient().getEmployeeId());
         dto.setRecipientName(notification.getRecipient().getGivenName() + " " +
                 notification.getRecipient().getFamilyName());
         dto.setCreatedAt(notification.getCreatedAt());
         dto.setRead(notification.isRead());
-        dto.setReportStatus(notification.getReport().getStatus());
-        dto.setReportDescription(notification.getReport().getDescription());
-        dto.setSenderName(notification.getReport().getCreatedBy().getGivenName() + " " +
-                notification.getReport().getCreatedBy().getFamilyName());
+        dto.setRelatedReference(notification.getRelatedReference());
         return dto;
     }
 }

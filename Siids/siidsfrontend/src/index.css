@@ -170,7 +170,13 @@
   z-index: 9000 !important;
 }
 .MuiDrawer-root {
-  z-index: 3000 !important; /* Sidebar should stay below our custom overlays */
+  z-index: 3000; /* Sidebar should stay below our custom overlays */
+}
+.MuiPopover-root {
+  z-index: 9100 !important; /* Ensure dropdowns (Select, Menu) appear above Dialogs */
+}
+.MuiTooltip-root {
+  z-index: 9200 !important; /* Ensure tooltips appear above everything */
 }
 
 /* Ensure all MUI Popovers (Select menus, Tooltips, etc.) are above the sidebar */

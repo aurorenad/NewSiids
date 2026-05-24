@@ -24,7 +24,7 @@ const ReleaseGoodsModal = ({ isOpen, onClose, onSuccess, seizureId }) => {
 
     setIsSubmitting(true);
     try {
-      await stockApi.releaseFromTemp(seizureId, formData);
+      await stockApi.releaseFromTemporaryStock(seizureId, formData);
       toast.success('Goods successfully released to owner');
       onSuccess();
     } catch (err) {

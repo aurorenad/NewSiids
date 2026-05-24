@@ -43,6 +43,9 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
 
+    @Autowired
+    private UserRepo userRepo;
+
     @Override
     public void run(String... args) {
         System.out.println("========================================");
@@ -51,6 +54,10 @@ public class DataInitializer implements CommandLineRunner {
 
         // Fix database constraints if necessary
         fixDatabaseConstraints();
+
+        // Initialize Users and Employees
+        initializeDefaultAdmin();
+        initializeEmployeesForExistingUsers();
 
         // Initialize organizational data
         initializeStructures();
@@ -78,6 +85,59 @@ public class DataInitializer implements CommandLineRunner {
             System.err.println("✗ Error fixing database constraints: " + e.getMessage());
         }
     }
+
+    private void initializeDefaultAdmin() {
+        long count = userRepo.count();
+        if (count == 0) {
+            System.out.println("→ Creating default admin user (00763)...");
+            User admin = new User();
+            admin.setUsername("00763");
+            admin.setPassword(new BCryptPasswordEncoder().encode("admin123"));
+            admin.setRole("Admin");
+            admin.setActive(true);
+            userRepo.save(admin);
+            System.out.println("✓ Default admin created.");
+        }
+    }
+
+    private void initializeEmployeesForExistingUsers() {
+        System.out.println("→ Ensuring all users have matching employee records...");
+        java.util.List<User> users = userRepo.findAll();
+        int added = 0;
+        
+        for (User user : users) {
+            String empId = user.getUsername();
+            if (empId != null && !empId.isEmpty()) {
+                Optional<Employee> existingEmp = employeeRepo.findByEmployeeId(empId);
+                if (existingEmp.isEmpty()) {
+                    Employee newEmp = new Employee();
+                    newEmp.setEmployeeId(empId);
+                    newEmp.setGivenName("System");
+                    newEmp.setFamilyName("User " + empId);
+                    newEmp.setWorkEmail("user" + empId + "@rra.gov.rw");
+                    newEmp.setProfileFlag(false);
+                    newEmp.setCurrJobFlag(false);
+                    newEmp.setRraJobCount(0);
+                    newEmp.setExtJobCount(0);
+                    newEmp.setPunished(false);
+                    newEmp.setConfirmStatus(false);
+                    newEmp.setLetterConfirm(0);
+                    newEmp.setJobDescriptionsConfirm(0);
+                    newEmp.setPmappConfirm(0);
+                    newEmp.setAppealLetterConfirm(0);
+                    
+                    employeeRepo.save(newEmp);
+                    added++;
+                }
+            }
+        }
+        if (added > 0) {
+            System.out.println("✓ Added " + added + " missing employee records.");
+        } else {
+            System.out.println("✓ All users already have matching employee records.");
+        }
+    }
+
 
 
     private void initializeStructures() {
