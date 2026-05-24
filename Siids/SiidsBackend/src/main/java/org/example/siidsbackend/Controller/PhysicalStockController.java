@@ -46,7 +46,7 @@ public class PhysicalStockController {
     public ResponseEntity<?> createSeizureNote(@RequestBody SeizureNoteRequestDTO dto) {
         try {
             String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-            return ResponseEntity.ok(physicalStockService.createSeizureNote(dto, username));
+            return ResponseEntity.ok(physicalStockService.createSeizureNote(dto, physicalStockService.getEmployeeByUsername(username)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }
@@ -56,7 +56,7 @@ public class PhysicalStockController {
     public ResponseEntity<?> updateSeizureNote(@PathVariable Integer id, @RequestBody SeizureNoteRequestDTO dto) {
         try {
             String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-            return ResponseEntity.ok(physicalStockService.updateSeizureNote(id, dto, username));
+            return ResponseEntity.ok(physicalStockService.updateSeizureNote(id, dto, physicalStockService.getEmployeeByUsername(username)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("message", e.getMessage()));
         }
