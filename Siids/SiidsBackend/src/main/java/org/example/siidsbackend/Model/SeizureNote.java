@@ -18,6 +18,8 @@ public class SeizureNote {
     @Column(unique = true, nullable = false)
     private String seizureNumber;
 
+    private String pvNumber; // Linked PV Reference for Main Stock
+
     @ManyToOne
     @JoinColumn(name = "case_id", nullable = true)
     private Case relatedCase;
@@ -52,8 +54,40 @@ public class SeizureNote {
     @Column(columnDefinition = "TEXT")
     private String officerSignaturePath; // Path or Base64
 
+    // --- State Machine & Workflow Columns ---
+    
     @Column(columnDefinition = "TEXT")
     private String returnReason;
+
+    @ManyToOne
+    @JoinColumn(name = "returned_by_id", referencedColumnName = "employee_id")
+    private Employee returnedBy;
+
+    private LocalDateTime returnDate;
+
+    private String correctionToken; // Token to track resubmission flow
+
+    @ManyToOne
+    @JoinColumn(name = "approved_by_id", referencedColumnName = "employee_id")
+    private Employee approvedBy;
+
+    private LocalDateTime approvedAt;
+
+    @ManyToOne
+    @JoinColumn(name = "release_requested_by_id", referencedColumnName = "employee_id")
+    private Employee releaseRequestedBy;
+
+    private LocalDateTime releaseRequestedAt;
+
+    private LocalDateTime releasedAt;
+
+    private String auctionWinner;
+
+    private LocalDateTime auctionDate;
+
+    private Double auctionAmount;
+
+    // --- Timestamps ---
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -63,6 +97,10 @@ public class SeizureNote {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        // Default newly created seizure notes to PENDING_REVIEW as per state machine
+        if (this.status == null) {
+            this.status = PhysicalStockStatus.PENDING_REVIEW;
+        }
     }
 
     @PreUpdate
