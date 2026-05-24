@@ -482,8 +482,13 @@ public class ReportService {
                 break;
             case REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION:
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+            case REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
             case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
                 newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE;
+                break;
+            case INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION:
+            case INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
+                newStatus = WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
                 break;
             default:
                 throw new IllegalStateException("Cannot return report in current status");
@@ -676,6 +681,18 @@ public class ReportService {
         dto.setCasePlan(report.getCasePlan());
         dto.setCasePlanDescription(report.getCasePlanDescription());
 
+        if (report.getAssistantCommissioner() != null) {
+            dto.setAssistantCommissioner(report.getAssistantCommissioner().getGivenName() + " " + report.getAssistantCommissioner().getFamilyName());
+        }
+        if (report.getDirectorInvestigation() != null) {
+            dto.setDirectorInvestigation(report.getDirectorInvestigation().getGivenName() + " " + report.getDirectorInvestigation().getFamilyName());
+            dto.setDirectorInvestigationId(report.getDirectorInvestigation().getEmployeeId());
+        }
+        if (report.getDirectorIntelligence() != null) {
+            dto.setDirectorIntelligence(report.getDirectorIntelligence().getGivenName() + " " + report.getDirectorIntelligence().getFamilyName());
+            dto.setDirectorIntelligenceId(report.getDirectorIntelligence().getEmployeeId());
+        }
+
         if (report.getRelatedCase() != null && report.getRelatedCase().getInformerId() != null) {
             dto.setInformer(convertToInformerDTO(report.getRelatedCase().getInformerId()));
         }
@@ -783,7 +800,7 @@ public class ReportService {
                 break;
 
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
-                newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                newStatus = WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION;
                 report.setAssistantCommissioner(approver);
                 // After Assistant Commissioner approves, send to Director of Investigation
                 List<Employee> directors = reportRepo.DirectorsOfInvestigation();
@@ -809,7 +826,7 @@ public class ReportService {
                 break;
 
             case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
-                newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                newStatus = WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION;
                 report.setAssistantCommissioner(approver);
 
                 List<Employee> investigationDirectors = reportRepo.DirectorsOfInvestigation();
@@ -921,7 +938,11 @@ public class ReportService {
         report.setRejectionReason(rejectionReason);
         report.setRejectedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
-        report.setCurrentRecipient(report.getCreatedBy());
+        
+        // Only set recipient to creator if not already set in the switch
+        if (report.getCurrentRecipient() == null || report.getCurrentRecipient().equals(rejector)) {
+            report.setCurrentRecipient(report.getCreatedBy());
+        }
 
         Report savedReport = reportRepo.save(report);
 
@@ -2125,15 +2146,9 @@ public class ReportService {
             throw new RuntimeException("Only Director of Investigation can approve case plans");
         }
 
-        // Verify the report has a case plan
-        if ((report.getCasePlan() == null || report.getCasePlan().trim().isEmpty()) &&
-                (report.getFindingsAttachmentPaths() == null || report.getFindingsAttachmentPaths().isEmpty())) {
-            throw new RuntimeException("No case plan found to approve");
-        }
-
         // Update case status
         Case relatedCase = report.getRelatedCase();
-        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER);
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION);
         caseRepo.save(relatedCase);
 
         report.setDirectorInvestigation(approver);
@@ -2141,10 +2156,9 @@ public class ReportService {
         report.setApprovedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
-        // Set next recipient - Assistant Commissioner for final approval
-        List<Employee> commissioners = reportRepo.assistantCommissioner();
-        if (!commissioners.isEmpty()) {
-            report.setCurrentRecipient(commissioners.get(0));
+        // Send back to investigation officer so they can continue working
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
         }
 
         Report savedReport = reportRepo.save(report);
@@ -2156,19 +2170,18 @@ public class ReportService {
                 approver);
 
         // Create notification
-        String message = String.format("Case plan for report #%d has been approved by Director of Investigation %s %s",
-                savedReport.getId(),
-                approver.getGivenName(),
-                approver.getFamilyName());
+        String message = String.format("Case plan for report #%d has been approved. You can now proceed with the investigation.",
+                savedReport.getId());
         createNotification(savedReport, message);
 
         // Send websocket notification to investigation officer
-        // Send websocket notification to Assistant Commissioner
-        if (report.getCurrentRecipient() != null) {
-            NotificationDTO broadcastNotification = webSocketNotificationService
-                    .createNotificationDTO(savedReport, message, report.getCurrentRecipient());
-            broadcastNotification.setNotificationType("NEW_CASE_PLAN_ASSISTANT_COMMISSIONER");
-            webSocketNotificationService.sendNotificationToAssistantCommissioners(broadcastNotification);
+        if (report.getInvestigationOfficer() != null) {
+            NotificationDTO notificationDTO = webSocketNotificationService
+                    .createNotificationDTO(savedReport, message, report.getInvestigationOfficer());
+            notificationDTO.setNotificationType("CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION");
+            webSocketNotificationService.sendNotificationToUser(
+                    report.getInvestigationOfficer().getEmployeeId(),
+                    notificationDTO);
         }
 
         return savedReport;
