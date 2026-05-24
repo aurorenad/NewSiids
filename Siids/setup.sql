@@ -32,5 +32,5 @@ WHERE NOT EXISTS (
 --    use the UPDATE command below instead of the INSERT above:
 --
 -- UPDATE users 
--- SET password = 'YOUR_NEW_BCRYPT_HASH_HERE' 
+-- SET password = '$2a$12$Fg23uijEKFZfzw8T58DO1eOn5YYyXc5ezYjtkFK2aCoOq6TDYIivq' 
 -- WHERE username = '00763';
