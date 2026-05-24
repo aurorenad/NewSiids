@@ -173,6 +173,11 @@
   z-index: 3000 !important; /* Sidebar should stay below our custom overlays */
 }
 
+/* Ensure all MUI Popovers (Select menus, Tooltips, etc.) are above the sidebar */
+.MuiPopover-root, .MuiMenu-root, .MuiAutocomplete-popper {
+  z-index: 5000 !important;
+}
+
 .drawer-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
 .drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
 .drawer-footer { padding: 14px 20px; border-top: 1px solid var(--gray-100); display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
