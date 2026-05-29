@@ -51,13 +51,10 @@ const InvestigationOfficer = () => {
             formData.append("casePlanText", casePlanDialog.text);
             if (casePlanDialog.file) formData.append("casePlanAttachment", casePlanDialog.file);
             
-            // First save the plan
+            // Submit the plan for review
             await ReportApi.submitCasePlan(casePlanDialog.report.id, formData);
             
-            // Then immediately send to Director for review
-            await ReportApi.sendCasePlanToDirectorInvestigation(casePlanDialog.report.id);
-            
-            setSnackbar({ open: true, message: "Case plan sent to Director", severity: "success" });
+            setSnackbar({ open: true, message: "Case plan submitted for review", severity: "success" });
             fetchReports();
             setCasePlanDialog({ open: false, report: null, text: "", file: null });
         } catch (err) { 
