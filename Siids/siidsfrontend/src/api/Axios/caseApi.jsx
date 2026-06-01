@@ -204,6 +204,10 @@ export const ReportApi = {
         return caseApi.post(`/api/reports/${reportId}/send-case-plan-to-director-investigation`, {});
     },
 
+    sendCasePlanToAssistantCommissioner: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/send-case-plan-to-assistant-commissioner`, {});
+    },
+
     getCasePlansForDirectorInvestigation: () => {
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
         return caseApi.get('/api/reports/director-investigation/case-plans');

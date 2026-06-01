@@ -18,6 +18,7 @@ const AssistantCommissioner = () => {
     const [reports, setReports] = useState([]);
     const [casePlans, setCasePlans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(0); // 0: Case Intake, 1: Strategic Plans, 2: Investigation Results
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
@@ -67,21 +68,25 @@ const AssistantCommissioner = () => {
 
     const handleApproveAction = async (report) => {
         try {
+            setSubmitting(true);
             if (activeTab === 1) {
                 await ReportApi.approveCasePlanByAssistantCommissioner(report.id);
             } else {
                 await ReportApi.approveReport(report.id);
             }
             showSnackbar("Operational approval granted");
-            fetchAllData();
+            await fetchAllData();
         } catch (err) { 
             const errorMsg = err.response?.data || "Approval failed";
             showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Approval failed", "error"); 
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleRejectFinal = async () => {
         try {
+            setSubmitting(true);
             if (activeTab === 2 && selectedReport.directorInvestigationId) {
                 // Reject Investigation Results -> Send back to Director of Investigation
                 await ReportApi.returnReport(selectedReport.id, selectedReport.directorInvestigationId, closeReason);
@@ -96,10 +101,12 @@ const AssistantCommissioner = () => {
                 showSnackbar("Dossier rejected and closed");
             }
             setCloseDialogOpen(false);
-            fetchAllData();
+            await fetchAllData();
         } catch (err) { 
             const errorMsg = err.response?.data || "Action failed";
             showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Action failed", "error");
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -129,8 +136,7 @@ const AssistantCommissioner = () => {
             <Paper sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                 <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ px: 2, pt: 1, backgroundColor: '#fff' }}>
                     <Tab icon={<Description />} label="Case Intake" iconPosition="start" sx={{ fontWeight: 700 }} />
-                    {/* Hiding tabs as requested for current focus */}
-                    {/* <Tab icon={<Assignment />} label="Strategic Plans" iconPosition="start" sx={{ fontWeight: 700 }} /> */}
+                    <Tab icon={<Assignment />} label="Strategic Plans" iconPosition="start" sx={{ fontWeight: 700 }} />
                     <Tab icon={<Assessment />} label="Investigation Results" iconPosition="start" sx={{ fontWeight: 700 }} />
                 </Tabs>
 
@@ -193,6 +199,7 @@ const AssistantCommissioner = () => {
                                                 size="small"
                                                 startIcon={<Check />}
                                                 onClick={() => handleApproveAction(r)}
+                                                disabled={submitting}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Approve
@@ -208,6 +215,7 @@ const AssistantCommissioner = () => {
                                                     setCloseReason("");
                                                     setCloseDialogOpen(true);
                                                 }}
+                                                disabled={submitting}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Reject
@@ -238,7 +246,7 @@ const AssistantCommissioner = () => {
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCloseDialogOpen(false)}>Abort</Button>
-                    <Button onClick={handleRejectFinal} variant="contained" color="error">Confirm Rejection</Button>
+                    <Button onClick={handleRejectFinal} variant="contained" color="error" disabled={submitting}>Confirm Rejection</Button>
                 </DialogActions>
             </Dialog>
 

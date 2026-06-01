@@ -790,12 +790,22 @@ public class ReportService {
         switch (relatedCase.getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_SUBMITTED:
-                newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
-                report.setDirectorIntelligence(approver);
+            case CASE_PLAN_SUBMITTED:
+                if (relatedCase.getStatus() == WorkflowStatus.CASE_PLAN_SUBMITTED) {
+                    newStatus = WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION;
+                    // Forward case plan to Director of Investigation
+                    List<Employee> invDirectors = reportRepo.DirectorsOfInvestigation();
+                    if (!invDirectors.isEmpty()) {
+                        report.setCurrentRecipient(invDirectors.get(0));
+                    }
+                } else {
+                    newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
+                    report.setDirectorIntelligence(approver);
 
-                List<Employee> commissioners = reportRepo.assistantCommissioner();
-                if (!commissioners.isEmpty()) {
-                    report.setCurrentRecipient(commissioners.get(0));
+                    List<Employee> commissioners = reportRepo.assistantCommissioner();
+                    if (!commissioners.isEmpty()) {
+                        report.setCurrentRecipient(commissioners.get(0));
+                    }
                 }
                 break;
 
@@ -919,7 +929,7 @@ public class ReportService {
                 }
                 break;
             case INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION:
-                newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
+                newStatus = WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
                 report.setAssistantCommissioner(rejector);
                 
                 // Return to Director of Investigation
@@ -1929,17 +1939,29 @@ public class ReportService {
             caseRepo.save(report.getRelatedCase());
         }
 
-        // Set Director of Investigation as recipient
-        Employee recipient = report.getDirectorInvestigation();
+        // Set Director of Intelligence as primary recipient for initial review
+        Employee recipient = report.getDirectorIntelligence();
         if (recipient == null) {
-            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
-            if (!directors.isEmpty()) recipient = directors.get(0);
+            List<Employee> intelligenceDirectors = reportRepo.DirectorsOfIntelligence();
+            if (!intelligenceDirectors.isEmpty()) {
+                recipient = intelligenceDirectors.get(0);
+                report.setDirectorIntelligence(recipient);
+            }
+        }
+        
+        // Fallback to Director of Investigation if no Intelligence Director found
+        if (recipient == null) {
+            recipient = report.getDirectorInvestigation();
+            if (recipient == null) {
+                List<Employee> investigationDirectors = reportRepo.DirectorsOfInvestigation();
+                if (!investigationDirectors.isEmpty()) recipient = investigationDirectors.get(0);
+            }
         }
 
         if (recipient != null) {
             report.setCurrentRecipient(recipient);
         } else {
-            throw new IllegalStateException("No Director of Investigation found to receive this case plan.");
+            throw new IllegalStateException("No Director found to receive this case plan.");
         }
 
         report.setUpdatedAt(LocalDateTime.now());
@@ -1968,6 +1990,28 @@ public class ReportService {
     }
 
     @Transactional
+    public Report sendCasePlanToAssistantCommissioner(Integer reportId, String employeeId) {
+        Report report = getReport(reportId);
+
+        // Update case status
+        Case relatedCase = report.getRelatedCase();
+        relatedCase.setStatus(WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER);
+        caseRepo.save(relatedCase);
+
+        // Set recipient - Assistant Commissioner
+        List<Employee> commissioners = reportRepo.assistantCommissioner();
+        if (!commissioners.isEmpty()) {
+            report.setCurrentRecipient(commissioners.get(0));
+            report.setAssistantCommissioner(commissioners.get(0));
+        } else {
+            throw new IllegalStateException("No Assistant Commissioner found.");
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        return reportRepo.save(report);
+    }
+
+    @Transactional
     public Report sendCasePlanToDirectorInvestigation(Integer reportId, String employeeId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
@@ -1984,8 +2028,9 @@ public class ReportService {
 
         // Verify case plan exists
         if ((report.getCasePlan() == null || report.getCasePlan().trim().isEmpty()) &&
+                (report.getCasePlanDescription() == null || report.getCasePlanDescription().trim().isEmpty()) &&
                 (report.getFindingsAttachmentPaths() == null || report.getFindingsAttachmentPaths().isEmpty())) {
-            throw new RuntimeException("No case plan or attachments found to send");
+            throw new RuntimeException("No case plan details or attachments found to send");
         }
 
         // Update case status
@@ -2289,6 +2334,7 @@ public class ReportService {
         List<Employee> commissioners = reportRepo.assistantCommissioner();
         if (!commissioners.isEmpty()) {
             report.setCurrentRecipient(commissioners.get(0));
+            report.setAssistantCommissioner(commissioners.get(0));
         }
 
         Report savedReport = reportRepo.save(report);

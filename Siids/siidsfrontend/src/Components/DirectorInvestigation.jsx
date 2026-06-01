@@ -654,7 +654,7 @@ const DirectorInvestigation = () => {
     const handleSendToAssistantCommissioner = async (reportId) => {
         try {
             setOfficersLoading(true);
-            await ReportApi.sendCasePlanToDirectorInvestigation(reportId);
+            await ReportApi.sendCasePlanToAssistantCommissioner(reportId);
 
             setCases(prevCases => prevCases.map(c =>
                 c.reportId === reportId ? {

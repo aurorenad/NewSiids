@@ -32,7 +32,8 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
             "WHERE c.status IN (org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED, " +
-            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE)")
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SUBMITTED)")
     List<Report> findReportsSubmittedToDirectorIntelligence();
 
     @Query("SELECT c FROM Case c WHERE c.caseNum = :caseId")

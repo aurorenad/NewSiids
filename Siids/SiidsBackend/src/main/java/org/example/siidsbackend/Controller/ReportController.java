@@ -1509,6 +1509,20 @@ public class ReportController {
         }
     }
 
+    @PostMapping("/{id}/send-case-plan-to-assistant-commissioner")
+    public ResponseEntity<?> sendCasePlanToAssistantCommissioner(
+            @PathVariable("id") Integer id,
+            Authentication authentication) {
+        String employeeId = authentication.getName();
+        try {
+            Report report = reportService.sendCasePlanToAssistantCommissioner(id, employeeId);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (Exception e) {
+            log.error("Error sending case plan to AC: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/{id}/send-case-plan-to-director-investigation")
     public ResponseEntity<?> sendToDirectorInvestigationFromLegal(
             @PathVariable("id") Integer id,
