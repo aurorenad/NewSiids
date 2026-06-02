@@ -30,11 +30,16 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "(SELECT u.username FROM User u WHERE LOWER(REPLACE(REPLACE(u.role, ' ', ''), '_', '')) = 'assistantcommissioner' AND (u.active = true OR u.active IS NULL))")
     List<Employee> assistantCommissioner();
 
-    @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
-            "WHERE c.status IN (org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED, " +
+    @Query("SELECT DISTINCT r FROM Report r JOIN r.relatedCase c " +
+            "WHERE r.currentRecipient.employeeId = :directorId " +
+            "OR r.directorIntelligence.employeeId = :directorId " +
+            "OR (c.status IN (" +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED, " +
             "org.example.siidsbackend.Model.WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE, " +
-            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SUBMITTED)")
-    List<Report> findReportsSubmittedToDirectorIntelligence();
+            "org.example.siidsbackend.Model.WorkflowStatus.CASE_PLAN_SUBMITTED, " +
+            "org.example.siidsbackend.Model.WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE" +
+            ")) ORDER BY r.updatedAt DESC")
+    List<Report> findReportsHandledByDirectorIntelligence(@Param("directorId") String directorId);
 
     @Query("SELECT c FROM Case c WHERE c.caseNum = :caseId")
     Optional<Case> findRelatedCaseById(@Param("caseId") Integer caseId);

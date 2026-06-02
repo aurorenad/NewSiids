@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login | SIIDs Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#181c1e",
+                    "on-primary-fixed-variant": "#00458d",
+                    "surface-container": "#ebeef1",
+                    "tertiary-fixed": "#ffe177",
+                    "surface-container-high": "#e5e8eb",
+                    "outline": "#737782",
+                    "on-surface-variant": "#424751",
+                    "on-tertiary-fixed-variant": "#554500",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed-variant": "#3b4852",
+                    "on-tertiary": "#ffffff",
+                    "surface-tint": "#295ea8",
+                    "secondary-fixed": "#d6e4f0",
+                    "primary-fixed-dim": "#aac7ff",
+                    "secondary-container": "#d6e4f0",
+                    "on-tertiary-container": "#4d3e00",
+                    "primary-fixed": "#d6e3ff",
+                    "on-primary-container": "#b4cdff",
+                    "secondary-fixed-dim": "#bac8d4",
+                    "outline-variant": "#c2c6d3",
+                    "tertiary": "#715d00",
+                    "on-background": "#181c1e",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#ebc300",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f1f4f7",
+                    "surface-dim": "#d7dadd",
+                    "on-tertiary-fixed": "#231b00",
+                    "surface-container-highest": "#e0e3e6",
+                    "surface": "#f7fafd",
+                    "inverse-primary": "#aac7ff",
+                    "primary-container": "#1e56a0",
+                    "on-secondary-fixed": "#101d26",
+                    "surface-bright": "#f7fafd",
+                    "tertiary-container": "#cba800",
+                    "surface-variant": "#e0e3e6",
+                    "on-secondary-container": "#596670",
+                    "inverse-on-surface": "#eef1f4",
+                    "primary": "#003e80",
+                    "secondary": "#53606a",
+                    "on-primary-fixed": "#001b3e",
+                    "inverse-surface": "#2d3133",
+                    "background": "#f7fafd",
+                    "on-error": "#ffffff",
+                    "surface-container-lowest": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-sm": "8px",
+                    "gutter": "16px",
+                    "margin-md": "16px",
+                    "base-unit": "4px",
+                    "margin-lg": "32px",
+                    "container-padding": "24px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                    "headline-lg-mobile": ["24px", { "lineHeight": "30px", "fontWeight": "700" }],
+                    "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                    "label-md": ["13px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                    "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #F4F7FA;
+            font-family: 'Hanken Grotesk', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .login-card {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid #D1D9E0;
+        }
+        .input-group:focus-within {
+            border-left: 4px solid #003e80;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-gutter">
+<!-- Main Container -->
+<main class="w-full max-w-[480px]">
+<!-- Login Card -->
+<div class="bg-surface-container-lowest rounded-xl p-container-padding login-card flex flex-col items-center">
+<!-- RRA Logo Area -->
+<div class="mb-margin-lg">
+<div class="w-24 h-24 rounded-full border-2 border-primary-fixed flex items-center justify-center overflow-hidden bg-white">
+<img alt="Rwanda Revenue Authority Logo" class="w-4/5 h-auto object-contain" data-alt="A clean professional studio photograph of the Rwanda Revenue Authority emblem, which features a colorful, stylized sun and waves icon above official text. The logo is perfectly centered within a minimalist white circle, surrounded by a thin, elegant blue ring. The lighting is high-key and soft, emphasizing a sense of transparency and governmental trust. The visual style is modern, corporate, and extremely clear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYcgPmaQQXOSaLIKPMB_Kk8JG368zrd2zW0qC9PsB1Oj1ljFsiNklKcBeOvUgn4lsFNH_GwWApqxiPF-faLdZDKQSDXP9bilWA-eb288U1HmoBp3DifmXX2aowfeOVGouydkkJiOykBPXOz5XBZQqgnIOdFrJZxRouiZNsozd2nn3LLXxjNnwWId0sR0vs_Zv_0hnw0zmBi0oqL9HHQykTv0wRhn58Eu0nTuPONbtP6n-IMOJ2QzzFBZLwpHo5Ci_AUTVkquW5ld4"/>
+</div>
+</div>
+<!-- Heading Section -->
+<div class="text-center mb-margin-lg space-y-1">
+<h1 class="font-headline-sm text-headline-sm text-on-surface">
+                    Strategic Intelligence &amp; Investigation Division System
+                </h1>
+<p class="font-label-md text-label-md text-primary font-bold">
+                    (SIIDs)
+                </p>
+</div>
+<!-- Login Form -->
+<form class="w-full space-y-6" onsubmit="event.preventDefault();">
+<!-- User ID Field -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1" for="user-id">
+                        User ID <span class="text-error">*</span>
+</label>
+<div class="input-group relative flex items-center bg-surface-container-low border border-outline-variant rounded-lg transition-all">
+<span class="material-symbols-outlined px-3 text-on-surface-variant" data-icon="person">person</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-3 font-body-md text-body-md text-on-surface placeholder:text-outline-variant" id="user-id" placeholder="04219" type="text"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-1">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1" for="password">
+                        Password <span class="text-error">*</span>
+</label>
+<div class="input-group relative flex items-center bg-surface-container-low border border-outline-variant rounded-lg transition-all">
+<span class="material-symbols-outlined px-3 text-on-surface-variant" data-icon="lock">lock</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-3 font-body-md text-body-md text-on-surface placeholder:text-outline-variant" id="password" placeholder="••••••••" type="password"/>
+<button aria-label="Toggle password visibility" class="px-3 text-on-surface-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<!-- Remember Me -->
+<div class="flex items-center justify-between">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary-container transition-all cursor-pointer" type="checkbox"/>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Remember me</span>
+</label>
+</div>
+<!-- Action Button -->
+<div class="pt-2">
+<button class="w-full bg-primary text-on-primary font-headline-sm text-headline-sm py-3.5 rounded-lg shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2" type="submit">
+                        Login
+                    </button>
+</div>
+<!-- Footer Link -->
+<div class="text-center pt-2">
+<a class="font-label-md text-label-md text-primary-container hover:underline decoration-2 transition-all" href="#">
+                        Forgot password?
+                    </a>
+</div>
+</form>
+</div>
+<!-- System Footer -->
+<footer class="mt-margin-lg text-center space-y-2">
+<p class="font-label-md text-label-md text-on-surface-variant opacity-70">
+                © 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.
+            </p>
+<div class="flex justify-center gap-gutter text-on-surface-variant opacity-60">
+<a class="font-label-md text-label-md hover:text-primary transition-colors" href="#">Legal Disclaimer</a>
+<span class="text-outline-variant">|</span>
+<a class="font-label-md text-label-md hover:text-primary transition-colors" href="#">Security Protocol</a>
+</div>
+</footer>
+</main>
+<!-- Micro-interaction Script -->
+<script>
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = passwordInput.nextElementSibling;
+        const iconSpan = toggleBtn.querySelector('.material-symbols-outlined');
+
+        toggleBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            iconSpan.textContent = isPassword ? 'visibility_off' : 'visibility';
+        });
+
+        // Add subtle focus animation to inputs
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.closest('.input-group').classList.add('shadow-md');
+            });
+            input.addEventListener('blur', () => {
+                input.closest('.input-group').classList.remove('shadow-md');
+            });
+        });
+    </script>
+</body></html>

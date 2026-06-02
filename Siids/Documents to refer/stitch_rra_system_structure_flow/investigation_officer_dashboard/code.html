@@ -1,0 +1,500 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SIIDS | Investigation Officer Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#bac8d4",
+                    "on-primary-fixed-variant": "#00458d",
+                    "surface-variant": "#e0e3e6",
+                    "surface-dim": "#d7dadd",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed-variant": "#3b4852",
+                    "inverse-primary": "#aac7ff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#aac7ff",
+                    "tertiary-fixed": "#ffe177",
+                    "surface-container-highest": "#e0e3e6",
+                    "on-surface-variant": "#424751",
+                    "on-primary-container": "#b4cdff",
+                    "inverse-on-surface": "#eef1f4",
+                    "secondary-container": "#d6e4f0",
+                    "tertiary-container": "#cba800",
+                    "surface-bright": "#f7fafd",
+                    "on-tertiary-container": "#4d3e00",
+                    "on-tertiary-fixed-variant": "#554500",
+                    "tertiary-fixed-dim": "#ebc300",
+                    "on-error": "#ffffff",
+                    "surface-container": "#ebeef1",
+                    "surface-container-low": "#f1f4f7",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f7fafd",
+                    "primary": "#003e80",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed": "#101d26",
+                    "surface-container-high": "#e5e8eb",
+                    "on-secondary-container": "#596670",
+                    "outline-variant": "#c2c6d3",
+                    "surface": "#f7fafd",
+                    "tertiary": "#715d00",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#d6e4f0",
+                    "on-tertiary-fixed": "#231b00",
+                    "primary-fixed": "#d6e3ff",
+                    "on-background": "#181c1e",
+                    "on-primary-fixed": "#001b3e",
+                    "outline": "#737782",
+                    "inverse-surface": "#2d3133",
+                    "surface-tint": "#295ea8",
+                    "on-surface": "#181c1e",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#1e56a0",
+                    "secondary": "#53606a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-sm": "8px",
+                    "base-unit": "4px",
+                    "gutter": "16px",
+                    "margin-md": "16px",
+                    "container-padding": "24px",
+                    "margin-lg": "32px"
+            },
+            "fontFamily": {
+                    "label-md": ["JetBrains Mono"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "label-md": ["13px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "30px", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 12px 0 rgba(0, 62, 128, 0.04);
+        }
+        .sidebar-active {
+            background: rgba(0, 62, 128, 0.08);
+            border-left: 4px solid #003e80;
+            color: #003e80;
+            font-weight: 700;
+        }
+        .zebra-row:nth-child(even) {
+            background-color: rgba(214, 228, 240, 0.2);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f4f7;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c2c6d3;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-x-hidden">
+<!-- SideNavBar (Shared Component) -->
+<aside class="fixed left-0 top-0 h-full flex flex-col gap-base-unit z-40 bg-surface-container-low/95 backdrop-blur-md border-r border-outline-variant w-64">
+<div class="p-6">
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">RRA Intelligence</h1>
+<p class="text-on-surface-variant font-label-md text-[11px] opacity-70">Strategic Division</p>
+</div>
+<nav class="flex-1 px-4 space-y-2 mt-4">
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="{{DATA:SCREEN:SCREEN_15}}">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md">Dashboard</span>
+</a>
+<a class="sidebar-active flex items-center gap-3 p-3 rounded-lg transition-all duration-200" href="{{DATA:SCREEN:SCREEN_9}}">
+<span class="material-symbols-outlined">search_insights</span>
+<span class="font-label-md">Investigations</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-3 p-3 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all duration-200" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+<span class="font-label-md">User Management</span>
+</a>
+</nav>
+<div class="p-4 mt-auto border-t border-outline-variant">
+<button class="w-full py-3 bg-primary text-on-primary rounded-lg font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                New Investigation
+            </button>
+<div class="mt-4 space-y-1">
+<a class="flex items-center gap-3 p-2 text-on-surface-variant font-label-md hover:text-primary" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+                    Settings
+                </a>
+<a class="flex items-center gap-3 p-2 text-error font-label-md hover:opacity-80" href="{{DATA:SCREEN:SCREEN_13}}">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+                    Logout
+                </a>
+</div>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 min-h-screen flex flex-col">
+<!-- TopNavBar (Shared Component) -->
+<header class="flex justify-between items-center w-full px-container-padding h-16 sticky top-0 z-50 bg-surface/90 backdrop-blur-xl border-b border-outline-variant shadow-sm">
+<div class="flex items-center gap-4">
+<div class="flex items-center bg-surface-container-high px-3 py-1.5 rounded-lg border border-outline-variant focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64 placeholder:text-on-surface-variant/50" placeholder="Search case files..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 pr-4 border-r border-outline-variant">
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-all">
+<span class="material-symbols-outlined">help</span>
+</button>
+</div>
+<div class="flex items-center gap-3 pl-2">
+<div class="text-right hidden sm:block">
+<p class="font-bold text-on-surface text-[14px]">Jean-Luc Kagame</p>
+<p class="text-[11px] text-on-surface-variant font-label-md">Investigation Officer</p>
+</div>
+<img alt="Officer Profile" class="w-10 h-10 rounded-full border-2 border-primary/20 object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK6hvU6t_SiJ3BkWeZLSTLHQj_Ub6HFHUJWXWfEtuSF5Ok2KeHb-X2I9pZ9uE-8pMljr0C7dyWdeRa9r7pJ0QYQmPqDH1VZ4YE4ASBTouDxP22iH24GU_0nwHzDymt1KYrfdEzP5WCKX4HdZX31DT9HRqju6EXEBzPv1BhpOQ0lPjEjj5aV4McoFn9tmbAIoYIeZwxKPFRgfxN6y5IAD3k1mAusvUhZ5_HOeoRUXGcecUr8mLKh6AiRCjfxrUpAvuxiMtVMFJISwU">
+</div>
+</div>
+</header>
+<!-- Content Area -->
+<div class="p-container-padding space-y-8 animate-in fade-in duration-700">
+<!-- Dashboard Stats Header (Bento Style) -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="md:col-span-2 glass-card p-6 rounded-xl relative overflow-hidden flex flex-col justify-between">
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-3xl"></div>
+<div>
+<h2 class="font-headline-sm text-headline-sm text-primary mb-1">Strategic Overview</h2>
+<p class="text-on-surface-variant opacity-70">Phase 2: Active Investigative Portfolio</p>
+</div>
+<div class="mt-8 flex items-end justify-between">
+<div class="space-y-1">
+<span class="text-[48px] font-bold text-primary leading-none">12</span>
+<p class="font-label-md uppercase tracking-wider text-[10px] text-on-surface-variant">Active Files</p>
+</div>
+<div class="h-12 w-24 bg-primary/10 rounded flex items-center justify-center">
+<span class="text-primary font-bold">+2 New</span>
+</div>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined text-tertiary">pending_actions</span>
+<span class="text-[10px] font-label-md px-2 py-0.5 bg-tertiary-container/20 text-on-tertiary-container rounded">Pending</span>
+</div>
+<div>
+<p class="font-headline-md text-headline-md font-bold">04</p>
+<p class="text-on-surface-variant font-label-md text-[12px]">Pending Case Plans</p>
+</div>
+</div>
+<div class="glass-card p-6 rounded-xl flex flex-col justify-between bg-primary text-on-primary">
+<div class="flex justify-between items-start">
+<span class="material-symbols-outlined opacity-70">check_circle</span>
+<span class="text-[10px] font-label-md px-2 py-0.5 bg-white/10 rounded">Completed</span>
+</div>
+<div>
+<p class="font-headline-md text-headline-md font-bold text-white">28</p>
+<p class="opacity-70 font-label-md text-[12px]">Reports Finalized</p>
+</div>
+</div>
+</section>
+<!-- Case Queues & Actions -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Queue 1: Assigned Cases -->
+<section class="lg:col-span-2 space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-6 bg-primary rounded-full"></span>
+<h3 class="font-headline-sm text-headline-sm">Queue: Newly Assigned</h3>
+</div>
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline">
+                            View All <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="glass-card rounded-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container text-[11px] font-label-md uppercase tracking-widest text-on-surface-variant">
+<tr>
+<th class="p-4 border-b border-outline-variant">Case ID</th>
+<th class="p-4 border-b border-outline-variant">Informer Type</th>
+<th class="p-4 border-b border-outline-variant">Assigned Date</th>
+<th class="p-4 border-b border-outline-variant text-right">Action</th>
+</tr>
+</thead>
+<tbody class="text-body-md">
+<tr class="zebra-row hover:bg-primary/5 transition-colors group">
+<td class="p-4 font-label-md font-bold text-primary">#RRA-2024-0892</td>
+<td class="p-4">External Informant</td>
+<td class="p-4 text-on-surface-variant">Oct 24, 2024</td>
+<td class="p-4 text-right">
+<button class="bg-primary-container text-primary font-bold px-4 py-2 rounded-lg text-[12px] hover:shadow-md transition-all" onclick="toggleModal('plan-modal')">Prepare Plan</button>
+</td>
+</tr>
+<tr class="zebra-row hover:bg-primary/5 transition-colors group border-l-4 border-transparent hover:border-primary">
+<td class="p-4 font-label-md font-bold text-primary">#RRA-2024-0911</td>
+<td class="p-4">Internal Referral</td>
+<td class="p-4 text-on-surface-variant">Oct 25, 2024</td>
+<td class="p-4 text-right">
+<button class="bg-primary-container text-primary font-bold px-4 py-2 rounded-lg text-[12px] hover:shadow-md transition-all">Prepare Plan</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Queue 2: Active Investigations -->
+<div class="flex items-center justify-between pt-4">
+<div class="flex items-center gap-2">
+<span class="w-2 h-6 bg-tertiary rounded-full"></span>
+<h3 class="font-headline-sm text-headline-sm">Active Investigations</h3>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Investigation Card 1 -->
+<div class="glass-card p-5 rounded-xl border-l-4 border-primary group">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-label-md text-[11px] text-on-surface-variant opacity-70">CASE FILE</p>
+<h4 class="font-bold text-primary">#RRA-2024-0754</h4>
+</div>
+<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase">In Progress</span>
+</div>
+<div class="space-y-2 mb-6">
+<div class="flex justify-between text-[13px]">
+<span class="text-on-surface-variant">Entity:</span>
+<span class="font-semibold">Trans-Kigali Logistics Ltd</span>
+</div>
+<div class="flex justify-between text-[13px]">
+<span class="text-on-surface-variant">Allegation:</span>
+<span class="font-semibold">Under-declared Importation</span>
+</div>
+</div>
+<a href="{{DATA:SCREEN:SCREEN_9}}" class="w-full py-2.5 border-2 border-primary text-primary font-bold rounded-lg hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">upload_file</span>
+                                Submit Findings
+                            </a>
+</div>
+<!-- Investigation Card 2 -->
+<div class="glass-card p-5 rounded-xl border-l-4 border-primary group">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-label-md text-[11px] text-on-surface-variant opacity-70">CASE FILE</p>
+<h4 class="font-bold text-primary">#RRA-2024-0612</h4>
+</div>
+<span class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded uppercase">In Progress</span>
+</div>
+<div class="space-y-2 mb-6">
+<div class="flex justify-between text-[13px]">
+<span class="text-on-surface-variant">Entity:</span>
+<span class="font-semibold">Prime Estates Rwanda</span>
+</div>
+<div class="flex justify-between text-[13px]">
+<span class="text-on-surface-variant">Allegation:</span>
+<span class="font-semibold">VAT Non-compliance</span>
+</div>
+</div>
+<a href="{{DATA:SCREEN:SCREEN_9}}" class="w-full py-2.5 border-2 border-primary text-primary font-bold rounded-lg hover:bg-primary hover:text-on-primary transition-all flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">upload_file</span>
+                                Submit Findings
+                            </a>
+</div>
+</div>
+</section>
+<!-- Sidebar: Operational Timeline -->
+<aside class="space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">history</span>
+<h3 class="font-headline-sm text-headline-sm">Activity Log</h3>
+</div>
+<div class="glass-card p-6 rounded-xl space-y-6 relative overflow-hidden">
+<!-- Timeline items -->
+<div class="relative pl-6 border-l-2 border-outline-variant space-y-8">
+<div class="relative">
+<span class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-primary ring-4 ring-white"></span>
+<p class="text-[12px] text-on-surface-variant font-label-md">2 HOURS AGO</p>
+<p class="font-bold text-on-surface">Plan Approved</p>
+<p class="text-[13px] text-on-surface-variant">Case #0612 approved by Director AC.</p>
+</div>
+<div class="relative opacity-60">
+<span class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-outline ring-4 ring-white"></span>
+<p class="text-[12px] text-on-surface-variant font-label-md">YESTERDAY</p>
+<p class="font-bold text-on-surface">New Assignment</p>
+<p class="text-[13px] text-on-surface-variant">#RRA-2024-0911 assigned to your queue.</p>
+</div>
+<div class="relative opacity-60">
+<span class="absolute -left-[31px] top-0 w-4 h-4 rounded-full bg-outline ring-4 ring-white"></span>
+<p class="text-[12px] text-on-surface-variant font-label-md">OCT 24, 10:45 AM</p>
+<p class="font-bold text-on-surface">Report Revision</p>
+<p class="text-[13px] text-on-surface-variant">Director requested revision for Case #0542.</p>
+</div>
+</div>
+<button class="w-full py-2 bg-surface-container text-on-surface-variant text-[12px] font-bold rounded hover:bg-surface-container-high transition-colors">Load Full History</button>
+</div>
+<!-- Informant Insights Promo (Visual Polish) -->
+<div class="rounded-xl overflow-hidden h-40 relative group cursor-pointer">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A professional investigator reviewing digital spreadsheets and evidence on a multi-monitor setup in a high-security office environment. The room is dimly lit with blue accent lights from the hardware, emphasizing technical sophistication and focus. The atmosphere is professional, quiet, and data-driven." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAA8dq9ntVQWE288Ui-p2YCdu_R4bTrfsrezFrpp9R-mEG3ZNRUldqBRA0a4ckIsXKSgthlkZmTd2NBYaYq6JO85NLRMR73CT5Ur4YRhPqe-LZgZyS41VBv8G4IvaP8MH71Lwkt2DkehGPaTB9ol_a-A5udKIe_9_56EHGvEH_6M5-gMiyh8UTglrtd2o3JaYc5FnsRc3ABkng-cZdzV-f6AV1vAptsK7gSazjXl_nf0SDscWGd6WAq9Wu9TSyhNdMiWnIqlYsy1co">
+<div class="absolute inset-0 bg-gradient-to-t from-primary/90 to-transparent flex flex-col justify-end p-4 text-white">
+<p class="font-bold text-lg">Case Efficiency</p>
+<p class="text-xs opacity-80">You solved 15% more cases this month than the division average.</p>
+</div>
+</div>
+</aside>
+</div>
+</div>
+<!-- Footer (Shared Component) -->
+<footer class="mt-auto w-full py-margin-md bg-surface-container border-t border-outline-variant px-container-padding flex flex-col md:flex-row justify-between items-center text-on-surface-variant">
+<p class="font-label-md text-label-md">© 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.</p>
+<div class="flex gap-4 mt-4 md:mt-0 font-label-md text-label-md">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Security Protocol</a>
+</div>
+</footer>
+</main>
+<!-- Modals -->
+<!-- Case Plan Modal -->
+<div class="fixed inset-0 z-[60] hidden bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" id="plan-modal">
+<div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+<div class="bg-primary p-6 text-white flex justify-between items-center">
+<div>
+<h3 class="font-headline-sm">Prepare Investigation Plan</h3>
+<p class="text-[12px] opacity-80 uppercase font-label-md">Case #RRA-2024-0892</p>
+</div>
+<button class="p-2 hover:bg-white/10 rounded-full transition-all" onclick="toggleModal('plan-modal')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-8 space-y-4">
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Scope of Investigation</label>
+<textarea class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md" placeholder="Describe the investigative perimeter..." rows="3"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Expected Duration (Days)</label>
+<input class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md" type="number" value="14">
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Priority Level</label>
+<select class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md">
+<option>Medium</option>
+<option>High</option>
+<option>Critical</option>
+</select>
+</div>
+</div>
+<div class="pt-4 flex gap-3">
+<button class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:shadow-lg transition-all">Submit for Approval</button>
+<button class="px-6 py-3 border border-outline-variant text-on-surface-variant font-bold rounded-xl hover:bg-surface-container transition-all" onclick="toggleModal('plan-modal')">Cancel</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Submit Findings Modal -->
+<div class="fixed inset-0 z-[60] hidden bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" id="findings-modal">
+<div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+<div class="bg-primary p-6 text-white flex justify-between items-center">
+<div>
+<h3 class="font-headline-sm">Submit Investigation Findings</h3>
+<p class="text-[12px] opacity-80 uppercase font-label-md">Case #RRA-2024-0754</p>
+</div>
+<button class="p-2 hover:bg-white/10 rounded-full transition-all" onclick="toggleModal('findings-modal')">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-8 grid grid-cols-2 gap-6">
+<div class="col-span-2 space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Detailed Findings</label>
+<textarea class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md" placeholder="Summary of evidence gathered..." rows="4"></textarea>
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Identified Tax Amount (RWF)</label>
+<input class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md" placeholder="e.g. 15,000,000" type="text">
+</div>
+<div class="space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Evidence PDF</label>
+<div class="w-full h-[42px] border-2 border-dashed border-outline-variant rounded-lg flex items-center justify-center cursor-pointer hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined text-primary mr-2">upload</span>
+<span class="text-on-surface-variant text-[12px]">Click to upload file</span>
+</div>
+</div>
+<div class="col-span-2 space-y-1">
+<label class="font-label-md text-on-surface-variant text-[12px]">Recommendations</label>
+<select class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md">
+<option>Proceed to Tax Assessment</option>
+<option>Close Case (No Merit)</option>
+<option>Refer to Law Enforcement</option>
+</select>
+</div>
+<div class="col-span-2 pt-4 flex gap-3">
+<button class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:shadow-lg transition-all">Submit Final Report</button>
+<button class="px-6 py-3 border border-outline-variant text-on-surface-variant font-bold rounded-xl hover:bg-surface-container transition-all" onclick="toggleModal('findings-modal')">Draft Save</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Scripting for micro-interactions -->
+<script>
+        function toggleModal(id) {
+            const modal = document.getElementById(id);
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+        // Close modal on click outside content
+        window.onclick = function(event) {
+            if (event.target.classList.contains('bg-black/40')) {
+                event.target.classList.add('hidden');
+                event.target.classList.remove('flex');
+            }
+        }
+    </script>
+
+
+</body></html>

@@ -53,4 +53,14 @@ public class ReportResponseDTO {
     private boolean canSubmitFindings;
     private boolean canSubmitCasePlan;
     private boolean canContinueWorking;
+
+    @Data
+    public static class SignatureDTO {
+        private String employeeId;
+        private String role;
+        private String name;
+        private String signatureBase64;
+        private LocalDateTime signedAt;
+    }
+    private List<SignatureDTO> signatures;
 }

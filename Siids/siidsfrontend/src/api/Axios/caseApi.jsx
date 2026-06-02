@@ -101,6 +101,13 @@ export const CaseService = {
         return caseApi.delete(`/api/cases/${id}`);
     },
     
+    routeCase: (id, departmentName, routingNotes) => {
+        return caseApi.patch(`/api/cases/${id}/route`, {
+            departmentName,
+            routingNotes
+        });
+    },
+
     findTaxPayerByTIN: (tin) => {
         return caseApi.get(`/api/taxpayers/tin/${tin}`);
     }
@@ -267,6 +274,10 @@ export const ReportApi = {
     },
     getFindings: (reportId) => {
         return caseApi.get(`/api/reports/${reportId}/findings`);
+    },
+
+    generateFinalReport: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/generate`, {}, { responseType: 'blob' });
     },
 
     downloadFindingsAttachment: async (reportId, filename) => {

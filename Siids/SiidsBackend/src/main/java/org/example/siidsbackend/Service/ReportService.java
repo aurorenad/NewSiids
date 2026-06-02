@@ -43,6 +43,7 @@ public class ReportService {
     private final WebSocketNotificationService webSocketNotificationService;
     private final AuditService auditService;
     private final UserRepo userRepo;
+    private final PdfService pdfService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -183,6 +184,107 @@ public class ReportService {
         return savedReport;
     }
 
+    @Transactional
+    public Report generateFinalReport(Integer reportId) throws Exception {
+        Report report = getReport(reportId);
+        
+        byte[] pdfBytes = pdfService.generateInvestigationReport(report);
+        
+        String filename = UUID.randomUUID().toString() + "_Investigation_Report_" + report.getRelatedCase().getCaseNum() + ".pdf";
+        Path reportsDir = Paths.get(uploadDir).resolve("generated-reports").toAbsolutePath().normalize();
+        if (!Files.exists(reportsDir)) {
+            Files.createDirectories(reportsDir);
+        }
+        
+        Path filePath = reportsDir.resolve(filename);
+        Files.write(filePath, pdfBytes);
+        
+        String path = "generated-reports/" + filename;
+        
+        // Add to attachments
+        if (report.getAttachmentPaths() == null) {
+            report.setAttachmentPaths(new ArrayList<>());
+        }
+        report.getAttachmentPaths().add(path);
+        
+        // Let's set it as the main attachment path as well for easier access
+        report.setAttachmentPath(path);
+        
+        report.setUpdatedAt(LocalDateTime.now());
+        
+        auditService.logAction(report.getStatus(), "Auto-generated Final Investigation Report PDF for case " + report.getRelatedCase().getCaseNum(), report.getInvestigationOfficer());
+        
+        return reportRepo.save(report);
+    }
+
+    @Transactional
+    public Report signReport(Integer reportId, String role, String signatureBase64, String employeeId) {
+        Report report = getReport(reportId);
+        Employee signer = employeeRepo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Signer not found"));
+
+        ReportSignature signature = new ReportSignature();
+        signature.setReport(report);
+        signature.setSignedBy(signer);
+        signature.setSignatureRole(role);
+        signature.setSignaturePath(signatureBase64); // Storing base64 directly for now
+
+        if (report.getSignatures() == null) {
+            report.setSignatures(new ArrayList<>());
+        }
+        report.getSignatures().add(signature);
+        
+        // Status updates based on who signed
+        if ("DIRECTOR_INTELLIGENCE".equals(role)) {
+            report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
+        } else if ("ASSISTANT_COMMISSIONER".equals(role)) {
+            report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
+            // If AC signs, it's fully finalized from intelligence point of view
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        auditService.logAction(report.getStatus(), "Report signed by " + role, signer);
+        
+        return reportRepo.save(report);
+    }
+
+    @Transactional
+    public Report reviseReport(Integer reportId, org.example.siidsbackend.DTO.Request.ReviseReportRequest request, String employeeId) {
+        Report report = getReport(reportId);
+        Employee reviser = employeeRepo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Reviser not found"));
+                
+        boolean isDirectorSigned = report.getSignatures() != null && report.getSignatures().stream()
+                .anyMatch(sig -> "DIRECTOR_INTELLIGENCE".equals(sig.getSignatureRole()));
+        if (isDirectorSigned) {
+            throw new RuntimeException("Report cannot be revised after it has been signed by the Director of Intelligence");
+        }
+
+        ReportRevision revision = new ReportRevision();
+        revision.setReport(report);
+        revision.setRevisedBy(reviser);
+        revision.setOriginalContent(report.getFindings() + "\n---RECOMMENDATIONS---\n" + report.getRecommendations());
+        revision.setRevisedContent(request.getRevisedFindings() + "\n---RECOMMENDATIONS---\n" + request.getRevisedRecommendations());
+        revision.setRevisionNotes(request.getRevisionNotes());
+
+        if (report.getRevisions() == null) {
+            report.setRevisions(new ArrayList<>());
+        }
+        report.getRevisions().add(revision);
+        
+        if (request.getRevisedFindings() != null) {
+            report.setFindings(request.getRevisedFindings());
+        }
+        if (request.getRevisedRecommendations() != null) {
+            report.setRecommendations(request.getRevisedRecommendations());
+        }
+
+        report.setUpdatedAt(LocalDateTime.now());
+        auditService.logAction(report.getStatus(), "Report revised by " + employeeId, reviser);
+        
+        return reportRepo.save(report);
+    }
+
     private String storeFindingsAttachment(MultipartFile file) throws Exception {
         if (file == null || file.isEmpty())
             return null;
@@ -220,8 +322,8 @@ public class ReportService {
         }
 
         // Generate secure filename
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+        // Generate secure filename preserving original name
+        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 
         Path filePath = uploadPath.resolve(secureFilename);
 
@@ -537,8 +639,8 @@ public class ReportService {
         }
 
         // Generate secure filename
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+        // Generate secure filename preserving original name
+        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 
         Path filePath = returnDocsDir.resolve(secureFilename);
 
@@ -708,6 +810,18 @@ public class ReportService {
             officer.setFamilyName(report.getInvestigationOfficer().getFamilyName());
             dto.setInvestigationOfficer(officer);
         }
+        if (report.getSignatures() != null && !report.getSignatures().isEmpty()) {
+            List<ReportResponseDTO.SignatureDTO> sigDtos = report.getSignatures().stream().map(sig -> {
+                ReportResponseDTO.SignatureDTO s = new ReportResponseDTO.SignatureDTO();
+                s.setEmployeeId(sig.getSignedBy().getEmployeeId());
+                s.setName(sig.getSignedBy().getGivenName() + " " + sig.getSignedBy().getFamilyName());
+                s.setRole(sig.getSignatureRole());
+                s.setSignatureBase64(sig.getSignaturePath());
+                s.setSignedAt(sig.getSignedAt());
+                return s;
+            }).collect(Collectors.toList());
+            dto.setSignatures(sigDtos);
+        }
         
         return dto;
     }
@@ -773,7 +887,7 @@ public class ReportService {
             }
         }
 
-        return reportRepo.findReportsSubmittedToDirectorIntelligence();
+        return reportRepo.findReportsHandledByDirectorIntelligence(directorId);
     }
 
     @Transactional
@@ -2122,8 +2236,8 @@ public class ReportService {
 
         // Generate secure filename
         String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+        // Generate secure filename preserving original name
+        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 
         Path filePath = uploadPath.resolve(secureFilename);
 

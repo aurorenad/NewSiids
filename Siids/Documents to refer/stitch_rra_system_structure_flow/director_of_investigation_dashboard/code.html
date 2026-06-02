@@ -1,0 +1,544 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SIIDS | Director of Investigation Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#bac8d4",
+                    "on-primary-fixed-variant": "#00458d",
+                    "surface-variant": "#e0e3e6",
+                    "surface-dim": "#d7dadd",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed-variant": "#3b4852",
+                    "inverse-primary": "#aac7ff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed-dim": "#aac7ff",
+                    "tertiary-fixed": "#ffe177",
+                    "surface-container-highest": "#e0e3e6",
+                    "on-surface-variant": "#424751",
+                    "on-primary-container": "#b4cdff",
+                    "inverse-on-surface": "#eef1f4",
+                    "secondary-container": "#d6e4f0",
+                    "tertiary-container": "#cba800",
+                    "surface-bright": "#f7fafd",
+                    "on-tertiary-container": "#4d3e00",
+                    "on-tertiary-fixed-variant": "#554500",
+                    "tertiary-fixed-dim": "#ebc300",
+                    "on-error": "#ffffff",
+                    "surface-container": "#ebeef1",
+                    "surface-container-low": "#f1f4f7",
+                    "on-tertiary": "#ffffff",
+                    "background": "#f7fafd",
+                    "primary": "#003e80",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed": "#101d26",
+                    "surface-container-high": "#e5e8eb",
+                    "on-secondary-container": "#596670",
+                    "outline-variant": "#c2c6d3",
+                    "surface": "#f7fafd",
+                    "tertiary": "#715d00",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#d6e3ff",
+                    "on-tertiary-fixed": "#231b00",
+                    "primary-fixed": "#d6e3ff",
+                    "on-background": "#181c1e",
+                    "on-primary-fixed": "#001b3e",
+                    "outline": "#737782",
+                    "inverse-surface": "#2d3133",
+                    "surface-tint": "#295ea8",
+                    "on-surface": "#181c1e",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#1e56a0",
+                    "secondary": "#53606a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-sm": "8px",
+                    "base-unit": "4px",
+                    "gutter": "16px",
+                    "margin-md": "16px",
+                    "container-padding": "24px",
+                    "margin-lg": "32px"
+            },
+            "fontFamily": {
+                    "label-md": ["JetBrains Mono"],
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "label-md": ["13px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .sidebar-active-gradient {
+            background: linear-gradient(90deg, rgba(30, 86, 160, 0.1) 0%, rgba(30, 86, 160, 0) 100%);
+        }
+        .zebra-table tr:nth-child(even) {
+            background-color: rgba(214, 228, 240, 0.2);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c2c6d3;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 h-full flex flex-col gap-base-unit z-40 bg-surface-container-low/95 dark:bg-surface-container-low/95 backdrop-blur-md border-r border-outline-variant dark:border-outline h-screen w-64">
+<div class="p-margin-lg flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined">security</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim leading-none">RRA Intelligence</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">Strategic Division</p>
+</div>
+</div>
+<nav class="flex-1 px-margin-md space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all duration-200" href="{{DATA:SCREEN:SCREEN_15}}">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container/30 text-primary dark:text-primary-fixed-dim border-l-4 border-primary font-bold sidebar-active-gradient" href="{{DATA:SCREEN:SCREEN_14}}">
+<span class="material-symbols-outlined">search_insights</span>
+<span class="font-label-md text-label-md">Investigations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container-high hover:translate-x-1 transition-all duration-200" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+<span class="font-label-md text-label-md">User Management</span>
+</a>
+</nav>
+<div class="px-margin-md mb-margin-lg">
+<button class="w-full bg-primary text-on-primary py-3 px-4 rounded-lg flex items-center justify-center gap-2 font-bold shadow-md hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined">add_circle</span>
+                New Investigation
+            </button>
+</div>
+<div class="px-margin-md py-margin-md border-t border-outline-variant">
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-all text-error" href="{{DATA:SCREEN:SCREEN_13}}">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 flex flex-col min-h-screen">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-container-padding h-16 sticky top-0 z-50 bg-surface/90 dark:bg-surface-container-lowest/90 backdrop-blur-xl border-b border-outline-variant dark:border-outline shadow-sm">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-bold tracking-tight text-primary">SIIDS</h2>
+<div class="relative group">
+<input class="bg-surface-container text-body-md px-10 py-1.5 rounded-full border-none focus:ring-2 focus:ring-primary/20 w-64 transition-all group-focus-within:w-80" placeholder="Search investigations..." type="text">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-all relative">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high transition-all">
+<span class="material-symbols-outlined text-on-surface-variant">help</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3">
+<div class="text-right">
+<p class="font-bold text-on-surface leading-none">C. Umutoni</p>
+<p class="text-[11px] text-on-surface-variant">Director of Investigation</p>
+</div>
+<img alt="Officer Profile" class="w-10 h-10 rounded-full border-2 border-primary object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3wjuCTWFc0yMStjRvqDl6aKQr7ctkVLXqE9qDEkiDZWAahuCwXgL1ffPQWesfRQ0yXfL7A1a39EAzk06UOARPqEDV4IY-G6xOgOn3BmqS6HNlX8z0yCZbIyXGE_lNKiyv4-diWV1mE_RPJ0z3tbYXAz31r8C0S_swYhxT0yfNTEBK6qSwLTRG6HzQL_th-8n7h2eWaGnWcJutfSzMJtS5y8Fpt20T2bvmqFbH54bpVYwz_WShsjuQESb5GB25m2dAgUqgllvLM1A">
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-container-padding flex-1 space-y-margin-lg">
+<!-- Page Header -->
+<div class="flex justify-between items-end">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">Phase 2: Investigation Flow</h1>
+<p class="text-on-surface-variant mt-1">Managing and orchestrating strategic intelligence operations.</p>
+</div>
+<div class="flex gap-2">
+<div class="bg-surface-container p-1 rounded-lg flex">
+<button class="bg-white shadow-sm px-4 py-1.5 rounded-md text-primary font-bold text-label-md">Overview</button>
+<button class="px-4 py-1.5 rounded-md text-on-surface-variant font-medium text-label-md hover:bg-surface-container-high">Department Load</button>
+</div>
+</div>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter">
+<div class="glass-panel p-margin-md rounded-xl shadow-sm border-l-4 border-primary">
+<p class="text-label-md text-on-surface-variant uppercase tracking-wider">Active Investigations</p>
+<div class="flex justify-between items-end mt-2">
+<h3 class="font-headline-lg text-headline-lg text-primary">142</h3>
+<span class="text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded text-[12px] font-bold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-sm">trending_up</span> 12%
+                        </span>
+</div>
+</div>
+<div class="glass-panel p-margin-md rounded-xl shadow-sm border-l-4 border-tertiary">
+<p class="text-label-md text-on-surface-variant uppercase tracking-wider">Pending Assignment</p>
+<div class="flex justify-between items-end mt-2">
+<h3 class="font-headline-lg text-headline-lg text-tertiary">18</h3>
+<span class="text-on-surface-variant font-label-md">High Priority</span>
+</div>
+</div>
+<div class="glass-panel p-margin-md rounded-xl shadow-sm border-l-4 border-secondary">
+<p class="text-label-md text-on-surface-variant uppercase tracking-wider">Avg Assignment Time</p>
+<div class="flex justify-between items-end mt-2">
+<h3 class="font-headline-lg text-headline-lg text-secondary">4.2h</h3>
+<span class="text-error bg-error-container px-2 py-0.5 rounded text-[12px] font-bold flex items-center gap-0.5">
+<span class="material-symbols-outlined text-sm">schedule</span> +15m
+                        </span>
+</div>
+</div>
+<div class="glass-panel p-margin-md rounded-xl shadow-sm border-l-4 border-primary-container">
+<p class="text-label-md text-on-surface-variant uppercase tracking-wider">Team Capacity</p>
+<div class="mt-4">
+<div class="flex justify-between text-[11px] mb-1">
+<span class="font-bold">84% Utilized</span>
+<span class="">21/25 Officers</span>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2">
+<div class="bg-primary h-full rounded-full" style="width: 84%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bento Layout for Queues -->
+<div class="grid grid-cols-12 gap-gutter">
+<!-- Case Assignment Queue (Left Column) -->
+<section class="col-span-12 lg:col-span-7 space-y-gutter">
+<div class="glass-panel rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
+<div class="p-margin-md border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">assignment_late</span>
+<h3 class="font-headline-sm text-headline-sm">Case Assignment Queue</h3>
+</div>
+<span class="bg-primary/10 text-primary px-3 py-1 rounded-full text-label-md font-bold">18 Cases Waiting</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left zebra-table">
+<thead class="bg-surface-container-high">
+<tr>
+<th class="p-4 font-label-md text-[11px] text-on-surface-variant uppercase">Case ID</th>
+<th class="p-4 font-label-md text-[11px] text-on-surface-variant uppercase">Informer Type</th>
+<th class="p-4 font-label-md text-[11px] text-on-surface-variant uppercase">Risk Level</th>
+<th class="p-4 font-label-md text-[11px] text-on-surface-variant uppercase">Action</th>
+</tr>
+</thead>
+<tbody class="text-body-md">
+<tr>
+<td class="p-4 font-label-md text-primary font-bold">CAS-2024-0892</td>
+<td class="p-4">Confidential Source</td>
+<td class="p-4">
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[11px] font-bold">CRITICAL</span>
+</td>
+<td class="p-4">
+<select class="bg-white border border-outline-variant text-label-md py-1 px-2 rounded-md focus:ring-primary focus:border-primary outline-none transition-all" onchange="if(this.value !== 'Assign Officer...') window.location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<option>Assign Officer...</option>
+<option>Maj. J. Gakwaya</option>
+<option>Insp. S. Musoni</option>
+<option>Insp. D. Kagabo</option>
+</select>
+</td>
+</tr>
+<tr>
+<td class="p-4 font-label-md text-primary font-bold">CAS-2024-0895</td>
+<td class="p-4">Whistleblower</td>
+<td class="p-4">
+<span class="bg-secondary-container text-on-secondary-container px-2 py-1 rounded text-[11px] font-bold">MODERATE</span>
+</td>
+<td class="p-4">
+<select class="bg-white border border-outline-variant text-label-md py-1 px-2 rounded-md focus:ring-primary focus:border-primary outline-none transition-all" onchange="if(this.value !== 'Assign Officer...') window.location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<option>Assign Officer...</option>
+<option>Maj. J. Gakwaya</option>
+<option>Insp. S. Musoni</option>
+<option>Insp. D. Kagabo</option>
+</select>
+</td>
+</tr>
+<tr>
+<td class="p-4 font-label-md text-primary font-bold">CAS-2024-0901</td>
+<td class="p-4">Intelligence Leak</td>
+<td class="p-4">
+<span class="bg-error-container text-on-error-container px-2 py-1 rounded text-[11px] font-bold">CRITICAL</span>
+</td>
+<td class="p-4">
+<select class="bg-white border border-outline-variant text-label-md py-1 px-2 rounded-md focus:ring-primary focus:border-primary outline-none transition-all" onchange="if(this.value !== 'Assign Officer...') window.location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<option>Assign Officer...</option>
+<option>Maj. J. Gakwaya</option>
+<option>Insp. S. Musoni</option>
+<option>Insp. D. Kagabo</option>
+</select>
+</td>
+</tr>
+<tr>
+<td class="p-4 font-label-md text-primary font-bold">CAS-2024-0904</td>
+<td class="p-4">Direct Informer</td>
+<td class="p-4">
+<span class="bg-surface-container-highest text-on-surface-variant px-2 py-1 rounded text-[11px] font-bold">LOW</span>
+</td>
+<td class="p-4">
+<select class="bg-white border border-outline-variant text-label-md py-1 px-2 rounded-md focus:ring-primary focus:border-primary outline-none transition-all" onchange="if(this.value !== 'Assign Officer...') window.location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<option>Assign Officer...</option>
+<option>Maj. J. Gakwaya</option>
+<option>Insp. S. Musoni</option>
+<option>Insp. D. Kagabo</option>
+</select>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-surface-container/30 border-t border-outline-variant mt-auto flex justify-center">
+<button class="text-primary font-bold text-label-md hover:underline flex items-center gap-1">
+                                View all pending assignments <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Investigation Review Queue (Right Column) -->
+<section class="col-span-12 lg:col-span-5 space-y-gutter">
+<div class="glass-panel rounded-xl shadow-sm h-full flex flex-col">
+<div class="p-margin-md border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">rate_review</span>
+<h3 class="font-headline-sm text-headline-sm">Investigation Reviews</h3>
+</div>
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full text-label-md font-bold">5 Pending</span>
+</div>
+<div class="p-gutter space-y-4 overflow-y-auto max-h-[440px]">
+<!-- Review Card -->
+<div class="p-margin-md rounded-lg border border-outline-variant bg-white/50 hover:bg-white transition-all shadow-sm">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-primary text-body-lg">CAS-2024-0711 Report</h4>
+<span class="font-label-md text-[10px] text-on-surface-variant">2h ago</span>
+</div>
+<p class="text-[12px] text-on-surface-variant mt-1">Submitted by: <span class="font-bold">Insp. S. Musoni</span></p>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-primary text-white py-1.5 rounded text-[12px] font-bold hover:brightness-110">Approve</button>
+<button class="flex-1 bg-surface-container-high text-on-surface-variant py-1.5 rounded text-[12px] font-bold hover:bg-surface-variant">Return</button>
+<button class="p-1.5 border border-error/30 text-error rounded hover:bg-error-container transition-colors">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+<!-- Review Card -->
+<div class="p-margin-md rounded-lg border border-outline-variant bg-white/50 hover:bg-white transition-all shadow-sm">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-primary text-body-lg">CAS-2024-0688 Report</h4>
+<span class="font-label-md text-[10px] text-on-surface-variant">5h ago</span>
+</div>
+<p class="text-[12px] text-on-surface-variant mt-1">Submitted by: <span class="font-bold">Maj. J. Gakwaya</span></p>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-primary text-white py-1.5 rounded text-[12px] font-bold hover:brightness-110">Approve</button>
+<button class="flex-1 bg-surface-container-high text-on-surface-variant py-1.5 rounded text-[12px] font-bold hover:bg-surface-variant">Return</button>
+<button class="p-1.5 border border-error/30 text-error rounded hover:bg-error-container transition-colors">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+<!-- Review Card -->
+<div class="p-margin-md rounded-lg border border-outline-variant bg-white/50 hover:bg-white transition-all shadow-sm">
+<div class="flex justify-between items-start">
+<h4 class="font-bold text-primary text-body-lg">CAS-2024-0752 Report</h4>
+<span class="font-label-md text-[10px] text-on-surface-variant">Yesterday</span>
+</div>
+<p class="text-[12px] text-on-surface-variant mt-1">Submitted by: <span class="font-bold">Insp. D. Kagabo</span></p>
+<div class="mt-4 flex gap-2">
+<button class="flex-1 bg-primary text-white py-1.5 rounded text-[12px] font-bold hover:brightness-110">Approve</button>
+<button class="flex-1 bg-surface-container-high text-on-surface-variant py-1.5 rounded text-[12px] font-bold hover:bg-surface-variant">Return</button>
+<button class="p-1.5 border border-error/30 text-error rounded hover:bg-error-container transition-colors">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Team Workload (Bottom Bento) -->
+<section class="col-span-12">
+<div class="glass-panel p-margin-lg rounded-xl shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-sm text-headline-sm">Team Workload Distribution</h3>
+<button class="text-primary font-bold text-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-sm">tune</span> Filter Teams
+                            </button>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-gutter">
+<!-- Team Card -->
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">JG</div>
+<div>
+<p class="font-bold text-body-md">Maj. J. Gakwaya</p>
+<p class="text-[10px] text-on-surface-variant">Senior Lead</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[11px]">
+<span class="">Current Cases</span>
+<span class="font-bold">8/10</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 80%"></div>
+</div>
+</div>
+</div>
+<!-- Team Card -->
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center text-secondary font-bold">SM</div>
+<div>
+<p class="font-bold text-body-md">Insp. S. Musoni</p>
+<p class="text-[10px] text-on-surface-variant">Investigator I</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[11px]">
+<span class="">Current Cases</span>
+<span class="font-bold">4/10</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 40%"></div>
+</div>
+</div>
+</div>
+<!-- Team Card -->
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-tertiary/20 flex items-center justify-center text-tertiary font-bold">DK</div>
+<div>
+<p class="font-bold text-body-md">Insp. D. Kagabo</p>
+<p class="text-[10px] text-on-surface-variant">Field Analyst</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[11px]">
+<span class="">Current Cases</span>
+<span class="font-bold">9/10</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-error h-full" style="width: 90%"></div>
+</div>
+</div>
+</div>
+<!-- Team Card -->
+<div class="p-4 bg-surface-container-low rounded-lg border border-outline-variant">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-10 h-10 rounded-full bg-primary-fixed-dim/40 flex items-center justify-center text-on-primary-container font-bold">RU</div>
+<div>
+<p class="font-bold text-body-md">Insp. R. Uwera</p>
+<p class="text-[10px] text-on-surface-variant">Cyber Intel</p>
+</div>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-[11px]">
+<span class="">Current Cases</span>
+<span class="font-bold">2/10</span>
+</div>
+<div class="w-full bg-surface-container-high h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full" style="width: 20%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Footer -->
+<footer class="mt-auto flex flex-col md:flex-row justify-between items-center px-container-padding py-margin-md text-center md:text-left bg-surface-container dark:bg-surface-container-highest border-t border-outline-variant dark:border-outline">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">© 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.</p>
+</div>
+<div class="flex gap-margin-md mt-4 md:mt-0">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Security Protocol</a>
+</div>
+</footer>
+</main>
+<script>
+        // Simple micro-interactions
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', function() {
+                const row = this.closest('tr');
+                if (this.value !== "Assign Officer...") {
+                    row.style.transition = 'all 0.5s ease-out';
+                    row.style.opacity = '0.5';
+                    row.style.backgroundColor = '#f1f4f7';
+                    setTimeout(() => {
+                        row.remove();
+                        // Update badge count (simulation)
+                        const badge = document.querySelector('.bg-primary\\/10');
+                        const current = parseInt(badge.textContent);
+                        badge.textContent = `${current - 1} Cases Waiting`;
+                    }, 600);
+                }
+            });
+        });
+
+        // Toggle glass active state on review buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (this.innerText === 'Approve') {
+                    const card = this.closest('.p-margin-md');
+                    card.classList.add('scale-95', 'opacity-0');
+                    setTimeout(() => card.remove(), 300);
+                }
+            });
+        });
+    </script>
+
+
+</body></html>

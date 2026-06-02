@@ -49,6 +49,10 @@ public class CaseService {
         newCase.setCreatedBy(creator);
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());
+        newCase.setEstimatedEvasionAmount(dto.getEstimatedEvasionAmount());
+        newCase.setIntakeChannel(dto.getIntakeChannel());
+        newCase.setPriorityClassification(dto.getPriorityClassification());
+        newCase.setInformerIdType(dto.getInformerIdType());
 
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             newCase.setReferringDepartment(dto.getReferringDepartment().trim());
@@ -95,6 +99,10 @@ public class CaseService {
         existingCase.setTaxType(dto.getTaxType());
         existingCase.setTaxPeriod(dto.getTaxPeriod());
         existingCase.setUpdatedAt(LocalDateTime.now());
+        existingCase.setEstimatedEvasionAmount(dto.getEstimatedEvasionAmount());
+        existingCase.setIntakeChannel(dto.getIntakeChannel());
+        existingCase.setPriorityClassification(dto.getPriorityClassification());
+        existingCase.setInformerIdType(dto.getInformerIdType());
 
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             existingCase.setReferringDepartment(dto.getReferringDepartment().trim());
@@ -322,5 +330,26 @@ public class CaseService {
                 WorkflowStatus.CASE_DELETED,
                 "Case " + caseEntity.getCaseNum() + " deleted by " + employeeId,
                 caseEntity.getCreatedBy());
+    }
+
+    @Transactional
+    public Case routeCase(Integer caseId, String departmentName, String employeeId) {
+        Case c = caseRepo.findById(caseId)
+                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + caseId));
+        
+        Employee employee = employeeRepo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        c.setRoutedTo(org.example.siidsbackend.Model.RoutedTo.valueOf(departmentName.toUpperCase()));
+        c.setDepartmentName(departmentName);
+        c.setUpdatedAt(java.time.LocalDateTime.now());
+        
+        // Let's assume after routing, it's CLOSED from the intelligence perspective and moving to another department
+        // or we just update the status to ROUTED
+        // For now, let's just log it and update the case properties
+        
+        auditService.logAction(c.getStatus(), "Case routed to " + departmentName, employee);
+
+        return caseRepo.save(c);
     }
 }

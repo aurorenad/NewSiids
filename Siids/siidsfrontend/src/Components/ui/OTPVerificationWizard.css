@@ -1,0 +1,113 @@
+.otp-wizard-container {
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  border: var(--panel-border);
+}
+
+.otp-title {
+  margin-bottom: var(--spacing-xs);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.otp-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: var(--spacing-md);
+}
+
+.otp-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.otp-input-row {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.otp-code-input {
+  flex: 1;
+  background-color: var(--background-main);
+  border: 1px solid var(--text-muted);
+  border-radius: 6px;
+  padding: 8px var(--spacing-sm);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.25em;
+}
+
+.otp-code-input:focus {
+  border-color: var(--primary-accent);
+  box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.15);
+}
+
+.otp-btn-primary {
+  background-color: var(--primary-brand);
+  color: white;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.otp-btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-accent);
+}
+
+.otp-btn-primary:disabled {
+  background-color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.otp-btn-secondary {
+  width: 100%;
+  background-color: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  border-radius: 6px;
+  padding: 8px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.otp-btn-secondary:hover {
+  background-color: var(--danger-bg);
+}
+
+.otp-error-alert {
+  font-size: 11px;
+  color: var(--danger-color);
+  background-color: var(--danger-bg);
+  padding: 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.otp-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.otp-timer-count {
+  color: var(--text-secondary);
+}
+
+.otp-resend-btn {
+  color: var(--primary-accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.otp-resend-btn:disabled {
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: not-allowed;
+}

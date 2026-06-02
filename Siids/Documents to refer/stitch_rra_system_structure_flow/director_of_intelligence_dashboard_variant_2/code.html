@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SIIDS | Director of Intelligence Dashboard</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#596670",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#bac8d4",
+                        "on-background": "#181c1e",
+                        "inverse-primary": "#aac7ff",
+                        "inverse-surface": "#2d3133",
+                        "on-surface-variant": "#424751",
+                        "on-tertiary-fixed-variant": "#554500",
+                        "surface-container-highest": "#e0e3e6",
+                        "outline-variant": "#c2c6d3",
+                        "secondary": "#53606a",
+                        "secondary-fixed": "#d6e4f0",
+                        "outline": "#737782",
+                        "surface": "#f7fafd",
+                        "surface-container-high": "#e5e8eb",
+                        "surface-container": "#ebeef1",
+                        "tertiary-fixed": "#ffe177",
+                        "inverse-on-surface": "#eef1f4",
+                        "on-primary-container": "#b4cdff",
+                        "on-secondary-fixed": "#101d26",
+                        "on-tertiary-fixed": "#231b00",
+                        "background": "#f7fafd",
+                        "secondary-container": "#d6e4f0",
+                        "surface-tint": "#295ea8",
+                        "tertiary-fixed-dim": "#ebc300",
+                        "on-secondary-fixed-variant": "#3b4852",
+                        "on-surface": "#181c1e",
+                        "tertiary": "#715d00",
+                        "on-primary-fixed": "#001b3e",
+                        "primary-fixed-dim": "#aac7ff",
+                        "tertiary-container": "#cba800",
+                        "primary-container": "#1e56a0",
+                        "surface-dim": "#d7dadd",
+                        "primary": "#003e80",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e0e3e6",
+                        "surface-bright": "#f7fafd",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f1f4f7",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d6e3ff",
+                        "on-tertiary-container": "#4d3e00",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-md": "16px",
+                        "container-padding": "24px",
+                        "margin-sm": "8px",
+                        "base-unit": "4px",
+                        "margin-lg": "32px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-lg-mobile": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "30px", "fontWeight": "700"}],
+                        "label-md": ["13px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .flow-gradient {
+            background: radial-gradient(circle at 10% 20%, rgba(0, 62, 128, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c2c6d3; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface min-h-screen overflow-x-hidden flow-gradient">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter h-16 bg-surface-container-highest dark:bg-inverse-surface border-b border-outline-variant dark:border-outline shadow-sm">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">SIIDs</span>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="bg-surface-container-low border-none rounded-full pl-10 pr-4 h-10 w-64 text-body-md focus:ring-2 focus:ring-primary transition-all" placeholder="Search investigations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors relative">
+<span class="material-symbols-outlined text-primary">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-high dark:hover:bg-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-primary">help</span>
+</button>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold text-primary">Officer Profile</p>
+<p class="text-[10px] text-on-surface-variant">Director of Intelligence</p>
+</div>
+<img alt="RRA Investigator Avatar" class="w-10 h-10 rounded-full border-2 border-primary-fixed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdZhawdVRk_5Q8LJ9X9V8XCmW-3RvAUsjSwtV4Ex0a67ZNu0iPZwuxJqaKQI6oj-voynJc5x5_pEGXHAgG1QxIvh06RHGHLrrruYibs20jbdlb-GUkvjsCSR3mW6EDdU3tvRISpMym6TK4sugSPXsjV2UdnFUpz3tQ6pCPZXNiPdvlxxgAlMAWAj2vTVyG82VTRP00RwOmkNnfMhVSt90T7tIG3o7ZaXL8k94QixgwGSVGU47IeScc6RT3RvGlzT0g-AVaFLoE3zE"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col pt-4 fixed left-0 top-16 h-full w-64 bg-surface-container-low dark:bg-on-surface border-r border-outline-variant z-40">
+<div class="px-6 py-4 mb-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<div>
+<h2 class="font-headline-sm text-headline-sm font-black text-primary leading-tight">SIID Division</h2>
+<p class="text-[11px] uppercase tracking-wider text-on-surface-variant font-bold">Strategic Intelligence</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-on-surface-variant dark:text-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-lg mx-2 flex items-center gap-3 px-4 py-3 active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security_update_good</span>
+<span class="font-body-md text-body-md font-bold">Investigations</span>
+</a>
+<a class="text-on-surface-variant dark:text-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+<a class="text-on-surface-variant dark:text-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">manage_accounts</span>
+<span class="font-body-md text-body-md">User Management</span>
+</a>
+</nav>
+<div class="p-4">
+<button class="w-full bg-primary text-on-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined">add</span>
+                New Investigation
+            </button>
+</div>
+<div class="mt-auto border-t border-outline-variant p-2 space-y-1">
+<a class="text-on-surface-variant dark:text-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-body-md text-body-md">Settings</span>
+</a>
+<a class="text-on-surface-variant dark:text-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+<span class="font-body-md text-body-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="lg:pl-64 pt-16 min-h-screen">
+<div class="max-w-[1440px] mx-auto p-gutter space-y-6">
+<!-- Page Header -->
+<header class="flex flex-col md:flex-row md:items-end justify-between gap-4 py-4">
+<div>
+<div class="flex items-center gap-2 text-primary font-label-md text-label-md mb-2">
+<span class="material-symbols-outlined text-[18px]">verified_user</span>
+                        PHASE 1: INTELLIGENCE ACQUISITION
+                    </div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Intel Director Review</h1>
+<p class="text-on-surface-variant">Validating intelligence reports for Strategic Intelligence &amp; Investigation Division.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex -space-x-2">
+<img alt="Officer" class="w-8 h-8 rounded-full border-2 border-surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbB00_o4V0bRRY5vSHoADzK-5BvG-mmNlZ6oBl92UinpKBAhAOtQYy4Y1Dcs3D4CIvvW_cP1b0ylxZlG_mT1Qpc8wGnqU5NSGxGtD9oJy-exlEpq75CqU8_HKRFYGHdoSuD5PbULWy4Efufh2g9fyFTweI_PkqCKmkOumf9pT2XW-arglUpaHcqblQ1iUpqwM95ajBSBwvN6xQdx3w3ppnbvmTO9z3mEUr4QuMCCphfvPgf1j4Vd6WCekFqPCgd_TTfmoW0kM4h_Q"/>
+<img alt="Officer" class="w-8 h-8 rounded-full border-2 border-surface" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFmGU3PUzDN1rWEVyQm2yIjL-qMg7L-FDLPrLlmTpPy-11YESi_qcGr0vQJz8O0x0QFSBpzBpqtMYsY6lzAsMlcWTPY_rI-m6WLjnxgRjxIJq8zJciG6V28QIjYLEJcrCmXEklJCHjtYWwl_MHrrfTLAyTmOzyZ2IZPx4vP833MsXoSnbGUj7IfcVxoxV6A0CbBjUC9IR39y2lcZUgrOs4WfCqVu8bCJsH6oWmO3degcyyFq4wmBFPAfaItbmOvqcEh1jaWFGcds8"/>
+<div class="w-8 h-8 rounded-full border-2 border-surface bg-surface-container-high flex items-center justify-center text-[10px] font-bold">+4</div>
+</div>
+<button class="bg-surface-container-highest text-on-surface font-bold px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-outline-variant transition-all">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+                        Filters
+                    </button>
+</div>
+</header>
+<!-- Intelligence Flow Analytics (Bento Grid) -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="md:col-span-1 glass-panel p-5 rounded-2xl">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-primary-container/20 rounded-lg">
+<span class="material-symbols-outlined text-primary">inbox</span>
+</div>
+<span class="text-label-md font-label-md text-primary bg-primary-container px-2 py-1 rounded">LIVE</span>
+</div>
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase">Pending Review</h3>
+<p class="text-[32px] font-bold text-on-surface">14</p>
+<div class="mt-2 text-[12px] text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+                        +2 in last hour
+                    </div>
+</div>
+<div class="md:col-span-1 glass-panel p-5 rounded-2xl">
+<div class="flex justify-between items-start mb-4">
+<div class="p-2 bg-tertiary-container/20 rounded-lg">
+<span class="material-symbols-outlined text-tertiary">history</span>
+</div>
+</div>
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase">Under Revision</h3>
+<p class="text-[32px] font-bold text-on-surface">06</p>
+<div class="mt-2 text-[12px] text-tertiary flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+                        Awaiting officer update
+                    </div>
+</div>
+<div class="md:col-span-2 glass-panel p-5 rounded-2xl flex flex-col justify-between relative overflow-hidden">
+<div class="z-10">
+<h3 class="text-on-surface-variant font-label-md text-label-md uppercase mb-1">Weekly Processing Velocity</h3>
+<div class="flex items-baseline gap-2">
+<p class="text-[32px] font-bold text-on-surface">89%</p>
+<p class="text-body-md text-primary font-bold">Optimal Range</p>
+</div>
+</div>
+<!-- Simplified Visual Graph Placeholder -->
+<div class="absolute bottom-0 left-0 w-full h-12 flex items-end gap-1 px-4 opacity-30">
+<div class="flex-1 bg-primary h-[40%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[60%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[55%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[80%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[70%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[90%] rounded-t-sm"></div>
+<div class="flex-1 bg-primary h-[65%] rounded-t-sm"></div>
+</div>
+</div>
+</section>
+<!-- Main Worklist -->
+<section class="glass-panel rounded-2xl overflow-hidden shadow-xl">
+<div class="p-6 border-b border-outline-variant flex justify-between items-center bg-white/40">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Review Queue</h2>
+<span class="bg-primary text-on-primary text-[11px] font-bold px-2 py-0.5 rounded-full">STATUS: REPORT_SUBMITTED_TO_DIRECTOR</span>
+</div>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-surface-container-high rounded-lg transition-all"><span class="material-symbols-outlined">download</span></button>
+<button class="p-2 hover:bg-surface-container-high rounded-lg transition-all"><span class="material-symbols-outlined">print</span></button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-highest/50">
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Report ID</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Subject / Entity</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Priority</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Submitted By</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Date</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Review Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant">
+<!-- Row 1 -->
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer">
+<td class="px-6 py-5">
+<span class="font-label-md text-label-md text-primary font-bold">#INTEL-2024-0892</span>
+</td>
+<td class="px-6 py-5">
+<div>
+<p class="font-bold text-on-surface">Global Logistics Hub Ltd</p>
+<p class="text-[12px] text-on-surface-variant">Underdeclared Import Value - Customs Evasion</p>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="bg-error-container text-on-error-container px-3 py-1 rounded-full text-[12px] font-bold flex items-center w-fit gap-1">
+<span class="w-1.5 h-1.5 bg-error rounded-full animate-pulse"></span>
+                                        CRITICAL
+                                    </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-secondary-fixed flex items-center justify-center text-[10px] font-bold">MK</div>
+<span class="text-body-md">M. Kagame</span>
+</div>
+</td>
+<td class="px-6 py-5 text-on-surface-variant text-body-md">Oct 24, 09:12 AM</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="h-9 w-9 bg-primary text-on-primary rounded-lg flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all" onclick="approveReport('INTEL-2024-0892')" title="Approve to AC">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="h-9 w-9 bg-tertiary-container text-on-tertiary-container rounded-lg flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all" onclick="openRevisionModal('INTEL-2024-0892')" title="Return for Revision">
+<span class="material-symbols-outlined text-[20px]">assignment_return</span>
+</button>
+<button class="h-9 w-9 bg-error-container text-on-error-container rounded-lg flex items-center justify-center shadow-md hover:scale-105 active:scale-95 transition-all" title="Reject">
+<span class="material-symbols-outlined text-[20px]">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer">
+<td class="px-6 py-5">
+<span class="font-label-md text-label-md text-primary font-bold">#INTEL-2024-0887</span>
+</td>
+<td class="px-6 py-5">
+<div>
+<p class="font-bold text-on-surface">Alpha Mining Corp</p>
+<p class="text-[12px] text-on-surface-variant">Transfer Pricing Discrepancies</p>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-[12px] font-bold flex items-center w-fit gap-1">
+<span class="w-1.5 h-1.5 bg-secondary rounded-full"></span>
+                                        MEDIUM
+                                    </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold">JN</div>
+<span class="text-body-md">J. Ndayisaba</span>
+</div>
+</td>
+<td class="px-6 py-5 text-on-surface-variant text-body-md">Oct 23, 04:45 PM</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="h-9 w-9 bg-primary text-on-primary rounded-lg flex items-center justify-center" title="Approve"><span class="material-symbols-outlined text-[20px]">check_circle</span></button>
+<button class="h-9 w-9 bg-tertiary-container text-on-tertiary-container rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">assignment_return</span></button>
+<button class="h-9 w-9 bg-error-container text-on-error-container rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">cancel</span></button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-primary/5 transition-colors group cursor-pointer">
+<td class="px-6 py-5">
+<span class="font-label-md text-label-md text-primary font-bold">#INTEL-2024-0885</span>
+</td>
+<td class="px-6 py-5">
+<div>
+<p class="font-bold text-on-surface">Unity Tech Solutions</p>
+<p class="text-[12px] text-on-surface-variant">Suspicious VAT Refund Claims</p>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="bg-tertiary-container/30 text-on-tertiary-container px-3 py-1 rounded-full text-[12px] font-bold flex items-center w-fit gap-1">
+<span class="w-1.5 h-1.5 bg-tertiary rounded-full"></span>
+                                        HIGH
+                                    </span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-secondary-fixed flex items-center justify-center text-[10px] font-bold">BU</div>
+<span class="text-body-md">B. Uwera</span>
+</div>
+</td>
+<td class="px-6 py-5 text-on-surface-variant text-body-md">Oct 23, 11:20 AM</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="h-9 w-9 bg-primary text-on-primary rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">check_circle</span></button>
+<button class="h-9 w-9 bg-tertiary-container text-on-tertiary-container rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">assignment_return</span></button>
+<button class="h-9 w-9 bg-error-container text-on-error-container rounded-lg flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">cancel</span></button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-surface-container-low/50 flex justify-between items-center">
+<p class="text-body-md text-on-surface-variant">Showing 3 of 14 reports</p>
+<div class="flex gap-1">
+<button class="p-2 border border-outline-variant rounded hover:bg-surface-container-high transition-all"><span class="material-symbols-outlined">chevron_left</span></button>
+<button class="px-3 py-1 bg-primary text-on-primary rounded">1</button>
+<button class="px-3 py-1 hover:bg-surface-container-high rounded transition-all">2</button>
+<button class="p-2 border border-outline-variant rounded hover:bg-surface-container-high transition-all"><span class="material-symbols-outlined">chevron_right</span></button>
+</div>
+</div>
+</section>
+<!-- Bottom Secondary Grid -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Division Roadmap Visualization -->
+<div class="lg:col-span-2 glass-panel p-6 rounded-2xl relative">
+<h3 class="font-headline-sm text-headline-sm mb-6 flex items-center gap-2 text-on-surface">
+<span class="material-symbols-outlined text-primary">schema</span>
+                        SIIDS System Workflow
+                    </h3>
+<div class="flex justify-between items-start">
+<div class="flex flex-col items-center gap-2 group cursor-pointer">
+<div class="w-12 h-12 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center transition-all group-hover:bg-primary group-hover:text-white">
+<span class="material-symbols-outlined text-[20px]">person_alert</span>
+</div>
+<span class="text-[10px] font-bold text-center uppercase tracking-tighter text-primary">Informer</span>
+</div>
+<div class="h-px bg-outline-variant flex-1 mt-6 relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<div class="flex flex-col items-center gap-2 group cursor-pointer">
+<div class="w-12 h-12 rounded-full border-4 border-primary bg-primary text-on-primary flex items-center justify-center animate-pulse">
+<span class="material-symbols-outlined text-[24px]">rate_review</span>
+</div>
+<span class="text-[10px] font-bold text-center uppercase tracking-tighter text-primary">Intel Director Review</span>
+</div>
+<div class="h-px bg-outline-variant flex-1 mt-6 relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<div class="flex flex-col items-center gap-2 opacity-40">
+<div class="w-12 h-12 rounded-full border-2 border-outline bg-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">verified</span>
+</div>
+<span class="text-[10px] font-bold text-center uppercase tracking-tighter text-on-surface-variant">AC Review</span>
+</div>
+<div class="h-px bg-outline-variant flex-1 mt-6 relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<div class="flex flex-col items-center gap-2 opacity-40">
+<div class="w-12 h-12 rounded-full border-2 border-outline bg-surface flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">assignment</span>
+</div>
+<span class="text-[10px] font-bold text-center uppercase tracking-tighter text-on-surface-variant">Investigation</span>
+</div>
+</div>
+<div class="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/10">
+<p class="text-body-md text-primary leading-relaxed">
+<strong>Note:</strong> Current reports in queue are from Phase 1. Once validated, they transition to <strong>Assistant Commissioner (AC)</strong> for final operational clearance before a formal Investigation Case is opened.
+                        </p>
+</div>
+</div>
+<!-- Division Statistics -->
+<div class="glass-panel p-6 rounded-2xl">
+<h3 class="font-headline-sm text-headline-sm mb-6 text-on-surface">Team Performance</h3>
+<div class="space-y-4">
+<div class="space-y-1">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Avg. Review Time</span>
+<span class="font-bold">4.2 hrs</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[75%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Validation Rate</span>
+<span class="font-bold">82%</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary-container w-[82%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-body-md">
+<span class="text-on-surface-variant">Reports Per Officer</span>
+<span class="font-bold">12.5</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[60%] rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="mt-8 border-t border-outline-variant pt-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-error-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-error">warning</span>
+</div>
+<div>
+<p class="text-label-md font-bold text-error">Delayed Action Required</p>
+<p class="text-[11px] text-on-surface-variant">2 reports pending &gt; 48 hours</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer -->
+<footer class="lg:pl-64 w-full flex flex-col md:flex-row justify-between items-center px-gutter gap-4 full-width py-6 mt-auto bg-surface-dim dark:bg-on-background border-t border-outline-variant dark:border-outline">
+<div class="flex flex-col md:flex-row items-center gap-4">
+<span class="font-label-md text-label-md font-bold text-on-surface">SIIDs</span>
+<p class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant">© 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.</p>
+</div>
+<div class="flex gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Terms of Service</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-surface-variant hover:text-primary dark:hover:text-primary-fixed-dim transition-colors" href="#">Security Protocol</a>
+</div>
+</footer>
+<!-- Revision Modal (Hidden by Default) -->
+<div class="fixed inset-0 z-[100] hidden flex items-center justify-center p-4 bg-on-background/40 backdrop-blur-sm" id="revisionModal">
+<div class="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+<div class="p-6 border-b border-outline-variant flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Return for Revision</h3>
+<button class="p-1 rounded-full hover:bg-surface-container-high transition-colors" onclick="closeRevisionModal()">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="p-6 space-y-4">
+<p class="text-body-md text-on-surface-variant">Please specify the corrections required for report <strong id="modalReportId">#INTEL-2024-0000</strong>.</p>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Revision Category</label>
+<select class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary">
+<option>Insufficient Evidence</option>
+<option>Incomplete Entity Data</option>
+<option>Formatting Issues</option>
+<option>Conflicting Intelligence</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface block">Director's Remarks</label>
+<textarea class="w-full rounded-lg border-outline-variant focus:ring-primary focus:border-primary text-body-md" placeholder="Type your detailed feedback here..." rows="4"></textarea>
+</div>
+</div>
+<div class="p-6 bg-surface-container-low flex justify-end gap-3">
+<button class="px-4 py-2 text-on-surface-variant font-bold hover:bg-outline-variant/20 rounded-lg transition-all" onclick="closeRevisionModal()">Cancel</button>
+<button class="px-6 py-2 bg-tertiary-container text-on-tertiary-container font-bold rounded-lg shadow-md hover:opacity-90 transition-all" onclick="submitRevision()">Send to Officer</button>
+</div>
+</div>
+</div>
+<!-- Success Toast (Hidden) -->
+<div class="fixed bottom-8 right-8 z-[110] hidden bg-primary text-on-primary px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom duration-300" id="toast">
+<span class="material-symbols-outlined">check_circle</span>
+<span class="font-bold">Action Completed Successfully</span>
+</div>
+<script>
+        function approveReport(id) {
+            showToast(`Report ${id} validated and sent to Assistant Commissioner review.`);
+            // Simulate action
+        }
+
+        function openRevisionModal(id) {
+            document.getElementById('modalReportId').innerText = '#' + id;
+            document.getElementById('revisionModal').classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeRevisionModal() {
+            document.getElementById('revisionModal').classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        function submitRevision() {
+            closeRevisionModal();
+            showToast("Report returned to officer for revision.");
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.querySelector('span:last-child').innerText = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body></html>

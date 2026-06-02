@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, IconButton,
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, CircularProgress, Alert, Box,
     Tooltip, MenuItem, Select, FormControl, InputLabel,
-    Typography, Chip,
+    Typography, Chip, Tabs, Tab,
     TablePagination, LinearProgress
 } from "@mui/material";
 import {
     Description, Check, Close, Search, Reply,
     Person, Assignment, Info, ListAlt,
     ArrowUpward, ArrowDownward, CloudUpload,
-    Download, Delete
+    Download, Delete, Edit, Draw
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import SignatureCanvas from 'react-signature-canvas';
 
 const DirectorIntelligence = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -25,17 +26,23 @@ const DirectorIntelligence = () => {
     const [actionLoadingReports, setActionLoadingReports] = useState(new Set());
     const [currentUser] = useState("Current User");
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [activeTab, setActiveTab] = useState('pending');
 
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [infoDialogOpen, setInfoDialogOpen] = useState(false);
-
+    
     const [selectedReport, setSelectedReport] = useState(null);
 
     const [rejectionReason, setRejectionReason] = useState('');
     const [returnEmployeeId, setReturnEmployeeId] = useState('');
     const [returnReasonText, setReturnReasonText] = useState('');
     const [returnType, setReturnType] = useState('creator');
+
+    // Signature states
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+    const [reportToSign, setReportToSign] = useState(null);
+    const sigCanvas = useRef(null);
 
     // Document attachment states
     const [returnAttachment, setReturnAttachment] = useState(null);
@@ -100,6 +107,11 @@ const DirectorIntelligence = () => {
     const handleSortByDate = () => {
         const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
         setSortOrder(newSortOrder);
+    };
+
+    const handleTabChange = (event, newValue) => {
+        setActiveTab(newValue);
+        setPage(0);
     };
 
     const handleChangePage = (event, newPage) => {
@@ -381,6 +393,51 @@ const DirectorIntelligence = () => {
         }
     };
 
+    // Edit Report Handlers
+    const handleOpenEditDialog = (report) => {
+        navigate(`/director-intelligence/edit-report/${report.id}`);
+    };
+
+    // Sign Report Handlers
+    const handleSignReportClick = (report) => {
+        setReportToSign(report);
+        setSignatureDialogOpen(true);
+        setTimeout(() => {
+            if (sigCanvas.current) sigCanvas.current.clear();
+        }, 100);
+    };
+
+    const submitSignature = async () => {
+        if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
+            setError("Please provide a signature first.");
+            return;
+        }
+        
+        const signatureBase64 = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+        setSignatureDialogOpen(false);
+        setReportLoading(reportToSign.id, true);
+        
+        try {
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+            await axios.post(`${BASE_URL}/api/reports/${reportToSign.id}/sign`, {
+                role: 'DIRECTOR_INTELLIGENCE',
+                signatureBase64: signatureBase64
+            }, {
+                headers: { 'Authorization': `Bearer ${token}`, 'employee_id': employeeId }
+            });
+            fetchReports();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to sign report');
+        } finally {
+            setReportLoading(reportToSign.id, false);
+        }
+    };
+    
+    const clearSignature = () => {
+        if (sigCanvas.current) sigCanvas.current.clear();
+    };
+
     const closeInfoDialog = () => {
         setInfoDialogOpen(false);
         setSelectedReport(null);
@@ -403,21 +460,23 @@ const DirectorIntelligence = () => {
             'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': 'Rejected by Director',
             'REPORT_RETURNED_ASSISTANT_COMMISSIONER': 'Returned to Assistant Commissioner',
             'REPORT_RETURNED_INTELLIGENCE_OFFICER': 'Returned to Intelligence Officer',
-            'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Director Intelligence',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted from Intelligence Officer',
             'REPORT_SUBMITTED': 'Submitted',
-            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned'
+            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned',
+            'CASE_PLAN_SUBMITTED': 'Case Plan Submitted',
+            'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': 'Returned to Director Intelligence'
         };
         return statusMap[status] || status?.replace(/_/g, ' ').toLowerCase() || 'Unknown';
     };
 
     const isActionDisabled = (report) => {
-        const disabledStatuses = [
-            'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE',
-            'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE',
-            'REPORT_RETURNED_ASSISTANT_COMMISSIONER',
-            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER'
+        const activeStatuses = [
+            'REPORT_SUBMITTED',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE',
+            'CASE_PLAN_SUBMITTED',
+            'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE'
         ];
-        return disabledStatuses.includes(report.status) || actionLoadingReports.has(report.id);
+        return !activeStatuses.includes(report.status) || actionLoadingReports.has(report.id);
     };
 
     const isReportLoading = (reportId) => {
@@ -445,6 +504,21 @@ const DirectorIntelligence = () => {
             });
         }
 
+        // Apply active tab filter
+        results = results.filter((report) => {
+            if (activeTab === 'all') return true;
+            if (activeTab === 'pending') {
+                return !['REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE'].includes(report.status);
+            }
+            if (activeTab === 'generated') {
+                return report.generationType === 'AUTO_GENERATED';
+            }
+            if (activeTab === 'signed') {
+                return ['REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE'].includes(report.status);
+            }
+            return true;
+        });
+
         // Apply sorting by date
         results.sort((a, b) => {
             const dateA = new Date(a.createdAt);
@@ -458,7 +532,7 @@ const DirectorIntelligence = () => {
         });
 
         return results;
-    }, [reports, searchQuery, sortOrder]);
+    }, [reports, searchQuery, sortOrder, activeTab]);
 
     const currentPageReports = useMemo(() => {
         const startIndex = page * rowsPerPage;
@@ -504,40 +578,80 @@ const DirectorIntelligence = () => {
                 </Box>
             )}
 
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Box display="flex" gap={1} alignItems="center">
-                    <TextField
-                        size="small"
-                        variant="outlined"
-                        placeholder="Search by ID, Case Number, Creator, or Status"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        InputProps={{
-                            startAdornment: <Search fontSize="small" style={{ marginRight: 8 }} />
-                        }}
-                        sx={{ minWidth: 300 }}
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={handleTabChange}
+                    indicatorColor="primary"
+                    textColor="primary"
+                    variant="scrollable"
+                    scrollButtons="auto"
+                >
+                    <Tab 
+                        label="Pending Actions" 
+                        value="pending" 
+                        icon={<Info fontSize="small" />} 
+                        iconPosition="start" 
                     />
+                    <Tab 
+                        label="All Reports" 
+                        value="all" 
+                        icon={<ListAlt fontSize="small" />} 
+                        iconPosition="start" 
+                    />
+                    <Tab 
+                        label="Generated Reports" 
+                        value="generated" 
+                        icon={<Description fontSize="small" />} 
+                        iconPosition="start" 
+                    />
+                    <Tab 
+                        label="Signed Reports" 
+                        value="signed" 
+                        icon={<Check fontSize="small" />} 
+                        iconPosition="start" 
+                    />
+                </Tabs>
+            </Box>
 
-                    <Tooltip title={`Sort by creation date (${sortOrder === 'desc' ? 'newest first' : 'oldest first'})`}>
-                        <Button
-                            variant="outlined"
-                            onClick={handleSortByDate}
-                            startIcon={sortOrder === 'desc' ? <ArrowDownward /> : <ArrowUpward />}
-                        >
-                            Date {sortOrder === 'desc' ? '↓' : '↑'}
-                        </Button>
-                    </Tooltip>
+            <Box display="grid" gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={2} mb={3} p={2} sx={{ backgroundColor: '#f8fafc', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                <TextField
+                    size="small"
+                    variant="outlined"
+                    placeholder={`Search ${activeTab === 'all' ? 'all' : activeTab} reports...`}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    InputProps={{
+                        startAdornment: <Search fontSize="small" style={{ marginRight: 8, color: '#64748b' }} />
+                    }}
+                    fullWidth
+                    sx={{ backgroundColor: 'white' }}
+                />
 
+                <Tooltip title={`Sort by creation date (${sortOrder === 'desc' ? 'newest first' : 'oldest first'})`}>
                     <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<ListAlt />}
-                        onClick={() => navigate('/director-intelligence/case-reports')}
-                        sx={{ ml: 1 }}
+                        variant="outlined"
+                        onClick={handleSortByDate}
+                        startIcon={sortOrder === 'desc' ? <ArrowDownward /> : <ArrowUpward />}
+                        fullWidth
+                        sx={{ backgroundColor: 'white' }}
                     >
-                        Case Reports
+                        Date {sortOrder === 'desc' ? '↓' : '↑'}
                     </Button>
-                </Box>
+                </Tooltip>
+
+                <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<ListAlt />}
+                    onClick={() => navigate('/director-intelligence/case-reports')}
+                    fullWidth
+                    sx={{ boxShadow: 'none' }}
+                >
+                    Case Reports
+                </Button>
+            </Box>
+            <Box mb={2}>
                 <Typography variant="body2" color="text.secondary">
                     {filteredAndSortedReports.length} report{filteredAndSortedReports.length !== 1 ? 's' : ''} found
                 </Typography>
@@ -607,6 +721,36 @@ const DirectorIntelligence = () => {
                                                 </IconButton>
                                             </Tooltip>
 
+                                            <Tooltip title="Edit Report">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={isActionDisabled(report)}
+                                                        onClick={() => handleOpenEditDialog(report)}
+                                                        size="small"
+                                                        color="primary"
+                                                    >
+                                                        <Edit fontSize="small" />
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+
+                                            <Tooltip title="Sign Report">
+                                                <span>
+                                                    <IconButton
+                                                        disabled={isActionDisabled(report)}
+                                                        onClick={() => handleSignReportClick(report)}
+                                                        size="small"
+                                                        sx={{ color: '#6366f1' }}
+                                                    >
+                                                        {isReportLoading(report.id) ? (
+                                                            <CircularProgress size={16} />
+                                                        ) : (
+                                                            <Draw fontSize="small" />
+                                                        )}
+                                                    </IconButton>
+                                                </span>
+                                            </Tooltip>
+
                                             <Tooltip title="Approve">
                                                 <span>
                                                     <IconButton
@@ -615,11 +759,7 @@ const DirectorIntelligence = () => {
                                                         size="small"
                                                         color="success"
                                                     >
-                                                        {isReportLoading(report.id) ? (
-                                                            <CircularProgress size={16} />
-                                                        ) : (
-                                                            <Check fontSize="small" />
-                                                        )}
+                                                        <Check fontSize="small" />
                                                     </IconButton>
                                                 </span>
                                             </Tooltip>
@@ -923,6 +1063,24 @@ const DirectorIntelligence = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={closeInfoDialog}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={signatureDialogOpen} onClose={() => setSignatureDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Sign Report #{reportToSign?.id}</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ border: '1px dashed #ccc', borderRadius: 1, p: 1, backgroundColor: '#f9f9f9', mt: 1, display: 'flex', justifyContent: 'center' }}>
+                        <SignatureCanvas 
+                            ref={sigCanvas} 
+                            penColor="black"
+                            canvasProps={{ width: 500, height: 200, className: 'sigCanvas' }} 
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setSignatureDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={clearSignature} color="error">Clear</Button>
+                    <Button onClick={submitSignature} variant="contained" color="primary">Submit Signature</Button>
                 </DialogActions>
             </Dialog>
         </Box>

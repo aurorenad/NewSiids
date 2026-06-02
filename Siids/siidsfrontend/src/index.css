@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import './theme/variables.css';
 
 :root {
   /* ── RRA Brand (inherit from existing system) ── */
@@ -173,15 +174,15 @@
   z-index: 3000; /* Sidebar should stay below our custom overlays */
 }
 .MuiPopover-root {
-  z-index: 9100 !important; /* Ensure dropdowns (Select, Menu) appear above Dialogs */
+  z-index: 9500 !important; /* Ensure dropdowns (Select, Menu) appear above Dialogs */
 }
 .MuiTooltip-root {
-  z-index: 9200 !important; /* Ensure tooltips appear above everything */
+  z-index: 9600 !important; /* Ensure tooltips appear above everything */
 }
 
-/* Ensure all MUI Popovers (Select menus, Tooltips, etc.) are above the sidebar */
-.MuiPopover-root, .MuiMenu-root, .MuiAutocomplete-popper {
-  z-index: 5000 !important;
+/* Ensure all MUI Popovers (Select menus, Tooltips, DatePickers, etc.) are above Dialogs */
+.MuiPopover-root, .MuiMenu-root, .MuiAutocomplete-popper, .MuiPopper-root {
+  z-index: 9500 !important;
 }
 
 .drawer-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
@@ -255,4 +256,114 @@ textarea.form-control { height: auto; min-height: 90px; padding: 10px 14px; resi
 @keyframes pulse {
   0%, 100% { opacity: 1 }
   50%       { opacity: 0.45 }
+}
+
+/* Global Reset & Base Layout */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Open Sans', 'Outfit', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  background-color: var(--background-main);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* Scrollbars are handled per view pane */
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbars styling for enterprise workspaces */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Accessibility Focus Ring Styles */
+*:focus-visible {
+  outline: 2px solid var(--primary-accent);
+  outline-offset: 2px;
+}
+
+/* Universal Typography & Headings */
+h1, h2, h3, h4 {
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+h1 { font-size: 1.8rem; }
+h2 { font-size: 1.4rem; }
+h3 { font-size: 1.15rem; }
+h4 { font-size: 1.0rem; }
+
+/* Interactive Components */
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+a {
+  color: var(--primary-brand);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Glassmorphism Panel Utilities */
+.glass-panel {
+  background: var(--background-panel);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--panel-border);
+  box-shadow: var(--shadow-subtle);
+}
+
+.glass-card {
+  background: var(--background-card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+  border-radius: 12px;
+  padding: var(--spacing-md);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px 0 rgba(13, 71, 161, 0.1);
 }

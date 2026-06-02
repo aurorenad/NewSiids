@@ -40,6 +40,25 @@ public class Case {
     @JoinColumn(name = "created_by", referencedColumnName = "employee_id")
     private Employee createdBy;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "routed_to")
+    private RoutedTo routedTo;
+
+    @Column(name = "department_name")
+    private String departmentName;
+
+    @Column(name = "estimated_evasion_amount")
+    private Double estimatedEvasionAmount;
+
+    @Column(name = "intake_channel")
+    private String intakeChannel;
+
+    @Column(name = "priority_classification")
+    private String priorityClassification;
+
+    @Column(name = "informer_id_type")
+    private String informerIdType;
+
     @PrePersist
     protected void onCreate() {
         this.reportedDate = LocalDateTime.now();

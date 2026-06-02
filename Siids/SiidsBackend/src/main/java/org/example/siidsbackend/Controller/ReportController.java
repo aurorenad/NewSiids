@@ -9,7 +9,7 @@ import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
-
+import org.example.siidsbackend.DTO.Response.ApiResponse;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
 import org.example.siidsbackend.Model.WorkflowStatus;
@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -420,10 +421,18 @@ public class ReportController {
 
     @GetMapping("/director-intelligence/reports")
     public ResponseEntity<List<ReportResponseDTO>> getReportsForDirectorIntelligence(
+            @RequestParam(required = false) String generationType,
             Authentication authentication) {
         String directorId = authentication.getName();
         try {
             List<Report> reports = reportService.getReportsForDirectorIntelligence(directorId);
+            
+            if (generationType != null && !generationType.trim().isEmpty()) {
+                reports = reports.stream()
+                        .filter(r -> generationType.equalsIgnoreCase(r.getGenerationType()))
+                        .collect(Collectors.toList());
+            }
+            
             List<ReportResponseDTO> responseList = reports.stream()
                     .map(reportService::toResponseDTO)
                     .collect(Collectors.toList());
@@ -578,6 +587,40 @@ public class ReportController {
     }
 
     //
+    @PostMapping("/{id}/generate")
+    @PreAuthorize("hasAnyRole('Admin', 'IntelligenceOfficer', 'DirectorIntelligence', 'AssistantCommissioner')")
+    public ResponseEntity<?> generateFinalReport(@PathVariable Integer id) {
+        try {
+            Report generatedReport = reportService.generateFinalReport(id);
+            return ResponseEntity.ok(new ApiResponse(true, "Final report generated successfully", reportService.toResponseDTO(generatedReport)));
+        } catch (Exception e) {
+            log.error("Error generating final report: ", e);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to generate report: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/{id}/sign")
+    public ResponseEntity<?> signReport(@PathVariable Integer id, @RequestBody org.example.siidsbackend.DTO.Request.SignReportRequest request, Authentication authentication) {
+        try {
+            Report signedReport = reportService.signReport(id, request.getRole(), request.getSignatureBase64(), authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Report signed successfully", reportService.toResponseDTO(signedReport)));
+        } catch (Exception e) {
+            log.error("Error signing report: ", e);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to sign report: " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/{id}/revise")
+    public ResponseEntity<?> reviseReport(@PathVariable Integer id, @RequestBody org.example.siidsbackend.DTO.Request.ReviseReportRequest request, Authentication authentication) {
+        try {
+            Report revisedReport = reportService.reviseReport(id, request, authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Report revised successfully", reportService.toResponseDTO(revisedReport)));
+        } catch (Exception e) {
+            log.error("Error revising report: ", e);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to revise report: " + e.getMessage(), null));
+        }
+    }
+
     @GetMapping("/{id}/findings")
     public ResponseEntity<ReportResponseDTO> getFindings(
             @PathVariable Integer id,
@@ -725,8 +768,8 @@ public class ReportController {
 
         // Generate secure filename
         String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+        // Generate secure filename preserving original name
+        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 
         Path filePath = uploadPath.resolve(secureFilename);
 
@@ -1294,8 +1337,8 @@ public class ReportController {
         }
 
         String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+        // Generate secure filename preserving original name
+        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
 
         Path filePath = uploadPath.resolve(secureFilename);
 

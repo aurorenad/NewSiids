@@ -6,10 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
 import org.example.siidsbackend.DTO.Request.InformerRegistrationDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
+import org.example.siidsbackend.DTO.Response.ApiResponse;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -330,6 +333,21 @@ public class CaseController {
         } catch (Exception e) {
             log.error("Error registering informer", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    @PatchMapping("/{id}/route")
+    @PreAuthorize("hasAnyRole('Admin', 'AssistantCommissioner')")
+    public ResponseEntity<?> routeCase(
+            @PathVariable Integer id,
+            @RequestBody org.example.siidsbackend.DTO.Request.CaseRoutingRequest request,
+            Authentication authentication) {
+        try {
+            Case routedCase = caseService.routeCase(id, request.getDepartmentName(), authentication.getName());
+            return ResponseEntity.ok(new ApiResponse(true, "Case routed successfully", caseService.getCaseResponseById(routedCase.getId())));
+        } catch (Exception e) {
+            log.error("Error routing case: ", e);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to route case: " + e.getMessage(), null));
         }
     }
 }

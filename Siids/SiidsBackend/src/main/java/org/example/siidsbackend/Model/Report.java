@@ -89,6 +89,9 @@ public class Report {
     private Double principleAmount;
     private Double penaltiesAmount;
 
+    @Column(name = "generation_type")
+    private String generationType = "MANUAL";
+
 
     @Column(name="CasePlan")
     private String casePlan;
@@ -112,6 +115,12 @@ public class Report {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReportSignature> signatures = new ArrayList<>();
+
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReportRevision> revisions = new ArrayList<>();
 
     public WorkflowStatus getStatus() {
         return this.relatedCase != null ? this.relatedCase.getStatus() : null;

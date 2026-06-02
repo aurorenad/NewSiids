@@ -1,0 +1,142 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Forgot Password - RRA SIIDs</title>
+<!-- Tailwind CSS V3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Font: Hanken Grotesk -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              primary: '#1e56a0',
+              secondary: '#15417e',
+              accent: '#3b82f6',
+              surface: '#f7fafd',
+            }
+          },
+          fontFamily: {
+            sans: ['Hanken Grotesk', 'sans-serif'],
+          },
+          borderRadius: {
+            'custom': '8px',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="glassmorphism-effects">
+    .glass-card {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    }
+    
+    .bg-gradient-main {
+      background: radial-gradient(circle at top left, #f1f4f7 0%, #e2e8f0 100%);
+    }
+
+    .step-line {
+      height: 2px;
+      background-color: #d1d5db;
+      flex-grow: 1;
+      margin: 0 10px;
+    }
+  </style>
+</head>
+<body class="bg-gradient-main font-sans min-height-screen flex flex-col min-h-screen">
+<!-- BEGIN: MainContent -->
+<main class="flex-grow flex items-center justify-center p-6" data-purpose="auth-container">
+<!-- BEGIN: ForgotPasswordCard -->
+<div class="glass-card max-w-2xl w-full rounded-3xl p-8 md:p-12" data-purpose="forgot-password-card">
+<!-- Logo/Header Area -->
+<div class="flex flex-col items-center mb-8">
+<!-- RRA Logo Placeholder -->
+<div class="w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-sm mb-4">
+<img alt="RRA Logo" class="w-12 h-12 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-r8cbIMc_TmYsWiftYSdmO9ynzowXJBtolXLdQqwovzQjbc7J-umnAMLEF9W7bagbn0JDw8R7C29UNbVqrAIpvtPhV7lgmvl8-8CyljWAlDgAwialTm7XT97YwoejutE-EI6O70zun_4s-EtPtbxV69CVN_k9-qo731EFRFTGCbt1mXhonuSknD2cyzc7t0Z-zZ6QJviteCRm5M8IzOYIKufh-gx9vjps8goI6jk2rTuZZkJzGjejQL_T0QVC8jjSQLQobz7ktyo">
+</div>
+<h1 class="text-2xl font-bold text-gray-800">Forgot Password</h1>
+</div>
+<!-- BEGIN: StepperComponent -->
+<div class="mb-10" data-purpose="step-indicator">
+<div class="flex items-center justify-between relative max-w-md mx-auto">
+<!-- Step 1: Active -->
+<div class="flex flex-col items-center z-10">
+<div class="w-8 h-8 bg-brand-primary text-white rounded-full flex items-center justify-center text-sm font-bold shadow-md">1</div>
+</div>
+<div class="step-line"></div>
+<!-- Step 2 -->
+<div class="flex flex-col items-center z-10">
+<div class="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+</div>
+<div class="step-line"></div>
+<!-- Step 3 -->
+<div class="flex flex-col items-center z-10">
+<div class="w-8 h-8 bg-gray-400 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+</div>
+</div>
+<!-- Step Labels -->
+<div class="flex justify-between mt-2 max-w-lg mx-auto text-xs md:text-sm font-medium">
+<span class="text-brand-primary font-bold">Request OTP</span>
+<span class="text-gray-500">Verify OTP</span>
+<span class="text-gray-500">Reset Password</span>
+</div>
+</div>
+<!-- END: StepperComponent -->
+<!-- BEGIN: RequestForm -->
+<form action="#" class="max-w-md mx-auto space-y-6" data-purpose="otp-request-form" method="POST">
+<div class="relative">
+<label class="absolute -top-3 left-3 bg-white px-1 text-xs font-semibold text-gray-600" for="username">
+            Employee ID / Username *
+          </label>
+<div class="flex items-center border border-gray-300 rounded-lg bg-white overflow-hidden focus-within:ring-2 focus-within:ring-brand-primary focus-within:border-transparent transition-all">
+<div class="pl-4 pr-2 text-gray-400">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<input class="w-full py-4 px-2 outline-none border-none focus:ring-0 text-gray-700 placeholder-gray-300" id="username" name="username" placeholder="Enter your username" required="" type="text">
+</div>
+</div>
+<button class="w-full bg-brand-primary hover:bg-brand-secondary text-white font-bold py-4 rounded-lg shadow-lg transform transition active:scale-95 uppercase tracking-wide" type="submit">
+          Send OTP
+        </button>
+</form>
+<!-- END: RequestForm -->
+<!-- Footer Link -->
+<div class="mt-8 text-center">
+<p class="text-sm text-gray-600">
+          Remember your password? 
+          <a class="text-brand-primary font-semibold hover:underline" href="{{DATA:SCREEN:SCREEN_13}}">Login</a>
+</p>
+</div>
+</div>
+<!-- END: ForgotPasswordCard -->
+</main>
+<!-- END: MainContent -->
+<!-- BEGIN: GlobalFooter -->
+<footer class="w-full py-6 px-8 border-t border-gray-200 bg-white/50 backdrop-blur-sm" data-purpose="site-footer">
+<div class="flex flex-col md:flex-row justify-between items-center text-[10px] md:text-xs text-gray-500 font-mono tracking-tight gap-4">
+<div class="">
+        © 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.
+      </div>
+<div class="flex gap-6 uppercase">
+<a class="hover:text-brand-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-brand-primary transition-colors" href="#">Security Protocol</a>
+<a class="hover:text-brand-primary transition-colors" href="#">Legal Disclaimer</a>
+</div>
+</div>
+</footer>
+<!-- END: GlobalFooter -->
+
+
+
+
+</body></html>
