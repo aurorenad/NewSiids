@@ -1,0 +1,83 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# Dependency folders
+node_modules/
+
+# Frontend build output
+dist/
+build/
+.vite/
+
+# Java / Maven build output
+target/
+**/target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs and diagnostics
+*.log
+*.log.*
+backend_log.txt
+backend_error.log
+backend_run*.log
+backend_run_output*.log
+start_log*.log
+tail.txt
+mappings.txt
+hs_err_pid*
+replay_pid*
+
+# Environment and local config
+.env*
+!.env.example
+!**/.env.example
+application-local.properties
+application-dev.properties
+application-test.properties
+application-prod.properties
+
+# Runtime uploads and user-generated documents
+uploads/
+**/uploads/
+**/Usersint*Documents/
+
+# Generated/imported database data and local migration scratch files
+*.dump
+*.bak
+*.backup
+employees_mysql_dump.sql
+import_*.sql
+your_sql_data.sql
+*_mysql_dump.sql
+*_postgres.sql
+converted_*.sql
+
+# Root-level data-conversion scratch assets
+/Siids/grades.csv
+/Siids/job_master.csv
+/Siids/structures.csv
+/Siids/convert_*.py
+/Siids/convert_*.ps1
+/Siids/Convert-SQLToCSV.ps1
+/Siids/mysql_to_postgres.py
+/Siids/quick_import_setup.py
+/Siids/sql_to_csv_converter*.py
+/Siids/test_login.py
+
+# Screenshots and ad-hoc debugging media
+Screenshot*.png
+*.tmp
+*.temp
+/Siids/login error.jpeg
+
+# Accidental root package lock; keep the frontend lockfile instead
+/package-lock.json
