@@ -3,24 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import { Dashboard } from '@mui/icons-material';
+import { hasPermission } from '../utils/authorization';
 
 const Home = () => {
     const { authState } = useContext(AuthContext);
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (!authState || !authState.role) return;
-        
-        const role = (authState.role || '').toUpperCase().replace('ROLE_', '');
+        if (!authState?.token) return;
 
-        if (role.includes('STOCKMANAGER') || role.includes('STOCK_MANAGER')) {
-            navigate('/stock/inventory');
-        } else if (role.includes('PRSO')) {
-            navigate('/prso/approvals');
-        } else if (role.includes('SURVEILLANCE')) {
-            navigate('/pv/temporary-stock');
-        } else if (role.includes('ADMIN')) {
+        if (hasPermission(authState, 'USER_VIEW')) {
             navigate('/system-admin');
+        } else if (hasPermission(authState, 'STOCK_APPROVE_RELEASE')) {
+            navigate('/prso/approvals');
+        } else if (hasPermission(authState, 'STOCK_VIEW')) {
+            navigate('/stock/inventory');
+        } else if (hasPermission(authState, 'SURVEILLANCE_VIEW')) {
+            navigate('/pv/temporary-stock');
         }
     }, [authState, navigate]);
 

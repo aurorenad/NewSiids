@@ -21,13 +21,23 @@ export const AuthProvider = ({ children }) => {
 
     const [loading, setLoading] = useState(true);
 
+    const readStoredPermissions = () => {
+        try {
+            const storedPermissions = localStorage.getItem('permissions') || sessionStorage.getItem('permissions') || '[]';
+            const parsed = JSON.parse(storedPermissions);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    };
+
     useEffect(() => {
         const token = localStorage.getItem('token') || sessionStorage.getItem('token');
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const name = localStorage.getItem('name') || sessionStorage.getItem('name');
         const role = localStorage.getItem('role') || sessionStorage.getItem('role');
-        const permissions = JSON.parse(localStorage.getItem('permissions') || sessionStorage.getItem('permissions') || '[]');
+        const permissions = readStoredPermissions();
 
         if (token && employeeId) {
             setAuthState({

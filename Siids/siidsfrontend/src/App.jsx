@@ -34,6 +34,7 @@ import SystemAdmin from "./Components/SystemAdmin.jsx";
 import PrsoReleases from "./Components/PrsoReleases.jsx";
 import { Box } from '@mui/material';
 import { Toaster } from 'sonner';
+import { hasAnyPermission } from './utils/authorization';
 
 // --- NEW PHYSICAL STOCK MODULE IMPORTS ---
 import PVTemporaryStockPage from "./Pages/Stock/PVTemporaryStockPage.jsx";
@@ -50,7 +51,7 @@ const AppShell = ({ children }) => (
     </Box>
 );
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, permissions }) => {
     const { authState, loading } = useContext(AuthContext);
 
     if (loading) {
@@ -62,18 +63,9 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         return <Navigate to="/" replace />;
     }
 
-    if (allowedRoles) {
-        const userRole = (authState?.role || '').toString().toUpperCase().replace('ROLE_', '').trim();
-        const allowedUpper = allowedRoles.map(r => (r || '').toString().toUpperCase().replace('ROLE_', '').trim());
-        
-        console.log(`ProtectedRoute: User role [${userRole}], Allowed roles [${allowedUpper}]`);
-        
-        const hasAccess = allowedUpper.some(allowed => 
-            userRole === allowed || userRole.includes(allowed) || allowed.includes(userRole)
-        );
-
-        if (!hasAccess) {
-            console.warn(`ProtectedRoute: Access denied for role [${userRole}]. Redirecting to /home`);
+    if (permissions?.length) {
+        if (!hasAnyPermission(authState, permissions)) {
+            console.warn(`ProtectedRoute: Access denied. Required permissions [${permissions.join(', ')}]. Redirecting to /home`);
             return <Navigate to="/home" replace />;
         }
     }
@@ -81,8 +73,8 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <AppShell>{children}</AppShell>;
 };
 
-const withProtected = (element, allowedRoles) => (
-    <ProtectedRoute allowedRoles={allowedRoles}>{element}</ProtectedRoute>
+const withProtected = (element, permissions) => (
+    <ProtectedRoute permissions={permissions}>{element}</ProtectedRoute>
 );
 
 const publicRoutes = [
@@ -93,48 +85,48 @@ const publicRoutes = [
 
 const protectedRoutes = [
     { path: "/home", element: <Home /> },
-    { path: "/director-intelligence", element: <DirectorIntelligence />, roles: ['DirectorIntelligence'] },
-    { path: "/intelligence-officer", element: <IntelligenceOfficer />, roles: ['User', 'IntelligenceOfficer'] },
-    { path: "/intelligence-officer/newCase", element: <NewCase />, roles: ['User', 'IntelligenceOfficer'] },
-    { path: "/intelligence-officer/view-case/*", element: <TaxReportView />, roles: ['User', 'IntelligenceOfficer'] },
-    { path: "/intelligence-officer/claim-form/:caseNum", element: <ClaimForm />, roles: ['User', 'IntelligenceOfficer'] },
-    { path: "/investigation-officer", element: <InvestigationOfficer />, roles: ['InvestigationOfficer'] },
-    { path: "/surveillence-officer", element: <SurveillenceOfficer />, roles: ['Surveillance'] },
-    { path: "/surveillence-officer/New", element: <NewSurveillenceCase />, roles: ['Surveillance'] },
-    { path: "/surveillence-officer/edit-case", element: <NewSurveillenceCase />, roles: ['Surveillance'] },
-    { path: "/surveillence-officer/view/*", element: <SurveillanceCaseView />, roles: ['Surveillance'] },
-    { path: "/surveillence-officer/sclaim-form/:caseNum", element: <SClaimForm />, roles: ['Surveillance'] },
-    { path: "/Director-Investigation", element: <DirectorInvestigation />, roles: ['DirectorInvestigation'] },
-    { path: "/assistant-commissioner", element: <AssistantCommissioner />, roles: ['AssistantCommissioner'] },
-    { path: "/history", element: <History />, roles: ['ROLE_AUDITOR'] },
+    { path: "/director-intelligence", element: <DirectorIntelligence />, permissions: ['REPORT_VIEW', 'REPORT_APPROVE_INTELLIGENCE'] },
+    { path: "/intelligence-officer", element: <IntelligenceOfficer />, permissions: ['REPORT_CREATE', 'REPORT_VIEW'] },
+    { path: "/intelligence-officer/newCase", element: <NewCase />, permissions: ['REPORT_CREATE'] },
+    { path: "/intelligence-officer/view-case/*", element: <TaxReportView />, permissions: ['REPORT_VIEW'] },
+    { path: "/intelligence-officer/claim-form/:caseNum", element: <ClaimForm />, permissions: ['REPORT_CREATE'] },
+    { path: "/investigation-officer", element: <InvestigationOfficer />, permissions: ['REPORT_CREATE', 'REPORT_VIEW'] },
+    { path: "/surveillence-officer", element: <SurveillenceOfficer />, permissions: ['SURVEILLANCE_VIEW'] },
+    { path: "/surveillence-officer/New", element: <NewSurveillenceCase />, permissions: ['SURVEILLANCE_CREATE'] },
+    { path: "/surveillence-officer/edit-case", element: <NewSurveillenceCase />, permissions: ['SURVEILLANCE_CREATE'] },
+    { path: "/surveillence-officer/view/*", element: <SurveillanceCaseView />, permissions: ['SURVEILLANCE_VIEW'] },
+    { path: "/surveillence-officer/sclaim-form/:caseNum", element: <SClaimForm />, permissions: ['SURVEILLANCE_CREATE'] },
+    { path: "/Director-Investigation", element: <DirectorInvestigation />, permissions: ['REPORT_APPROVE_INVESTIGATION', 'REPORT_ASSIGN_INVESTIGATION'] },
+    { path: "/assistant-commissioner", element: <AssistantCommissioner />, permissions: ['REPORT_APPROVE_ASSISTANT_COMMISSIONER'] },
+    { path: "/history", element: <History />, permissions: ['AUDIT_VIEW'] },
     {
         path: "/reports/:id",
         element: <ReportView />,
-        roles: ['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor'],
+        permissions: ['REPORT_VIEW'],
     },
     {
         path: "/reports/:id/findings",
         element: <FindingsViewerPage />,
-        roles: ['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor'],
+        permissions: ['REPORT_VIEW'],
     },
     {
         path: "/view-report/:id",
         element: <ViewReportDetails />,
-        roles: ['User', 'IntelligenceOfficer', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor'],
+        permissions: ['REPORT_VIEW'],
     },
-    { path: "/assistant-commissioner/fines-report", element: <FinesReport />, roles: ['AssistantCommissioner'] },
-    { path: "/assistant-commissioner/penalties-report", element: <FinesReport />, roles: ['AssistantCommissioner'] },
-    { path: "/director-intelligence/case-reports", element: <DirectorIntelligenceCaseReports />, roles: ['DirectorIntelligence'] },
-    { path: "/reports/t3-officers", element: <T3OfficersReports />, roles: ['DirectorIntelligence'] },
-    { path: "/legal-advisor", element: <LegalAdvisor />, roles: ['legalAdvisor'] },
-    { path: "/intelligence-officer/edit-report/:reportId", element: <EditReport /> },
-    { path: "/stock-management", element: <StockManagement />, roles: ['StockManager'] },
-    { path: "/system-admin", element: <SystemAdmin />, roles: ['Admin', 'admin'] },
-    { path: "/surveillence-officer/releases", element: <PrsoReleases />, roles: ['Surveillance', 'PRSO'] },
+    { path: "/assistant-commissioner/fines-report", element: <FinesReport />, permissions: ['REPORT_APPROVE_ASSISTANT_COMMISSIONER'] },
+    { path: "/assistant-commissioner/penalties-report", element: <FinesReport />, permissions: ['REPORT_APPROVE_ASSISTANT_COMMISSIONER'] },
+    { path: "/director-intelligence/case-reports", element: <DirectorIntelligenceCaseReports />, permissions: ['REPORT_VIEW'] },
+    { path: "/reports/t3-officers", element: <T3OfficersReports />, permissions: ['REPORT_ASSIGN_INVESTIGATION'] },
+    { path: "/legal-advisor", element: <LegalAdvisor />, permissions: ['LEGAL_REVIEW'] },
+    { path: "/intelligence-officer/edit-report/:reportId", element: <EditReport />, permissions: ['REPORT_CREATE'] },
+    { path: "/stock-management", element: <StockManagement />, permissions: ['STOCK_MANAGE'] },
+    { path: "/system-admin", element: <SystemAdmin />, permissions: ['USER_VIEW'] },
+    { path: "/surveillence-officer/releases", element: <PrsoReleases />, permissions: ['STOCK_APPROVE_RELEASE'] },
     // --- NEW PHYSICAL STOCK MODULE ROUTES ---
-    { path: "/pv/temporary-stock", element: <PVTemporaryStockPage />, roles: ['Surveillance', 'SURVEILLANCE_OFFICER'] },
-    { path: "/stock/inventory", element: <StockManagerPage />, roles: ['StockManager', 'STOCK_MANAGER'] },
-    { path: "/prso/approvals", element: <PRSOApprovalsPage />, roles: ['PRSO'] },
+    { path: "/pv/temporary-stock", element: <PVTemporaryStockPage />, permissions: ['STOCK_VIEW', 'SURVEILLANCE_VIEW'] },
+    { path: "/stock/inventory", element: <StockManagerPage />, permissions: ['STOCK_VIEW'] },
+    { path: "/prso/approvals", element: <PRSOApprovalsPage />, permissions: ['STOCK_APPROVE_RELEASE'] },
 ];
 
 const AppRoutes = () => {
@@ -147,7 +139,7 @@ const AppRoutes = () => {
                 <Route
                     key={route.path}
                     path={route.path}
-                    element={withProtected(route.element, route.roles)}
+                    element={withProtected(route.element, route.permissions)}
                 />
             ))}
             <Route path="*" element={<Navigate to="/" replace />} />
