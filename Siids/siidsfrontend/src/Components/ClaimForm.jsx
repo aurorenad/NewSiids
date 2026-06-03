@@ -4,7 +4,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 export const ClaimForm = () => {
     const [text, setText] = useState('');
-    const [attachments, setAttachments] = useState([]); // Changed to array for multiple files
+    const [subject, setSubject] = useState('');
+    const [legalBasis, setLegalBasis] = useState('');
+    const [attachments, setAttachments] = useState([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -77,7 +79,9 @@ export const ClaimForm = () => {
             // Create the report data object with caseNum
             const reportData = {
                 description: text,
-                caseNum: caseNum  // Include caseNum directly in the report data
+                caseNum: caseNum,
+                subject: subject.trim() || null,
+                legalBasis: legalBasis.trim() || null
             };
 
             // Append report data as JSON string
@@ -112,6 +116,8 @@ export const ClaimForm = () => {
 
             // Reset form
             setText('');
+            setSubject('');
+            setLegalBasis('');
             setAttachments([]);
             // Reset file input
             const fileInput = document.getElementById('file-input');
@@ -207,6 +213,25 @@ export const ClaimForm = () => {
                     </div>
                 )}
 
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '14px' }}>
+                        Subject <span style={{ fontWeight: 400, color: '#8a8d91', fontSize: '12px' }}>(optional)</span>
+                    </label>
+                    <input
+                        type="text"
+                        placeholder="e.g. Tax Evasion Investigation — Taxpayer name"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        disabled={isSubmitting}
+                        maxLength={200}
+                        style={{
+                            width: '100%', padding: '10px 14px', border: '2px solid #e4e6ea',
+                            borderRadius: '8px', fontSize: '15px', fontFamily: 'inherit',
+                            boxSizing: 'border-box'
+                        }}
+                    />
+                </div>
+
                 <div className="textarea-container">
                     <textarea
                         className="claim-textarea"
@@ -285,6 +310,25 @@ export const ClaimForm = () => {
                             ))}
                         </div>
                     )}
+                </div>
+
+                <div style={{ marginBottom: '24px' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '6px', fontSize: '14px' }}>
+                        Legal Basis <span style={{ fontWeight: 400, color: '#8a8d91', fontSize: '12px' }}>(optional)</span>
+                    </label>
+                    <textarea
+                        placeholder="Reference applicable laws or regulations..."
+                        value={legalBasis}
+                        onChange={(e) => setLegalBasis(e.target.value)}
+                        disabled={isSubmitting}
+                        maxLength={2000}
+                        rows={3}
+                        style={{
+                            width: '100%', padding: '10px 14px', border: '2px solid #e4e6ea',
+                            borderRadius: '8px', fontSize: '15px', fontFamily: 'inherit',
+                            boxSizing: 'border-box', resize: 'vertical'
+                        }}
+                    />
                 </div>
 
                 <div className="form-buttons">
