@@ -13,6 +13,8 @@ import { useNavigate } from "react-router-dom";
 import { ReportApi } from "./../api/Axios/caseApi";
 import { AuthContext } from "../context/AuthContext";
 import { hasPermission } from "../utils/authorization";
+import { PERMISSIONS } from "../constants/permissions";
+import { routeTo } from "../constants/routes";
 
 const InvestigationOfficer = () => {
     const { authState } = useContext(AuthContext);
