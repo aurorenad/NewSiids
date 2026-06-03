@@ -22,6 +22,10 @@ const TaxReportForm = () => {
         informerName: '',
         referringDepartment: '',
         nationalId: '',
+        estimatedEvasionAmount: '',
+        intakeChannel: 'Walk-in',
+        priorityClassification: 'MEDIUM',
+        informerIdType: 'NATIONAL_ID',
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -266,6 +270,10 @@ const TaxReportForm = () => {
                 informerAddress: formData.caseSource === 'identified' ? '' : null,
                 informerEmail: formData.caseSource === 'identified' ? '' : null,
                 referringDepartment: formData.caseSource === 'referred' ? formData.referringDepartment : null,
+                estimatedEvasionAmount: formData.estimatedEvasionAmount ? parseFloat(formData.estimatedEvasionAmount) : null,
+                intakeChannel: formData.intakeChannel,
+                priorityClassification: formData.priorityClassification,
+                informerIdType: formData.caseSource === 'identified' ? formData.informerIdType : null,
             };
 
             console.log('Submitting case data:', caseData);
@@ -321,7 +329,59 @@ const TaxReportForm = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="tax-report-form">
-                    <div className="tax-report-form-grid">
+                    {/* SECTION 1: REPORT CLASSIFICATION */}
+                    <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px', borderRadius: '12px', background: 'rgba(255,255,255,0.7)' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>I. Report Classification</h4>
+                        <div className="tax-report-form-grid">
+                            <div className="form-group">
+                                <label className="tax-report-form-label">Intake Channel</label>
+                                <select 
+                                    name="intakeChannel" 
+                                    value={formData.intakeChannel} 
+                                    onChange={handleChange} 
+                                    className="tax-report-form-input"
+                                >
+                                    <option value="Walk-in">Walk-in / In-person</option>
+                                    <option value="Hotline">Hotline / Phone Call</option>
+                                    <option value="Email">Email Submission</option>
+                                    <option value="Digital Platform">Digital Platform</option>
+                                    <option value="Referral">Departmental Referral</option>
+                                </select>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="tax-report-form-label">Priority Classification</label>
+                                <select 
+                                    name="priorityClassification" 
+                                    value={formData.priorityClassification} 
+                                    onChange={handleChange} 
+                                    className="tax-report-form-input"
+                                >
+                                    <option value="LOW">Low (Routine Verification)</option>
+                                    <option value="MEDIUM">Medium (Standard Investigation)</option>
+                                    <option value="HIGH">High (Significant Revenue Risk)</option>
+                                    <option value="URGENT">Urgent (Immediate Action Required)</option>
+                                </select>
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="tax-report-form-label">Estimated Evasion Amount (RWF)</label>
+                                <input 
+                                    type="number" 
+                                    name="estimatedEvasionAmount"
+                                    value={formData.estimatedEvasionAmount} 
+                                    onChange={handleChange} 
+                                    className="tax-report-form-input"
+                                    placeholder="e.g. 15000000"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 2: SUBJECT DETAILS */}
+                    <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px', borderRadius: '12px', background: 'rgba(255,255,255,0.7)' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>II. Subject (Tax Payer) Information</h4>
+                        <div className="tax-report-form-grid">
                         {/* TIN Field */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Tax Payer TIN*</label>
@@ -394,6 +454,13 @@ const TaxReportForm = () => {
                                 placeholder="e.g. March 2023, Q2 2023, FY2023"
                             />
                         </div>
+                        </div>
+                    </div>
+
+                    {/* SECTION 3: INFORMER IDENTITY & DIGITAL VERIFICATION */}
+                    <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px', borderRadius: '12px', background: 'rgba(255,255,255,0.7)' }}>
+                        <h4 style={{ marginBottom: '15px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>III. Informer Identity & Verification</h4>
+                        <div className="tax-report-form-grid">
 
                         {/* Case Source Dropdown */}
                         <div className="form-group">
@@ -423,7 +490,21 @@ const TaxReportForm = () => {
                         {formData.caseSource === 'identified' && (
                             <>
                                 <div className="form-group">
-                                    <label className="tax-report-form-label">Informer ID*</label>
+                                    <label className="tax-report-form-label">Document Type</label>
+                                    <select 
+                                        name="informerIdType" 
+                                        value={formData.informerIdType} 
+                                        onChange={handleChange} 
+                                        className="tax-report-form-input"
+                                    >
+                                        <option value="NATIONAL_ID">National ID (16 digits)</option>
+                                        <option value="PASSPORT">Passport (up to 16 chars)</option>
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="tax-report-form-label">
+                                        {formData.informerIdType === 'NATIONAL_ID' ? 'National ID*' : 'Passport Number*'}
+                                    </label>
                                     <div className="informer-search-container">
                                         <input
                                             type="text"
@@ -431,7 +512,7 @@ const TaxReportForm = () => {
                                             value={formData.informerId}
                                             onChange={handleInformerIdChange}
                                             className="tax-report-form-input"
-                                            placeholder="Enter national ID number"
+                                            placeholder={formData.informerIdType === 'NATIONAL_ID' ? 'e.g. 1199080012345678' : 'e.g. RW1234567'}
                                             required
                                         />
                                         <button
@@ -507,7 +588,7 @@ const TaxReportForm = () => {
                         )}
 
                         {/* Summary of Information */}
-                        <div className="form-group full-width">
+                        <div className="form-group full-width" style={{ gridColumn: '1 / -1' }}>
                             <label className="tax-report-form-label">Summary of Information Provided*</label>
                             <textarea
                                 name="summaryOfInformationCase"
@@ -515,9 +596,10 @@ const TaxReportForm = () => {
                                 onChange={handleChange}
                                 rows="4"
                                 className="tax-report-form-textarea"
-                                placeholder="Detailed description of the case"
+                                placeholder="Detailed description of the evasion evidence, location, methods, etc."
                                 required
                             />
+                        </div>
                         </div>
                     </div>
 

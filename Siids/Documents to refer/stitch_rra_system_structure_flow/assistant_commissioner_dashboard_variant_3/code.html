@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SIIDs | Assistant Commissioner Oversight</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;900&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#596670",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#bac8d4",
+                        "on-background": "#181c1e",
+                        "inverse-primary": "#aac7ff",
+                        "inverse-surface": "#2d3133",
+                        "on-surface-variant": "#424751",
+                        "on-tertiary-fixed-variant": "#554500",
+                        "surface-container-highest": "#e0e3e6",
+                        "outline-variant": "#c2c6d3",
+                        "secondary": "#53606a",
+                        "secondary-fixed": "#d6e4f0",
+                        "outline": "#737782",
+                        "surface": "#f7fafd",
+                        "surface-container-high": "#e5e8eb",
+                        "surface-container": "#ebeef1",
+                        "tertiary-fixed": "#ffe177",
+                        "inverse-on-surface": "#eef1f4",
+                        "on-primary-container": "#b4cdff",
+                        "on-secondary-fixed": "#101d26",
+                        "on-tertiary-fixed": "#231b00",
+                        "background": "#f7fafd",
+                        "secondary-container": "#d6e4f0",
+                        "surface-tint": "#295ea8",
+                        "tertiary-fixed-dim": "#ebc300",
+                        "on-secondary-fixed-variant": "#3b4852",
+                        "on-surface": "#181c1e",
+                        "tertiary": "#715d00",
+                        "on-primary-fixed": "#001b3e",
+                        "primary-fixed-dim": "#aac7ff",
+                        "tertiary-container": "#cba800",
+                        "primary-container": "#1e56a0",
+                        "surface-dim": "#d7dadd",
+                        "primary": "#003e80",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e0e3e6",
+                        "surface-bright": "#f7fafd",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f1f4f7",
+                        "on-primary-fixed-variant": "#00458d",
+                        "on-error": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#d6e3ff",
+                        "on-tertiary-container": "#4d3e00",
+                        "on-secondary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-md": "16px",
+                        "container-padding": "24px",
+                        "margin-sm": "8px",
+                        "base-unit": "4px",
+                        "margin-lg": "32px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "body-lg": ["Hanken Grotesk"],
+                        "label-md": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "label-md": ["13px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .step-active {
+            border-left: 4px solid #003e80;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #c2c6d3; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter h-16 bg-surface-container-highest border-b border-outline-variant shadow-sm">
+<div class="flex items-center gap-4">
+<span class="font-headline-md text-headline-md font-bold text-primary">SIIDs</span>
+<div class="hidden md:flex bg-surface-container-low rounded-full px-4 py-1.5 border border-outline-variant items-center gap-2">
+<span class="material-symbols-outlined text-outline" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-md w-64" placeholder="Search case ID or Investigator..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors" data-icon="notifications">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full transition-colors" data-icon="help">help</button>
+</div>
+<div class="flex items-center gap-3 pl-4 border-l border-outline-variant">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold text-primary">Assistant Commissioner</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest">SIID Division</p>
+</div>
+<img alt="RRA Investigator Avatar" class="w-10 h-10 rounded-full border-2 border-primary-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB47ZPWUMG9sO7CezYZGZYvjqJ15zaAmibQ_LUkPhqZm8BZNlRp5c-aatsSQxd-XFoNSm1eK8bZTI11pu4f42NmnWirMEyKx200NIa_7FPGuMsudlLCoZzapLhkSYzbXmQ08KHHLnTUoysgsbt0euQdBT9MaarZVkAuu0fjp2hQ9tjvW69Cigsf2OF5S70pYNOcIwLU5uR_yGlTBXC81sqHnrgPUPsu_TinqYFXRu3njEszmday6ozTMzAPotZjxZYX1mlfa7vumHw"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="hidden lg:flex flex-col pt-4 fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-surface-container-low border-r border-outline-variant overflow-y-auto">
+<div class="px-6 mb-8 mt-2">
+<div class="flex items-center gap-3 mb-1">
+<span class="material-symbols-outlined text-primary text-3xl" data-icon="security">security</span>
+<div>
+<h2 class="font-headline-sm text-headline-sm font-black text-primary leading-tight">SIID Division</h2>
+<p class="text-[11px] text-on-surface-variant font-medium">Strategic Intelligence</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-body-md text-body-md">Dashboard</span>
+</a>
+<a class="bg-secondary-container text-on-secondary-container rounded-lg mx-2 flex items-center gap-3 px-4 py-3 active:scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="security_update_good">security_update_good</span>
+<span class="font-body-md text-body-md">Investigations</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-3 mx-2 hover:bg-surface-container-high transition-all rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
+<span class="font-body-md text-body-md">User Management</span>
+</a>
+</nav>
+<div class="mt-auto border-t border-outline-variant p-4 space-y-1">
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined text-body-md" data-icon="settings">settings</span>
+<span class="text-body-md">Settings</span>
+</a>
+<a class="text-on-surface-variant flex items-center gap-3 px-4 py-2 hover:bg-surface-container-high rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined text-body-md" data-icon="contact_support">contact_support</span>
+<span class="text-body-md">Support</span>
+</a>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="lg:ml-64 mt-16 p-6 md:p-10 flex-1 bg-surface">
+<!-- Welcome Header -->
+<div class="mb-10">
+<h1 class="font-headline-lg text-headline-lg text-primary mb-2">Commissioner Review Oversight</h1>
+<p class="text-on-surface-variant max-w-2xl font-body-lg">Final validation authority for strategic intelligence reports and investigation outcomes within Phase 1 and Phase 2 workflows.</p>
+</div>
+<!-- Metric Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+<div class="glass-panel p-5 rounded-xl border-l-4 border-primary">
+<p class="text-on-surface-variant text-label-md uppercase mb-2">Phase 1 Pending</p>
+<div class="flex justify-between items-end">
+<h3 class="font-headline-lg text-headline-lg text-primary">12</h3>
+<span class="bg-primary-container text-white text-[10px] px-2 py-0.5 rounded-full">+3 Today</span>
+</div>
+<div class="mt-4 h-1 bg-surface-container-highest rounded-full">
+<div class="h-full bg-primary w-2/3 rounded-full"></div>
+</div>
+</div>
+<div class="glass-panel p-5 rounded-xl border-l-4 border-tertiary">
+<p class="text-on-surface-variant text-label-md uppercase mb-2">Phase 2 Pending</p>
+<div class="flex justify-between items-end">
+<h3 class="font-headline-lg text-headline-lg text-tertiary">08</h3>
+<span class="bg-tertiary-container text-on-tertiary-container text-[10px] px-2 py-0.5 rounded-full">Critical</span>
+</div>
+<div class="mt-4 h-1 bg-surface-container-highest rounded-full">
+<div class="h-full bg-tertiary w-1/2 rounded-full"></div>
+</div>
+</div>
+<div class="glass-panel p-5 rounded-xl">
+<p class="text-on-surface-variant text-label-md uppercase mb-2">Avg. Review Time</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">4.2h</h3>
+<p class="text-[11px] text-green-600 mt-2 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="trending_down">trending_down</span>
+                    12% lower than target
+                </p>
+</div>
+<div class="glass-panel p-5 rounded-xl">
+<p class="text-on-surface-variant text-label-md uppercase mb-2">Approved Today</p>
+<h3 class="font-headline-lg text-headline-lg text-on-surface">24</h3>
+<p class="text-[11px] text-on-surface-variant mt-2">Target reached (80%)</p>
+</div>
+</div>
+<!-- Main Workspace: Queue Layout -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+<!-- Left: ACReview & ACFinalReview Queue -->
+<div class="xl:col-span-8 space-y-8">
+<!-- Queue Section: Phase 1 ACReview -->
+<section>
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-icon="fact_check">fact_check</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">ACReview Queue <span class="text-on-surface-variant font-normal">(Phase 1)</span></h2>
+</div>
+<button class="text-primary hover:underline text-label-md font-bold">View History</button>
+</div>
+<div class="space-y-4">
+<!-- Investigation Card: High-End UI Pattern -->
+<div class="glass-panel rounded-xl overflow-hidden hover:shadow-md transition-shadow group">
+<div class="p-5 flex flex-col md:flex-row gap-6">
+<div class="flex-1">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="bg-secondary-fixed text-on-secondary-fixed font-label-md text-[10px] px-2 py-0.5 rounded tracking-widest">#INTEL-8821</span>
+<span class="text-on-surface-variant text-label-md">• Created 2h ago</span>
+</div>
+<div class="bg-green-100 text-green-800 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
+<span class="material-symbols-outlined text-xs" data-icon="verified_user">verified_user</span>
+                                            DIRECTOR VALIDATED
+                                        </div>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary mb-2">Unusual Foreign Remittance Pattern - Kigali Sector</h4>
+<p class="text-body-md text-on-surface-variant line-clamp-2">Intelligence indicates a cluster of small-value transactions routed through multiple intermediaries to evade mandatory declaration thresholds.</p>
+<div class="mt-4 flex flex-wrap gap-4 items-center">
+<div class="flex items-center gap-2">
+<img alt="Officer" class="w-6 h-6 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB5y5Gkbuz2So6yLFXw8i0WUP1hdUxL61PAekJyUsfRgZjugtgZbVW6pa1vB6zkmp24UMPMun6AjONpuimtq3Cdf7ZPmR7mCNgmeI-_jRruIEfQAzxMiAezjLKMrSzX4aZHugj5IShN4KcaI6tcsuAuv4oWWvLtTUTn2pZcybuh2gJ9hADRXeDihlDtsKGnh4ty4KBYrfzILGps-3hp9yfJYJzOFHe2KWoX8wbvZ2Zl5x3XLsN0XNJMKMgvw9jSo6IYhyjd3c3OOu4"/>
+<span class="text-body-md font-medium">Officer Jean-Damascene</span>
+</div>
+<div class="h-4 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-sm" data-icon="description">description</span>
+<span class="text-body-md">14-page Report</span>
+</div>
+</div>
+</div>
+<div class="flex md:flex-col justify-center gap-2 min-w-[180px] border-t md:border-t-0 md:border-l border-outline-variant pt-4 md:pt-0 md:pl-6">
+<button class="bg-primary text-white w-full py-2.5 rounded-lg font-label-md flex items-center justify-center gap-2 hover:bg-on-primary-fixed-variant transition-colors active:scale-95 duration-75">
+<span class="material-symbols-outlined text-sm" data-icon="task_alt">task_alt</span>
+                                        Approve &amp; Send
+                                    </button>
+<button class="border border-outline text-on-surface-variant w-full py-2.5 rounded-lg font-label-md flex items-center justify-center gap-2 hover:bg-surface-container-highest transition-colors active:scale-95 duration-75">
+<span class="material-symbols-outlined text-sm" data-icon="undo">undo</span>
+                                        Return
+                                    </button>
+<button class="text-error font-label-md py-2 w-full hover:bg-error-container/50 rounded-lg transition-colors">Reject Case</button>
+</div>
+</div>
+</div>
+<!-- Card 2: INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION state -->
+<div class="glass-panel rounded-xl overflow-hidden border-l-4 border-tertiary hover:shadow-md transition-shadow">
+<div class="p-5 flex flex-col md:flex-row gap-6 bg-tertiary-container/10">
+<div class="flex-1">
+<div class="flex justify-between items-start mb-3">
+<div class="flex items-center gap-3">
+<span class="bg-tertiary text-white font-label-md text-[10px] px-2 py-0.5 rounded tracking-widest">#CASE-4402</span>
+<span class="text-on-surface-variant text-label-md">• Updated 45m ago</span>
+</div>
+<div class="bg-tertiary text-on-tertiary-fixed font-bold text-[10px] px-3 py-1 rounded-full animate-pulse shadow-sm">
+                                            INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR
+                                        </div>
+</div>
+<h4 class="font-headline-sm text-headline-sm text-primary mb-2">Complex Corporate Under-declaration - Rubavu District</h4>
+<p class="text-body-md text-on-surface-variant">Formal investigation concluded with findings of 1.2B RWF discrepancy. Director of Investigation has formally approved the findings for final AC validation.</p>
+<div class="mt-4 flex gap-6">
+<button class="flex items-center gap-2 px-4 py-2 bg-surface-container-highest rounded-lg text-primary font-bold text-label-md hover:bg-outline-variant transition-all">
+<span class="material-symbols-outlined" data-icon="clinical_notes">clinical_notes</span>
+                                            Review Case Files
+                                        </button>
+<button class="flex items-center gap-2 px-4 py-2 border border-outline rounded-lg text-on-surface-variant font-bold text-label-md hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+                                            Refer to Legal
+                                        </button>
+</div>
+</div>
+<div class="flex md:flex-col justify-center gap-2 min-w-[180px] border-t md:border-t-0 md:border-l border-outline-variant pt-4 md:pt-0 md:pl-6">
+<div class="text-[10px] text-tertiary font-bold mb-2 uppercase tracking-tighter text-center">Final Approval Hub</div>
+<button class="bg-primary text-white w-full py-2.5 rounded-lg font-label-md flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 shadow-sm">
+<span class="material-symbols-outlined text-sm" data-icon="send">send</span>
+                                        Approve to Dept
+                                    </button>
+<button class="bg-secondary-fixed text-on-secondary-fixed w-full py-2.5 rounded-lg font-label-md flex items-center justify-center gap-2 hover:opacity-90 active:scale-95">
+<span class="material-symbols-outlined text-sm" data-icon="assignment_return">assignment_return</span>
+                                        Return for Detail
+                                    </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Queue Section: Phase 2 ACFinalReview -->
+<section>
+<div class="flex items-center justify-between mb-4 px-2">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary" data-icon="verified">verified</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">ACFinalReview <span class="text-on-surface-variant font-normal">(Post-Investigation)</span></h2>
+</div>
+</div>
+<div class="glass-panel rounded-xl overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-high border-b border-outline-variant">
+<tr>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">CASE ID</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">INVESTIGATOR</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">PRIORITY</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">STATUS</th>
+<th class="px-6 py-4 font-label-md text-label-md text-on-surface-variant">ACTIONS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-outline-variant/30 hover:bg-secondary-container/10 transition-colors cursor-pointer">
+<td class="px-6 py-4 font-label-md font-bold text-primary">CASE-3911</td>
+<td class="px-6 py-4 font-body-md text-on-surface">Investigator Uwimana</td>
+<td class="px-6 py-4">
+<span class="bg-red-50 text-red-700 px-2 py-0.5 rounded text-[10px] font-black uppercase">Urgent</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-label-md text-secondary">
+<span class="w-2 h-2 bg-secondary rounded-full"></span>
+                                            Under Final Review
+                                        </div>
+</td>
+<td class="px-6 py-4">
+<button class="material-symbols-outlined text-primary p-1 hover:bg-primary-container/20 rounded" data-icon="visibility">visibility</button>
+<button class="material-symbols-outlined text-tertiary p-1 hover:bg-tertiary-container/20 rounded" data-icon="checklist_rtl">checklist_rtl</button>
+</td>
+</tr>
+<tr class="hover:bg-secondary-container/10 transition-colors cursor-pointer">
+<td class="px-6 py-4 font-label-md font-bold text-primary">CASE-8820</td>
+<td class="px-6 py-4 font-body-md text-on-surface">Investigator Mugisha</td>
+<td class="px-6 py-4">
+<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-black uppercase">Standard</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center gap-2 text-label-md text-secondary">
+<span class="w-2 h-2 bg-secondary rounded-full"></span>
+                                            Awaiting Signature
+                                        </div>
+</td>
+<td class="px-6 py-4">
+<button class="material-symbols-outlined text-primary p-1 hover:bg-primary-container/20 rounded" data-icon="visibility">visibility</button>
+<button class="material-symbols-outlined text-tertiary p-1 hover:bg-tertiary-container/20 rounded" data-icon="checklist_rtl">checklist_rtl</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</div>
+<!-- Right: Activity & Metadata -->
+<div class="xl:col-span-4 space-y-6">
+<!-- Quick Oversight Context -->
+<div class="glass-panel p-6 rounded-2xl">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-4">Strategic Oversight</h3>
+<div class="space-y-4">
+<div class="p-3 bg-white rounded-lg border border-outline-variant flex items-center gap-3">
+<span class="material-symbols-outlined text-tertiary bg-tertiary-container/20 p-2 rounded-lg" data-icon="warning">warning</span>
+<div>
+<p class="text-body-md font-bold">Unresolved Referrals</p>
+<p class="text-[11px] text-on-surface-variant">4 cases referred to Legal without response &gt; 48h</p>
+</div>
+</div>
+<div class="p-3 bg-white rounded-lg border border-outline-variant flex items-center gap-3">
+<span class="material-symbols-outlined text-primary bg-primary-container/20 p-2 rounded-lg" data-icon="group">group</span>
+<div>
+<p class="text-body-md font-bold">Director Workload</p>
+<p class="text-[11px] text-on-surface-variant">Director Intelligence: 14 active reviews</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Division Performance Visualization -->
+<div class="glass-panel p-6 rounded-2xl overflow-hidden relative">
+<h3 class="font-headline-sm text-headline-sm text-primary mb-6">Phase Progression</h3>
+<div class="relative flex flex-col gap-8 ml-4">
+<div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-outline-variant/30"></div>
+<div class="relative flex items-start gap-4">
+<div class="w-6 h-6 bg-primary rounded-full z-10 flex items-center justify-center border-4 border-white shadow-sm">
+<span class="material-symbols-outlined text-[10px] text-white" data-icon="done">done</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md font-bold">Phase 1: Intel Preparation</h4>
+<p class="text-[11px] text-on-surface-variant">88% efficiency this week</p>
+</div>
+</div>
+<div class="relative flex items-start gap-4">
+<div class="w-6 h-6 bg-tertiary rounded-full z-10 flex items-center justify-center border-4 border-white shadow-sm">
+<span class="material-symbols-outlined text-[10px] text-white" data-icon="sync">sync</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md font-bold">Phase 2: Investigation</h4>
+<p class="text-[11px] text-on-surface-variant">12 cases currently active</p>
+</div>
+</div>
+<div class="relative flex items-start gap-4">
+<div class="w-6 h-6 bg-surface-container-highest rounded-full z-10 border-4 border-white"></div>
+<div class="opacity-50">
+<h4 class="font-label-md text-label-md font-bold">Phase 3: Enforcement</h4>
+<p class="text-[11px] text-on-surface-variant">Awaiting AC approval signatures</p>
+</div>
+</div>
+</div>
+</div>
+<!-- System Notice -->
+<div class="bg-primary-container p-6 rounded-2xl text-on-primary-container">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined" data-icon="info">info</span>
+<h4 class="font-headline-sm text-headline-sm text-[16px]">Policy Update</h4>
+</div>
+<p class="text-body-md leading-relaxed">
+                        Per new Strategic Intelligence protocols, all reports over 500M RWF valuation require double validation by the Deputy Commissioner before final release.
+                    </p>
+<button class="mt-4 w-full py-2 bg-on-primary-container text-primary rounded-lg font-bold text-label-md hover:bg-white transition-colors">Acknowledge</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full flex flex-col md:flex-row justify-between items-center px-gutter gap-4 py-4 mt-auto bg-surface-dim border-t border-outline-variant">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md font-bold text-on-surface">SIIDs</span>
+<span class="text-outline text-label-md">|</span>
+<p class="font-label-md text-label-md text-on-surface-variant">© 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.</p>
+</div>
+<div class="flex gap-6">
+<a class="text-on-surface-variant hover:text-primary transition-colors text-label-md" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-label-md" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors text-label-md" href="#">Security Protocol</a>
+</div>
+</footer>
+<!-- Interactive Layer: Notification Toast (Simulated) -->
+<div class="fixed bottom-8 right-8 translate-y-20 opacity-0 transition-all duration-500 z-[100] glass-panel p-4 rounded-xl border-l-4 border-primary flex items-center gap-4 max-w-sm" id="toast">
+<span class="material-symbols-outlined text-primary" data-icon="notification_important">notification_important</span>
+<div>
+<p class="font-bold text-body-md">New Case for Review</p>
+<p class="text-[11px] text-on-surface-variant">Director has just validated INTEL-8830.</p>
+</div>
+</div>
+<script>
+        // Micro-interactions
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const toast = document.getElementById('toast');
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 5000);
+            }, 3000);
+        });
+
+        // Hover effect for side navigation
+        const navItems = document.querySelectorAll('nav a');
+        navItems.forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                item.style.transform = 'translateX(4px)';
+            });
+            item.addEventListener('mouseleave', () => {
+                item.style.transform = 'translateX(0)';
+            });
+        });
+    </script>
+</body></html>

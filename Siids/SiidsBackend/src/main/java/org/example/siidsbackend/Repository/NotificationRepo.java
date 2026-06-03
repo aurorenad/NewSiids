@@ -15,7 +15,7 @@ import java.util.List;
 public interface NotificationRepo extends JpaRepository<Notification, Integer> {
     @Modifying
     @Query("UPDATE Notification n SET n.read = true WHERE n.recipient.employeeId = :employeeId")
-    void markAllNotificationsAsRead(@Param("Id") List<Integer> id);
+    void markAllNotificationsAsRead(@Param("employeeId") String employeeId);
 
     List<Notification> findByRecipientAndReadFalseOrderByCreatedAtDesc(Employee employee);
 

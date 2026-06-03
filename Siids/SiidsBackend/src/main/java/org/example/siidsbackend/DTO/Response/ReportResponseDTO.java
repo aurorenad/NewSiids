@@ -34,7 +34,9 @@ public class ReportResponseDTO {
     private List<String> findingsAttachmentPaths;
     private String assistantCommissioner;
     private String directorInvestigation;
+    private String directorInvestigationId;
     private String directorIntelligence;
+    private String directorIntelligenceId;
     @Data
     public static class OfficerDTO {
         private String employeeId;
@@ -51,4 +53,14 @@ public class ReportResponseDTO {
     private boolean canSubmitFindings;
     private boolean canSubmitCasePlan;
     private boolean canContinueWorking;
+
+    @Data
+    public static class SignatureDTO {
+        private String employeeId;
+        private String role;
+        private String name;
+        private String signatureBase64;
+        private LocalDateTime signedAt;
+    }
+    private List<SignatureDTO> signatures;
 }

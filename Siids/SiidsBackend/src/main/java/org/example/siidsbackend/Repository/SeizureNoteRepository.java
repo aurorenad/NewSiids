@@ -14,4 +14,5 @@ public interface SeizureNoteRepository extends JpaRepository<SeizureNote, Intege
     List<SeizureNote> findByStatus(PhysicalStockStatus status);
     List<SeizureNote> findByPvInChargeOrderByCreatedAtDesc(Employee officer);
     Optional<SeizureNote> findFirstByOrderByCreatedAtDesc();
+    Optional<SeizureNote> findFirstBySeizureNumberStartingWithOrderByIdDesc(String prefix);
 }

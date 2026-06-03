@@ -1,0 +1,274 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Login | SIIDs Portal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#181c1e",
+                    "on-primary-fixed-variant": "#00458d",
+                    "surface-container": "#ebeef1",
+                    "tertiary-fixed": "#ffe177",
+                    "surface-container-high": "#e5e8eb",
+                    "outline": "#737782",
+                    "on-surface-variant": "#424751",
+                    "on-tertiary-fixed-variant": "#554500",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed-variant": "#3b4852",
+                    "on-tertiary": "#ffffff",
+                    "surface-tint": "#295ea8",
+                    "secondary-fixed": "#d6e4f0",
+                    "primary-fixed-dim": "#aac7ff",
+                    "secondary-container": "#d6e4f0",
+                    "on-tertiary-container": "#4d3e00",
+                    "primary-fixed": "#d6e3ff",
+                    "on-primary-container": "#b4cdff",
+                    "secondary-fixed-dim": "#bac8d4",
+                    "outline-variant": "#c2c6d3",
+                    "tertiary": "#715d00",
+                    "on-background": "#181c1e",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#ebc300",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f1f4f7",
+                    "surface-dim": "#d7dadd",
+                    "on-tertiary-fixed": "#231b00",
+                    "surface-container-highest": "#e0e3e6",
+                    "surface": "#f7fafd",
+                    "inverse-primary": "#aac7ff",
+                    "primary-container": "#1e56a0",
+                    "on-secondary-fixed": "#101d26",
+                    "surface-bright": "#f7fafd",
+                    "tertiary-container": "#cba800",
+                    "surface-variant": "#e0e3e6",
+                    "on-secondary-container": "#596670",
+                    "inverse-on-surface": "#eef1f4",
+                    "primary": "#003e80",
+                    "secondary": "#53606a",
+                    "on-primary-fixed": "#001b3e",
+                    "inverse-surface": "#2d3133",
+                    "background": "#f7fafd",
+                    "on-error": "#ffffff",
+                    "surface-container-lowest": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-sm": "8px",
+                    "gutter": "16px",
+                    "margin-md": "16px",
+                    "base-unit": "4px",
+                    "margin-lg": "32px",
+                    "container-padding": "24px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                    "headline-lg-mobile": ["24px", { "lineHeight": "30px", "fontWeight": "700" }],
+                    "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                    "label-md": ["13px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                    "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: linear-gradient(135deg, #f7fafd 0%, #e0e7ff 100%);
+            font-family: 'Hanken Grotesk', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(0, 62, 128, 0.08);
+        }
+        .input-group:focus-within {
+            border-color: #1e56a0;
+            box-shadow: 0 0 0 2px rgba(30, 86, 160, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-gutter">
+<!-- Main Container -->
+<main class="w-full max-w-[640px] transition-all duration-300">
+<!-- Login Card -->
+<div class="glass-card rounded-[2rem] p-12 flex flex-col items-center" id="login-view">
+<!-- RRA Logo Area -->
+<div class="mb-margin-lg">
+<div class="w-32 h-32 rounded-full border-4 border-white flex items-center justify-center overflow-hidden bg-white/80 shadow-inner">
+<img alt="Rwanda Revenue Authority Logo" class="w-4/5 h-auto object-contain" data-alt="A clean professional studio photograph of the Rwanda Revenue Authority emblem, which features a colorful, stylized sun and waves icon above official text. The logo is perfectly centered within a minimalist white circle, surrounded by a thin, elegant blue ring. The lighting is high-key and soft, emphasizing a sense of transparency and governmental trust. The visual style is modern, corporate, and extremely clear." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYcgPmaQQXOSaLIKPMB_Kk8JG368zrd2zW0qC9PsB1Oj1ljFsiNklKcBeOvUgn4lsFNH_GwWApqxiPF-faLdZDKQSDXP9bilWA-eb288U1HmoBp3DifmXX2aowfeOVGouydkkJiOykBPXOz5XBZQqgnIOdFrJZxRouiZNsozd2nn3LLXxjNnwWId0sR0vs_Zv_0hnw0zmBi0oqL9HHQykTv0wRhn58Eu0nTuPONbtP6n-IMOJ2QzzFBZLwpHo5Ci_AUTVkquW5ld4">
+</div>
+</div>
+<!-- Heading Section -->
+<div class="text-center mb-10 space-y-2">
+<h1 class="font-headline-lg text-headline-lg text-primary">
+                    Strategic Intelligence &amp; Investigation Division
+                </h1>
+<p class="font-label-md text-body-lg text-on-surface-variant font-medium">
+                    Secure Portal Login
+                </p>
+</div>
+<!-- Login Form -->
+<form class="w-full max-w-[400px] space-y-6" onsubmit="event.preventDefault();">
+<!-- User ID Field -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 ml-1" for="user-id">
+                        User ID <span class="text-error">*</span>
+</label>
+<div class="input-group relative flex items-center bg-white/50 border border-outline-variant rounded-xl transition-all overflow-hidden">
+<span class="material-symbols-outlined px-4 text-on-surface-variant" data-icon="person">person</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-4 font-body-md text-body-lg text-on-surface placeholder:text-outline-variant/60" id="user-id" placeholder="Enter your ID" type="text">
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 ml-1" for="password">
+                        Password <span class="text-error">*</span>
+</label>
+<div class="input-group relative flex items-center bg-white/50 border border-outline-variant rounded-xl transition-all overflow-hidden">
+<span class="material-symbols-outlined px-4 text-on-surface-variant" data-icon="lock">lock</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-4 font-body-md text-body-lg text-on-surface placeholder:text-outline-variant/60" id="password" placeholder="••••••••" type="password">
+<button aria-label="Toggle password visibility" class="px-4 text-on-surface-variant hover:text-primary transition-colors" type="button">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+</div>
+</div>
+<!-- Remember Me -->
+<div class="flex items-center justify-between px-1">
+<label class="flex items-center gap-3 cursor-pointer group">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary-container transition-all cursor-pointer bg-white/50" type="checkbox">
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface transition-colors">Remember me on this device</span>
+</label>
+</div>
+<!-- Action Button -->
+<div class="pt-4">
+<a href="{{DATA:SCREEN:SCREEN_15}}" class="w-full bg-primary text-on-primary font-headline-sm text-headline-sm py-4 rounded-xl shadow-lg hover:shadow-primary/20 hover:bg-primary-container transition-all flex items-center justify-center gap-2">
+                        Sign In
+                    </a>
+</div>
+<!-- Footer Link -->
+<div class="text-center pt-2">
+<a class="font-label-md text-body-md text-primary-container hover:text-primary hover:underline decoration-2 transition-all cursor-pointer" href="{{DATA:SCREEN:SCREEN_12}}">Forgot your credentials?</a>
+</div>
+</form>
+</div>
+<!-- Forgot Password View (Hidden by default) -->
+<div class="hidden glass-card rounded-[2rem] p-12 flex flex-col items-center" id="forgot-view">
+<div class="mb-margin-lg">
+<div class="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-5xl" data-icon="lock_reset">lock_reset</span>
+</div>
+</div>
+<div class="text-center mb-10 space-y-2">
+<h1 class="font-headline-lg text-headline-lg text-primary">
+                    Reset Password
+                </h1>
+<p class="font-body-md text-body-lg text-on-surface-variant max-w-[320px] mx-auto">
+                    Enter your registered User ID to receive password recovery instructions.
+                </p>
+</div>
+<form class="w-full max-w-[400px] space-y-8" onsubmit="event.preventDefault();">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 ml-1" for="forgot-id">
+                        User ID <span class="text-error">*</span>
+</label>
+<div class="input-group relative flex items-center bg-white/50 border border-outline-variant rounded-xl transition-all overflow-hidden">
+<span class="material-symbols-outlined px-4 text-on-surface-variant" data-icon="person">person</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-4 font-body-md text-body-lg text-on-surface placeholder:text-outline-variant/60" id="forgot-id" placeholder="Enter your ID" type="text">
+</div>
+</div>
+<div class="space-y-4">
+<button class="w-full bg-primary text-on-primary font-headline-sm text-headline-sm py-4 rounded-xl shadow-lg hover:shadow-primary/20 hover:bg-primary-container transition-all" type="submit">
+                        Send Instructions
+                    </button>
+<a class="font-label-md text-body-md text-primary-container hover:text-primary hover:underline decoration-2 transition-all cursor-pointer" href="{{DATA:SCREEN:SCREEN_12}}">Forgot your credentials?</a>
+</div>
+</form>
+</div>
+<!-- System Footer -->
+<footer class="mt-margin-lg text-center space-y-3">
+<p class="font-label-md text-label-md text-on-surface-variant font-medium">
+                © 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.
+            </p>
+<div class="flex justify-center items-center gap-4 text-on-surface-variant/80">
+<a class="font-label-md text-label-md hover:text-primary transition-colors" href="#">Legal Disclaimer</a>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<a class="font-label-md text-label-md hover:text-primary transition-colors" href="#">Security Protocol</a>
+</div>
+</footer>
+</main>
+<!-- Interactions Script -->
+<script>
+        // Password Visibility Toggle
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = passwordInput.parentElement.querySelector('button');
+        const iconSpan = toggleBtn.querySelector('.material-symbols-outlined');
+
+        toggleBtn.addEventListener('click', () => {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            iconSpan.textContent = isPassword ? 'visibility_off' : 'visibility';
+        });
+
+        // View Toggling
+        function toggleForgotView() {
+            const loginView = document.getElementById('login-view');
+            const forgotView = document.getElementById('forgot-view');
+            
+            if (loginView.classList.contains('hidden')) {
+                forgotView.classList.add('hidden');
+                loginView.classList.remove('hidden');
+            } else {
+                loginView.classList.add('hidden');
+                forgotView.classList.remove('hidden');
+            }
+        }
+
+        // Focus States
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+            input.addEventListener('focus', () => {
+                input.closest('.input-group').classList.add('bg-white');
+                input.closest('.input-group').classList.remove('bg-white/50');
+            });
+            input.addEventListener('blur', () => {
+                input.closest('.input-group').classList.remove('bg-white');
+                input.closest('.input-group').classList.add('bg-white/50');
+            });
+        });
+    </script>
+
+
+
+
+</body></html>

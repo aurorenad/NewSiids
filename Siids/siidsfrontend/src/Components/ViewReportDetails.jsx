@@ -411,6 +411,35 @@ const ViewReportDetails = () => {
                         )}
                     </Box>
 
+                    {report.signatures && report.signatures.length > 0 && (
+                        <Box sx={{ mt: 4, mb: 2 }}>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                Signatures ({report.signatures.length})
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                {report.signatures.map((sig, idx) => (
+                                    <Box key={idx} sx={{ border: '1px solid #ccc', borderRadius: 2, p: 2, minWidth: '250px' }}>
+                                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                            {sig.name} ({sig.role.replace(/_/g, ' ')})
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
+                                            Signed At: {formatDate(sig.signedAt)}
+                                        </Typography>
+                                        <Box sx={{ height: '100px', backgroundColor: '#f9f9f9', border: '1px dashed #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {sig.signatureBase64 && sig.signatureBase64.startsWith('data:image') ? (
+                                                <img src={sig.signatureBase64} alt="Signature" style={{ maxHeight: '100%', maxWidth: '100%' }} />
+                                            ) : (
+                                                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', p: 1 }}>
+                                                    {sig.signatureBase64}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
+
                     <Divider sx={{ my: 3 }} />
                     <Box sx={{ textAlign: 'center', mt: 4 }}>
                         <Typography variant="h6" align="center" sx={{ mb: 1, fontWeight: 'bold' }}>

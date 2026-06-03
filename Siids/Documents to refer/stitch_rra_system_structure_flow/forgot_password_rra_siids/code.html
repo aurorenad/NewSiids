@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reset Password | SIIDs - Rwanda Revenue Authority</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#181c1e",
+                    "on-primary-fixed-variant": "#00458d",
+                    "surface-container": "#ebeef1",
+                    "tertiary-fixed": "#ffe177",
+                    "surface-container-high": "#e5e8eb",
+                    "outline": "#737782",
+                    "on-surface-variant": "#424751",
+                    "on-tertiary-fixed-variant": "#554500",
+                    "on-primary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed-variant": "#3b4852",
+                    "on-tertiary": "#ffffff",
+                    "surface-tint": "#295ea8",
+                    "secondary-fixed": "#d6e4f0",
+                    "primary-fixed-dim": "#aac7ff",
+                    "secondary-container": "#d6e4f0",
+                    "on-tertiary-container": "#4d3e00",
+                    "primary-fixed": "#d6e3ff",
+                    "on-primary-container": "#b4cdff",
+                    "secondary-fixed-dim": "#bac8d4",
+                    "outline-variant": "#c2c6d3",
+                    "tertiary": "#715d00",
+                    "on-background": "#181c1e",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#ebc300",
+                    "on-secondary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f1f4f7",
+                    "surface-dim": "#d7dadd",
+                    "on-tertiary-fixed": "#231b00",
+                    "surface-container-highest": "#e0e3e6",
+                    "surface": "#f7fafd",
+                    "inverse-primary": "#aac7ff",
+                    "primary-container": "#1e56a0",
+                    "on-secondary-fixed": "#101d26",
+                    "surface-bright": "#f7fafd",
+                    "tertiary-container": "#cba800",
+                    "surface-variant": "#e0e3e6",
+                    "on-secondary-container": "#596670",
+                    "inverse-on-surface": "#eef1f4",
+                    "primary": "#003e80",
+                    "secondary": "#53606a",
+                    "on-primary-fixed": "#001b3e",
+                    "inverse-surface": "#2d3133",
+                    "background": "#f7fafd",
+                    "on-error": "#ffffff",
+                    "surface-container-lowest": "#ffffff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-sm": "8px",
+                    "gutter": "16px",
+                    "margin-md": "16px",
+                    "base-unit": "4px",
+                    "margin-lg": "32px",
+                    "container-padding": "24px"
+            },
+            "fontFamily": {
+                    "headline-md": ["Hanken Grotesk"],
+                    "headline-lg-mobile": ["Hanken Grotesk"],
+                    "headline-lg": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "label-md": ["JetBrains Mono"],
+                    "body-lg": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            "fontSize": {
+                    "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                    "headline-lg-mobile": ["24px", { "lineHeight": "30px", "fontWeight": "700" }],
+                    "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                    "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                    "label-md": ["13px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                    "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                    "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .bg-login-gradient {
+            background: radial-gradient(circle at top right, #eef2f7 0%, #f7fafd 100%);
+        }
+        .login-card-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04), 0px 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        input:focus {
+            border-left: 4px solid #003e80 !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+    </style>
+</head>
+<body class="bg-login-gradient min-h-screen flex flex-col font-body-md text-on-surface antialiased">
+<!-- Main Content Canvas (Navigation Shell Suppressed for Transactional Page) -->
+<main class="flex-grow flex items-center justify-center p-6 sm:p-container-padding">
+<!-- Auth Card Container -->
+<div class="w-full max-w-[440px] bg-surface-container-lowest rounded-[32px] p-8 sm:p-12 login-card-shadow border border-outline-variant/30 relative overflow-hidden">
+<!-- Branding Header -->
+<div class="flex flex-col items-center mb-10 text-center">
+<div class="w-24 h-24 mb-6 rounded-full border border-primary/20 flex items-center justify-center p-2 bg-white shadow-sm overflow-hidden">
+<img alt="RRA Logo" class="w-full h-full object-contain" data-alt="The professional logo of the Rwanda Revenue Authority, showcasing clean geometric lines and authoritative institutional branding. The logo is centered within a circular white badge on a bright, minimalist light-mode background. Soft studio lighting highlights the premium quality and governmental prestige of the Strategic Intelligence and Investigation Division." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9-317v82UkJVbUeRca8QcTc1RRJS0peK0wDlRRGk7DuIyp4KivLxWAw3sqKfNl7yS8I9m0Sr6oTc-VWAntcH_csV8BuUnu2YAx7fa6VF-jm9rHOcCexHhw5NHMLIi-rNr7ERmuUzGBU8Qdc0klKyO7k51ZRAwwszy14lOmLLCt25LI1kia8XIRCbZmQYwZ_halZ5yGLqMeUxRT2oTUozMcLN4g5p1Z0x2EgpbC6YhCjTjPmKp1_4D3kkji2V8JjsCewrE__CenPs"/>
+</div>
+<h1 class="font-headline-sm text-headline-sm text-on-surface mb-2 px-4">
+                    Strategic Intelligence &amp; Investigation Division System
+                </h1>
+<p class="font-label-md text-label-md text-secondary tracking-widest mb-6">
+                    (SIIDs)
+                </p>
+<div class="w-12 h-1 bg-primary/10 rounded-full mb-6"></div>
+<h2 class="font-headline-sm text-headline-sm text-primary mb-3">
+                    Reset Your Password
+                </h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-[280px]">
+                    Enter your registered email or User ID to receive a password reset link.
+                </p>
+</div>
+<!-- Forgot Password Form -->
+<form class="space-y-6" id="resetForm">
+<div class="relative">
+<label class="absolute -top-2.5 left-4 bg-surface-container-lowest px-2 font-label-md text-label-md text-on-surface-variant z-10" for="identifier">
+                        Email or User ID <span class="text-error">*</span>
+</label>
+<div class="relative flex items-center group">
+<span class="material-symbols-outlined absolute left-4 text-on-surface-variant group-focus-within:text-primary transition-colors">
+                            alternate_email
+                        </span>
+<input class="w-full h-14 pl-12 pr-4 bg-surface-container-low border border-outline-variant rounded-lg font-body-md text-on-surface placeholder:text-outline/60 focus:bg-white transition-all duration-200" id="identifier" name="identifier" placeholder="e.g. 04219 or investigator@rra.gov.rw" required="" type="text"/>
+</div>
+</div>
+<button class="w-full h-14 bg-primary text-on-primary rounded-lg font-headline-sm text-headline-sm hover:bg-primary-container active:scale-[0.98] transition-all duration-150 flex items-center justify-center gap-2 shadow-md" id="submitBtn" type="submit">
+<span id="btnText">Send Reset Link</span>
+<span class="hidden" id="loadingSpinner">
+<svg class="animate-spin h-5 w-5 text-white" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+</span>
+</button>
+<!-- Status Feedback (Hidden by default) -->
+<div class="hidden p-4 rounded-lg bg-secondary-container text-on-secondary-container text-body-md flex gap-3 items-start animate-fade-in" id="statusMessage">
+<span class="material-symbols-outlined text-primary">check_circle</span>
+<p>Instructions have been sent. Please check your official RRA email account within the next few minutes.</p>
+</div>
+</form>
+<!-- Footer Action -->
+<div class="mt-10 text-center">
+<a class="inline-flex items-center gap-2 font-label-md text-label-md text-primary hover:text-primary-container transition-colors group" href="#">
+<span class="material-symbols-outlined text-[18px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                    Back to Login
+                </a>
+</div>
+</div>
+</main>
+<!-- Global Footer (Transactional Version) -->
+<footer class="w-full py-6 px-gutter border-t border-outline-variant/30 flex flex-col md:flex-row justify-between items-center gap-4 bg-white/50 backdrop-blur-sm">
+<p class="font-label-md text-label-md text-on-surface-variant text-center md:text-left">
+            © 2024 Rwanda Revenue Authority. Strategic Intelligence &amp; Investigation Division.
+        </p>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Security Protocol</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#">Legal Disclaimer</a>
+</div>
+</footer>
+<script>
+        // Micro-interactions for form submission
+        const resetForm = document.getElementById('resetForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const statusMessage = document.getElementById('statusMessage');
+
+        resetForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // UI Loading State
+            submitBtn.disabled = true;
+            btnText.textContent = 'Processing...';
+            loadingSpinner.classList.remove('hidden');
+            
+            // Simulate API call
+            setTimeout(() => {
+                submitBtn.classList.add('hidden');
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.add('flex');
+            }, 1500);
+        });
+
+        // Add subtle hover effect for the entire card relative to mouse position
+        const card = document.querySelector('.login-card-shadow');
+        document.addEventListener('mousemove', (e) => {
+            const xAxis = (window.innerWidth / 2 - e.pageX) / 100;
+            const yAxis = (window.innerHeight / 2 - e.pageY) / 100;
+            card.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+        });
+
+        // Reset transform when mouse leaves
+        document.addEventListener('mouseleave', () => {
+            card.style.transform = `rotateY(0deg) rotateX(0deg)`;
+            card.style.transition = 'all 0.5s ease';
+        });
+    </script>
+</body></html>

@@ -49,6 +49,10 @@ public class CaseService {
         newCase.setCreatedBy(creator);
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());
+        newCase.setEstimatedEvasionAmount(dto.getEstimatedEvasionAmount());
+        newCase.setIntakeChannel(dto.getIntakeChannel());
+        newCase.setPriorityClassification(dto.getPriorityClassification());
+        newCase.setInformerIdType(dto.getInformerIdType());
 
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             newCase.setReferringDepartment(dto.getReferringDepartment().trim());
@@ -72,7 +76,7 @@ public class CaseService {
         Case existingCase = caseRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Case not found with ID: " + id));
 
-        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED status
+        // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED or REPORT_SUBMITTED status
         if (existingCase.getCreatedBy() == null || !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
             boolean isAdmin = user != null && "Admin".equals(user.getRole());
@@ -81,8 +85,12 @@ public class CaseService {
             }
         }
 
-        if (existingCase.getStatus() != WorkflowStatus.CASE_CREATED) {
-            throw new RuntimeException("Cannot edit a case that is no longer in CASE_CREATED status");
+        // Allow editing in initial stages
+        boolean isEditableStatus = existingCase.getStatus() == WorkflowStatus.CASE_CREATED || 
+                                   existingCase.getStatus() == WorkflowStatus.REPORT_SUBMITTED;
+        
+        if (!isEditableStatus) {
+            throw new RuntimeException("Cannot edit a case that is already in " + existingCase.getStatus() + " status");
         }
 
         existingCase.setInformerId(informer);
@@ -91,6 +99,10 @@ public class CaseService {
         existingCase.setTaxType(dto.getTaxType());
         existingCase.setTaxPeriod(dto.getTaxPeriod());
         existingCase.setUpdatedAt(LocalDateTime.now());
+        existingCase.setEstimatedEvasionAmount(dto.getEstimatedEvasionAmount());
+        existingCase.setIntakeChannel(dto.getIntakeChannel());
+        existingCase.setPriorityClassification(dto.getPriorityClassification());
+        existingCase.setInformerIdType(dto.getInformerIdType());
 
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             existingCase.setReferringDepartment(dto.getReferringDepartment().trim());
@@ -318,5 +330,26 @@ public class CaseService {
                 WorkflowStatus.CASE_DELETED,
                 "Case " + caseEntity.getCaseNum() + " deleted by " + employeeId,
                 caseEntity.getCreatedBy());
+    }
+
+    @Transactional
+    public Case routeCase(Integer caseId, String departmentName, String employeeId) {
+        Case c = caseRepo.findById(caseId)
+                .orElseThrow(() -> new RuntimeException("Case not found with ID: " + caseId));
+        
+        Employee employee = employeeRepo.findByEmployeeId(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found"));
+
+        c.setRoutedTo(org.example.siidsbackend.Model.RoutedTo.valueOf(departmentName.toUpperCase()));
+        c.setDepartmentName(departmentName);
+        c.setUpdatedAt(java.time.LocalDateTime.now());
+        
+        // Let's assume after routing, it's CLOSED from the intelligence perspective and moving to another department
+        // or we just update the status to ROUTED
+        // For now, let's just log it and update the case properties
+        
+        auditService.logAction(c.getStatus(), "Case routed to " + departmentName, employee);
+
+        return caseRepo.save(c);
     }
 }

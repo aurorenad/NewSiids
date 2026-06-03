@@ -197,6 +197,28 @@ const Sidebar = () => {
                     </ListItemButton>
                 ))}
             </List>
+
+            {/* User Profile Footer */}
+            <Box sx={{ 
+                p: 2, 
+                borderTop: '1px solid rgba(255,255,255,0.15)', 
+                display: 'flex', 
+                alignItems: 'center',
+                gap: 1.5,
+                bgcolor: 'rgba(0,0,0,0.1)'
+            }}>
+                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.2)', width: 36, height: 36 }}>
+                    <Shield sx={{ fontSize: 20 }} />
+                </Avatar>
+                <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                    <Typography variant="body2" sx={{ color: '#fff', fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {authState?.name || 'Guest User'}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)', display: 'block', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.05em' }}>
+                        {role.replace(/_/g, ' ')}
+                    </Typography>
+                </Box>
+            </Box>
         </Drawer>
     );
 };

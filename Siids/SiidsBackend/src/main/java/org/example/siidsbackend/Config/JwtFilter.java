@@ -65,7 +65,7 @@ public class JwtFilter extends OncePerRequestFilter {
                             userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    log.info("JwtFilter: User {} authenticated successfully for path {}", username, path);
+                    log.info("JwtFilter: User {} authenticated successfully with roles {} for path {}", username, userDetails.getAuthorities(), path);
                     
                     // DIAGNOSTIC HEADERS
                     response.addHeader("X-Auth-User", username);

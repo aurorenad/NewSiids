@@ -101,6 +101,13 @@ export const CaseService = {
         return caseApi.delete(`/api/cases/${id}`);
     },
     
+    routeCase: (id, departmentName, routingNotes) => {
+        return caseApi.patch(`/api/cases/${id}/route`, {
+            departmentName,
+            routingNotes
+        });
+    },
+
     findTaxPayerByTIN: (tin) => {
         return caseApi.get(`/api/taxpayers/tin/${tin}`);
     }
@@ -167,6 +174,9 @@ export const ReportApi = {
             throw error.response?.data || error.message;
         }
     },
+    receiveCase: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/receive-case`, {});
+    },
     getAssignedReportsForInvestigationOfficer: () => {
         return caseApi.get('/api/reports/investigation-officer/assigned-reports');
     },
@@ -199,6 +209,10 @@ export const ReportApi = {
 
     sendCasePlanToDirectorInvestigation: (reportId) => {
         return caseApi.post(`/api/reports/${reportId}/send-case-plan-to-director-investigation`, {});
+    },
+
+    sendCasePlanToAssistantCommissioner: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/send-case-plan-to-assistant-commissioner`, {});
     },
 
     getCasePlansForDirectorInvestigation: () => {
@@ -260,6 +274,10 @@ export const ReportApi = {
     },
     getFindings: (reportId) => {
         return caseApi.get(`/api/reports/${reportId}/findings`);
+    },
+
+    generateFinalReport: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/generate`, {}, { responseType: 'blob' });
     },
 
     downloadFindingsAttachment: async (reportId, filename) => {

@@ -1,0 +1,60 @@
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-title-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.card-icon-container {
+  color: var(--primary-brand);
+  background-color: rgba(13, 71, 161, 0.06);
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-value-display {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+  letter-spacing: -0.02em;
+}
+
+.card-footer-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.trend-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.trend-up {
+  color: var(--success-color);
+  background-color: var(--success-bg);
+}
+
+.trend-down {
+  color: var(--danger-color);
+  background-color: var(--danger-bg);
+}
+
+.card-subtitle-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+}

@@ -26,6 +26,7 @@ import { CaseService, ReportApi } from '../api/Axios/caseApi';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { SplitWorkspaceLayout } from './ui/SplitWorkspaceLayout';
 
 const IntelligenceOfficer = () => {
     const [cases, setCases] = useState([]);
@@ -44,6 +45,7 @@ const IntelligenceOfficer = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [sortOrder, setSortOrder] = useState('desc');
     const [activeTab, setActiveTab] = useState('all');
+    const [selectedCase, setSelectedCase] = useState(null);
 
     // New states for return document functionality
     const [returnDocumentLoading, setReturnDocumentLoading] = useState(new Set());
@@ -121,7 +123,7 @@ const IntelligenceOfficer = () => {
 
         // Pending Cases (Under review)
         const pendingReviewCases = casesData.filter(c =>
-            c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
+            c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'
         );
 
         // Returned Cases (Sent back for revision)
@@ -189,7 +191,7 @@ const IntelligenceOfficer = () => {
                 break;
             case 'pending':
                 results = results.filter(c =>
-                    c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
+                    c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'
                 );
                 break;
             case 'returned':
@@ -306,7 +308,7 @@ const IntelligenceOfficer = () => {
 
             // Also check edit permission for additional return details
             try {
-                const permissionResponse = await ReportApi.checkEditPermission(caseItem.reportId);
+                const permissionResponse = await ReportApi.getEditPermission(caseItem.reportId);
                 const permissionDetails = permissionResponse.data;
 
                 setReturnDetails({
@@ -365,7 +367,7 @@ const IntelligenceOfficer = () => {
 
             // Check edit permission first
             try {
-                const permissionResponse = await ReportApi.checkEditPermission(caseItem.reportId);
+                const permissionResponse = await ReportApi.getEditPermission(caseItem.reportId);
                 const { canEdit } = permissionResponse.data;
 
                 if (!canEdit) {
@@ -396,88 +398,70 @@ const IntelligenceOfficer = () => {
         }
     };
 
+    const getPreviewStats = () => {
+        let filteredReportData = [...cases];
+
+        if (reportFilters.caseNumber) {
+            filteredReportData = filteredReportData.filter(c =>
+                c.caseNum?.toLowerCase().includes(reportFilters.caseNumber.toLowerCase())
+            );
+        }
+
+        if (reportFilters.taxType) {
+            filteredReportData = filteredReportData.filter(c =>
+                c.taxType === reportFilters.taxType
+            );
+        }
+
+        if (reportFilters.taxPeriod) {
+            filteredReportData = filteredReportData.filter(c =>
+                c.taxPeriod === reportFilters.taxPeriod
+            );
+        }
+
+        if (reportFilters.dateFrom) {
+            filteredReportData = filteredReportData.filter(c => {
+                const caseDate = new Date(c.createdAt);
+                return caseDate >= reportFilters.dateFrom;
+            });
+        }
+
+        if (reportFilters.dateTo) {
+            filteredReportData = filteredReportData.filter(c => {
+                const caseDate = new Date(c.createdAt);
+                return caseDate <= reportFilters.dateTo;
+            });
+        }
+
+        if (reportFilters.taxpayerName) {
+            filteredReportData = filteredReportData.filter(c =>
+                c.taxPayer?.name?.toLowerCase().includes(reportFilters.taxpayerName.toLowerCase())
+            );
+        }
+
+        if (reportFilters.status) {
+            filteredReportData = filteredReportData.filter(c =>
+                c.status === reportFilters.status
+            );
+        }
+
+        return {
+            filteredReportData,
+            createdCases: filteredReportData.filter(c => c.status === 'CASE_CREATED' || c.status === 'REPORT_SUBMITTED'),
+            pendingReviewCases: filteredReportData.filter(c => c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'),
+            returnedCases: filteredReportData.filter(c => c.status === 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER' || c.status === 'REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION' || c.status === 'REPORT_RETURNED_ASSISTANT_COMMISSIONER' || c.status === 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE'),
+            approvedCases: filteredReportData.filter(c => c.status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' || c.status === 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER' || c.status === 'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION'),
+            closedCases: filteredReportData.filter(c => c.status === 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE' || c.status === 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER' || c.status === 'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION'),
+            casesWithReports: filteredReportData.filter(c => c.reportId && c.status !== 'CASE_CREATED')
+        };
+    };
+
     const handleGenerateExcelReport = () => {
         setExcelGenerating(true);
 
         try {
-            let filteredReportData = [...cases];
-
-            if (reportFilters.caseNumber) {
-                filteredReportData = filteredReportData.filter(c =>
-                    c.caseNum?.toLowerCase().includes(reportFilters.caseNumber.toLowerCase())
-                );
-            }
-
-            if (reportFilters.taxType) {
-                filteredReportData = filteredReportData.filter(c =>
-                    c.taxType === reportFilters.taxType
-                );
-            }
-
-            if (reportFilters.taxPeriod) {
-                filteredReportData = filteredReportData.filter(c =>
-                    c.taxPeriod === reportFilters.taxPeriod
-                );
-            }
-
-            if (reportFilters.dateFrom) {
-                filteredReportData = filteredReportData.filter(c => {
-                    const caseDate = new Date(c.createdAt);
-                    return caseDate >= reportFilters.dateFrom;
-                });
-            }
-
-            if (reportFilters.dateTo) {
-                filteredReportData = filteredReportData.filter(c => {
-                    const caseDate = new Date(c.createdAt);
-                    return caseDate <= reportFilters.dateTo;
-                });
-            }
-
-            if (reportFilters.taxpayerName) {
-                filteredReportData = filteredReportData.filter(c =>
-                    c.taxPayer?.name?.toLowerCase().includes(reportFilters.taxpayerName.toLowerCase())
-                );
-            }
-
-            if (reportFilters.status) {
-                filteredReportData = filteredReportData.filter(c =>
-                    c.status === reportFilters.status
-                );
-            }
-
-            // Categorize cases for Excel report
-            const createdCases = filteredReportData.filter(c =>
-                c.status === 'CASE_CREATED' ||
-                c.status === 'REPORT_SUBMITTED'
-            );
-
-            const pendingReviewCases = filteredReportData.filter(c =>
-                c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE'
-            );
-
-            const returnedCases = filteredReportData.filter(c =>
-                c.status === 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER' ||
-                c.status === 'REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION' ||
-                c.status === 'REPORT_RETURNED_ASSISTANT_COMMISSIONER' ||
-                c.status === 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE'
-            );
-
-            const approvedCases = filteredReportData.filter(c =>
-                c.status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' ||
-                c.status === 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER' ||
-                c.status === 'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION'
-            );
-
-            const closedCases = filteredReportData.filter(c =>
-                c.status === 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE' ||
-                c.status === 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER' ||
-                c.status === 'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION'
-            );
-
-            const casesWithReports = filteredReportData.filter(c =>
-                c.reportId && c.status !== 'CASE_CREATED'
-            );
+            const stats = getPreviewStats();
+            const { filteredReportData, createdCases, pendingReviewCases, returnedCases, approvedCases, closedCases, casesWithReports } = stats;
 
             const reportData = {
                 categories: {
@@ -636,6 +620,29 @@ const IntelligenceOfficer = () => {
         XLSX.writeFile(wb, fileName);
     };
 
+    const handleGenerateFinalReport = async (reportId, caseNum) => {
+        try {
+            setLoading(prev => ({...prev, cases: true}));
+            const response = await ReportApi.generateFinalReport(reportId);
+            
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Investigation_Report_${caseNum}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            
+            showSnackbar('Final report generated and downloaded.', 'success');
+        } catch (error) {
+            console.error(error);
+            showSnackbar('Failed to generate final report.', 'error');
+        } finally {
+            setLoading(prev => ({...prev, cases: false}));
+        }
+    };
+
     const handleResetFilters = () => {
         setReportFilters({
             caseNumber: '',
@@ -684,7 +691,7 @@ const IntelligenceOfficer = () => {
         switch (status) {
             case 'CASE_CREATED': return '#1976d2';
             case 'REPORT_SUBMITTED': return '#ff9800';
-            case 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE': return '#4caf50';
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': return '#4caf50';
             case 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': return '#f44336';
             case 'REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION': return '#f44336';
             case 'REPORT_RETURNED_ASSISTANT_COMMISSIONER': return '#f44336';
@@ -731,7 +738,7 @@ const IntelligenceOfficer = () => {
             case 'CASE_CREATED':
             case 'REPORT_SUBMITTED':
                 return <AddIcon sx={{ color: '#1976d2' }} />;
-            case 'REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE':
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE':
                 return <PendingIcon sx={{ color: '#4caf50' }} />;
             case 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE':
             case 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER':
@@ -1058,7 +1065,12 @@ const IntelligenceOfficer = () => {
                 </Box>
 
                 {/* Cases Table */}
-                <TableContainer component={Paper} elevation={3}>
+                
+                {/* Cases Table inside Split Workspace Layout */}
+                <SplitWorkspaceLayout 
+                    isItemSelected={!!selectedCase}
+                    leftPane={
+<TableContainer component={Paper} elevation={3}>
                     <Table>
                         <TableHead>
                             <TableRow sx={{ backgroundColor: 'grey.100' }}>
@@ -1095,9 +1107,12 @@ const IntelligenceOfficer = () => {
 
                                         return (
                                             <TableRow
-                                                key={caseItem.caseNum}
+                                                key={caseItem.id || caseItem.caseNum}
+                                                onClick={() => setSelectedCase(caseItem)}
+                                                selected={selectedCase?.id === caseItem.id}
                                                 hover
                                                 sx={{
+                                                    cursor: 'pointer',
                                                     backgroundColor: isReturned ? '#fff3e0' : (caseItem.reportId ? '#f0f9ff' : 'inherit'),
                                                     '&:hover': {
                                                         backgroundColor: isReturned ? '#ffe0b2' : (caseItem.reportId ? '#e3f2fd' : 'rgba(0, 0, 0, 0.04)')
@@ -1270,6 +1285,94 @@ const IntelligenceOfficer = () => {
                         rowsPerPageOptions={[5, 10, 25, 50]}
                     />
                 </TableContainer>
+                    }
+                    rightPane={
+                        selectedCase ? (
+                            <Box sx={{ p: 2, height: '100%', overflowY: 'auto' }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                                    <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                                        Case Detail: {selectedCase.caseNum}
+                                    </Typography>
+                                    <IconButton onClick={() => setSelectedCase(null)} size="small">
+                                        <CloseIcon />
+                                    </IconButton>
+                                </Box>
+                                <Divider sx={{ mb: 2 }} />
+                                
+                                <Card elevation={0} sx={{ mb: 2, border: '1px solid #e2e8f0', background: 'rgba(255,255,255,0.5)' }}>
+                                    <CardContent>
+                                        <Typography variant="subtitle2" color="textSecondary">Status</Typography>
+                                        <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                                            {getStatusIcon(selectedCase.status)}
+                                            <Chip 
+                                                label={selectedCase.status ? selectedCase.status.replace(/_/g, ' ') : 'UNKNOWN'} 
+                                                sx={{ 
+                                                    backgroundColor: getStatusColor(selectedCase.status),
+                                                    color: 'white',
+                                                    fontWeight: 'bold',
+                                                }} 
+                                            />
+                                        </Box>
+                                        
+                                        {isReturnedStatus(selectedCase.status) && selectedCase.returnReason && (
+                                            <Alert severity="warning" sx={{ mt: 2 }}>
+                                                <strong>Revision Required:</strong> {selectedCase.returnReason}
+                                            </Alert>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                <Typography variant="h6" gutterBottom sx={{ fontSize: '1rem', mt: 3 }}>Information Source</Typography>
+                                <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={12}>
+                                            <Typography variant="body2" color="textSecondary">Summary of Evasion Evidence:</Typography>
+                                            <Typography variant="body1" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                                                {selectedCase.summaryOfInformationCase || 'No summary provided.'}
+                                            </Typography>
+                                        </Grid>
+                                    </Grid>
+                                </Paper>
+
+                                <Box mt={4} display="flex" gap={2} flexWrap="wrap">
+                                    {isReturnedStatus(selectedCase.status) && selectedCase.reportId && (
+                                        <Button 
+                                            variant="contained" 
+                                            color="warning" 
+                                            startIcon={<EditIcon />}
+                                            onClick={() => handleEditReturnedReport(selectedCase)}
+                                        >
+                                            Revise Report
+                                        </Button>
+                                    )}
+                                    
+                                    {(selectedCase.status === 'CASE_CREATED' || selectedCase.status === 'REPORT_SUBMITTED') && !selectedCase.reportId && (
+                                        <Button 
+                                            variant="contained" 
+                                            color="primary" 
+                                            startIcon={<AddIcon />}
+                                            onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(selectedCase.caseNum)}`)}
+                                        >
+                                            Create Findings Report
+                                        </Button>
+                                    )}
+                                    
+                                    {selectedCase.reportId && (
+                                        <Button 
+                                            variant="contained" 
+                                            color="info" 
+                                            startIcon={<PictureAsPdf />}
+                                            onClick={() => handleGenerateFinalReport(selectedCase.reportId, selectedCase.caseNum)}
+                                        >
+                                            Generate Final Report
+                                        </Button>
+                                    )}
+                                </Box>
+                            </Box>
+                        ) : null
+                    }
+                />
+
 
                 {/* Return Details Dialog */}
                 <Dialog
@@ -1443,254 +1546,214 @@ const IntelligenceOfficer = () => {
                     onClose={() => setReportDialog(false)}
                     maxWidth="md"
                     fullWidth
+                    PaperProps={{
+                        sx: {
+                            borderRadius: 2,
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                        }
+                    }}
                 >
-                    <DialogTitle>
-                        <Box display="flex" alignItems="center" gap={1}>
-                            <ExcelIcon color="success" />
-                            <Typography variant="h6">
-                                Generate Excel Report by Categories
+                    <DialogTitle sx={{ pb: 1 }}>
+                        <Box display="flex" alignItems="center" gap={1.5}>
+                            <ExcelIcon color="success" sx={{ fontSize: 28 }} />
+                            <Typography variant="h5" fontWeight="bold" color="textPrimary">
+                                Generate Excel Report
                             </Typography>
                         </Box>
+                        <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+                            Filter cases by category and export a detailed Excel workbook.
+                        </Typography>
                     </DialogTitle>
 
-                    {excelGenerating && <LinearProgress />}
+                    {excelGenerating && <LinearProgress color="success" />}
 
-                    <DialogContent>
-                        <Grid container spacing={3} sx={{ mt: 1 }}>
+                    <DialogContent dividers sx={{ p: 0, backgroundColor: '#f4f6f8' }}>
+                        <Box sx={{ p: 3 }}>
                             {/* Report Options */}
-                            <Grid item xs={12}>
-                                <Card variant="outlined">
-                                    <CardHeader
-                                        title="Report Filters"
-                                        titleTypographyProps={{ variant: 'h6' }}
-                                    />
-                                    <CardContent>
-                                        <Grid container spacing={2}>
-                                            <Grid item xs={12} sm={6}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>Tax Type</InputLabel>
-                                                    <Select
-                                                        value={reportFilters.taxType}
-                                                        label="Tax Type"
-                                                        onChange={(e) => setReportFilters(prev => ({ ...prev, taxType: e.target.value }))}
-                                                    >
-                                                        <MenuItem value="">All Tax Types</MenuItem>
-                                                        <MenuItem value="Income Tax">Income Tax</MenuItem>
-                                                        <MenuItem value="VAT">VAT</MenuItem>
-                                                        <MenuItem value="Withholding Tax">Withholding Tax</MenuItem>
-                                                        <MenuItem value="Excise Duty">Excise Duty</MenuItem>
-                                                        <MenuItem value="Customs Duty">Customs Duty</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
+                            <Card variant="outlined" sx={{ borderRadius: 3, borderColor: '#e2e8f0', backgroundColor: '#ffffff', mb: 4, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                                <CardHeader
+                                    title="Report Filters"
+                                    titleTypographyProps={{ variant: 'h6', fontWeight: 700, color: '#1e293b' }}
+                                    sx={{ pb: 1, borderBottom: '1px solid #f1f5f9' }}
+                                />
+                                <CardContent sx={{ pt: 3 }}>
+                                    <Box sx={{ 
+                                        display: 'grid', 
+                                        gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, 
+                                        gap: 3 
+                                    }}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            label="Tax Type"
+                                            value={reportFilters.taxType}
+                                            onChange={(e) => setReportFilters(prev => ({ ...prev, taxType: e.target.value }))}
+                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }}
+                                        >
+                                            <MenuItem value="">All Tax Types</MenuItem>
+                                            <MenuItem value="Income Tax">Income Tax</MenuItem>
+                                            <MenuItem value="VAT">VAT</MenuItem>
+                                            <MenuItem value="Withholding Tax">Withholding Tax</MenuItem>
+                                            <MenuItem value="Excise Duty">Excise Duty</MenuItem>
+                                            <MenuItem value="Customs Duty">Customs Duty</MenuItem>
+                                        </TextField>
 
-                                            <Grid item xs={12} sm={6}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>Status</InputLabel>
-                                                    <Select
-                                                        value={reportFilters.status}
-                                                        label="Status"
-                                                        onChange={(e) => setReportFilters(prev => ({ ...prev, status: e.target.value }))}
-                                                    >
-                                                        <MenuItem value="">All Status</MenuItem>
-                                                        <MenuItem value="CASE_CREATED">Case Created</MenuItem>
-                                                        <MenuItem value="REPORT_SUBMITTED">Report Submitted</MenuItem>
-                                                        <MenuItem value="REPORT_SUBMITTED_TO_DIRECTOR_OF_INTELLIGENCE">With Director</MenuItem>
-                                                        <MenuItem value="REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE">Approved by Director</MenuItem>
-                                                        <MenuItem value="REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER">Approved by Commissioner</MenuItem>
-                                                        <MenuItem value="REPORT_RETURNED_TO_INTELLIGENCE_OFFICER">Returned</MenuItem>
-                                                        <MenuItem value="REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE">Rejected</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            label="Status"
+                                            value={reportFilters.status}
+                                            onChange={(e) => setReportFilters(prev => ({ ...prev, status: e.target.value }))}
+                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }}
+                                        >
+                                            <MenuItem value="">All Status</MenuItem>
+                                            <MenuItem value="CASE_CREATED">Case Created</MenuItem>
+                                            <MenuItem value="REPORT_SUBMITTED">Report Submitted</MenuItem>
+                                            <MenuItem value="REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE">With Director</MenuItem>
+                                            <MenuItem value="REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE">Approved by Director</MenuItem>
+                                            <MenuItem value="REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER">Approved by Commissioner</MenuItem>
+                                            <MenuItem value="REPORT_RETURNED_TO_INTELLIGENCE_OFFICER">Returned</MenuItem>
+                                            <MenuItem value="REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE">Rejected</MenuItem>
+                                        </TextField>
 
-                                            <Grid item xs={12}>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Case Number"
-                                                    value={reportFilters.caseNumber}
-                                                    onChange={(e) => setReportFilters(prev => ({ ...prev, caseNumber: e.target.value }))}
-                                                    size="small"
-                                                    placeholder="Enter specific case number"
-                                                />
-                                            </Grid>
+                                        <TextField
+                                            fullWidth
+                                            label="Case Number"
+                                            value={reportFilters.caseNumber}
+                                            onChange={(e) => setReportFilters(prev => ({ ...prev, caseNumber: e.target.value }))}
+                                            placeholder="e.g., CAS-2024-..."
+                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }}
+                                        />
 
-                                            <Grid item xs={12}>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Taxpayer's Name"
-                                                    value={reportFilters.taxpayerName}
-                                                    onChange={(e) => setReportFilters(prev => ({ ...prev, taxpayerName: e.target.value }))}
-                                                    size="small"
-                                                    placeholder="Search by taxpayer name"
-                                                />
-                                            </Grid>
+                                        <TextField
+                                            fullWidth
+                                            label="Taxpayer's Name"
+                                            value={reportFilters.taxpayerName}
+                                            onChange={(e) => setReportFilters(prev => ({ ...prev, taxpayerName: e.target.value }))}
+                                            placeholder="Search by taxpayer name"
+                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }}
+                                        />
 
-                                            <Grid item xs={12} sm={6}>
-                                                <DatePicker
-                                                    label="Date From"
-                                                    value={reportFilters.dateFrom}
-                                                    onChange={(date) => setReportFilters(prev => ({ ...prev, dateFrom: date }))}
-                                                    slotProps={{
-                                                        textField: {
-                                                            fullWidth: true,
-                                                            size: 'small'
-                                                        }
-                                                    }}
-                                                />
-                                            </Grid>
+                                        <DatePicker
+                                            label="Date From"
+                                            value={reportFilters.dateFrom}
+                                            onChange={(date) => setReportFilters(prev => ({ ...prev, dateFrom: date }))}
+                                            slotProps={{
+                                                textField: { fullWidth: true, sx: { '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } } }
+                                            }}
+                                        />
 
-                                            <Grid item xs={12} sm={6}>
-                                                <DatePicker
-                                                    label="Date To"
-                                                    value={reportFilters.dateTo}
-                                                    onChange={(date) => setReportFilters(prev => ({ ...prev, dateTo: date }))}
-                                                    slotProps={{
-                                                        textField: {
-                                                            fullWidth: true,
-                                                            size: 'small'
-                                                        }
-                                                    }}
-                                                />
-                                            </Grid>
+                                        <DatePicker
+                                            label="Date To"
+                                            value={reportFilters.dateTo}
+                                            onChange={(date) => setReportFilters(prev => ({ ...prev, dateTo: date }))}
+                                            slotProps={{
+                                                textField: { fullWidth: true, sx: { '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } } }
+                                            }}
+                                        />
 
-                                            <Grid item xs={12}>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Tax Period"
-                                                    value={reportFilters.taxPeriod}
-                                                    onChange={(e) => setReportFilters(prev => ({ ...prev, taxPeriod: e.target.value }))}
-                                                    size="small"
-                                                    placeholder="e.g., Q1 2024, January 2024, FY2024"
-                                                />
-                                            </Grid>
-                                        </Grid>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
+                                        <TextField
+                                            fullWidth
+                                            label="Tax Period"
+                                            value={reportFilters.taxPeriod}
+                                            onChange={(e) => setReportFilters(prev => ({ ...prev, taxPeriod: e.target.value }))}
+                                            placeholder="e.g., Q1 2024"
+                                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2, bgcolor: '#f8fafc' } }}
+                                        />
+                                    </Box>
+                                </CardContent>
+                            </Card>
 
                             {/* Report Preview */}
-                            <Grid item xs={12}>
-                                <Card variant="outlined">
-                                    <CardHeader
-                                        title="Report Preview"
-                                        subheader={`Will include ${cases.length} total cases`}
-                                        titleTypographyProps={{ variant: 'h6' }}
-                                    />
-                                    <CardContent>
-                                        <Grid container spacing={2}>
-                                            <Grid item xs={6} sm={4}>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    Created Cases
+                            {(() => {
+                                const stats = reportDialog ? getPreviewStats() : null;
+                                return stats && (
+                                    <Card variant="outlined" sx={{ borderRadius: 3, borderColor: '#e2e8f0', backgroundColor: '#ffffff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                                        <CardHeader
+                                            title="Real-time Analytics Preview"
+                                            subheader={
+                                                <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+                                                    Your filters will export exactly <Typography component="span" fontWeight="bold" color="primary">{stats.filteredReportData.length}</Typography> cases to Excel.
                                                 </Typography>
-                                                <Typography variant="h6" color="info.main">
-                                                    {reportStats.createdCases.length}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} sm={4}>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    Pending Review
-                                                </Typography>
-                                                <Typography variant="h6" color="warning.main">
-                                                    {reportStats.pendingReviewCases.length}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} sm={4}>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    Returned Cases
-                                                </Typography>
-                                                <Typography variant="h6" color="error.main">
-                                                    {reportStats.returnedCases.length}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} sm={4}>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    Approved Cases
-                                                </Typography>
-                                                <Typography variant="h6" color="success.main">
-                                                    {reportStats.approvedCases.length}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} sm={4}>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    Closed Cases
-                                                </Typography>
-                                                <Typography variant="h6" color="error.main">
-                                                    {reportStats.closedCases.length}
-                                                </Typography>
-                                            </Grid>
-                                            <Grid item xs={6} sm={4}>
-                                                <Typography variant="body2" color="textSecondary">
-                                                    With Reports
-                                                </Typography>
-                                                <Typography variant="h6" color="primary.main">
-                                                    {reportStats.casesWithReports.length}
-                                                </Typography>
-                                            </Grid>
-                                        </Grid>
-                                    </CardContent>
-                                </Card>
-                            </Grid>
-
-                            {/* Action Buttons */}
-                            <Grid item xs={12}>
-                                <Box display="flex" justifyContent="space-between" gap={2}>
-                                    <Box display="flex" gap={1}>
-                                        <Button
-                                            startIcon={<ClearIcon />}
-                                            onClick={handleResetFilters}
-                                            variant="outlined"
-                                            size="small"
-                                        >
-                                            Clear Filters
-                                        </Button>
-                                        <Button
-                                            startIcon={<DateRangeIcon />}
-                                            onClick={handleSetDefaultDateRange}
-                                            variant="outlined"
-                                            size="small"
-                                        >
-                                            Last 30 Days
-                                        </Button>
-                                    </Box>
-
-                                    <Box display="flex" gap={1}>
-                                        <Button
-                                            startIcon={excelGenerating ? <CircularProgress size={20} /> : <ExcelIcon />}
-                                            onClick={handleGenerateExcelReport}
-                                            variant="contained"
-                                            color="success"
-                                            disabled={excelGenerating}
-                                        >
-                                            {excelGenerating ? 'Generating...' : 'Generate Excel Report'}
-                                        </Button>
-                                    </Box>
-                                </Box>
-                            </Grid>
-
-                            {/* Excel Features Info */}
-                            <Grid item xs={12}>
-                                <Alert severity="info" variant="outlined">
-                                    <Typography variant="body2" fontWeight="bold">
-                                        Excel Report Features:
-                                    </Typography>
-                                    <Typography variant="caption" component="div">
-                                        • Separate sheets for each case category
-                                        <br />
-                                        • Summary sheet with category counts
-                                        <br />
-                                        • All case details with formatting
-                                        <br />
-                                        • Professional column widths
-                                        <br />
-                                        • Automatic filename with timestamp
-                                    </Typography>
-                                </Alert>
-                            </Grid>
-                        </Grid>
+                                            }
+                                            titleTypographyProps={{ variant: 'h6', fontWeight: 700, color: '#1e293b' }}
+                                            sx={{ pb: 2, borderBottom: '1px solid #f1f5f9' }}
+                                        />
+                                        <CardContent sx={{ pt: 3 }}>
+                                            <Box sx={{ 
+                                                display: 'grid', 
+                                                gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr' }, 
+                                                gap: 2 
+                                            }}>
+                                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: '#f0f9ff', border: '1px solid #bae6fd' }}>
+                                                    <Typography variant="caption" fontWeight="bold" color="#0284c7" textTransform="uppercase">Created Cases</Typography>
+                                                    <Typography variant="h4" fontWeight="800" color="#0369a1" sx={{ mt: 1 }}>{stats.createdCases.length}</Typography>
+                                                </Box>
+                                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: '#fffbeb', border: '1px solid #fde68a' }}>
+                                                    <Typography variant="caption" fontWeight="bold" color="#d97706" textTransform="uppercase">Pending Review</Typography>
+                                                    <Typography variant="h4" fontWeight="800" color="#b45309" sx={{ mt: 1 }}>{stats.pendingReviewCases.length}</Typography>
+                                                </Box>
+                                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: '#fef2f2', border: '1px solid #fecaca' }}>
+                                                    <Typography variant="caption" fontWeight="bold" color="#e11d48" textTransform="uppercase">Returned Cases</Typography>
+                                                    <Typography variant="h4" fontWeight="800" color="#be123c" sx={{ mt: 1 }}>{stats.returnedCases.length}</Typography>
+                                                </Box>
+                                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                                                    <Typography variant="caption" fontWeight="bold" color="#16a34a" textTransform="uppercase">Approved Cases</Typography>
+                                                    <Typography variant="h4" fontWeight="800" color="#15803d" sx={{ mt: 1 }}>{stats.approvedCases.length}</Typography>
+                                                </Box>
+                                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: '#fff1f2', border: '1px solid #fecdd3' }}>
+                                                    <Typography variant="caption" fontWeight="bold" color="#e11d48" textTransform="uppercase">Closed Cases</Typography>
+                                                    <Typography variant="h4" fontWeight="800" color="#be123c" sx={{ mt: 1 }}>{stats.closedCases.length}</Typography>
+                                                </Box>
+                                                <Box sx={{ p: 2, borderRadius: 2, bgcolor: '#f5f3ff', border: '1px solid #ddd6fe' }}>
+                                                    <Typography variant="caption" fontWeight="bold" color="#7c3aed" textTransform="uppercase">With Reports</Typography>
+                                                    <Typography variant="h4" fontWeight="800" color="#6d28d9" sx={{ mt: 1 }}>{stats.casesWithReports.length}</Typography>
+                                                </Box>
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })()}
+                        </Box>
                     </DialogContent>
-                    <DialogActions>
-                        <Button onClick={() => setReportDialog(false)}>Close</Button>
+                    
+                    <DialogActions sx={{ p: 3, backgroundColor: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                        <Box display="flex" justifyContent="space-between" width="100%" gap={2} flexWrap="wrap">
+                            <Box display="flex" gap={1}>
+                                <Button
+                                    startIcon={<ClearIcon />}
+                                    onClick={handleResetFilters}
+                                    variant="outlined"
+                                    color="inherit"
+                                >
+                                    Clear Filters
+                                </Button>
+                                <Button
+                                    startIcon={<DateRangeIcon />}
+                                    onClick={handleSetDefaultDateRange}
+                                    variant="outlined"
+                                    color="inherit"
+                                >
+                                    Last 30 Days
+                                </Button>
+                            </Box>
+
+                            <Box display="flex" gap={2}>
+                                <Button onClick={() => setReportDialog(false)} color="inherit" sx={{ px: 3 }}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    startIcon={excelGenerating ? <CircularProgress size={20} color="inherit" /> : <ExcelIcon />}
+                                    onClick={handleGenerateExcelReport}
+                                    variant="contained"
+                                    color="success"
+                                    disabled={excelGenerating}
+                                    sx={{ px: 3 }}
+                                >
+                                    {excelGenerating ? 'Generating...' : 'Export Excel'}
+                                </Button>
+                            </Box>
+                        </Box>
                     </DialogActions>
                 </Dialog>
 

@@ -18,4 +18,8 @@ public class CaseRequestDTO {
     private String informerType;
     private String informerGender;
     private String referringDepartment;
+    private Double estimatedEvasionAmount;
+    private String intakeChannel;
+    private String priorityClassification;
+    private String informerIdType;
 }

@@ -390,8 +390,8 @@ public class StockService {
             Files.createDirectories(uploadPath);
         }
 
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
+        // Generate secure filename preserving original name
+        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
         Path filePath = uploadPath.resolve(secureFilename);
 
         Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);

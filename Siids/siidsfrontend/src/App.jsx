@@ -29,6 +29,7 @@ import T3OfficersReports from "./Components/T3OfficersReports.jsx";
 import ForgotPassword from "./Components/ForgotPassword.jsx";
 import LegalAdvisor from "./Components/LegalAdvisor.jsx"
 import EditReport from "./Components/EditReport.jsx";
+import DirectorEditReport from "./Components/DirectorEditReport.jsx";
 import StockManagement from "./Components/StockManagement.jsx";
 import SystemAdmin from "./Components/SystemAdmin.jsx";
 import PrsoReleases from "./Components/PrsoReleases.jsx";
@@ -128,6 +129,7 @@ const protectedRoutes = [
     { path: "/reports/t3-officers", element: <T3OfficersReports />, roles: ['DirectorIntelligence'] },
     { path: "/legal-advisor", element: <LegalAdvisor />, roles: ['legalAdvisor'] },
     { path: "/intelligence-officer/edit-report/:reportId", element: <EditReport /> },
+    { path: "/director-intelligence/edit-report/:reportId", element: <DirectorEditReport /> },
     { path: "/stock-management", element: <StockManagement />, roles: ['StockManager'] },
     { path: "/system-admin", element: <SystemAdmin />, roles: ['Admin', 'admin'] },
     { path: "/surveillence-officer/releases", element: <PrsoReleases />, roles: ['Surveillance', 'PRSO'] },
