@@ -7,13 +7,18 @@ import org.example.siidsbackend.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -32,7 +37,7 @@ public class UserController {
     }
 
     @PostMapping("/admin/register-user")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
+    @PreAuthorize("hasAuthority('USER_CREATE')")
     public ResponseEntity<?> adminRegisterUser(@RequestBody Map<String, String> request, Authentication authentication) {
         try {
             String performedBy = authentication != null ? authentication.getName() : "system";
@@ -74,6 +79,7 @@ public class UserController {
             response.put("token", result.get("token"));
             response.put("username", user.getUsername());
             response.put("role", result.get("role"));
+            response.put("permissions", result.getOrDefault("permissions", ""));
             response.put("message", "Login successful");
 
             // Add the employee name to the response
@@ -173,15 +179,15 @@ public class UserController {
         }
     }
 
-    @org.springframework.web.bind.annotation.GetMapping("/users")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
-    public java.util.List<User> getAllUsers() {
+    @GetMapping("/users")
+    @PreAuthorize("hasAuthority('USER_VIEW')")
+    public List<User> getAllUsers() {
         return service.getAllUsers();
     }
 
-    @org.springframework.web.bind.annotation.PutMapping("/users/{id}/role")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
-    public ResponseEntity<?> updateUserRole(@org.springframework.web.bind.annotation.PathVariable Integer id, @RequestBody Map<String, String> request, Authentication authentication) {
+    @PutMapping("/users/{id}/role")
+    @PreAuthorize("hasAuthority('USER_ROLE_UPDATE')")
+    public ResponseEntity<?> updateUserRole(@PathVariable Integer id, @RequestBody Map<String, String> request, Authentication authentication) {
         try {
             String role = request.get("role");
             String reason = request.get("reason");
@@ -195,9 +201,9 @@ public class UserController {
         }
     }
 
-    @org.springframework.web.bind.annotation.PutMapping("/users/{id}/deactivate")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
-    public ResponseEntity<?> toggleUserActiveStatus(@org.springframework.web.bind.annotation.PathVariable Integer id, Authentication authentication) {
+    @PutMapping("/users/{id}/deactivate")
+    @PreAuthorize("hasAuthority('USER_STATUS_UPDATE')")
+    public ResponseEntity<?> toggleUserActiveStatus(@PathVariable Integer id, Authentication authentication) {
         try {
             String performedBy = authentication != null ? authentication.getName() : "system";
             User updatedUser = service.toggleUserActiveStatus(id, performedBy);

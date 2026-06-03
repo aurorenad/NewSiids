@@ -56,6 +56,9 @@ public class UserService {
     @Autowired
     private AccountAuditLogRepository accountAuditLogRepository;
 
+    @Autowired
+    private RbacService rbacService;
+
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     private User getSingleUser(String username) {
@@ -154,6 +157,7 @@ public class UserService {
                     System.out.println("Returning role for user " + user.getUsername() + ": " + dbUser.getRole());
                     response.put("token", token);
                     response.put("role", dbUser.getRole());
+                    response.put("permissions", String.join(",", rbacService.getPermissionsForRole(dbUser.getRole())));
                 } else {
                     response.put("error", "User not found");
                 }

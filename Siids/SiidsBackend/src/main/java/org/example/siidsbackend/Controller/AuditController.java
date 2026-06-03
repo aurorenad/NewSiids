@@ -15,7 +15,7 @@ import java.util.List;
 public class AuditController {
     private final AuditLogRepository auditLogRepository;
     @GetMapping("/audit-logs")
-    @PreAuthorize("hasRole('ROLE_AUDITOR')")
+    @PreAuthorize("hasAuthority('AUDIT_VIEW')")
     public List<AuditLog> getLogs() {
         return auditLogRepository.findAll();
     }

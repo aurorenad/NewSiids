@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
         employeeId: null,
         name: null,
         role: null,
+        permissions: [],
         profile: {}, // Defensive initialization
     });
 
@@ -26,6 +27,7 @@ export const AuthProvider = ({ children }) => {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const name = localStorage.getItem('name') || sessionStorage.getItem('name');
         const role = localStorage.getItem('role') || sessionStorage.getItem('role');
+        const permissions = JSON.parse(localStorage.getItem('permissions') || sessionStorage.getItem('permissions') || '[]');
 
         if (token && employeeId) {
             setAuthState({
@@ -34,13 +36,14 @@ export const AuthProvider = ({ children }) => {
                 employeeId,
                 name,
                 role,
+                permissions,
                 profile: {}, 
             });
         }
         setLoading(false);
     }, []);
 
-    const login = (userId, token, employeeId, name, remember, role) => {
+    const login = (userId, token, employeeId, name, remember, role, permissions = []) => {
         const storage = remember ? localStorage : sessionStorage;
         
         storage.setItem('token', token);
@@ -48,6 +51,7 @@ export const AuthProvider = ({ children }) => {
         storage.setItem('userId', userId);
         storage.setItem('name', name);
         storage.setItem('role', role);
+        storage.setItem('permissions', JSON.stringify(permissions));
 
         setAuthState({ 
             token, 
@@ -55,6 +59,7 @@ export const AuthProvider = ({ children }) => {
             employeeId, 
             name, 
             role, 
+            permissions,
             profile: {} 
         });
     };
@@ -68,6 +73,7 @@ export const AuthProvider = ({ children }) => {
             employeeId: null,
             name: null,
             role: null,
+            permissions: [],
             profile: {},
         });
     };

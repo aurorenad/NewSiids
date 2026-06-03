@@ -90,7 +90,7 @@ public class StockController {
     // --- CRUD endpoints ---
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> createStock(
             @RequestPart("stockData") StockRequestDTO dto,
             @RequestPart(value = "documents", required = false) List<MultipartFile> documents,
@@ -109,7 +109,7 @@ public class StockController {
     }
 
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> updateStock(
             @PathVariable Integer id,
             @RequestPart("stockData") StockRequestDTO dto,
@@ -129,7 +129,7 @@ public class StockController {
     }
 
     @PutMapping(value = "/{id}/release/{releaseIndex}/status")
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'Surveillance', 'PRSO')")
+    @PreAuthorize("hasAuthority('STOCK_APPROVE_RELEASE')")
     public ResponseEntity<?> updateReleaseStatus(
             @PathVariable Integer id,
             @PathVariable int releaseIndex,
@@ -147,7 +147,7 @@ public class StockController {
         }
     }
 
-    @PreAuthorize("hasAnyAuthority('Admin', 'admin', 'StockManager', 'stockmanager', 'User', 'Surveillance', 'DirectorIntelligence', 'DirectorInvestigation', 'InvestigationOfficer', 'AssistantCommissioner', 'legalAdvisor')")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStock(@PathVariable Integer id) {
         stockService.deleteStock(id);

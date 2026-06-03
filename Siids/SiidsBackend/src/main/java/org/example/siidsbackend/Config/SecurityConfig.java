@@ -54,11 +54,7 @@ public class SecurityConfig {
                                 "/reset-password", "/setup-password", "/verify-otp", "/forgot-password", "/error")
                         .permitAll()
                         
-                        // RULE 2: Specific Stock Bypass (For Debugging 403)
-                        .requestMatchers("/api/stock/goods/**").permitAll()
-                        .requestMatchers("/api/stock/**").permitAll()
-                        
-                        // RULE 3: Everything else requires authentication
+                        // RULE 2: Everything else requires authentication
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)

@@ -7,6 +7,7 @@ import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Service.employeeService;
 import org.example.siidsbackend.Service.PhysicalStockService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -27,22 +28,26 @@ public class PhysicalStockController {
     // --- TEMPORARY STOCK ---
 
     @GetMapping("/temporary")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getTemporaryStock() {
         return ResponseEntity.ok(physicalStockService.getTemporaryStock());
     }
 
     @GetMapping("/temporary/history")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getSeizureHistory() {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(physicalStockService.getSeizureHistory(physicalStockService.getEmployeeByUsername(username)));
     }
 
     @GetMapping("/temporary/next-reference")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<Map<String, String>> getNextReference() {
         return ResponseEntity.ok(Map.of("nextReference", physicalStockService.generateNextSeizureNumber()));
     }
 
     @PostMapping("/temporary/seizure-notes")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<?> createSeizureNote(@RequestBody SeizureNoteRequestDTO dto) {
         try {
             String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -53,6 +58,7 @@ public class PhysicalStockController {
     }
 
     @PutMapping("/temporary/seizure-notes/{id}")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<?> updateSeizureNote(@PathVariable Integer id, @RequestBody SeizureNoteRequestDTO dto) {
         try {
             String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -63,6 +69,7 @@ public class PhysicalStockController {
     }
 
     @GetMapping("/temporary/{id}/seizure-note")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> downloadSeizureNote(@PathVariable Integer id) {
         log.info("Download request received for Seizure Note ID: {}", id);
         try {
@@ -77,12 +84,14 @@ public class PhysicalStockController {
     }
 
     @PostMapping("/temporary/{id}/release")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> releaseFromTempStock(@PathVariable Integer id, @RequestBody ReleaseNoteRequestDTO dto) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(physicalStockService.releaseFromTemporaryStock(id, dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
     @PostMapping("/temporary/{id}/escalate")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> escalateToMainStock(@PathVariable Integer id, @RequestBody EscalateRequestDTO dto) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(physicalStockService.escalateToMainStock(id, dto, physicalStockService.getEmployeeByUsername(username)));
@@ -91,12 +100,14 @@ public class PhysicalStockController {
     // --- STATE MACHINE ---
 
     @PatchMapping("/{id}/approve-intake")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> approveIntake(@PathVariable Integer id) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(physicalStockService.approveIntake(id, physicalStockService.getEmployeeByUsername(username)));
     }
 
     @PatchMapping("/{id}/return")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> returnGoods(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         physicalStockService.returnForCorrection(id, payload.get("reason"), physicalStockService.getEmployeeByUsername(username));
@@ -104,6 +115,7 @@ public class PhysicalStockController {
     }
 
     @PatchMapping("/{id}/request-release")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> requestRelease(@PathVariable Integer id, @RequestBody ReleaseNoteRequestDTO dto) {
         log.info("Processing Request Release for ID: {}", id);
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
@@ -111,6 +123,7 @@ public class PhysicalStockController {
     }
 
     @PatchMapping("/{id}/approve-release")
+    @PreAuthorize("hasAuthority('STOCK_APPROVE_RELEASE')")
     public ResponseEntity<?> approveReleaseMachine(@PathVariable Integer id) {
         log.info("PRSO Request to AUTHORIZE RELEASE for Seizure Note ID: {}", id);
         try {
@@ -124,6 +137,7 @@ public class PhysicalStockController {
     }
 
     @PatchMapping("/{id}/reject-release")
+    @PreAuthorize("hasAuthority('STOCK_APPROVE_RELEASE')")
     public ResponseEntity<?> rejectReleaseMachine(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         physicalStockService.rejectRelease(id, payload.get("reason"), physicalStockService.getEmployeeByUsername(username));
@@ -133,20 +147,24 @@ public class PhysicalStockController {
     // --- MAIN STOCK VIEW & APPROVALS ---
 
     @GetMapping("/main")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getMainStock() {
         return ResponseEntity.ok(physicalStockService.getAllGoodsForManager());
     }
 
     @GetMapping("/pending-approvals")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getPendingApprovals() {
         return ResponseEntity.ok(physicalStockService.getPendingApprovals());
     }
 
     @GetMapping("/approval-history")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getApprovalHistory() {
         return ResponseEntity.ok(physicalStockService.getApprovalHistory());
     }
 @GetMapping("/{id}/pv-pdf")
+@PreAuthorize("hasAuthority('STOCK_VIEW')")
 public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
     log.info("Download request received for PV/Goods ID: {}", id);
     try {
@@ -168,6 +186,7 @@ public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
 }
 
     @GetMapping("/release-notes/{id}/pdf")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getReleaseNotePdf(@PathVariable Integer id) {
         try {
             byte[] pdf = physicalStockService.generateReleaseNotePdf(id);
@@ -181,6 +200,7 @@ public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
     }
 
     @PostMapping("/release-notes/preview")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<?> previewReleaseNote(@RequestBody java.util.Map<String, String> payload) {
         try {
             byte[] pdf = physicalStockService.generateReleaseNotePreview(payload);

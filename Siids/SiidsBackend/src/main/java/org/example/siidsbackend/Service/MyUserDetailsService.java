@@ -15,6 +15,9 @@ public class MyUserDetailsService implements UserDetailsService {
     @Autowired
     private UserRepo userRepo;
 
+    @Autowired
+    private RbacService rbacService;
+
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -24,6 +27,6 @@ public class MyUserDetailsService implements UserDetailsService {
             throw new UsernameNotFoundException("user not found");
         }
 
-        return new UserPrincipal(user);
+        return new UserPrincipal(user, rbacService.getPermissionsForRole(user.getRole()));
     }
 }

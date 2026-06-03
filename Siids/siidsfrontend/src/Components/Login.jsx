@@ -55,8 +55,11 @@ const Login = () => {
                     const employeeId = data.employeeId || data.employee_id || userId.trim();
                     const name = data.name || '';
                     const role = data.role || '';
+                    const permissions = Array.isArray(data.permissions)
+                        ? data.permissions
+                        : (data.permissions || '').split(',').map((permission) => permission.trim()).filter(Boolean);
 
-                    login(userId.trim(), data.token, employeeId, name, rememberMe, role);
+                    login(userId.trim(), data.token, employeeId, name, rememberMe, role, permissions);
                     // Navigation happens in useEffect
                 } catch (loginError) {
                     console.error('Login context error:', loginError);
