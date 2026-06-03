@@ -135,7 +135,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
     List<DirectorIntelligenceReportDTO> findCasesForDirectorIntelligenceReport();
 
     @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
-            "(SELECT u.username FROM User u WHERE u.role IN ('legalAdvisor', 'Legal Advisor', 'LegalAdvisor') AND u.active = true)")
+            "(SELECT u.username FROM User u WHERE LOWER(REPLACE(REPLACE(REPLACE(u.role, 'ROLE_', ''), ' ', ''), '_', '')) = 'legaladvisor' AND u.active = true)")
     List<Employee> findLegalAdvisors();
 
     @Query("SELECT r FROM Report r JOIN r.relatedCase c " +
@@ -168,6 +168,6 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
     boolean existsByRelatedCase_CaseNum(String caseNum);
 
     @Query("SELECT r FROM Report r WHERE r.legalAdvisor IS NOT NULL OR r.currentRecipient.employeeId IN " +
-            "(SELECT u.username FROM User u WHERE u.role IN ('legalAdvisor', 'Legal Advisor', 'LegalAdvisor'))")
+            "(SELECT u.username FROM User u WHERE LOWER(REPLACE(REPLACE(REPLACE(u.role, 'ROLE_', ''), ' ', ''), '_', '')) = 'legaladvisor')")
     List<Report> findReportsWithLegalAdvisors();
 }

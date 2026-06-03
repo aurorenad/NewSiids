@@ -27,6 +27,7 @@ public class CaseService {
     private final ReportRepo reportRepo;
     private final AuditService auditService;
     private final org.example.siidsbackend.Repository.UserRepo userRepo;
+    private final RbacService rbacService;
 
     @Transactional
     public Case createCase(CaseRequestDTO dto, String employeeId, TaxPayer taxPayer, Informer informer) {
@@ -75,7 +76,7 @@ public class CaseService {
         // Check permission: Only creator can edit, and usually only if it's still in CASE_CREATED or REPORT_SUBMITTED status
         if (existingCase.getCreatedBy() == null || !existingCase.getCreatedBy().getEmployeeId().equals(employeeId)) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-            boolean isAdmin = user != null && "Admin".equals(user.getRole());
+            boolean isAdmin = rbacService.isAdmin(user);
             if (!isAdmin) {
                 throw new RuntimeException("Only case creator or Admin can edit the case");
             }
@@ -121,7 +122,7 @@ public class CaseService {
         }
 
         org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-        if (user != null && "Admin".equals(user.getRole())) {
+        if (rbacService.isAdmin(user)) {
             return caseRepo.findAll().stream()
                     .map(this::mapToCaseResponseDTO)
                     .collect(Collectors.toList());
@@ -138,7 +139,7 @@ public class CaseService {
         }
 
         org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-        if (user != null && "Admin".equals(user.getRole())) {
+        if (rbacService.isAdmin(user)) {
             return caseRepo.findById(caseId)
                     .map(this::mapToCaseResponseDTO);
         }
@@ -163,11 +164,10 @@ public class CaseService {
 
         if (!isCreator) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-            boolean isAuthorizedRole = user != null && (
-                    "Admin".equals(user.getRole()) ||
-                    "DirectorIntelligence".equals(user.getRole()) ||
-                    "IntelligenceOfficer".equals(user.getRole())
-            );
+            boolean isAuthorizedRole = rbacService.hasAnyRole(user,
+                    "Admin",
+                    "DirectorIntelligence",
+                    "IntelligenceOfficer");
 
             if (!isAuthorizedRole) {
                 throw new RuntimeException("Only case creator or authorized intelligence officers can update status");
@@ -193,7 +193,7 @@ public class CaseService {
         }
 
         org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-        if (user != null && "Admin".equals(user.getRole())) {
+        if (rbacService.isAdmin(user)) {
             return caseRepo.findByCaseNum(caseNum)
                     .map(this::mapToCaseResponseDTO);
         }
@@ -210,7 +210,7 @@ public class CaseService {
         }
 
         org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-        if (user != null && "Admin".equals(user.getRole())) {
+        if (rbacService.isAdmin(user)) {
             return caseRepo.findByStatus(status).stream()
                     .map(this::mapToCaseResponseDTO)
                     .collect(Collectors.toList());

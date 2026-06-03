@@ -16,6 +16,7 @@ import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.CaseRepo;
 
 import org.example.siidsbackend.Repository.ReportRepo;
+import org.example.siidsbackend.Service.RbacService;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -51,6 +52,7 @@ public class ReportController {
     private final CaseRepo caseRepo;
     private final ObjectMapper objectMapper;
     private final org.example.siidsbackend.Repository.UserRepo userRepo;
+    private final RbacService rbacService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -316,7 +318,7 @@ public class ReportController {
 
             // Check if employee is Admin
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-            boolean isAdmin = user != null && "Admin".equals(user.getRole());
+            boolean isAdmin = rbacService.isAdmin(user);
 
             boolean hasAccess = isAdmin || report.getCreatedBy().getEmployeeId().equals(employeeId) ||
                     (report.getCurrentRecipient() != null &&
@@ -630,7 +632,7 @@ public class ReportController {
 
             if (!hasAccess) {
                 org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-                if (user != null && "Admin".equals(user.getRole())) {
+                if (rbacService.isAdmin(user)) {
                     hasAccess = true;
                 }
             }
@@ -803,10 +805,13 @@ public class ReportController {
         // Check if employee has a privileged role
         org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
         if (user != null) {
-            String role = user.getRole();
-            if ("Admin".equals(role) || "DirectorIntelligence".equals(role) ||
-                    "DirectorInvestigation".equals(role) || "InvestigationOfficer".equals(role) ||
-                    "AssistantCommissioner".equals(role) || "legalAdvisor".equals(role)) {
+            if (rbacService.hasAnyRole(user,
+                    "Admin",
+                    "DirectorIntelligence",
+                    "DirectorInvestigation",
+                    "InvestigationOfficer",
+                    "AssistantCommissioner",
+                    "legalAdvisor")) {
                 return; // Privileged role has access
             }
         }

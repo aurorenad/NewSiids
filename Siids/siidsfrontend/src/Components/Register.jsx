@@ -84,7 +84,7 @@ const Register = () => {
         { value: 'DirectorIntelligence', label: 'Director Intelligence' },
         { value: 'DirectorInvestigation', label: 'Director Investigation' },
         { value: 'AssistantCommissioner', label: 'Assistant Commissioner' },
-        { value: 'legalAdvisor', label: 'Legal Advisor' },
+        { value: 'LegalAdvisor', label: 'Legal Advisor' },
         { value: 'StockManager', label: 'Stock Manager' },
         { value: 'PRSO', label: 'PRSO' },
     ];

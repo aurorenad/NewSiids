@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 public interface UserRepo extends JpaRepository<User, Integer> {
@@ -17,6 +18,12 @@ public interface UserRepo extends JpaRepository<User, Integer> {
     Optional<User> findByPasswordSetupToken(String passwordSetupToken);
     java.util.List<User> findByRole(String role);
     java.util.List<User> findByRoleIn(java.util.List<String> roles);
+
+    @Query("SELECT u FROM User u WHERE LOWER(REPLACE(REPLACE(REPLACE(u.role, 'ROLE_', ''), ' ', ''), '_', '')) = :normalizedRole")
+    List<User> findByNormalizedRole(@Param("normalizedRole") String normalizedRole);
+
+    @Query("SELECT u FROM User u WHERE LOWER(REPLACE(REPLACE(REPLACE(u.role, 'ROLE_', ''), ' ', ''), '_', '')) IN :normalizedRoles")
+    List<User> findByNormalizedRoleIn(@Param("normalizedRoles") List<String> normalizedRoles);
 
     @Modifying
     @Transactional

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { hasPermission } from '../utils/authorization.js';
 import { jsPDF } from 'jspdf';
 import { Edit, Trash2, Download, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -28,6 +29,7 @@ const StockManagement = () => {
 
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005';
     const API_URL = `${BASE_URL}/api/stock`;
+    const canManageStock = hasPermission(authState, 'STOCK_MANAGE');
 
     // Always read the freshest token from storage to avoid stale closure issues
     const getAuthHeaders = () => {
@@ -101,6 +103,7 @@ const StockManagement = () => {
     };
 
     const handleDelete = async (id) => {
+        if (!canManageStock) return;
         if (!window.confirm('Are you sure you want to delete this stock item?')) return;
 
         try {
@@ -533,11 +536,13 @@ const StockManagement = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                 <Tooltip title="Delete">
-                                                    <IconButton size="small" color="error" onClick={() => handleDelete(stock.id)}>
-                                                        <Trash2 size={16} />
-                                                    </IconButton>
-                                                </Tooltip>
+                                                {canManageStock && (
+                                                    <Tooltip title="Delete">
+                                                        <IconButton size="small" color="error" onClick={() => handleDelete(stock.id)}>
+                                                            <Trash2 size={16} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                )}
                                                 {stock.releases && stock.releases.length > 0 ? (
                                                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
                                                         {stock.releases.map((r, i) => (

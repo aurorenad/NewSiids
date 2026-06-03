@@ -43,6 +43,7 @@ public class ReportService {
     private final WebSocketNotificationService webSocketNotificationService;
     private final AuditService auditService;
     private final UserRepo userRepo;
+    private final RbacService rbacService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -342,7 +343,7 @@ public class ReportService {
             log.info("No Director found via structural query. Attempting fallback via User roles.");
             // Fallback: Find any employee who has the role in the User table
             List<org.example.siidsbackend.Model.User> directorUsers = userRepo.findAll().stream()
-                    .filter(u -> "DirectorIntelligence".equalsIgnoreCase(u.getRole()))
+                    .filter(u -> rbacService.hasRole(u, "DirectorIntelligence"))
                     .collect(Collectors.toList());
             
             for (org.example.siidsbackend.Model.User user : directorUsers) {
@@ -768,7 +769,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "DirectorIntelligence")) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
         }
@@ -992,9 +993,7 @@ public class ReportService {
             log.info("Validating AC access for user: {}, role: '{}'", employeeId, userRole);
 
             // Case-insensitive and trimmed comparison for all variations
-            boolean hasAcRole = "Admin".equalsIgnoreCase(userRole) || 
-                                "AssistantCommissioner".equalsIgnoreCase(userRole) || 
-                                "Assistant Commissioner".equalsIgnoreCase(userRole);
+            boolean hasAcRole = rbacService.hasAnyRole(user, "Admin", "AssistantCommissioner");
                                 
             if (!hasAcRole) {
                 log.error("Access denied: User {} has role '{}', expected Assistant Commissioner", employeeId, userRole);
@@ -1010,7 +1009,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "DirectorInvestigation")) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
         }
@@ -1119,7 +1118,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "DirectorInvestigation")) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
         }
@@ -1315,7 +1314,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "DirectorIntelligence")) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
         }
@@ -1330,7 +1329,7 @@ public class ReportService {
 
         if (!isAssistantCommissioner) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-            if (user == null || (!"Admin".equalsIgnoreCase(user.getRole()) && !"AssistantCommissioner".equalsIgnoreCase(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "AssistantCommissioner")) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
         }
@@ -1346,7 +1345,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorInvestigation".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "DirectorInvestigation")) {
                 throw new RuntimeException("Employee is not a Director of Investigation");
             }
         }
@@ -1421,7 +1420,7 @@ public class ReportService {
 
         if (!isAssistantCommissioner) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(employeeId).orElse(null);
-            if (user == null || (!"Admin".equalsIgnoreCase(user.getRole()) && !"AssistantCommissioner".equalsIgnoreCase(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "AssistantCommissioner")) {
                 throw new RuntimeException("Employee is not an Assistant Commissioner");
             }
         }
@@ -1471,7 +1470,7 @@ public class ReportService {
 
         if (!isDirector) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"DirectorIntelligence".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "DirectorIntelligence")) {
                 throw new RuntimeException("Employee is not a Director of Intelligence");
             }
         }
@@ -1651,7 +1650,7 @@ public class ReportService {
 
         if (!isLegalAdvisor) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(legalAdvisorId).orElse(null);
-            if (user == null || (!"Admin".equals(user.getRole()) && !"legalAdvisor".equals(user.getRole()))) {
+            if (!rbacService.hasAnyRole(user, "Admin", "legalAdvisor")) {
                 throw new RuntimeException("Employee is not a Legal Advisor");
             }
         }

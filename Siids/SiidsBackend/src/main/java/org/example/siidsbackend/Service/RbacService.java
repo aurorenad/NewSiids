@@ -3,6 +3,7 @@ package org.example.siidsbackend.Service;
 import org.example.siidsbackend.Model.Permission;
 import org.example.siidsbackend.Model.RbacRole;
 import org.example.siidsbackend.Model.RolePermission;
+import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Repository.PermissionRepository;
 import org.example.siidsbackend.Repository.RbacRoleRepository;
 import org.example.siidsbackend.Repository.RolePermissionRepository;
@@ -80,6 +81,28 @@ public class RbacService {
                 .replace("ROLE_", "")
                 .replace(" ", "")
                 .replace("_", "");
+    }
+
+    public boolean hasRole(User user, String role) {
+        String userRole = user == null ? null : normalizeRole(user.getRole());
+        String requiredRole = normalizeRole(role);
+        return userRole != null && userRole.equals(requiredRole);
+    }
+
+    public boolean hasAnyRole(User user, String... roles) {
+        if (user == null || roles == null) {
+            return false;
+        }
+        for (String role : roles) {
+            if (hasRole(user, role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isAdmin(User user) {
+        return hasRole(user, "Admin");
     }
 
     public List<String> getAllPermissionNames() {

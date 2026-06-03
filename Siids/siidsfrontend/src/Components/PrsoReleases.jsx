@@ -6,6 +6,7 @@ import {
     DialogContent, DialogActions, TextField, Alert, Box, Chip, TablePagination
 } from '@mui/material';
 import { AuthContext } from '../context/AuthContext';
+import { hasPermission } from '../utils/authorization.js';
 
 const PrsoReleases = () => {
     const [stocks, setStocks] = useState([]);
@@ -22,6 +23,7 @@ const PrsoReleases = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     
     const { authState } = useContext(AuthContext);
+    const canApproveRelease = hasPermission(authState, 'STOCK_APPROVE_RELEASE');
 
     useEffect(() => {
         fetchStocks();
@@ -46,6 +48,7 @@ const PrsoReleases = () => {
     };
 
     const handleApprove = async (stockId, releaseIndex) => {
+        if (!canApproveRelease) return;
         try {
             const token = localStorage.getItem('token');
             await axios.put(`/api/stock/${stockId}/release/${releaseIndex}/status`, 
@@ -62,6 +65,7 @@ const PrsoReleases = () => {
     };
 
     const handleRejectOpen = (stockId, releaseIndex) => {
+        if (!canApproveRelease) return;
         setSelectedRelease({ stockId, releaseIndex });
         setRejectionReason('');
         setOpenReject(true);
@@ -134,7 +138,7 @@ const PrsoReleases = () => {
                                     />
                                 </TableCell>
                                 <TableCell>
-                                    {(!release.status || release.status === 'PENDING') && (
+                                    {canApproveRelease && (!release.status || release.status === 'PENDING') && (
                                         <>
                                             <Button 
                                                 variant="contained" 
@@ -199,7 +203,7 @@ const PrsoReleases = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenReject(false)}>Cancel</Button>
-                    <Button onClick={handleRejectSubmit} variant="contained" color="error">
+                    <Button onClick={handleRejectSubmit} variant="contained" color="error" disabled={!canApproveRelease}>
                         Confirm Rejection
                     </Button>
                 </DialogActions>

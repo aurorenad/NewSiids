@@ -236,7 +236,7 @@ public class PhysicalStockService {
         auditService.logAction(note.getSeizureNumber(), "ESCALATED", "Escalated to Main Stock with PV: " + generatedPv + ". Awaiting review.", currentUser);
         
         // 3. Notify All Stock Managers
-        List<User> managers = userRepo.findByRoleIn(List.of("StockManager", "STOCKMANAGER", "Stock Manager"));
+        List<User> managers = userRepo.findByNormalizedRole("stockmanager");
         String senderName = currentUser.getGivenName() + " " + currentUser.getFamilyName();
         for (User m : managers) {
             employeeRepo.findByEmployeeId(m.getUsername()).ifPresent(e -> {
@@ -353,7 +353,7 @@ public class PhysicalStockService {
         auditService.logAction(saved.getSeizureNumber(), "UPDATED", "Corrected and resubmitted for intake review", currentUser);
         
         // Notify All Stock Managers
-        List<User> managers = userRepo.findByRoleIn(List.of("StockManager", "STOCKMANAGER", "Stock Manager"));
+        List<User> managers = userRepo.findByNormalizedRole("stockmanager");
         String senderName = currentUser.getGivenName() + " " + currentUser.getFamilyName();
         for (User m : managers) {
             employeeRepo.findByEmployeeId(m.getUsername()).ifPresent(e -> {
@@ -509,7 +509,7 @@ public class PhysicalStockService {
         auditService.logAction(note.getSeizureNumber(), "RELEASE_REQUESTED", "Release request submitted to PRSO with Disposal Data", stockManager);
         
         // Notify All PRSOs
-        List<User> prsos = userRepo.findByRole("PRSO");
+        List<User> prsos = userRepo.findByNormalizedRole("prso");
         String managerName = stockManager.getGivenName() + " " + stockManager.getFamilyName();
         for (User p : prsos) {
             employeeRepo.findByEmployeeId(p.getUsername()).ifPresent(e -> {
