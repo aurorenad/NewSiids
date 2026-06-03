@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { stockApi } from '../../api/stockApi';
 import RightDrawer from '../../Components/ui/RightDrawer';
 import ConfirmDialog from '../../Components/ui/ConfirmDialog';
@@ -15,8 +15,11 @@ import {
   Download, Gavel, Info, CheckCircle, HourglassEmpty, 
   LocalShipping, Warning
 } from '@mui/icons-material';
+import { AuthContext } from '../../context/AuthContext';
+import { hasPermission } from '../../utils/authorization';
 
 const StockManagerPage = () => {
+  const { authState } = useContext(AuthContext);
   const [stockList, setStockList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0); 
@@ -32,6 +35,7 @@ const StockManagerPage = () => {
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const canManageStock = hasPermission(authState, 'STOCK_MANAGE');
 
   const fetchStock = async () => {
     try {
@@ -255,13 +259,13 @@ const StockManagerPage = () => {
                       )}
                       <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                         <Box display="flex" gap={1} justifyContent="center" alignItems="center">
-                          {activeTab === 0 && (item.status !== 'RETURNED' && item.status !== 'RETURNED_FOR_CORRECTION') && (
+                          {canManageStock && activeTab === 0 && (item.status !== 'RETURNED' && item.status !== 'RETURNED_FOR_CORRECTION') && (
                             <>
                               <Button size="small" variant="contained" color="success" onClick={() => { setSelectedItem(item); setApproveDialog(true); }}>Approve</Button>
                               <Button size="small" variant="outlined" color="error" onClick={() => { setSelectedItem(item); setReturnDialog(true); }}>Return</Button>
                             </>
                           )}
-                          {activeTab === 1 && (
+                          {canManageStock && activeTab === 1 && (
                             <Button 
                               size="small" 
                               variant="contained" 
@@ -318,13 +322,13 @@ const StockManagerPage = () => {
         title={`Goods Record: ${selectedItem?.seizureNumber}`}
         footerActions={
             <>
-              {activeTab === 0 && (selectedItem?.status !== 'RETURNED' && selectedItem?.status !== 'RETURNED_FOR_CORRECTION') && (
+              {canManageStock && activeTab === 0 && (selectedItem?.status !== 'RETURNED' && selectedItem?.status !== 'RETURNED_FOR_CORRECTION') && (
                   <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
                       <Button fullWidth variant="outlined" color="error" onClick={() => { setDrawerOpen(false); setReturnDialog(true); }}>Return</Button>
                       <Button fullWidth variant="contained" color="success" onClick={() => { setDrawerOpen(false); setApproveDialog(true); }}>Approve</Button>
                   </Box>
               )}
-              {activeTab === 1 && (
+              {canManageStock && activeTab === 1 && (
                   <Button fullWidth variant="contained" startIcon={<Share />} onClick={() => { setDrawerOpen(false); setReleaseModalOpen(true); }} sx={{ bgcolor: 'var(--rra-blue)' }}>Request Release</Button>
               )}
             </>

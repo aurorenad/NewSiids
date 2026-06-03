@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { TablePagination } from '@mui/material';
 import { PlusIcon, MagnifyingGlassIcon, InboxArrowDownIcon } from '@heroicons/react/24/outline';
 import { stockApi } from '../../api/stockApi';
@@ -10,8 +10,11 @@ import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
 
 import { useLocation } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
+import { hasPermission } from '../../utils/authorization';
 
 const PVTemporaryStockPage = () => {
+  const { authState } = useContext(AuthContext);
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL', 'ESCALATED', 'RETURNED'
@@ -32,6 +35,8 @@ const PVTemporaryStockPage = () => {
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const canCreateSurveillance = hasPermission(authState, 'SURVEILLANCE_CREATE');
+  const canManageStock = hasPermission(authState, 'STOCK_MANAGE');
 
   const fetchData = async () => {
     try {
@@ -191,10 +196,12 @@ const PVTemporaryStockPage = () => {
           <h1 className="type-page-title">Surveillance Officer Dashboard</h1>
           <p className="type-body" style={{ color: 'var(--gray-500)' }}>Manage seized goods and track operation history</p>
         </div>
-        <button className="btn-base btn-primary" onClick={() => setCreateModalOpen(true)}>
-          <PlusIcon style={{ width: 16, height: 16 }} />
-          New Seizure Note
-        </button>
+        {canCreateSurveillance && (
+          <button className="btn-base btn-primary" onClick={() => setCreateModalOpen(true)}>
+            <PlusIcon style={{ width: 16, height: 16 }} />
+            New Seizure Note
+          </button>
+        )}
       </div>
 
       {/* Alert Banners ... */}
@@ -239,23 +246,25 @@ const PVTemporaryStockPage = () => {
                   </span>
                 </div>
               </div>
-              <button 
-                className="btn-base" 
-                style={{ 
-                  padding: '6px 14px', 
-                  fontSize: '12px', 
-                  color: '#ffffff', 
-                  background: 'rgb(220, 38, 38)',
-                  border: 'none',
-                  borderRadius: 6,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
-                }}
-                onClick={() => setEditItem(item)}
-              >
-                Edit & Resubmit
-              </button>
+              {canCreateSurveillance && (
+                <button 
+                  className="btn-base" 
+                  style={{ 
+                    padding: '6px 14px', 
+                    fontSize: '12px', 
+                    color: '#ffffff', 
+                    background: 'rgb(220, 38, 38)',
+                    border: 'none',
+                    borderRadius: 6,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+                  }}
+                  onClick={() => setEditItem(item)}
+                >
+                  Edit & Resubmit
+                </button>
+              )}
             </div>
           ))}
 
@@ -482,7 +491,7 @@ const PVTemporaryStockPage = () => {
                       )}
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
-                          {item.status === 'RETURNED_FOR_CORRECTION' && (
+                          {canCreateSurveillance && item.status === 'RETURNED_FOR_CORRECTION' && (
                             <button 
                               className="btn-base" 
                               style={{ 
@@ -541,7 +550,7 @@ const PVTemporaryStockPage = () => {
       </div>
 
       <CreateSeizureNoteModal 
-        isOpen={isCreateModalOpen || !!editItem} 
+        isOpen={canCreateSurveillance && (isCreateModalOpen || !!editItem)} 
         onClose={() => { setCreateModalOpen(false); setEditItem(null); }} 
         onSuccess={() => { setCreateModalOpen(false); setEditItem(null); fetchData(); }}
         initialCaseRef={location.state?.caseRef}
@@ -553,12 +562,12 @@ const PVTemporaryStockPage = () => {
         onClose={() => setDrawerOpen(false)}
         title={`Item ${selectedItem?.seizureNumber}`}
         footerActions={
-          selectedItem?.status === 'IN_TEMPORARY_STOCK' ? (
+          canManageStock && selectedItem?.status === 'IN_TEMPORARY_STOCK' ? (
             <>
               <button className="btn-base btn-success" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Release to Owner</button>
               <button className="btn-base btn-danger" onClick={() => { setDrawerOpen(false); setEscalateDialog(true); }}>Escalate to Main Stock</button>
             </>
-          ) : selectedItem?.status === 'RETURNED_FOR_CORRECTION' ? (
+          ) : canCreateSurveillance && selectedItem?.status === 'RETURNED_FOR_CORRECTION' ? (
             <button 
               className="btn-base btn-primary" 
               onClick={() => { setDrawerOpen(false); setEditItem(selectedItem); }}

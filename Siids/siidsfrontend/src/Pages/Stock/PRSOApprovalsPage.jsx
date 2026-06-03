@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import { stockApi } from '../../api/stockApi';
 import RightDrawer from '../../Components/ui/RightDrawer';
 import ConfirmDialog from '../../Components/ui/ConfirmDialog';
@@ -14,8 +14,11 @@ import {
   Gavel, Info, Description, LocalShipping, HourglassEmpty,
   History, HistoryEdu, Person, MonetizationOn
 } from '@mui/icons-material';
+import { AuthContext } from '../../context/AuthContext';
+import { hasPermission } from '../../utils/authorization';
 
 const PRSOApprovalsPage = () => {
+  const { authState } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState(0); // 0: Pending Release, 1: Approval History
   const [goodsList, setGoodsList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +32,7 @@ const PRSOApprovalsPage = () => {
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const canApproveRelease = hasPermission(authState, 'STOCK_APPROVE_RELEASE');
 
   const fetchGoods = async () => {
     try {
@@ -204,7 +208,7 @@ const PRSOApprovalsPage = () => {
                               <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          {(item.status === 'PENDING_RELEASE' || item.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
+                          {canApproveRelease && (item.status === 'PENDING_RELEASE' || item.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
                             <>
                               <Tooltip title="Authorize Release">
                                 <IconButton onClick={() => { setSelectedItem(item); setApproveDialog(true); }} sx={{ color: 'var(--green-600)', bgcolor: 'rgba(22, 101, 52, 0.05)' }}>
@@ -245,7 +249,7 @@ const PRSOApprovalsPage = () => {
         onClose={() => setDrawerOpen(false)}
         title={`Legal Audit: ${selectedItem?.pvNumber || selectedItem?.seizureNumber}`}
         footerActions={
-          (selectedItem?.status === 'PENDING_RELEASE' || selectedItem?.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
+          canApproveRelease && (selectedItem?.status === 'PENDING_RELEASE' || selectedItem?.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
             <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
               <Button 
                 fullWidth variant="outlined" color="error" startIcon={<Cancel />} 

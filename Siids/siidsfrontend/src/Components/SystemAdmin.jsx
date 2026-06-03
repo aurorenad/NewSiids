@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import axios from '../api/axios.jsx';
 import {
   Typography,
@@ -22,8 +22,11 @@ import {
 import { PersonAdd } from '@mui/icons-material';
 import UserOnboardingForm from './admin/UserOnboardingForm.jsx';
 import RoleSelectField from './admin/RoleSelectField.jsx';
+import { AuthContext } from '../context/AuthContext.jsx';
+import { hasPermission } from '../utils/authorization.js';
 
 const SystemAdmin = () => {
+  const { authState } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,6 +42,10 @@ const SystemAdmin = () => {
     role: '',
   });
   const [newRole, setNewRole] = useState('');
+  const canCreateUser = hasPermission(authState, 'USER_CREATE');
+  const canUpdateRole = hasPermission(authState, 'USER_ROLE_UPDATE');
+  const canUpdateStatus = hasPermission(authState, 'USER_STATUS_UPDATE');
+  const hasActions = canUpdateRole || canUpdateStatus;
 
   useEffect(() => {
     fetchUsers();
@@ -136,11 +143,13 @@ const SystemAdmin = () => {
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h5" fontWeight={700}>
-          System Admin — User Management
+          System Admin - User Management
         </Typography>
-        <Button startIcon={<PersonAdd />} onClick={handleRegisterToggle}>
-          Add New User
-        </Button>
+        {canCreateUser && (
+          <Button startIcon={<PersonAdd />} onClick={handleRegisterToggle}>
+            Add New User
+          </Button>
+        )}
       </Box>
 
       {error && (
@@ -157,7 +166,7 @@ const SystemAdmin = () => {
               <TableCell>Employee ID</TableCell>
               <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
+              {hasActions && <TableCell>Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -173,24 +182,30 @@ const SystemAdmin = () => {
                     size="small"
                   />
                 </TableCell>
-                <TableCell>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    sx={{ mr: 1 }}
-                    onClick={() => handleRoleUpdateOpen(user)}
-                  >
-                    Edit Role
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color={user.active !== false ? 'error' : 'success'}
-                    size="small"
-                    onClick={() => toggleStatus(user.id)}
-                  >
-                    {user.active !== false ? 'Deactivate' : 'Activate'}
-                  </Button>
-                </TableCell>
+                {hasActions && (
+                  <TableCell>
+                    {canUpdateRole && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        sx={{ mr: 1 }}
+                        onClick={() => handleRoleUpdateOpen(user)}
+                      >
+                        Edit Role
+                      </Button>
+                    )}
+                    {canUpdateStatus && (
+                      <Button
+                        variant="contained"
+                        color={user.active !== false ? 'error' : 'success'}
+                        size="small"
+                        onClick={() => toggleStatus(user.id)}
+                      >
+                        {user.active !== false ? 'Deactivate' : 'Activate'}
+                      </Button>
+                    )}
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
