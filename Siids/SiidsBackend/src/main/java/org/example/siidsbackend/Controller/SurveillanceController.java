@@ -7,6 +7,7 @@ import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Service.StockService;
 import org.example.siidsbackend.Service.SurveillanceService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +27,7 @@ public class SurveillanceController {
     }
 
     @PostMapping("/mapping")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<SurveillanceMapping> createMapping(
             @RequestBody Map<String, Object> body) {
         String employeeId = getCurrentUser();
@@ -46,6 +48,7 @@ public class SurveillanceController {
     }
 
     @PostMapping("/reports")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<SurveillanceReport> submitReport(
             @RequestParam("mappingId") Integer mappingId,
             @RequestParam("findings") String findings,
@@ -65,6 +68,7 @@ public class SurveillanceController {
     }
 
     @PostMapping("/handover-to-store")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<Stock> handoverToStore(
             @RequestPart("stockData") StockRequestDTO stockData,
             @RequestPart("documents") List<MultipartFile> documents,
@@ -80,11 +84,13 @@ public class SurveillanceController {
     }
 
     @GetMapping("/reports/pending")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_VIEW')")
     public ResponseEntity<List<SurveillanceReport>> getPendingReports() {
         return ResponseEntity.ok(surveillanceService.getPendingReports());
     }
 
     @PostMapping("/reports/{id}/approve-prso")
+    @PreAuthorize("hasAuthority('STOCK_APPROVE_RELEASE')")
     public ResponseEntity<SurveillanceReport> approvePRSO(
             @PathVariable Integer id) {
         String employeeId = getCurrentUser();
@@ -92,6 +98,7 @@ public class SurveillanceController {
     }
 
     @PostMapping("/reports/{id}/submit-ac")
+    @PreAuthorize("hasAuthority('SURVEILLANCE_CREATE')")
     public ResponseEntity<SurveillanceReport> submitToAC(@PathVariable Integer id) {
         return ResponseEntity.ok(surveillanceService.submitToAC(id));
     }

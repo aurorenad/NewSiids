@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,10 +49,16 @@ public class NotificationController {
      * Get all notifications for a specific employee
      */
     @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
     public ResponseEntity<List<NotificationDTO>> getNotificationsForEmployee(
             @PathVariable String employeeId,
             @RequestParam(defaultValue = "false") boolean unreadOnly) {
+        String requestingEmployeeId = getCurrentUser();
         try {
+            if (!employeeId.equals(requestingEmployeeId)) {
+                return ResponseEntity.status(403).build();
+            }
+
             Employee employee = employeeRepo.findByEmployeeId(employeeId)
                     .orElseThrow(() -> new RuntimeException("Employee not found"));
 
@@ -77,6 +84,7 @@ public class NotificationController {
      * Mark notification as read
      */
     @PutMapping("/{notificationId}/read")
+    @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
     public ResponseEntity<Void> markAsRead(
             @PathVariable Integer notificationId) {
         String employeeId = getCurrentUser();
@@ -103,6 +111,7 @@ public class NotificationController {
      * Mark all notifications as read for an employee
      */
     @PutMapping("/employee/{employeeId}/read-all")
+    @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
     public ResponseEntity<Void> markAllAsRead(
             @PathVariable String employeeId) {
         String requestingEmployeeId = getCurrentUser();
@@ -132,8 +141,14 @@ public class NotificationController {
      * Get unread notification count for an employee
      */
     @GetMapping("/employee/{employeeId}/unread-count")
+    @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
     public ResponseEntity<Long> getUnreadCount(@PathVariable String employeeId) {
+        String requestingEmployeeId = getCurrentUser();
         try {
+            if (!employeeId.equals(requestingEmployeeId)) {
+                return ResponseEntity.status(403).build();
+            }
+
             Employee employee = employeeRepo.findByEmployeeId(employeeId)
                     .orElseThrow(() -> new RuntimeException("Employee not found"));
 
@@ -149,6 +164,7 @@ public class NotificationController {
      * Delete a notification
      */
     @DeleteMapping("/{notificationId}")
+    @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
     public ResponseEntity<Void> deleteNotification(
             @PathVariable Integer notificationId) {
         String employeeId = getCurrentUser();

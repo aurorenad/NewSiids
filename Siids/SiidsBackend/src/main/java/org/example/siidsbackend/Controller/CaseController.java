@@ -10,6 +10,7 @@ import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Service.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,6 +33,7 @@ public class CaseController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('CASE_CREATE')")
     public ResponseEntity<CaseResponseDTO> createCase(
             @RequestBody CaseRequestDTO caseRequestDTO) {
         String employeeId = getCurrentUser();
@@ -110,6 +112,7 @@ public class CaseController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('CASE_UPDATE')")
     public ResponseEntity<CaseResponseDTO> updateCase(
             @PathVariable Integer id,
             @RequestBody CaseRequestDTO caseRequestDTO) {
@@ -168,6 +171,7 @@ public class CaseController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('CASE_VIEW')")
     public ResponseEntity<List<CaseResponseDTO>> getMyCases() {
         String employeeId = getCurrentUser();
         try {
@@ -180,6 +184,7 @@ public class CaseController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('CASE_VIEW')")
     public ResponseEntity<CaseResponseDTO> getCaseById(
             @PathVariable Integer id) {
         String employeeId = getCurrentUser();
@@ -195,6 +200,7 @@ public class CaseController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('CASE_UPDATE')")
     public ResponseEntity<CaseResponseDTO> updateCaseStatus(
             @PathVariable Integer id,
             @RequestBody Map<String, String> statusUpdate) {
@@ -225,6 +231,7 @@ public class CaseController {
     }
 
     @GetMapping("/caseNum/**")
+    @PreAuthorize("hasAuthority('CASE_VIEW')")
     public ResponseEntity<CaseResponseDTO> getCaseByCaseNum(
             HttpServletRequest request) {
         String employeeId = getCurrentUser();
@@ -251,6 +258,7 @@ public class CaseController {
     }
 
     @GetMapping("/{caseId}/reports")
+    @PreAuthorize("hasAuthority('CASE_VIEW')")
     public ResponseEntity<List<Report>> getCaseReports(
             @PathVariable Integer caseId) {
         String employeeId = getCurrentUser();
@@ -270,6 +278,7 @@ public class CaseController {
     }
 
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasAuthority('CASE_VIEW')")
     public ResponseEntity<List<CaseResponseDTO>> getCasesByStatus(
             @PathVariable String status) {
         String employeeId = getCurrentUser();
@@ -286,6 +295,7 @@ public class CaseController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('CASE_DELETE')")
     public ResponseEntity<Void> deleteCase(
             @PathVariable Integer id) {
         String employeeId = getCurrentUser();
@@ -302,6 +312,7 @@ public class CaseController {
     }
 
     @PostMapping("/informers/register")
+    @PreAuthorize("hasAuthority('INFORMER_MANAGE')")
     public ResponseEntity<Informer> registerInformer(
             @RequestBody InformerRegistrationDTO registrationDTO) {
         String employeeId = getCurrentUser();

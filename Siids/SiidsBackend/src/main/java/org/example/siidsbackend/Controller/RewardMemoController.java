@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Model.RewardMemo;
 import org.example.siidsbackend.Service.RewardMemoService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,6 +24,7 @@ public class RewardMemoController {
     }
 
     @PostMapping(consumes = {"multipart/form-data"})
+    @PreAuthorize("hasAuthority('REWARD_CREATE')")
     public ResponseEntity<RewardMemo> submitRewardMemo(
             @RequestParam("caseNum") String caseNum,
             @RequestParam("amount") Double amount,
@@ -39,6 +41,7 @@ public class RewardMemoController {
     }
 
     @PostMapping("/{id}/approve-director")
+    @PreAuthorize("hasAuthority('REWARD_APPROVE')")
     public ResponseEntity<RewardMemo> approveByDirector(
             @PathVariable Integer id) {
         String directorId = getCurrentUser();
@@ -52,6 +55,7 @@ public class RewardMemoController {
     }
 
     @PostMapping("/{id}/approve-ac")
+    @PreAuthorize("hasAuthority('REWARD_APPROVE')")
     public ResponseEntity<RewardMemo> approveByAC(
             @PathVariable Integer id) {
         String acId = getCurrentUser();
@@ -65,6 +69,7 @@ public class RewardMemoController {
     }
 
     @PostMapping("/{id}/process-finance")
+    @PreAuthorize("hasAuthority('REWARD_PROCESS_FINANCE')")
     public ResponseEntity<RewardMemo> processByFinance(
             @PathVariable Integer id,
             @RequestBody Map<String, String> body) {
@@ -79,6 +84,7 @@ public class RewardMemoController {
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAuthority('REWARD_APPROVE')")
     public ResponseEntity<RewardMemo> rejectMemo(
             @PathVariable Integer id,
             @RequestParam String reason) {
@@ -93,12 +99,14 @@ public class RewardMemoController {
     }
 
     @GetMapping("/my-memos")
+    @PreAuthorize("hasAuthority('REWARD_VIEW')")
     public ResponseEntity<List<RewardMemo>> getMyMemos() {
         String employeeId = getCurrentUser();
         return ResponseEntity.ok(rewardMemoService.getMyMemos(employeeId));
     }
 
     @GetMapping("/pending")
+    @PreAuthorize("hasAuthority('REWARD_VIEW')")
     public ResponseEntity<List<RewardMemo>> getPendingMemos() {
         String employeeId = getCurrentUser();
         return ResponseEntity.ok(rewardMemoService.getMemosForUser(employeeId));

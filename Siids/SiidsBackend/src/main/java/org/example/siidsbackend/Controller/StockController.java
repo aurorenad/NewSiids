@@ -49,11 +49,13 @@ public class StockController {
     // --- Enum endpoints for frontend comboboxes ---
 
     @GetMapping("/item-types")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<List<String>> getItemTypes() {
         return ResponseEntity.ok(itemCategoryService.getAllCategoryNames());
     }
 
     @GetMapping("/seizure-reasons")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<List<String>> getSeizureReasons() {
         List<String> reasons = seizureReasonRepository.findAll().stream()
                 .map(SeizureReason::getReason)
@@ -66,12 +68,14 @@ public class StockController {
     }
 
     @DeleteMapping("/{id}/document/{index}")
+    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
     public ResponseEntity<Void> removeDocument(@PathVariable Integer id, @PathVariable int index) {
         stockService.removeDocument(id, index);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/measurement-units")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<List<String>> getMeasurementUnits() {
         List<String> units = Arrays.stream(MeasurementUnit.values())
                 .map(Enum::name)
@@ -80,6 +84,7 @@ public class StockController {
     }
 
     @GetMapping("/release-reasons")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<List<String>> getReleaseReasons() {
         List<String> reasons = Arrays.stream(ReleaseReason.values())
                 .map(Enum::name)
@@ -155,24 +160,28 @@ public class StockController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<List<StockResponseDTO>> getAllStock() {
         List<Stock> stocks = stockService.getAllStock();
         return ResponseEntity.ok(stocks.stream().map(stockService::toDTO).collect(Collectors.toList()));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<StockResponseDTO> getStock(@PathVariable Integer id) {
         Stock stock = stockService.getStock(id);
         return ResponseEntity.ok(stockService.toDTO(stock));
     }
 
     @GetMapping("/{id}/documents")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<List<String>> getStockDocuments(@PathVariable Integer id) {
         Stock stock = stockService.getStock(id);
         return ResponseEntity.ok(stock.getDocumentPaths());
     }
 
     @GetMapping("/{id}/document/{index}")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id, @PathVariable Integer index) throws IOException {
         Stock stock = stockService.getStock(id);
         List<String> paths = stock.getDocumentPaths();
@@ -183,6 +192,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/another-document")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<Resource> downloadAnotherDocument(@PathVariable Integer id) throws IOException {
         Stock stock = stockService.getStock(id);
         String path = stock.getAnotherDocumentPath();
@@ -190,6 +200,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/payment-proof/{releaseIndex}")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<Resource> downloadPaymentProof(@PathVariable Integer id, @PathVariable Integer releaseIndex) throws IOException {
         Stock stock = stockService.getStock(id);
         if (stock.getReleases() == null || releaseIndex < 0 || releaseIndex >= stock.getReleases().size()) {
@@ -203,6 +214,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/release-document")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> downloadGeneratedReleaseDocument(@PathVariable Integer id) {
         try {
             Stock stock = stockService.getStock(id);
@@ -221,6 +233,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/release-document/{releaseIndex}")
+    @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> downloadGeneratedReleaseDocumentByIndex(@PathVariable Integer id, @PathVariable int releaseIndex) {
         try {
             Stock stock = stockService.getStock(id);
