@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../api/axios.jsx';
 import {
-  Container,
   Typography,
   Paper,
   Table,
@@ -15,26 +14,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
   Alert,
   Box,
   Chip,
   CircularProgress,
 } from '@mui/material';
 import { PersonAdd } from '@mui/icons-material';
-
-const ROLES = [
-  { value: 'Admin', label: 'Admin' },
-  { value: 'IntelligenceOfficer', label: 'Intelligence Officer' },
-  { value: 'Surveillance', label: 'Surveillance Officer' },
-  { value: 'InvestigationOfficer', label: 'Investigation Officer' },
-  { value: 'DirectorIntelligence', label: 'Director Intelligence' },
-  { value: 'DirectorInvestigation', label: 'Director Investigation' },
-  { value: 'AssistantCommissioner', label: 'Assistant Commissioner' },
-  { value: 'legalAdvisor', label: 'Legal Advisor' },
-  { value: 'StockManager', label: 'Stock Manager' },
-  { value: 'PRSO', label: 'PRSO' },
-];
+import UserOnboardingForm from './admin/UserOnboardingForm.jsx';
+import RoleSelectField from './admin/RoleSelectField.jsx';
 
 const SystemAdmin = () => {
   const [users, setUsers] = useState([]);
@@ -216,76 +203,20 @@ const SystemAdmin = () => {
         onClose={handleRegisterToggle}
         maxWidth="sm"
         fullWidth
-        PaperProps={{ sx: { overflow: 'visible' } }}
+        PaperProps={{
+          sx: {
+            overflow: 'visible',
+            width: { xs: 'calc(100% - 24px)', sm: '100%' },
+            m: { xs: 1.5, sm: 4 },
+          },
+        }}
       >
         <DialogTitle>Register New User</DialogTitle>
         <form onSubmit={handleRegisterSubmit}>
-          <DialogContent sx={{ overflow: 'visible' }}>
-            <TextField
-              margin="dense"
-              label="Employee ID (Username)"
-              name="employeeId"
-              value={formData.employeeId}
-              onChange={handleFormChange}
-              fullWidth
-              required
-            />
-            <TextField
-              margin="dense"
-              label="Given Name"
-              name="givenName"
-              value={formData.givenName}
-              onChange={handleFormChange}
-              fullWidth
-              required
-            />
-            <TextField
-              margin="dense"
-              label="Family Name"
-              name="familyName"
-              value={formData.familyName}
-              onChange={handleFormChange}
-              fullWidth
-              required
-            />
-            <TextField
-              margin="dense"
-              label="Work Email"
-              name="workEmail"
-              type="email"
-              value={formData.workEmail}
-              onChange={handleFormChange}
-              fullWidth
-              required
-            />
-            <TextField
-              margin="dense"
-              label="Phone Number"
-              name="phoneNumber"
-              value={formData.phoneNumber}
-              onChange={handleFormChange}
-              fullWidth
-            />
-            <TextField
-              select
-              margin="dense"
-              label="Role"
-              name="role"
-              value={formData.role}
-              onChange={handleFormChange}
-              fullWidth
-              required
-              SelectProps={{ native: true }}
-            >
-              <option value="" aria-label="Select role" />
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </TextField>
+          <DialogContent sx={{ overflow: 'visible', px: { xs: 2, sm: 3 } }}>
+            <UserOnboardingForm formData={formData} onChange={handleFormChange} />
           </DialogContent>
-          <DialogActions>
+          <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2.5 }, flexWrap: 'wrap', gap: 1 }}>
             <Button onClick={handleRegisterToggle} variant="outlined">
               Cancel
             </Button>
@@ -300,30 +231,23 @@ const SystemAdmin = () => {
         onClose={() => setOpenRole(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{ sx: { overflow: 'visible' } }}
+        PaperProps={{
+          sx: {
+            overflow: 'visible',
+            width: { xs: 'calc(100% - 24px)', sm: '100%' },
+            m: { xs: 1.5, sm: 4 },
+          },
+        }}
       >
         <DialogTitle>Update User Role</DialogTitle>
-        <DialogContent sx={{ overflow: 'visible' }}>
-          <TextField
-            select
-            margin="dense"
-            label="Role"
+        <DialogContent sx={{ overflow: 'visible', px: { xs: 2, sm: 3 } }}>
+          <RoleSelectField
             value={newRole}
             onChange={(e) => setNewRole(e.target.value)}
-            fullWidth
-            required
-            SelectProps={{ native: true }}
             sx={{ mt: 1 }}
-          >
-            <option value="" aria-label="Select role" />
-            {ROLES.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </TextField>
+          />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2.5 }, flexWrap: 'wrap', gap: 1 }}>
           <Button onClick={() => setOpenRole(false)} variant="outlined">
             Cancel
           </Button>

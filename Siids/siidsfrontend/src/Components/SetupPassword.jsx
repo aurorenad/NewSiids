@@ -39,6 +39,11 @@ const SetupPassword = () => {
       return;
     }
 
+    if (newPassword.length < 8) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await axios.post('/setup-password', { token, newPassword });
@@ -74,6 +79,7 @@ const SetupPassword = () => {
                 />
                 <TextField
                   label="New Password"
+                  helperText="Use at least 8 characters."
                   type={showPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
