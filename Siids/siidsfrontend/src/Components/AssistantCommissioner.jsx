@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
+import { PERMISSIONS } from '../constants/permissions';
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
@@ -32,7 +33,7 @@ const AssistantCommissioner = () => {
     const [selectedReport, setSelectedReport] = useState(null);
 
     const navigate = useNavigate();
-    const canApproveAssistantCommissioner = hasPermission(authState, 'REPORT_APPROVE_ASSISTANT_COMMISSIONER');
+    const canApproveAssistantCommissioner = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_ASSISTANT_COMMISSIONER);
 
     const fetchAllData = async () => {
         try {

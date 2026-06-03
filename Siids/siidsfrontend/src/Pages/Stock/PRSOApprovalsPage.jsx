@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material';
 import { AuthContext } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/authorization';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const PRSOApprovalsPage = () => {
   const { authState } = useContext(AuthContext);
@@ -32,7 +33,7 @@ const PRSOApprovalsPage = () => {
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const canApproveRelease = hasPermission(authState, 'STOCK_APPROVE_RELEASE');
+  const canApproveRelease = hasPermission(authState, PERMISSIONS.STOCK_APPROVE_RELEASE);
 
   const fetchGoods = async () => {
     try {

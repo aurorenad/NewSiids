@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
+import { PERMISSIONS } from '../constants/permissions';
 
 const DirectorIntelligence = () => {
     const { authState } = useContext(AuthContext);
@@ -52,8 +53,8 @@ const DirectorIntelligence = () => {
     const [sortOrder, setSortOrder] = useState('desc');
 
     const navigate = useNavigate();
-    const canApproveIntelligence = hasPermission(authState, 'REPORT_APPROVE_INTELLIGENCE');
-    const canReturnReport = hasPermission(authState, 'REPORT_APPROVE_INTELLIGENCE');
+    const canApproveIntelligence = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_INTELLIGENCE);
+    const canReturnReport = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_INTELLIGENCE);
 
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 

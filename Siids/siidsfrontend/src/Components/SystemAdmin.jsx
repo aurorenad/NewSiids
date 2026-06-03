@@ -24,6 +24,7 @@ import UserOnboardingForm from './admin/UserOnboardingForm.jsx';
 import RoleSelectField from './admin/RoleSelectField.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { hasPermission } from '../utils/authorization.js';
+import { PERMISSIONS } from '../constants/permissions';
 
 const SystemAdmin = () => {
   const { authState } = useContext(AuthContext);
@@ -42,9 +43,9 @@ const SystemAdmin = () => {
     role: '',
   });
   const [newRole, setNewRole] = useState('');
-  const canCreateUser = hasPermission(authState, 'USER_CREATE');
-  const canUpdateRole = hasPermission(authState, 'USER_ROLE_UPDATE');
-  const canUpdateStatus = hasPermission(authState, 'USER_STATUS_UPDATE');
+  const canCreateUser = hasPermission(authState, PERMISSIONS.USER_CREATE);
+  const canUpdateRole = hasPermission(authState, PERMISSIONS.USER_ROLE_UPDATE);
+  const canUpdateStatus = hasPermission(authState, PERMISSIONS.USER_STATUS_UPDATE);
   const hasActions = canUpdateRole || canUpdateStatus;
 
   useEffect(() => {

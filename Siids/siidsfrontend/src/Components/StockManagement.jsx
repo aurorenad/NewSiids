@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization.js';
+import { PERMISSIONS } from '../constants/permissions';
 import { jsPDF } from 'jspdf';
 import { Edit, Trash2, Download, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -29,7 +30,7 @@ const StockManagement = () => {
 
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005';
     const API_URL = `${BASE_URL}/api/stock`;
-    const canManageStock = hasPermission(authState, 'STOCK_MANAGE');
+    const canManageStock = hasPermission(authState, PERMISSIONS.STOCK_MANAGE);
 
     // Always read the freshest token from storage to avoid stale closure issues
     const getAuthHeaders = () => {

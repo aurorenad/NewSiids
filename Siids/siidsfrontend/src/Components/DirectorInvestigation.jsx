@@ -53,6 +53,7 @@ import { Link } from "react-router-dom";
 import { ReportApi, InvestigationApi } from './../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
+import { PERMISSIONS } from '../constants/permissions';
 
 const DirectorInvestigation = () => {
     const { authState } = useContext(AuthContext);
@@ -90,8 +91,8 @@ const DirectorInvestigation = () => {
     const [investigationReturnReason, setInvestigationReturnReason] = useState('');
     const [selectedCaseForInvestigationReport, setSelectedCaseForInvestigationReport] = useState(null);
     const [activeTab, setActiveTab] = useState(0); // 0: All Cases, 1: Pending Review, 2: Investigation Reports
-    const canApproveInvestigation = hasPermission(authState, 'REPORT_APPROVE_INVESTIGATION');
-    const canAssignInvestigation = hasPermission(authState, 'REPORT_ASSIGN_INVESTIGATION');
+    const canApproveInvestigation = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_INVESTIGATION);
+    const canAssignInvestigation = hasPermission(authState, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION);
 
     useEffect(() => {
         const fetchData = async () => {

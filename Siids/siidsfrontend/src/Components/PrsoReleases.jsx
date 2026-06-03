@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization.js';
+import { PERMISSIONS } from '../constants/permissions';
 
 const PrsoReleases = () => {
     const [stocks, setStocks] = useState([]);
@@ -23,7 +24,7 @@ const PrsoReleases = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     
     const { authState } = useContext(AuthContext);
-    const canApproveRelease = hasPermission(authState, 'STOCK_APPROVE_RELEASE');
+    const canApproveRelease = hasPermission(authState, PERMISSIONS.STOCK_APPROVE_RELEASE);
 
     useEffect(() => {
         fetchStocks();

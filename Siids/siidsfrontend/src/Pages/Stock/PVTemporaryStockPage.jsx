@@ -12,6 +12,7 @@ import { format } from 'date-fns';
 import { useLocation } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/authorization';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const PVTemporaryStockPage = () => {
   const { authState } = useContext(AuthContext);
@@ -35,8 +36,8 @@ const PVTemporaryStockPage = () => {
   // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const canCreateSurveillance = hasPermission(authState, 'SURVEILLANCE_CREATE');
-  const canManageTempStock = hasPermission(authState, 'TEMP_STOCK_MANAGE');
+  const canCreateSurveillance = hasPermission(authState, PERMISSIONS.SURVEILLANCE_CREATE);
+  const canManageTempStock = hasPermission(authState, PERMISSIONS.TEMP_STOCK_MANAGE);
 
   const fetchData = async () => {
     try {

@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { AuthContext } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/authorization';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const StockManagerPage = () => {
   const { authState } = useContext(AuthContext);
@@ -35,7 +36,7 @@ const StockManagerPage = () => {
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const canManageStock = hasPermission(authState, 'STOCK_MANAGE');
+  const canManageStock = hasPermission(authState, PERMISSIONS.STOCK_MANAGE);
 
   const fetchStock = async () => {
     try {

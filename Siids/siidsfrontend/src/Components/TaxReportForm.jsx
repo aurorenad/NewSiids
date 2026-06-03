@@ -4,6 +4,7 @@ import { CaseService } from '../api/Axios/caseApi.jsx';
 import { AuthContext } from '../context/AuthContext';
 import caseApi from '../api/Axios/caseApi.jsx';
 import { hasPermission } from '../utils/authorization.js';
+import { PERMISSIONS } from '../constants/permissions';
 import '../Styles/TaxReportForm.css';
 
 const TaxReportForm = () => {
@@ -45,10 +46,10 @@ const TaxReportForm = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const canCreateCase = hasPermission(authState, 'CASE_CREATE');
-    const canManageInformer = hasPermission(authState, 'INFORMER_MANAGE');
-    const canViewTaxpayer = hasPermission(authState, 'TAXPAYER_VIEW');
-    const canViewInformer = hasPermission(authState, 'INFORMER_VIEW');
+    const canCreateCase = hasPermission(authState, PERMISSIONS.CASE_CREATE);
+    const canManageInformer = hasPermission(authState, PERMISSIONS.INFORMER_MANAGE);
+    const canViewTaxpayer = hasPermission(authState, PERMISSIONS.TAXPAYER_VIEW);
+    const canViewInformer = hasPermission(authState, PERMISSIONS.INFORMER_VIEW);
 
     const taxTypes = ['None','PAYEE','VAT','Income Tax','Corporate Tax','Withholding Tax','Property Tax',
         'Capital gains','Consumption Tax','Immovable Property Tax', 'Payroll Tax', 'Trading Tax'];
@@ -76,7 +77,7 @@ const TaxReportForm = () => {
 
         if (!token) {
             setError('No authentication token found. Please log in again.');
-            setTimeout(() => navigate('/login'), 2000);
+            setTimeout(() => navigate('/'), 2000);
             return;
         }
 
@@ -292,7 +293,7 @@ const TaxReportForm = () => {
             console.error('Error creating case:', err);
             if (err.response?.status === 401) {
                 setError('Session expired. Please log in again.');
-                const id = setTimeout(() => navigate('/login'), 2000);
+                const id = setTimeout(() => navigate('/'), 2000);
                 setTimeoutId(id);
             } else if (err.response?.data?.message) {
                 setError(err.response.data.message);

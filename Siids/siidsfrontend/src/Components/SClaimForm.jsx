@@ -137,7 +137,7 @@ export const SClaimForm = () => {
         setAttachment(null);
         setError('');
         setSuccess('');
-        navigate('/intelligence-officer');
+        navigate('/surveillence-officer');
     };
 
     return (

@@ -37,6 +37,7 @@ import { CaseService } from '../../api/Axios/caseApi.jsx';
 import { stockApi } from '../../api/stockApi';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { hasPermission } from '../../utils/authorization.js';
+import { PERMISSIONS } from '../../constants/permissions';
 
 const SurveillanceOfficer = () => {
     const { authState } = useContext(AuthContext);
@@ -55,9 +56,9 @@ const SurveillanceOfficer = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const canCreateSurveillance = hasPermission(authState, 'SURVEILLANCE_CREATE');
-    const canUpdateCase = hasPermission(authState, 'CASE_UPDATE');
-    const canViewStock = hasPermission(authState, 'STOCK_VIEW');
+    const canCreateSurveillance = hasPermission(authState, PERMISSIONS.SURVEILLANCE_CREATE);
+    const canUpdateCase = hasPermission(authState, PERMISSIONS.CASE_UPDATE);
+    const canViewStock = hasPermission(authState, PERMISSIONS.STOCK_VIEW);
 
     useEffect(() => {
         const fetchData = async () => {

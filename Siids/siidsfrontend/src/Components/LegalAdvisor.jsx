@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
+import { PERMISSIONS } from '../constants/permissions';
 
 const LegalAdvisorDashboard = () => {
     const { authState } = useContext(AuthContext);
@@ -34,7 +35,7 @@ const LegalAdvisorDashboard = () => {
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState(null);
     const [returnReason, setReturnReason] = useState('');
-    const canLegalReview = hasPermission(authState, 'LEGAL_REVIEW');
+    const canLegalReview = hasPermission(authState, PERMISSIONS.LEGAL_REVIEW);
     useEffect(() => {
         fetchLegalAdvisorReports();
     }, []);

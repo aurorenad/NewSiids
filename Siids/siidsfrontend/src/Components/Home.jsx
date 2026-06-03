@@ -4,6 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import { Dashboard } from '@mui/icons-material';
 import { hasPermission } from '../utils/authorization';
+import { PERMISSIONS } from '../constants/permissions';
 
 const Home = () => {
     const { authState } = useContext(AuthContext);
@@ -12,13 +13,13 @@ const Home = () => {
     useEffect(() => {
         if (!authState?.token) return;
 
-        if (hasPermission(authState, 'USER_VIEW')) {
+        if (hasPermission(authState, PERMISSIONS.USER_VIEW)) {
             navigate('/system-admin');
-        } else if (hasPermission(authState, 'STOCK_APPROVE_RELEASE')) {
+        } else if (hasPermission(authState, PERMISSIONS.STOCK_APPROVE_RELEASE)) {
             navigate('/prso/approvals');
-        } else if (hasPermission(authState, 'STOCK_VIEW')) {
+        } else if (hasPermission(authState, PERMISSIONS.STOCK_VIEW)) {
             navigate('/stock/inventory');
-        } else if (hasPermission(authState, 'SURVEILLANCE_VIEW')) {
+        } else if (hasPermission(authState, PERMISSIONS.SURVEILLANCE_VIEW)) {
             navigate('/pv/temporary-stock');
         }
     }, [authState, navigate]);

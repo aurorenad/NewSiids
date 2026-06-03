@@ -28,6 +28,8 @@ import {
     Storefront,
 } from '@mui/icons-material';
 import { hasAnyPermission, hasPermission } from '../utils/authorization';
+import { PERMISSIONS } from '../constants/permissions';
+import { ROUTES } from '../constants/routes';
 
 const SIDEBAR_WIDTH = 260;
 
@@ -44,48 +46,48 @@ const Sidebar = () => {
             key: 'overview',
             label: 'Overview',
             links: [
-                can('USER_VIEW') && { to: '/system-admin', label: 'System Admin', icon: <AdminPanelSettings /> },
-                can('AUDIT_VIEW') && { to: '/history', label: 'Audit Logs', icon: <History /> },
+                can(PERMISSIONS.USER_VIEW) && { to: ROUTES.SYSTEM_ADMIN, label: 'System Admin', icon: <AdminPanelSettings /> },
+                can(PERMISSIONS.AUDIT_VIEW) && { to: ROUTES.HISTORY, label: 'Audit Logs', icon: <History /> },
             ].filter(Boolean),
         },
         {
             key: 'investigation',
             label: 'Investigation',
             links: [
-                canAny(['REPORT_CREATE', 'REPORT_VIEW']) && { to: '/investigation-officer', label: 'Investigation Officer', icon: <Search /> },
-                canAny(['REPORT_APPROVE_INVESTIGATION', 'REPORT_ASSIGN_INVESTIGATION']) && { to: '/director-investigation', label: 'Director Investigation', icon: <FactCheck /> },
+                canAny([PERMISSIONS.REPORT_CREATE, PERMISSIONS.REPORT_VIEW]) && { to: ROUTES.INVESTIGATION_OFFICER, label: 'Investigation Officer', icon: <Search /> },
+                canAny([PERMISSIONS.REPORT_APPROVE_INVESTIGATION, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION]) && { to: ROUTES.DIRECTOR_INVESTIGATION, label: 'Director Investigation', icon: <FactCheck /> },
             ].filter(Boolean),
         },
         {
             key: 'intelligence',
             label: 'Intelligence',
             links: [
-                can('REPORT_APPROVE_INTELLIGENCE') && { to: '/director-intelligence', label: 'Director Intelligence', icon: <Policy /> },
-                canAny(['REPORT_CREATE', 'REPORT_VIEW']) && { to: '/intelligence-officer', label: 'Intelligence Officer', icon: <Assignment /> },
+                can(PERMISSIONS.REPORT_APPROVE_INTELLIGENCE) && { to: ROUTES.DIRECTOR_INTELLIGENCE, label: 'Director Intelligence', icon: <Policy /> },
+                canAny([PERMISSIONS.REPORT_CREATE, PERMISSIONS.REPORT_VIEW]) && { to: ROUTES.INTELLIGENCE_OFFICER, label: 'Intelligence Officer', icon: <Assignment /> },
             ].filter(Boolean),
         },
         {
             key: 'surveillance',
             label: 'Surveillance',
             links: [
-                can('SURVEILLANCE_VIEW') && { to: '/surveillence-officer', label: 'Surveillance Officer', icon: <CameraOutdoor /> },
-                canAny(['STOCK_VIEW', 'SURVEILLANCE_VIEW']) && { to: '/pv/temporary-stock', label: 'Temporary Stock', icon: <Storefront /> },
+                can(PERMISSIONS.SURVEILLANCE_VIEW) && { to: ROUTES.SURVEILLANCE, label: 'Surveillance Officer', icon: <CameraOutdoor /> },
+                canAny([PERMISSIONS.STOCK_VIEW, PERMISSIONS.SURVEILLANCE_VIEW]) && { to: ROUTES.TEMPORARY_STOCK, label: 'Temporary Stock', icon: <Storefront /> },
             ].filter(Boolean),
         },
         {
             key: 'stock',
             label: 'Stock',
             links: [
-                can('STOCK_VIEW') && { to: '/stock/inventory', label: 'Main Stock Inventory', icon: <Inventory /> },
-                can('STOCK_APPROVE_RELEASE') && { to: '/prso/approvals', label: 'PRSO Approvals', icon: <Visibility /> },
+                can(PERMISSIONS.STOCK_VIEW) && { to: ROUTES.STOCK_INVENTORY, label: 'Main Stock Inventory', icon: <Inventory /> },
+                can(PERMISSIONS.STOCK_APPROVE_RELEASE) && { to: ROUTES.PRSO_APPROVALS, label: 'PRSO Approvals', icon: <Visibility /> },
             ].filter(Boolean),
         },
         {
             key: 'commission',
             label: 'Commission',
             links: [
-                can('REPORT_APPROVE_ASSISTANT_COMMISSIONER') && { to: '/assistant-commissioner', label: 'Assistant Commissioner', icon: <Shield /> },
-                can('LEGAL_REVIEW') && { to: '/legal-advisor', label: 'Legal Advisor', icon: <Gavel /> },
+                can(PERMISSIONS.REPORT_APPROVE_ASSISTANT_COMMISSIONER) && { to: ROUTES.ASSISTANT_COMMISSIONER, label: 'Assistant Commissioner', icon: <Shield /> },
+                can(PERMISSIONS.LEGAL_REVIEW) && { to: ROUTES.LEGAL_ADVISOR, label: 'Legal Advisor', icon: <Gavel /> },
             ].filter(Boolean),
         },
     ].filter((section) => section.links.length > 0);

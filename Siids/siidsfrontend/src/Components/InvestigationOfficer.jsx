@@ -26,7 +26,7 @@ const InvestigationOfficer = () => {
     // Dialog States
     const [casePlanDialog, setCasePlanDialog] = useState({ open: false, report: null, text: "", file: null });
     const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
-    const canCreateReport = hasPermission(authState, 'REPORT_CREATE');
+    const canCreateReport = hasPermission(authState, PERMISSIONS.REPORT_CREATE);
 
     useEffect(() => { fetchReports(); }, [activeTab]);
 

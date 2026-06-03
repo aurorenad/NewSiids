@@ -20,6 +20,7 @@ import { ArrowBack, Edit, ContactPage, HistoryEdu, Info, Business } from '@mui/i
 import { CaseService } from '../../api/Axios/caseApi.jsx';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { hasPermission } from '../../utils/authorization.js';
+import { PERMISSIONS } from '../../constants/permissions';
 import { format } from 'date-fns';
 
 const STATUS_MAP = {
@@ -117,7 +118,7 @@ const SurveillanceCaseView = () => {
     }
 
     const statusStyle = getStatusStyle(caseData.status);
-    const canUpdateCase = hasPermission(authState, 'CASE_UPDATE');
+    const canUpdateCase = hasPermission(authState, PERMISSIONS.CASE_UPDATE);
 
     return (
         <Box sx={{ p: 4, bgcolor: 'var(--surface-page)', minHeight: '100vh' }}>
