@@ -8,6 +8,7 @@ import org.example.siidsbackend.Repository.JobMasterRepository;
 import org.example.siidsbackend.Repository.StructureRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 
 @Component
 @Order(2) // Run after DataInitializer
+@Profile("!test")
 public class OrganizationalDataLoader implements CommandLineRunner {
 
     @Autowired

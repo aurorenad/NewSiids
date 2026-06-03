@@ -5,6 +5,7 @@ import org.example.siidsbackend.Model.RbacRole;
 import org.example.siidsbackend.Service.RbacService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.util.Map;
 
 @Component
 @Order(2)
+@Profile("!test")
 public class RbacDataInitializer implements CommandLineRunner {
     @Autowired
     private RbacService rbacService;

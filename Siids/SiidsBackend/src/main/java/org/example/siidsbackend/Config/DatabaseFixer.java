@@ -3,12 +3,14 @@ package org.example.siidsbackend.Config;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Profile("!test")
 public class DatabaseFixer implements CommandLineRunner {
 
     private final JdbcTemplate jdbcTemplate;
