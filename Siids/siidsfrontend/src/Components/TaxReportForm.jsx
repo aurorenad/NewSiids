@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService } from '../api/Axios/caseApi.jsx';
 import { AuthContext } from '../context/AuthContext';
 import caseApi from '../api/Axios/caseApi.jsx';
+import { hasPermission } from '../utils/authorization.js';
 import '../Styles/TaxReportForm.css';
 
 const TaxReportForm = () => {
@@ -44,6 +45,10 @@ const TaxReportForm = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
+    const canCreateCase = hasPermission(authState, 'CASE_CREATE');
+    const canManageInformer = hasPermission(authState, 'INFORMER_MANAGE');
+    const canViewTaxpayer = hasPermission(authState, 'TAXPAYER_VIEW');
+    const canViewInformer = hasPermission(authState, 'INFORMER_VIEW');
 
     const taxTypes = ['None','PAYEE','VAT','Income Tax','Corporate Tax','Withholding Tax','Property Tax',
         'Capital gains','Consumption Tax','Immovable Property Tax', 'Payroll Tax', 'Trading Tax'];
@@ -116,7 +121,7 @@ const TaxReportForm = () => {
 
         handleChange(e);
 
-        if (value.length === 9) {
+        if (canViewTaxpayer && value.length === 9) {
             setIsSearchingTaxPayer(true);
             try {
                 const response = await caseApi.get(`/api/taxpayers/tin/${value}`);
@@ -143,7 +148,7 @@ const TaxReportForm = () => {
         const { value } = e.target;
         handleChange(e);
 
-        if (value) {
+        if (canViewInformer && value) {
             setIsSearchingInformer(true);
             try {
                 const response = await caseApi.get(`/api/informers/${value}`);
@@ -246,6 +251,11 @@ const TaxReportForm = () => {
         e.preventDefault();
         setError('');
         setSuccess('');
+
+        if (!canCreateCase) {
+            setError('You do not have permission to create cases.');
+            return;
+        }
 
         if (!validateForm()) return;
 
@@ -434,20 +444,22 @@ const TaxReportForm = () => {
                                             placeholder="Enter national ID number"
                                             required
                                         />
-                                        <button
-                                            type="button"
-                                            className="register-informer-btn"
-                                            onClick={() => setShowInformerRegistration(true)}
-                                        >
-                                            <i className="fas fa-user-plus"></i> Register Foreigner
-                                        </button>
+                                        {canManageInformer && (
+                                            <button
+                                                type="button"
+                                                className="register-informer-btn"
+                                                onClick={() => setShowInformerRegistration(true)}
+                                            >
+                                                <i className="fas fa-user-plus"></i> Register Foreigner
+                                            </button>
+                                        )}
                                     </div>
                                     {isSearchingInformer && (
                                         <div className="search-indicator">Searching informer...</div>
                                     )}
                                     {!isSearchingInformer && !formData.informerName && formData.informerId && (
                                         <div className="search-indicator not-found">
-                                            Informer not found. <a href="#" onClick={() => setShowInformerRegistration(true)}>Register now</a>
+                                            Informer not found. {canManageInformer && <a href="#" onClick={() => setShowInformerRegistration(true)}>Register now</a>}
                                         </div>
                                     )}
                                 </div>
@@ -526,7 +538,7 @@ const TaxReportForm = () => {
                             type="button"
                             className="tax-report-form-button tax-report-form-button-cancel"
                             onClick={() => navigate(-1)}
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || !canCreateCase}
                         >
                             Cancel
                         </button>

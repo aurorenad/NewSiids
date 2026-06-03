@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
     Paper,
@@ -18,6 +18,8 @@ import {
 } from '@mui/material';
 import { ArrowBack, Edit, ContactPage, HistoryEdu, Info, Business } from '@mui/icons-material';
 import { CaseService } from '../../api/Axios/caseApi.jsx';
+import { AuthContext } from '../../context/AuthContext.jsx';
+import { hasPermission } from '../../utils/authorization.js';
 import { format } from 'date-fns';
 
 const STATUS_MAP = {
@@ -34,6 +36,7 @@ const getStatusStyle = (status) => {
 };
 
 const SurveillanceCaseView = () => {
+    const { authState } = useContext(AuthContext);
     const location = useLocation();
     const navigate = useNavigate();
     const [caseData, setCaseData] = useState(null);
@@ -114,6 +117,7 @@ const SurveillanceCaseView = () => {
     }
 
     const statusStyle = getStatusStyle(caseData.status);
+    const canUpdateCase = hasPermission(authState, 'CASE_UPDATE');
 
     return (
         <Box sx={{ p: 4, bgcolor: 'var(--surface-page)', minHeight: '100vh' }}>
@@ -135,7 +139,7 @@ const SurveillanceCaseView = () => {
                         </Box>
                     </Box>
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        {(caseData.status === 'CASE_CREATED' || caseData.status === 'REPORT_SUBMITTED') && (
+                        {canUpdateCase && (caseData.status === 'CASE_CREATED' || caseData.status === 'REPORT_SUBMITTED') && (
                             <Button
                                 variant="outlined"
                                 startIcon={<Edit />}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useContext, useEffect, useState, useMemo } from 'react';
 import {
     Box,
     Button,
@@ -35,8 +35,11 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService } from '../../api/Axios/caseApi.jsx';
 import { stockApi } from '../../api/stockApi';
+import { AuthContext } from '../../context/AuthContext.jsx';
+import { hasPermission } from '../../utils/authorization.js';
 
 const SurveillanceOfficer = () => {
+    const { authState } = useContext(AuthContext);
     const [cases, setCases] = useState([]);
     const [filteredCases, setFilteredCases] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -52,6 +55,9 @@ const SurveillanceOfficer = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
+    const canCreateSurveillance = hasPermission(authState, 'SURVEILLANCE_CREATE');
+    const canUpdateCase = hasPermission(authState, 'CASE_UPDATE');
+    const canViewStock = hasPermission(authState, 'STOCK_VIEW');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -192,35 +198,39 @@ const SurveillanceOfficer = () => {
                     </Typography>
                 </Box>
                 <Box display="flex" gap={2}>
-                    <Button
-                        variant="outlined"
-                        startIcon={<InventoryIcon />}
-                        onClick={() => navigate('/pv/temporary-stock')}
-                        sx={{ 
-                            color: '#003DA5', 
-                            borderColor: '#003DA5',
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            borderRadius: 2
-                        }}
-                    >
-                        View Temporary Stock
-                    </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<AddIcon />}
-                        onClick={() => navigate('/surveillence-officer/new')}
-                        sx={{ 
-                            backgroundColor: '#009A44', 
-                            '&:hover': { backgroundColor: '#007a33' },
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            borderRadius: 2,
-                            boxShadow: '0 4px 6px rgba(0, 154, 68, 0.2)'
-                        }}
-                    >
-                        New Case
-                    </Button>
+                    {canViewStock && (
+                        <Button
+                            variant="outlined"
+                            startIcon={<InventoryIcon />}
+                            onClick={() => navigate('/pv/temporary-stock')}
+                            sx={{ 
+                                color: '#003DA5', 
+                                borderColor: '#003DA5',
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                borderRadius: 2
+                            }}
+                        >
+                            View Temporary Stock
+                        </Button>
+                    )}
+                    {canCreateSurveillance && (
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => navigate('/surveillence-officer/new')}
+                            sx={{ 
+                                backgroundColor: '#009A44', 
+                                '&:hover': { backgroundColor: '#007a33' },
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                borderRadius: 2,
+                                boxShadow: '0 4px 6px rgba(0, 154, 68, 0.2)'
+                            }}
+                        >
+                            New Case
+                        </Button>
+                    )}
                 </Box>
             </Box>
 
@@ -394,7 +404,7 @@ const SurveillanceOfficer = () => {
                                             </TableCell>
                                             <TableCell align="right">
                                                 <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
-                                                    {(caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
+                                                    {canUpdateCase && (caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
                                                         <Tooltip title="Edit Case">
                                                             <IconButton
                                                                 onClick={() => navigate('/surveillence-officer/edit-case', { state: { caseData: caseItem } })}
@@ -405,22 +415,24 @@ const SurveillanceOfficer = () => {
                                                             </IconButton>
                                                         </Tooltip>
                                                     )}
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        startIcon={<InventoryIcon fontSize="small" />}
-                                                        onClick={() => navigate('/pv/temporary-stock', { state: { caseRef: caseItem.caseNum } })}
-                                                        sx={{ 
-                                                            backgroundColor: '#F5A800', 
-                                                            color: '#fff',
-                                                            '&:hover': { backgroundColor: '#d99400' },
-                                                            textTransform: 'none',
-                                                            boxShadow: 'none',
-                                                            borderRadius: 1.5
-                                                        }}
-                                                    >
-                                                        Seize
-                                                    </Button>
+                                                    {canCreateSurveillance && canViewStock && (
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            startIcon={<InventoryIcon fontSize="small" />}
+                                                            onClick={() => navigate('/pv/temporary-stock', { state: { caseRef: caseItem.caseNum } })}
+                                                            sx={{ 
+                                                                backgroundColor: '#F5A800', 
+                                                                color: '#fff',
+                                                                '&:hover': { backgroundColor: '#d99400' },
+                                                                textTransform: 'none',
+                                                                boxShadow: 'none',
+                                                                borderRadius: 1.5
+                                                            }}
+                                                        >
+                                                            Seize
+                                                        </Button>
+                                                    )}
                                                     <Tooltip title="View Case">
                                                         <IconButton
                                                             onClick={() => navigate(`/surveillence-officer/view/${encodeURIComponent(caseItem.caseNum)}`)}

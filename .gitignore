@@ -9,6 +9,7 @@ desktop.ini
 *.iml
 *.iws
 *.ipr
+*.github
 
 # Dependency folders
 node_modules/
@@ -60,6 +61,7 @@ your_sql_data.sql
 *_mysql_dump.sql
 *_postgres.sql
 converted_*.sql
+
 
 # Root-level data-conversion scratch assets
 /Siids/grades.csv
