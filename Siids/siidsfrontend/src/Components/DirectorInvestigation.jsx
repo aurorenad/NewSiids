@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     IconButton,
     Paper,
@@ -32,7 +32,9 @@ import {
     Chip,
     Tabs,
     Tab,
-    Grid
+    Grid,
+    InputAdornment,
+    TablePagination
 } from "@mui/material";
 import {
     Check,
@@ -47,10 +49,90 @@ import {
     AssignmentReturned,
     ThumbUp,
     ThumbDown,
-    Refresh
+    Refresh,
+    FilterList,
+    CalendarToday,
+    PersonAdd
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { ReportApi, InvestigationApi } from './../api/Axios/caseApi';
+import { format } from 'date-fns';
+
+const STATUS_LABELS = {
+    'CASE_CREATED': 'Case Created',
+    'REPORT_SUBMITTED': 'Report Submitted',
+    'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Dir Intelligence',
+    'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION': 'Report Submitted',
+    'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER': 'Submitted to AC',
+    'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned to Intel Officer',
+    'REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION': 'Returned to Dir Investigation',
+    'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': 'Returned to Dir Intelligence',
+    'REPORT_RETURNED_ASSISTANT_COMMISSIONER': 'Returned from AC',
+    'REPORT_APPROVED': 'Approved',
+    'REPORT_REJECTED': 'Rejected',
+    'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': 'Rejected by Dir Intelligence',
+    'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION': 'Rejected',
+    'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER': 'Rejected by AC',
+    'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE': 'Approved by Dir Intelligence',
+    'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION': 'Approved',
+    'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER': 'Approved by AC',
+    'REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER': 'Assigned to Inv Officer',
+    'INVESTIGATION_IN_PROGRESS': 'Investigation In Progress',
+    'INVESTIGATION_COMPLETED': 'Investigation Completed',
+    'CASE_DELETED': 'Case Deleted',
+    'ATTACHMENT_DOWNLOADED': 'Attachment Downloaded',
+    'INVESTIGATION_FINDINGS_SUBMITTED': 'Findings Submitted',
+    'REPORT_SENT_TO_FINANCE': 'Sent to Finance',
+    'REPORT_SENT_TO_LEGAL_SERVICES_AND_BOARD_AFFAIRS': 'Sent to Legal Services',
+    'REPORT_SENT_TO_CUSTOMS_SERVICES': 'Sent to Customs',
+    'REPORT_SENT_TO_STRATEGIC_AND_RISK_ANALYSIS': 'Sent to Strategic Analysis',
+    'REPORT_SENT_TO_INTERNAL_AUDIT_AND_INTEGRITY': 'Sent to Internal Audit',
+    'REPORT_SENT_TO_IT_AND_DIGITAL_TRANSFORMATION': 'Sent to IT',
+    'REPORT_SENT_TO_DOMESTIC_TAXES': 'Sent to Domestic Taxes',
+    'REPORT_SENT_TO_LEGAL_TEAM': 'Sent to Legal Team',
+    'REPORT_RETURNED_TO_INVESTIGATION_OFFICER': 'Returned to Inv Officer',
+    'CASE_PLAN_SUBMITTED': 'Case Plan Submitted',
+    'CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION': 'Case Plan Submitted',
+    'CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION': 'Case Plan Approved',
+    'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION': 'Case Plan Rejected',
+    'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION': 'Inv Report Submitted',
+    'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION': 'Inv Report Approved',
+    'INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION': 'Inv Report Rejected',
+    'INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER': 'Inv Report Rejected by AC',
+    'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER': 'Inv Report Approved by AC',
+    'CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER': 'Case Plan Sent to AC',
+    'CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER': 'Case Plan Approved by AC',
+    'CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER': 'Case Plan Rejected by AC',
+    'CASE_RECEIVED_BY_INVESTIGATION_OFFICER': 'Received by Officer',
+    'TAX_ASSESSMENT_IN_PROGRESS': 'Tax Assessment In Progress',
+    'REWARD_MEMO_SUBMITTED': 'Reward Memo Submitted',
+    'REWARD_MEMO_SENT_TO_DIRECTOR_INTELLIGENCE': 'Reward Memo Sent to Dir Intel',
+    'REWARD_MEMO_SENT_TO_ASSISTANT_COMMISSIONER': 'Reward Memo Sent to AC',
+    'REWARD_MEMO_APPROVED_BY_ASSISTANT_COMMISSIONER': 'Reward Memo Approved by AC',
+    'REWARD_MEMO_SENT_TO_FINANCE': 'Reward Memo Sent to Finance',
+    'REWARD_PAYMENT_COMPLETED': 'Reward Payment Completed',
+    'REWARD_MEMO_REJECTED': 'Reward Memo Rejected',
+    'CLOSED': 'Closed',
+    'IN_PROGRESS': 'In Progress',
+    'PARTIAL_DONE': 'Partially Done',
+    'FULL_DONE': 'Completed',
+    'SURVEILLANCE_REPORT_SUBMITTED': 'Surveillance Submitted',
+    'SURVEILLANCE_REPORT_APPROVED_BY_PRSO': 'Surveillance Approved',
+    'SURVEILLANCE_REPORT_SENT_TO_AC': 'Surveillance Sent to AC',
+    'SEARCH_WARRANT_ISSUED': 'Search Warrant Issued',
+    'SEIZURE_NOTE_ISSUED': 'Seizure Note Issued'
+};
+
+const getStatusColor = (status) => {
+    if (!status) return 'default';
+    if (status.includes('APPROVED')) return 'success';
+    if (status.includes('REJECTED')) return 'error';
+    if (status.includes('SUBMITTED') || status.includes('SENT')) return 'primary';
+    if (status.includes('PROGRESS') || status.includes('RETURNED')) return 'warning';
+    if (status.includes('COMPLETED')) return 'success';
+    if (status.includes('ASSIGNED')) return 'secondary';
+    return 'default';
+};
 
 const DirectorInvestigation = () => {
     const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +160,11 @@ const DirectorInvestigation = () => {
     const [sendToCommissionerDialogOpen, setSendToCommissionerDialogOpen] = useState(false);
     const [selectedCaseForCommissioner, setSelectedCaseForCommissioner] = useState(null);
 
+    // Filter states
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+
     // New state for investigation report functionalities
     const [investigationReportDialogOpen, setInvestigationReportDialogOpen] = useState(false);
     const [investigationReportRejectDialogOpen, setInvestigationReportRejectDialogOpen] = useState(false);
@@ -86,128 +173,186 @@ const DirectorInvestigation = () => {
     const [investigationRejectionReason, setInvestigationRejectionReason] = useState('');
     const [investigationReturnReason, setInvestigationReturnReason] = useState('');
     const [selectedCaseForInvestigationReport, setSelectedCaseForInvestigationReport] = useState(null);
-    const [activeTab, setActiveTab] = useState(0); // 0: All Cases, 1: Pending Review, 2: Investigation Reports
+    const [activeTab, setActiveTab] = useState(0); // 0: All Operations, 1: Pending Assignment, 2: Investigation Reports Review, 3: Strategic Plans Review
+
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
+    const handleChangePage = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleChangeRowsPerPage = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0);
+    };
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const [reportsResponse, officersResponse] = await Promise.all([
-                    ReportApi.getReportsForDirectorInvestigation(),
-                    InvestigationApi.getAvailableOfficers()
-                ]);
-
-                const mappedCases = reportsResponse.data.map(report => ({
-                    id: report.relatedCase?.caseNum || `CS${report.id}`,
-                    delegate: report.investigationOfficer?.employeeId || '',
-                    delegateName: report.investigationOfficer ?
-                        `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : '',
-                    reportedDate: new Date(report.createdAt).toLocaleDateString(),
-                    status: report.status || 'Approved by Assistant Commissioner',
-                    reason: report.rejectionReason || '',
-                    reportId: report.id,
-                    caseId: report.relatedCase?._id,
-                    isAssigned: !!report.investigationOfficer,
-                    hasFindings: report.findings || report.recommendations ||
-                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0) ||
-                        report.status?.includes('INVESTIGATION_REPORT') ||
-                        report.status?.includes('FINDINGS'),
-                    hasCasePlan: report.casePlan ||
-                        report.status?.includes('CASE_PLAN'),
-                    assignmentNotes: report.assignmentNotes || '',
-                    investigationOfficer: report.investigationOfficer,
-                    currentRecipient: report.currentRecipient,
-                    casePlan: report.casePlan,
-                    casePlanStatus: getCasePlanStatus(report.status),
-                    casePlanSentToCommissioner: report.status?.includes('CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER') ||
-                        report.status?.includes('CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER') ||
-                        report.status?.includes('CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER'),
-                    investigationReportStatus: getInvestigationReportStatus(report.status),
-                    findings: report.findings,
-                    recommendations: report.recommendations,
-                    findingsAttachments: report.findingsAttachmentPaths || [],
-                    createdAt: report.createdAt,
-                    updatedAt: report.updatedAt,
-                    category: getCaseCategory(report)
-                }));
-
-                const mappedOfficers = officersResponse.data.map(officer => ({
-                    _id: officer.employeeId,
-                    name: `${officer.givenName} ${officer.familyName}`,
-                    email: officer.workEmail || officer.personalEmail || officer.email || '',
-                    ...officer
-                }));
-
-                setCases(mappedCases);
-                setOfficers(mappedOfficers);
-            } catch (err) {
-                console.error('Error:', err);
-                const message = (err.response && err.response.status === 403)
-                    ? 'You do not have permission to access these investigations.'
-                    : (err.response?.data?.message || 'Failed to load data');
-                setSnackbar({
-                    open: true,
-                    message: message,
-                    severity: 'error'
-                });
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchData();
     }, []);
 
-    const getCasePlanStatus = (status) => {
-        if (!status) return 'none';
-        if (status.includes('CASE_PLAN_SUBMITTED') || status.includes('CASE_PLAN_SENT')) return 'submitted';
-        if (status.includes('CASE_PLAN_APPROVED')) return 'approved';
-        if (status.includes('CASE_PLAN_REJECTED')) return 'rejected';
-        if (status.includes('CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER')) return 'sent_to_commissioner';
-        if (status.includes('CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER')) return 'commissioner_approved';
-        if (status.includes('CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER')) return 'commissioner_rejected';
-        return 'none';
+    // Reset page when tab or search changes
+    useEffect(() => {
+        setPage(0);
+    }, [activeTab, searchQuery, statusFilter, startDate, endDate]);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [reportsResponse, officersResponse] = await Promise.all([
+                ReportApi.getReportsForDirectorInvestigation(),
+                InvestigationApi.getAvailableOfficers()
+            ]);
+
+            const mappedCases = reportsResponse.data.map(report => ({
+                id: report.relatedCase?.caseNum || `CS${report.id}`,
+                delegate: report.investigationOfficer?.employeeId || '',
+                delegateName: report.investigationOfficer ?
+                    `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : '',
+                reportedDate: report.createdAt,
+                status: report.status || 'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION',
+                reason: report.rejectionReason || '',
+                reportId: report.id,
+                caseId: report.relatedCase?._id || report.relatedCase?.id,
+                isAssigned: !!report.investigationOfficer,
+                hasFindings: report.findings || report.recommendations ||
+                    (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0) ||
+                    report.status?.includes('INVESTIGATION_REPORT') ||
+                    report.status?.includes('FINDINGS'),
+                hasCasePlan: report.casePlan ||
+                    report.status?.includes('CASE_PLAN'),
+                assignmentNotes: report.assignmentNotes || '',
+                investigationOfficer: report.investigationOfficer,
+                currentRecipient: report.currentRecipient,
+                casePlan: report.casePlan,
+                casePlanStatus: getCasePlanStatus(report.status),
+                casePlanSentToCommissioner: report.status?.includes('CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER') ||
+                    report.status?.includes('CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER') ||
+                    report.status?.includes('CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER'),
+                investigationReportStatus: getInvestigationReportStatus(report.status),
+                findings: report.findings,
+                recommendations: report.recommendations,
+                findingsAttachments: report.findingsAttachmentPaths || [],
+                createdAt: report.createdAt,
+                updatedAt: report.updatedAt,
+                category: getCaseCategory(report)
+            }));
+
+            const mappedOfficers = officersResponse.data.map(officer => ({
+                _id: officer.employeeId,
+                name: `${officer.givenName} ${officer.familyName}`,
+                email: officer.workEmail || officer.personalEmail || officer.email || '',
+                ...officer
+            }));
+
+            setCases(mappedCases);
+            setOfficers(mappedOfficers);
+        } catch (err) {
+            console.error('Error:', err);
+            const message = (err.response && err.response.status === 403)
+                ? 'You do not have permission to access these investigations.'
+                : (err.response?.data?.message || 'Failed to load data');
+            setSnackbar({
+                open: true,
+                message: message,
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const getInvestigationReportStatus = (status) => {
+    function getCasePlanStatus(status) {
         if (!status) return 'none';
-        if (status.includes('FINDINGS_SUBMITTED') || 
-            status.includes('INVESTIGATION_REPORT_SUBMITTED') || 
-            status === 'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') return 'submitted';
+        if (status.includes('CASE_PLAN_APPROVED')) return 'approved';
+        if (status.includes('CASE_PLAN_REJECTED')) return 'rejected';
+        if (status.includes('CASE_PLAN_SUBMITTED') || status.includes('CASE_PLAN_SENT')) return 'submitted';
+        return 'none';
+    }
+
+    function getInvestigationReportStatus(status) {
+        if (!status) return 'none';
         if (status.includes('INVESTIGATION_REPORT_APPROVED')) return 'approved';
         if (status.includes('INVESTIGATION_REPORT_REJECTED')) return 'rejected';
         if (status.includes('INVESTIGATION_REPORT_RETURNED')) return 'returned';
-        if (status.includes('INVESTIGATION_COMPLETED')) return 'completed';
+        if (status.includes('FINDINGS_SUBMITTED') || 
+            status.includes('INVESTIGATION_REPORT_SUBMITTED') || 
+            status === 'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') return 'submitted';
         return 'none';
-    };
+    }
 
-    const getCaseCategory = (report) => {
+    function getCaseCategory(report) {
         const status = report.status || '';
-        // Priority to Investigation Report if it's completed or has findings
-        if (status.includes('INVESTIGATION_REPORT') ||
-            status.includes('FINDINGS_SUBMITTED') ||
-            status === 'INVESTIGATION_COMPLETED' ||
-            report.findings) {
+        if (status.includes('INVESTIGATION_REPORT') || status.includes('FINDINGS_SUBMITTED') || status === 'INVESTIGATION_COMPLETED' || report.findings) {
             return 'investigation_report';
         }
-        // Then Case Plan
         if (status.includes('CASE_PLAN') || report.casePlan) {
             return 'case_plan';
         }
-        // Then assigned
         if (report.investigationOfficer) {
             return 'assigned';
         }
         return 'general';
-    };
+    }
+
+    // Filter Logic
+    const filteredCases = useMemo(() => {
+        return cases.filter(caseItem => {
+            // Tab filtering
+            if (activeTab === 1 && caseItem.isAssigned) return false;
+            if (activeTab === 2 && caseItem.investigationReportStatus !== 'submitted') return false;
+            if (activeTab === 3 && caseItem.casePlanStatus !== 'submitted') return false;
+
+            // Search filtering
+            const searchLower = searchQuery.toLowerCase();
+            const matchesSearch = 
+                caseItem.id.toLowerCase().includes(searchLower) ||
+                (STATUS_LABELS[caseItem.status] || caseItem.status).toLowerCase().includes(searchLower) ||
+                caseItem.delegateName.toLowerCase().includes(searchLower) ||
+                (caseItem.assignmentNotes && caseItem.assignmentNotes.toLowerCase().includes(searchLower));
+            
+            if (!matchesSearch) return false;
+
+            // Status filter
+            if (statusFilter !== 'ALL' && caseItem.status !== statusFilter) return false;
+
+            // Date filtering
+            if (startDate) {
+                const caseDate = new Date(caseItem.reportedDate);
+                const filterStart = new Date(startDate);
+                if (caseDate < filterStart) return false;
+            }
+            if (endDate) {
+                const caseDate = new Date(caseItem.reportedDate);
+                const filterEnd = new Date(endDate);
+                filterEnd.setHours(23, 59, 59, 999);
+                if (caseDate > filterEnd) return false;
+            }
+
+            return true;
+        });
+    }, [cases, activeTab, searchQuery, statusFilter, startDate, endDate]);
+
+    // Counts for tabs
+    const tabCounts = useMemo(() => {
+        return {
+            total: cases.length,
+            pendingAssignment: cases.filter(c => !c.isAssigned).length,
+            investigationReports: cases.filter(c => c.investigationReportStatus === 'submitted').length,
+            strategicPlans: cases.filter(c => c.casePlanStatus === 'submitted').length
+        };
+    }, [cases]);
+
+    // Unique statuses for the status filter
+    const uniqueStatuses = useMemo(() => {
+        const statuses = [...new Set(cases.map(c => c.status))];
+        return statuses.sort();
+    }, [cases]);
 
     const handleAssignOfficer = async (reportId, officerId, notes) => {
         if (!officerId) {
-            setSnackbar({
-                open: true,
-                message: 'Please select an officer first',
-                severity: 'warning'
-            });
+            setSnackbar({ open: true, message: 'Please select an officer first', severity: 'warning' });
             return;
         }
 
@@ -222,25 +367,16 @@ const DirectorInvestigation = () => {
                     delegate: officerId,
                     delegateName: assignedOfficer?.name || '',
                     isAssigned: true,
-                    status: 'Assigned to Officer',
+                    status: 'REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER',
                     assignmentNotes: notes || '',
                     investigationOfficer: assignedOfficer,
                     category: 'assigned'
                 } : c
             ));
 
-            setSnackbar({
-                open: true,
-                message: 'Officer assigned successfully with instructions',
-                severity: 'success'
-            });
+            setSnackbar({ open: true, message: 'Officer assigned successfully', severity: 'success' });
         } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to assign officer',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to assign officer', severity: 'error' });
         } finally {
             setOfficersLoading(false);
             setAssignmentNotes('');
@@ -252,160 +388,70 @@ const DirectorInvestigation = () => {
     const handleApprove = async (reportId) => {
         try {
             setOfficersLoading(true);
-
-            // Get the case item to check its status
             const caseItem = cases.find(c => c.reportId === reportId);
-            if (!caseItem) {
-                setSnackbar({
-                    open: true,
-                    message: 'Case not found',
-                    severity: 'error'
-                });
-                return;
-            }
+            if (!caseItem) return;
 
-            // Check what type of approval is needed
-            if (caseItem.investigationReportStatus === 'submitted' ||
-                caseItem.status?.includes('INVESTIGATION_REPORT') ||
-                caseItem.status?.includes('FINDINGS_SUBMITTED')) {
-                // This is an investigation report approval
+            if (caseItem.investigationReportStatus === 'submitted') {
                 await ReportApi.approveInvestigationReport(reportId);
-
-                setCases(prevCases => prevCases.map(c =>
-                    c.reportId === reportId ? {
-                        ...c,
-                        status: 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION',
-                        investigationReportStatus: 'approved',
-                        reason: ''
-                    } : c
-                ));
-
-                setSnackbar({
-                    open: true,
-                    message: 'Investigation report approved successfully',
-                    severity: 'success'
-                });
+                setCases(prev => prev.map(c => c.reportId === reportId ? { ...c, status: 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION', investigationReportStatus: 'approved' } : c));
+                setSnackbar({ open: true, message: 'Investigation report approved successfully', severity: 'success' });
             } else if (caseItem.casePlanStatus === 'submitted') {
-                // This is a case plan approval
                 await ReportApi.approveCasePlan(reportId);
-
-                setCases(prevCases => prevCases.map(c =>
-                    c.reportId === reportId ? {
-                        ...c,
-                        status: 'CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION',
-                        casePlanStatus: 'approved',
-                        reason: ''
-                    } : c
-                ));
-
-                setSnackbar({
-                    open: true,
-                    message: 'Case plan approved successfully',
-                    severity: 'success'
-                });
+                setCases(prev => prev.map(c => c.reportId === reportId ? { ...c, status: 'CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION', casePlanStatus: 'approved' } : c));
+                setSnackbar({ open: true, message: 'Case plan approved successfully', severity: 'success' });
             } else {
-                // This is a regular report approval
                 await ReportApi.approveReport(reportId);
-
-                setCases(prevCases => prevCases.map(c =>
-                    c.reportId === reportId ? {
-                        ...c,
-                        status: 'Approved by Director of Investigation',
-                        reason: ''
-                    } : c
-                ));
-
-                setSnackbar({
-                    open: true,
-                    message: 'Report approved successfully',
-                    severity: 'success'
-                });
+                setCases(prev => prev.map(c => c.reportId === reportId ? { ...c, status: 'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION' } : c));
+                setSnackbar({ open: true, message: 'Report approved successfully', severity: 'success' });
             }
         } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to approve',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to approve', severity: 'error' });
         } finally {
             setOfficersLoading(false);
         }
     };
 
+    const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+    const [returnReason, setReturnReason] = useState('');
+
     const handleReject = async () => {
         if (!selectedCase) return;
-
         try {
-            const caseItem = selectedCase;
-
-            // Check what type of rejection is needed
-            if (caseItem.investigationReportStatus === 'submitted' ||
-                caseItem.status?.includes('INVESTIGATION_REPORT') ||
-                caseItem.status?.includes('FINDINGS_SUBMITTED')) {
-                // This is an investigation report rejection
-                await ReportApi.rejectInvestigationReport(caseItem.reportId, rejectionReason);
-
-                setCases(prevCases => prevCases.map(c =>
-                    c.reportId === caseItem.reportId ? {
-                        ...c,
-                        status: 'INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION',
-                        investigationReportStatus: 'rejected',
-                        reason: rejectionReason
-                    } : c
-                ));
-
-                setSnackbar({
-                    open: true,
-                    message: 'Investigation report rejected successfully',
-                    severity: 'success'
-                });
-            } else if (caseItem.casePlanStatus === 'submitted') {
-                // This is a case plan rejection
-                await ReportApi.rejectCasePlan(caseItem.reportId, rejectionReason);
-
-                setCases(prevCases => prevCases.map(c =>
-                    c.reportId === caseItem.reportId ? {
-                        ...c,
-                        status: 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION',
-                        casePlanStatus: 'rejected',
-                        reason: rejectionReason
-                    } : c
-                ));
-
-                setSnackbar({
-                    open: true,
-                    message: 'Case plan rejected successfully',
-                    severity: 'success'
-                });
+            if (selectedCase.investigationReportStatus === 'submitted') {
+                await ReportApi.rejectInvestigationReport(selectedCase.reportId, rejectionReason);
+                setCases(prev => prev.map(c => c.reportId === selectedCase.reportId ? { ...c, status: 'INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION', investigationReportStatus: 'rejected', reason: rejectionReason } : c));
+            } else if (selectedCase.casePlanStatus === 'submitted') {
+                await ReportApi.rejectCasePlan(selectedCase.reportId, rejectionReason);
+                setCases(prev => prev.map(c => c.reportId === selectedCase.reportId ? { ...c, status: 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION', casePlanStatus: 'rejected', reason: rejectionReason } : c));
             } else {
-                // This is a regular report rejection
-                await ReportApi.rejectReport(caseItem.reportId, rejectionReason);
-
-                setCases(prevCases => prevCases.map(c =>
-                    c.reportId === caseItem.reportId ? {
-                        ...c,
-                        status: 'Rejected by Director of Investigation',
-                        reason: rejectionReason
-                    } : c
-                ));
-
-                setSnackbar({
-                    open: true,
-                    message: 'Report rejected successfully',
-                    severity: 'success'
-                });
+                await ReportApi.rejectReport(selectedCase.reportId, rejectionReason);
+                setCases(prev => prev.map(c => c.reportId === selectedCase.reportId ? { ...c, status: 'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION', reason: rejectionReason } : c));
             }
-
             setRejectDialogOpen(false);
             setRejectionReason('');
+            setSnackbar({ open: true, message: 'Successfully rejected', severity: 'success' });
         } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to reject',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to reject', severity: 'error' });
+        }
+    };
+
+    const handleReturn = async () => {
+        if (!selectedCase || !returnReason.trim()) return;
+        try {
+            if (selectedCase.investigationReportStatus === 'submitted') {
+                await ReportApi.returnInvestigationReport(selectedCase.reportId, returnReason);
+                setCases(prev => prev.map(c => c.reportId === selectedCase.reportId ? { ...c, status: 'INVESTIGATION_REPORT_RETURNED_TO_OFFICER', investigationReportStatus: 'returned', reason: returnReason } : c));
+                setSnackbar({ open: true, message: 'Investigation report returned for revision', severity: 'success' });
+            } else {
+                // Generic return if needed
+                await ReportApi.returnReport(selectedCase.reportId, selectedCase.delegate, returnReason);
+                setCases(prev => prev.map(c => c.reportId === selectedCase.reportId ? { ...c, status: 'REPORT_RETURNED_TO_INVESTIGATION_OFFICER', reason: returnReason } : c));
+                setSnackbar({ open: true, message: 'Report returned successfully', severity: 'success' });
+            }
+            setReturnDialogOpen(false);
+            setReturnReason('');
+        } catch (err) {
+            setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to return', severity: 'error' });
         }
     };
 
@@ -422,12 +468,7 @@ const DirectorInvestigation = () => {
             setSelectedCase(caseItem);
             setViewFindingsDialogOpen(true);
         } catch (err) {
-            console.error('Error fetching findings:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to load findings',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: 'Failed to load findings', severity: 'error' });
         } finally {
             setLoading(false);
         }
@@ -441,12 +482,7 @@ const DirectorInvestigation = () => {
             setSelectedCase(caseItem);
             setViewReportDialogOpen(true);
         } catch (err) {
-            console.error('Error fetching report:', err);
-            setSnackbar({
-                open: true,
-                message: 'Failed to load report',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: 'Failed to load report', severity: 'error' });
         } finally {
             setLoading(false);
         }
@@ -465,255 +501,9 @@ const DirectorInvestigation = () => {
             setSelectedCase(caseItem);
             setViewCasePlanDialogOpen(true);
         } catch (err) {
-            console.error('Error fetching case plan:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to load case plan',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: 'Failed to load case plan', severity: 'error' });
         } finally {
             setLoading(false);
-        }
-    };
-
-    // Investigation Report Functions
-    const handleViewInvestigationReport = async (caseItem) => {
-        try {
-            setLoading(true);
-            const response = await ReportApi.getFindings(caseItem.reportId);
-            setCurrentInvestigationReport({
-                findings: response.data.findings || '',
-                recommendations: response.data.recommendations || '',
-                attachments: response.data.findingsAttachmentPaths || [],
-                reportId: caseItem.reportId,
-                caseId: caseItem.id,
-                status: response.data.status || '',
-                investigationOfficer: caseItem.investigationOfficer || null,
-                delegateName: caseItem.delegateName || ''
-            });
-            setSelectedCaseForInvestigationReport(caseItem);
-            setInvestigationReportDialogOpen(true);
-        } catch (err) {
-            console.error('Error fetching investigation report:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to load investigation report',
-                severity: 'error'
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleApproveInvestigationReport = async (reportId) => {
-        try {
-            setOfficersLoading(true);
-            await ReportApi.approveInvestigationReport(reportId);
-
-            setCases(prevCases => prevCases.map(c =>
-                c.reportId === reportId ? {
-                    ...c,
-                    status: 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION',
-                    investigationReportStatus: 'approved',
-                    reason: ''
-                } : c
-            ));
-
-            setSnackbar({
-                open: true,
-                message: 'Investigation report approved successfully',
-                severity: 'success'
-            });
-            setInvestigationReportDialogOpen(false);
-        } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to approve investigation report',
-                severity: 'error'
-            });
-        } finally {
-            setOfficersLoading(false);
-        }
-    };
-
-    const handleRejectInvestigationReport = async () => {
-        if (!selectedCaseForInvestigationReport || !investigationRejectionReason.trim()) return;
-
-        try {
-            await ReportApi.rejectInvestigationReport(
-                selectedCaseForInvestigationReport.reportId,
-                investigationRejectionReason
-            );
-
-            setCases(prevCases => prevCases.map(c =>
-                c.reportId === selectedCaseForInvestigationReport.reportId ? {
-                    ...c,
-                    status: 'INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION',
-                    investigationReportStatus: 'rejected',
-                    reason: investigationRejectionReason
-                } : c
-            ));
-
-            setSnackbar({
-                open: true,
-                message: 'Investigation report rejected successfully',
-                severity: 'success'
-            });
-            setInvestigationReportRejectDialogOpen(false);
-            setInvestigationReportDialogOpen(false);
-            setInvestigationRejectionReason('');
-        } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to reject investigation report',
-                severity: 'error'
-            });
-        }
-    };
-
-    const handleReturnInvestigationReport = async () => {
-        if (!selectedCaseForInvestigationReport || !investigationReturnReason.trim()) return;
-
-        try {
-            await ReportApi.returnInvestigationReport(
-                selectedCaseForInvestigationReport.reportId,
-                investigationReturnReason
-            );
-
-            setCases(prevCases => prevCases.map(c =>
-                c.reportId === selectedCaseForInvestigationReport.reportId ? {
-                    ...c,
-                    status: 'INVESTIGATION_REPORT_RETURNED_TO_OFFICER',
-                    investigationReportStatus: 'returned',
-                    reason: investigationReturnReason
-                } : c
-            ));
-
-            setSnackbar({
-                open: true,
-                message: 'Investigation report returned successfully for revision',
-                severity: 'success'
-            });
-            setInvestigationReportReturnDialogOpen(false);
-            setInvestigationReportDialogOpen(false);
-            setInvestigationReturnReason('');
-        } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to return investigation report',
-                severity: 'error'
-            });
-        }
-    };
-
-    const handleOpenInvestigationReportRejectDialog = () => {
-        setInvestigationReportRejectDialogOpen(true);
-        setInvestigationRejectionReason('');
-    };
-
-    const handleOpenInvestigationReportReturnDialog = () => {
-        setInvestigationReportReturnDialogOpen(true);
-        setInvestigationReturnReason('');
-    };
-
-    const handleApproveCasePlan = async (reportId) => {
-        try {
-            setOfficersLoading(true);
-            await ReportApi.approveCasePlan(reportId);
-
-            setCases(prevCases => prevCases.map(c =>
-                c.reportId === reportId ? {
-                    ...c,
-                    status: 'Case Plan Approved by Director of Investigation',
-                    casePlanStatus: 'approved',
-                    hasFindings: true
-                } : c
-            ));
-
-            setSnackbar({
-                open: true,
-                message: 'Case plan approved successfully',
-                severity: 'success'
-            });
-            setViewCasePlanDialogOpen(false);
-        } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to approve case plan',
-                severity: 'error'
-            });
-        } finally {
-            setOfficersLoading(false);
-        }
-    };
-
-    const handleSendToAssistantCommissioner = async (reportId) => {
-        try {
-            setOfficersLoading(true);
-            await ReportApi.sendCasePlanToAssistantCommissioner(reportId);
-
-            setCases(prevCases => prevCases.map(c =>
-                c.reportId === reportId ? {
-                    ...c,
-                    status: 'Case Plan Sent to Assistant Commissioner',
-                    casePlanStatus: 'sent_to_commissioner',
-                    casePlanSentToCommissioner: true
-                } : c
-            ));
-
-            setSnackbar({
-                open: true,
-                message: 'Case plan sent to Assistant Commissioner for approval',
-                severity: 'success'
-            });
-        } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to send to Assistant Commissioner',
-                severity: 'error'
-            });
-        } finally {
-            setOfficersLoading(false);
-            setSendToCommissionerDialogOpen(false);
-            setSelectedCaseForCommissioner(null);
-        }
-    };
-
-    const handleRejectCasePlan = async () => {
-        if (!currentCasePlan) return;
-
-        try {
-            await ReportApi.rejectCasePlan(currentCasePlan.reportId, casePlanRejectionReason);
-
-            setCases(prevCases => prevCases.map(c =>
-                c.reportId === currentCasePlan.reportId ? {
-                    ...c,
-                    status: 'Case Plan Rejected by Director of Investigation',
-                    casePlanStatus: 'rejected',
-                    reason: casePlanRejectionReason
-                } : c
-            ));
-
-            setSnackbar({
-                open: true,
-                message: 'Case plan rejected successfully',
-                severity: 'success'
-            });
-            setViewCasePlanDialogOpen(false);
-            setCasePlanRejectDialogOpen(false);
-            setCasePlanRejectionReason('');
-        } catch (err) {
-            console.error('Error:', err);
-            setSnackbar({
-                open: true,
-                message: err.response?.data?.message || 'Failed to reject case plan',
-                severity: 'error'
-            });
         }
     };
 
@@ -721,94 +511,17 @@ const DirectorInvestigation = () => {
         try {
             setDownloadLoading(true);
             setDownloadAttachmentIndex(attachmentIndex);
-
             const filename = currentFindings?.attachments?.[attachmentIndex] ||
                 currentCasePlan?.attachments?.[attachmentIndex] ||
                 currentInvestigationReport?.attachments?.[attachmentIndex];
-            const response = await ReportApi.downloadFindingsAttachment(reportId, filename);
-
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-
-            const contentDisposition = response.headers['content-disposition'];
-            let downloadFilename = filename;
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
-                if (filenameMatch) downloadFilename = filenameMatch[1];
-            }
-
-            link.setAttribute('download', downloadFilename);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            await ReportApi.downloadFindingsAttachment(reportId, filename);
         } catch (err) {
-            console.error('Error downloading attachment:', err);
-            setSnackbar({
-                open: true,
-                message: 'Failed to download attachment',
-                severity: 'error'
-            });
+            setSnackbar({ open: true, message: 'Failed to download attachment', severity: 'error' });
         } finally {
             setDownloadLoading(false);
             setDownloadAttachmentIndex(null);
         }
     };
-
-    const handleOpenAssignDialog = (caseItem) => {
-        setSelectedCase(caseItem);
-        setSelectedOfficer(caseItem.delegate || '');
-        setAssignmentNotes(caseItem.assignmentNotes || '');
-        setAssignDialogOpen(true);
-    };
-
-    // Helper functions for filtering
-    const shouldShowInvestigationReportActions = (caseItem) => {
-        if (!caseItem) return false;
-
-        return caseItem.investigationReportStatus === 'submitted' ||
-            caseItem.status?.includes('FINDINGS_SUBMITTED') ||
-            caseItem.status?.includes('INVESTIGATION_REPORT_SUBMITTED');
-    };
-
-    const getFilteredCases = () => {
-        let filtered = cases.filter(caseItem =>
-            caseItem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            caseItem.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            caseItem.delegateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (caseItem.assignmentNotes && caseItem.assignmentNotes.toLowerCase().includes(searchQuery.toLowerCase()))
-        );
-
-        switch (activeTab) {
-            case 1: // Pending Review
-                // Cases not assigned OR assigned but have no investigation report and no case plan
-                filtered = filtered.filter(c =>
-                    !c.status.includes('COMPLETED') &&
-                    (!c.isAssigned || (c.isAssigned && !c.hasFindings && !c.hasCasePlan && c.investigationReportStatus === 'none' && c.casePlanStatus === 'none'))
-                );
-                break;
-            case 2: // Investigation Reports
-                // Cases that have an investigation report
-                filtered = filtered.filter(c =>
-                    c.hasFindings || c.investigationReportStatus !== 'none' || c.category === 'investigation_report'
-                );
-                break;
-            case 3: // Case Plans
-                // Cases that have a case plan
-                filtered = filtered.filter(c =>
-                    c.hasCasePlan || c.casePlanStatus !== 'none' || c.category === 'case_plan'
-                );
-                break;
-            default:
-                // All cases
-                break;
-        }
-
-        return filtered;
-    };
-
-    const filteredCases = getFilteredCases();
 
     if (loading && !viewFindingsDialogOpen && !viewReportDialogOpen && !viewCasePlanDialogOpen && !investigationReportDialogOpen) {
         return (
@@ -818,994 +531,540 @@ const DirectorInvestigation = () => {
         );
     }
 
+    const paginatedCases = filteredCases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
     return (
         <Box sx={{ width: '100%', p: 3, bgcolor: '#f8fafc', minHeight: '100vh' }}>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1e293b' }}>
-                Director of Investigation - Case Management
-            </Typography>
-
-            {/* Tabs for filtering */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
-                    <Tab label="All Operations" />
-                    <Tab label="Pending Assignment" />
-                    <Tab label="Investigation Reports Review" />
-                    <Tab label="Strategic Plans Review" />
-                </Tabs>
-            </Box>
-
-
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <TextField
-                    label="Search cases, officers, or instructions"
-                    variant="outlined"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    InputProps={{
-                        startAdornment: <Search />,
-                    }}
-                    sx={{ minWidth: 300 }}
-                />
-                <Typography variant="body2" color="text.secondary">
-                    Showing: {filteredCases.length} of {cases.length} cases
+            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                    Director of Investigation
+                    <Typography component="span" variant="h6" sx={{ ml: 2, color: '#64748b', fontWeight: 500 }}>
+                        Case Management Dashboard
+                    </Typography>
                 </Typography>
-                {activeTab === 1 && (
-                    <Chip
-                        label={`${filteredCases.length} Pending Review`}
-                        color="warning"
-                        variant="outlined"
-                    />
-                )}
+                <Button 
+                    variant="outlined" 
+                    startIcon={<Refresh />} 
+                    onClick={fetchData}
+                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                >
+                    Refresh Data
+                </Button>
             </Box>
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow style={{ backgroundColor: "#f8fafc" }}>
-                            <TableCell><strong>Case ID</strong></TableCell>
-                            <TableCell><strong>Current Officer</strong></TableCell>
-                            <TableCell><strong>Reported Date</strong></TableCell>
-                            <TableCell><strong>Status</strong></TableCell>
-                            <TableCell><strong>Case Plan</strong></TableCell>
-                            <TableCell><strong>Assignment Notes</strong></TableCell>
-                            <TableCell><strong>Actions</strong></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredCases.length === 0 ? (
+            {/* Tabs with Counts */}
+            <Paper sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                <Tabs 
+                    value={activeTab} 
+                    onChange={(e, newValue) => setActiveTab(newValue)}
+                    sx={{
+                        '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' },
+                        '& .MuiTab-root': { textTransform: 'none', fontWeight: 600, fontSize: '0.95rem', py: 2 }
+                    }}
+                >
+                    <Tab label={`All Operations (${tabCounts.total})`} />
+                    <Tab label={`Pending Assignment (${tabCounts.pendingAssignment})`} />
+                    <Tab label={`Investigation Reports Review (${tabCounts.investigationReports})`} />
+                    <Tab label={`Strategic Plans Review (${tabCounts.strategicPlans})`} />
+                </Tabs>
+            </Paper>
+
+            {/* Filters Row */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid item xs={12} md={4}>
+                    <TextField
+                        fullWidth
+                        placeholder="Search Case ID, Officer, Status, or Notes..."
+                        variant="outlined"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        size="small"
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <Search sx={{ color: '#64748b' }} />
+                                </InputAdornment>
+                            ),
+                            sx: { borderRadius: 2, bgcolor: 'white' }
+                        }}
+                    />
+                </Grid>
+                <Grid item xs={12} md={2}>
+                    <FormControl fullWidth size="small">
+                        <InputLabel>Status Filter</InputLabel>
+                        <Select
+                            value={statusFilter}
+                            label="Status Filter"
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            sx={{ borderRadius: 2, bgcolor: 'white' }}
+                        >
+                            <MenuItem value="ALL">All Statuses</MenuItem>
+                            {uniqueStatuses.map(status => (
+                                <MenuItem key={status} value={status}>
+                                    {STATUS_LABELS[status] || status}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <TextField
+                        fullWidth
+                        type="date"
+                        label="From Date"
+                        size="small"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        InputProps={{ 
+                            startAdornment: <CalendarToday sx={{ fontSize: 18, mr: 1, color: '#64748b' }} />,
+                            sx: { borderRadius: 2, bgcolor: 'white' } 
+                        }}
+                    />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                    <TextField
+                        fullWidth
+                        type="date"
+                        label="To Date"
+                        size="small"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                        InputProps={{ 
+                            startAdornment: <CalendarToday sx={{ fontSize: 18, mr: 1, color: '#64748b' }} />,
+                            sx: { borderRadius: 2, bgcolor: 'white' } 
+                        }}
+                    />
+                </Grid>
+            </Grid>
+
+            <Paper sx={{ borderRadius: 3, boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', overflow: 'hidden' }}>
+                <TableContainer sx={{ maxHeight: '65vh' }}>
+                    <Table size="small" stickyHeader>
+                        <TableHead>
                             <TableRow>
-                                <TableCell colSpan={7} align="center">
-                                    <Typography variant="body1" color="text.secondary" sx={{ py: 4 }}>
-                                        No cases found
-                                    </Typography>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', py: 1.5, px: 1, bgcolor: '#f1f5f9' }}>Case ID</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', py: 1.5, px: 1, bgcolor: '#f1f5f9' }}>Current Officer</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', py: 1.5, px: 1, bgcolor: '#f1f5f9' }}>Reported Date</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', py: 1.5, px: 1, bgcolor: '#f1f5f9', width: 140 }}>Status</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', py: 1.5, px: 1, bgcolor: '#f1f5f9' }}>Case Plan</TableCell>
+                                <TableCell sx={{ fontWeight: 700, color: '#475569', py: 1.5, px: 1, bgcolor: '#f1f5f9' }}>Assignment Notes</TableCell>
+                                <TableCell 
+                                    align="right" 
+                                    sx={{ 
+                                        fontWeight: 700, 
+                                        color: '#475569', 
+                                        py: 1.5, 
+                                        px: 1, 
+                                        bgcolor: '#f1f5f9',
+                                        position: 'sticky',
+                                        right: 0,
+                                        zIndex: 11,
+                                        boxShadow: 'inset 1px 0 0 #e2e8f0'
+                                    }}
+                                >
+                                    Actions
                                 </TableCell>
                             </TableRow>
-                        ) : (
-                            filteredCases.map((caseItem) => (
-                                <TableRow key={caseItem.id}>
-                                    <TableCell>{caseItem.id}</TableCell>
-                                    <TableCell>
-                                        {caseItem.isAssigned ? (
-                                            <Typography color="success.main" fontWeight="bold">
-                                                {caseItem.delegateName}
-                                            </Typography>
-                                        ) : (
-                                            <Typography color="text.secondary">Not assigned</Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{caseItem.reportedDate}</TableCell>
-                                    <TableCell>
-                                        <Typography
-                                            sx={{
-                                                color: caseItem.status.includes("Approved") ? "green" :
-                                                    caseItem.status.includes("Rejected") ? "red" :
-                                                        caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" :
-                                                            caseItem.status.includes("Assigned") ? "orange" :
-                                                                caseItem.status.includes("CASE_PLAN") ? "#9c27b0" :
-                                                                    caseItem.status.includes("SENT_TO_ASSISTANT_COMMISSIONER") ? "#ff9800" :
-                                                                        caseItem.status.includes("COMMISSIONER") ? "#673ab7" :
-                                                                            caseItem.status.includes("FINDINGS") ? "#2196f3" :
-                                                                                caseItem.status.includes("INVESTIGATION_REPORT") ? "#3f51b5" : "inherit",
-                                                fontWeight: 'bold'
-                                            }}
-                                        >
-                                            {caseItem.status}
-                                        </Typography>
-                                        {caseItem.reason && (
-                                            <Typography variant="caption" color="error">
-                                                Reason: {caseItem.reason}
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {caseItem.casePlanStatus === 'submitted' && (
-                                            <Chip
-                                                icon={<TaskAlt />}
-                                                label="Submitted"
-                                                color="primary"
-                                                variant="outlined"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.casePlanStatus === 'approved' && (
-                                            <Chip
-                                                icon={<Check />}
-                                                label="Approved"
-                                                color="success"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.casePlanStatus === 'rejected' && (
-                                            <Chip
-                                                icon={<Close />}
-                                                label="Rejected"
-                                                color="error"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.casePlanStatus === 'none' && (
-                                            <Typography variant="body2" color="text.secondary">
-                                                Not submitted
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {caseItem.assignmentNotes ? (
-                                            <Tooltip title={caseItem.assignmentNotes}>
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        maxWidth: 200,
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap'
-                                                    }}
-                                                >
-                                                    {caseItem.assignmentNotes}
-                                                </Typography>
-                                            </Tooltip>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary">
-                                                No instructions
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box display="flex" gap={1} flexWrap="wrap">
-                                            <Tooltip title="View Report">
-                                                <IconButton
-                                                    color="primary"
-                                                    size="small"
-                                                    onClick={() => handleViewReport(caseItem)}
-                                                >
-                                                    <Description />
-                                                </IconButton>
-                                            </Tooltip>
-
-                                            {caseItem.hasFindings && (
-                                                <Tooltip title="View Findings">
-                                                    <IconButton
-                                                        color="info"
-                                                        size="small"
-                                                        onClick={() => handleViewFindings(caseItem)}
-                                                    >
-                                                        <Visibility />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            {shouldShowInvestigationReportActions(caseItem) && (
-                                                <Tooltip title="Review Investigation Report">
-                                                    <IconButton
-                                                        color="warning"
-                                                        size="small"
-                                                        onClick={() => handleViewInvestigationReport(caseItem)}
-                                                    >
-                                                        <Assignment />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            {caseItem.hasCasePlan && caseItem.casePlanStatus === 'submitted' && (
-                                                <Tooltip title="View Case Plan">
-                                                    <IconButton
-                                                        color="secondary"
-                                                        size="small"
-                                                        onClick={() => handleViewCasePlan(caseItem)}
-                                                    >
-                                                        <TaskAlt />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            <Tooltip title="Approve Report">
-                                                <IconButton
-                                                    color="success"
-                                                    size="small"
-                                                    onClick={() => {
-                                                        if (caseItem.reportId) {
-                                                            handleApprove(caseItem.reportId);
-                                                        } else {
-                                                            console.error('Report ID is undefined for case:', caseItem);
-                                                            setSnackbar({
-                                                                open: true,
-                                                                message: 'Cannot approve: Report ID is missing',
-                                                                severity: 'error'
-                                                            });
-                                                        }
-                                                    }}
-                                                    disabled={caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Rejected") ||
-                                                        caseItem.casePlanSentToCommissioner ||
-                                                        caseItem.investigationReportStatus === 'approved' ||
-                                                        caseItem.casePlanStatus === 'approved' ||
-                                                        !(
-                                                            caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                                            caseItem.investigationReportStatus === 'submitted' ||
-                                                            caseItem.casePlanStatus === 'submitted'
-                                                        )}
-                                                >
-                                                    <Check />
-                                                </IconButton>
-                                            </Tooltip>
-
-                                            <Tooltip title="Assign Officer">
-                                                <Button
-                                                    variant="outlined"
-                                                    size="small"
-                                                    onClick={() => handleOpenAssignDialog(caseItem)}
-                                                    disabled={
-                                                        caseItem.isAssigned && !caseItem.status.includes("REJECTED")
-                                                    }
-                                                >
-                                                    Assign
-                                                </Button>
-                                            </Tooltip>
-
-                                            <Tooltip title="Reject Report">
-                                                <IconButton
-                                                    color="error"
-                                                    size="small"
-                                                    onClick={() => {
-                                                        setSelectedCase(caseItem);
-                                                        setRejectDialogOpen(true);
-                                                    }}
-                                                    disabled={
-                                                        caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Rejected") ||
-                                                        caseItem.casePlanSentToCommissioner ||
-                                                        caseItem.investigationReportStatus === 'approved' ||
-                                                        caseItem.investigationReportStatus === 'rejected' ||
-                                                        caseItem.casePlanStatus === 'approved' ||
-                                                        caseItem.casePlanStatus === 'rejected' ||
-                                                        !(
-                                                            caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                                            caseItem.investigationReportStatus === 'submitted' ||
-                                                            caseItem.casePlanStatus === 'submitted'
-                                                        )
-                                                    }
-                                                >
-                                                    <Close />
-                                                </IconButton>
-                                            </Tooltip>
+                        </TableHead>
+                        <TableBody>
+                            {paginatedCases.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 10 }}>
+                                        <Box sx={{ opacity: 0.5 }}>
+                                            <FilterList sx={{ fontSize: 48, mb: 1 }} />
+                                            <Typography variant="h6">No matching cases found</Typography>
+                                            <Typography variant="body2">Try adjusting your search or filters</Typography>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
-
-            {/* Investigation Report Dialog */}
-            <Dialog
-                open={investigationReportDialogOpen}
-                onClose={() => setInvestigationReportDialogOpen(false)}
-                fullWidth
-                maxWidth="lg"
-            >
-                <DialogTitle>
-                    Investigation Report - Case {selectedCaseForInvestigationReport?.id || 'Unknown'}
-                    {selectedCaseForInvestigationReport?.delegateName && (
-                        <Typography variant="subtitle1" color="text.secondary">
-                            Submitted by: {selectedCaseForInvestigationReport.delegateName}
-                        </Typography>
-                    )}
-                </DialogTitle>
-                <DialogContent>
-                    {loading ? (
-                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <>
-                            {currentInvestigationReport?.findings && (
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                        Investigation Findings
-                                    </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {currentInvestigationReport.findings}
-                                        </Typography>
-                                    </Paper>
-                                </Box>
-                            )}
-
-                            {currentInvestigationReport?.recommendations && (
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                        Recommendations
-                                    </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {currentInvestigationReport.recommendations}
-                                        </Typography>
-                                    </Paper>
-                                </Box>
-                            )}
-
-                            {currentInvestigationReport?.attachments?.length > 0 && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                        Supporting Attachments ({currentInvestigationReport.attachments.length})
-                                    </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <List>
-                                        {currentInvestigationReport.attachments.map((attachment, index) => (
-                                            <ListItem
-                                                key={index}
-                                                sx={{
-                                                    border: '1px solid #e0e0e0',
-                                                    borderRadius: 1,
-                                                    mb: 1,
-                                                    '&:hover': { backgroundColor: '#f5f5f5' }
-                                                }}
-                                                secondaryAction={
-                                                    <Tooltip title="Download Attachment">
-                                                        <IconButton
-                                                            edge="end"
-                                                            onClick={() => handleDownloadAttachment(currentInvestigationReport.reportId, index)}
-                                                            disabled={downloadLoading && downloadAttachmentIndex === index}
-                                                        >
-                                                            {downloadLoading && downloadAttachmentIndex === index ?
-                                                                <CircularProgress size={24} /> :
-                                                                <Download />}
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                }
+                            ) : (
+                                paginatedCases.map((caseItem) => (
+                                    <TableRow key={caseItem.reportId} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                                        <TableCell sx={{ py: 1, px: 1 }}>
+                                            <Link 
+                                                to={`/view-report/${caseItem.reportId}`}
+                                                style={{ textDecoration: 'none', color: '#2563eb', fontWeight: 600 }}
                                             >
-                                                <ListItemText
-                                                    primary={
-                                                        <Typography variant="body1">
-                                                            {attachment.substring(attachment.indexOf('_') + 1)}
-                                                        </Typography>
-                                                    }
-                                                    secondary={`Attachment ${index + 1}`}
+                                                {caseItem.id}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, px: 1 }}>
+                                            {caseItem.isAssigned ? (
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e' }} />
+                                                    <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>{caseItem.delegateName}</Typography>
+                                                </Box>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', fontSize: '0.85rem' }}>Unassigned</Typography>
+                                            )}
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, px: 1, fontSize: '0.85rem' }}>
+                                            {caseItem.reportedDate ? format(new Date(caseItem.reportedDate), 'dd/MM/yyyy') : 'N/A'}
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, px: 1 }}>
+                                            <Chip 
+                                                label={STATUS_LABELS[caseItem.status] || caseItem.status}
+                                                size="small"
+                                                color={getStatusColor(caseItem.status)}
+                                                sx={{ fontWeight: 600, fontSize: '0.7rem', borderRadius: 1.5, maxWidth: 130 }}
+                                            />
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, px: 1 }}>
+                                            {caseItem.casePlanStatus === 'none' ? (
+                                                <Typography variant="caption" color="text.secondary">No Plan</Typography>
+                                            ) : (
+                                                <Chip 
+                                                    label={caseItem.casePlanStatus.charAt(0).toUpperCase() + caseItem.casePlanStatus.slice(1)}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    color={caseItem.casePlanStatus === 'approved' ? 'success' : caseItem.casePlanStatus === 'rejected' ? 'error' : 'primary'}
+                                                    sx={{ fontWeight: 600, fontSize: '0.7rem' }}
                                                 />
-                                            </ListItem>
+                                            )}
+                                        </TableCell>
+                                        <TableCell sx={{ py: 1, px: 1 }}>
+                                            {caseItem.assignmentNotes ? (
+                                                <Tooltip title={caseItem.assignmentNotes} arrow>
+                                                    <Typography variant="body2" sx={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
+                                                        {caseItem.assignmentNotes}
+                                                    </Typography>
+                                                </Tooltip>
+                                            ) : '-'}
+                                        </TableCell>
+                                        <TableCell 
+                                            align="right" 
+                                            sx={{ 
+                                                py: 0.5, 
+                                                px: 1,
+                                                position: 'sticky',
+                                                right: 0,
+                                                bgcolor: 'white',
+                                                zIndex: 10,
+                                                boxShadow: 'inset 1px 0 0 #e2e8f0',
+                                                '& .MuiButton-root': { fontSize: '0.75rem', py: 0.25 }
+                                            }}
+                                        >
+                                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<Visibility sx={{ fontSize: '1rem !important' }} />}
+                                                    onClick={() => handleViewReport(caseItem)}
+                                                    sx={{ textTransform: 'none', borderRadius: 1.5 }}
+                                                >
+                                                    View
+                                                </Button>
+
+                                                {!caseItem.isAssigned && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color="primary"
+                                                        startIcon={<PersonAdd sx={{ fontSize: '1rem !important' }} />}
+                                                        onClick={() => {
+                                                            setSelectedCase(caseItem);
+                                                            setAssignDialogOpen(true);
+                                                        }}
+                                                        sx={{ textTransform: 'none', borderRadius: 1.5, boxShadow: 'none' }}
+                                                    >
+                                                        Assign
+                                                    </Button>
+                                                )}
+
+                                                {caseItem.investigationReportStatus === 'submitted' && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color="info"
+                                                        startIcon={<Assignment sx={{ fontSize: '1rem !important' }} />}
+                                                        onClick={() => handleViewFindings(caseItem)}
+                                                        sx={{ textTransform: 'none', borderRadius: 1.5, boxShadow: 'none' }}
+                                                    >
+                                                        Review
+                                                    </Button>
+                                                )}
+
+                                                {caseItem.casePlanStatus === 'submitted' && (
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color="secondary"
+                                                        startIcon={<TaskAlt sx={{ fontSize: '1rem !important' }} />}
+                                                        onClick={() => handleViewCasePlan(caseItem)}
+                                                        sx={{ textTransform: 'none', borderRadius: 1.5, boxShadow: 'none' }}
+                                                    >
+                                                        Plan
+                                                    </Button>
+                                                )}
+
+                                                {(caseItem.investigationReportStatus === 'submitted' || caseItem.casePlanStatus === 'submitted') && (
+                                                    <>
+                                                        <Button
+                                                            size="small"
+                                                            variant="contained"
+                                                            color="success"
+                                                            startIcon={<Check sx={{ fontSize: '1rem !important' }} />}
+                                                            onClick={() => handleApprove(caseItem.reportId)}
+                                                            sx={{ textTransform: 'none', borderRadius: 1.5, boxShadow: 'none' }}
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                        <Button
+                                                            size="small"
+                                                            variant="contained"
+                                                            color="error"
+                                                            startIcon={<Close sx={{ fontSize: '1rem !important' }} />}
+                                                            onClick={() => {
+                                                                setSelectedCase(caseItem);
+                                                                setRejectDialogOpen(true);
+                                                            }}
+                                                            sx={{ textTransform: 'none', borderRadius: 1.5, boxShadow: 'none' }}
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                    </>
+                                                )}
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    rowsPerPageOptions={[10, 25, 50]}
+                    component="div"
+                    count={filteredCases.length}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                    sx={{ borderTop: '1px solid #e2e8f0' }}
+                />
+            </Paper>
+
+            {/* Findings Dialog */}
+            <Dialog open={viewFindingsDialogOpen} onClose={() => setViewFindingsDialogOpen(false)} fullWidth maxWidth="lg">
+                <DialogTitle sx={{ fontWeight: 700 }}>Investigation Findings - Case {selectedCase?.id}</DialogTitle>
+                <DialogContent dividers>
+                    {currentFindings && (
+                        <Grid container spacing={3}>
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 700, mb: 1 }}>Findings</Typography>
+                                <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+                                    {currentFindings.findings || 'No findings provided'}
+                                </Paper>
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 700, mb: 1 }}>Recommendations</Typography>
+                                <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', whiteSpace: 'pre-wrap' }}>
+                                    {currentFindings.recommendations || 'No recommendations provided'}
+                                </Paper>
+                            </Grid>
+                            {currentFindings.attachments?.length > 0 && (
+                                <Grid item xs={12}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Attachments</Typography>
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                        {currentFindings.attachments.map((file, idx) => (
+                                            <Chip
+                                                key={idx}
+                                                icon={<Download />}
+                                                label={file.split('_').slice(1).join('_') || file}
+                                                onClick={() => handleDownloadAttachment(selectedCase.reportId, idx)}
+                                                variant="outlined"
+                                                sx={{ borderRadius: 1 }}
+                                            />
                                         ))}
-                                    </List>
+                                    </Box>
+                                </Grid>
+                            )}
+                        </Grid>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setViewFindingsDialogOpen(false)}>Close</Button>
+                    {selectedCase?.investigationReportStatus === 'submitted' && (
+                        <>
+                            <Button variant="contained" color="warning" onClick={() => { setViewFindingsDialogOpen(false); setReturnDialogOpen(true); }}>Return</Button>
+                            <Button variant="contained" color="error" onClick={() => { setViewFindingsDialogOpen(false); setRejectDialogOpen(true); }}>Reject</Button>
+                            <Button variant="contained" color="success" onClick={() => { setViewFindingsDialogOpen(false); handleApprove(selectedCase.reportId); }}>Approve</Button>
+                        </>
+                    )}
+                </DialogActions>
+            </Dialog>
+
+            {/* Return Dialog */}
+            <Dialog open={returnDialogOpen} onClose={() => setReturnDialogOpen(false)}>
+                <DialogTitle sx={{ fontWeight: 700 }}>Return for Revision</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        Please provide a reason or instructions for the revision of <strong>{selectedCase?.id}</strong>.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Reason for Return"
+                        value={returnReason}
+                        onChange={(e) => setReturnReason(e.target.value)}
+                        variant="outlined"
+                        autoFocus
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setReturnDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="warning" 
+                        onClick={handleReturn}
+                        disabled={!returnReason.trim()}
+                    >
+                        Confirm Return
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Case Plan Dialog */}
+            <Dialog open={viewCasePlanDialogOpen} onClose={() => setViewCasePlanDialogOpen(false)} fullWidth maxWidth="md">
+                <DialogTitle sx={{ fontWeight: 700 }}>Strategic Plan Review - Case {selectedCase?.id}</DialogTitle>
+                <DialogContent dividers>
+                    {currentCasePlan && (
+                        <Box>
+                            <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 700, mb: 1 }}>Plan Details</Typography>
+                            <Paper variant="outlined" sx={{ p: 2, bgcolor: '#f8fafc', whiteSpace: 'pre-wrap', mb: 3 }}>
+                                {currentCasePlan.casePlan || 'No details provided'}
+                            </Paper>
+                            {currentCasePlan.attachments?.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>Supporting Documents</Typography>
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                        {currentCasePlan.attachments.map((file, idx) => (
+                                            <Chip
+                                                key={idx}
+                                                icon={<Download />}
+                                                label={file.split('_').slice(1).join('_') || file}
+                                                onClick={() => handleDownloadAttachment(selectedCase.reportId, idx)}
+                                                variant="outlined"
+                                                sx={{ borderRadius: 1 }}
+                                            />
+                                        ))}
+                                    </Box>
                                 </Box>
                             )}
-                        </>
+                        </Box>
                     )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setInvestigationReportDialogOpen(false)}>
-                        Close
-                    </Button>
-                    {selectedCaseForInvestigationReport && shouldShowInvestigationReportActions(selectedCaseForInvestigationReport) && (
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setViewCasePlanDialogOpen(false)}>Close</Button>
+                    {selectedCase?.casePlanStatus === 'submitted' && (
                         <>
-                            <Button
-                                onClick={handleOpenInvestigationReportReturnDialog}
-                                color="warning"
-                                variant="outlined"
-                                startIcon={<AssignmentReturned />}
-                            >
-                                Return for Revision
-                            </Button>
-                            <Button
-                                onClick={handleOpenInvestigationReportRejectDialog}
-                                color="error"
-                                variant="outlined"
-                                startIcon={<ThumbDown />}
-                            >
-                                Reject Report
-                            </Button>
-                            <Button
-                                onClick={() => handleApproveInvestigationReport(currentInvestigationReport.reportId)}
-                                color="success"
-                                variant="contained"
-                                disabled={officersLoading}
-                                startIcon={<ThumbUp />}
-                            >
-                                {officersLoading ? <CircularProgress size={24} /> : 'Approve Report'}
-                            </Button>
+                            <Button variant="contained" color="error" onClick={() => { setViewCasePlanDialogOpen(false); setRejectDialogOpen(true); }}>Reject Plan</Button>
+                            <Button variant="contained" color="success" onClick={() => { setViewCasePlanDialogOpen(false); handleApprove(selectedCase.reportId); }}>Approve Plan</Button>
                         </>
                     )}
-                </DialogActions>
-            </Dialog>
-
-            {/* Investigation Report Reject Dialog */}
-            <Dialog open={investigationReportRejectDialogOpen} onClose={() => setInvestigationReportRejectDialogOpen(false)}>
-                <DialogTitle>Reject Investigation Report</DialogTitle>
-                <DialogContent>
-                    <Typography gutterBottom>Case ID: {selectedCaseForInvestigationReport?.id || 'Unknown'}</Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                        Please provide a detailed reason for rejecting this investigation report.
-                    </Typography>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Rejection Reason"
-                        placeholder="Provide detailed reason for rejecting the investigation report..."
-                        fullWidth
-                        multiline
-                        rows={4}
-                        value={investigationRejectionReason}
-                        onChange={(e) => setInvestigationRejectionReason(e.target.value)}
-                        sx={{ mt: 2 }}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setInvestigationReportRejectDialogOpen(false)}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleRejectInvestigationReport}
-                        color="error"
-                        variant="contained"
-                        disabled={!investigationRejectionReason.trim()}
-                    >
-                        Reject Report
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Investigation Report Return Dialog */}
-            <Dialog open={investigationReportReturnDialogOpen} onClose={() => setInvestigationReportReturnDialogOpen(false)}>
-                <DialogTitle>Return Investigation Report for Revision</DialogTitle>
-                <DialogContent>
-                    <Typography gutterBottom>Case ID: {selectedCaseForInvestigationReport?.id || 'Unknown'}</Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                        This will return the report to the investigation officer for revision.
-                    </Typography>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Return Reason"
-                        placeholder="Specify what needs to be revised or added..."
-                        fullWidth
-                        multiline
-                        rows={4}
-                        value={investigationReturnReason}
-                        onChange={(e) => setInvestigationReturnReason(e.target.value)}
-                        sx={{ mt: 2 }}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setInvestigationReportReturnDialogOpen(false)}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleReturnInvestigationReport}
-                        color="warning"
-                        variant="contained"
-                        disabled={!investigationReturnReason.trim()}
-                        startIcon={<AssignmentReturned />}
-                    >
-                        Return for Revision
-                    </Button>
                 </DialogActions>
             </Dialog>
 
             {/* Assign Officer Dialog */}
-            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>
-                    Assign Investigation Officer - Case {selectedCase?.id}
-                </DialogTitle>
+            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>Assign Investigation Officer</DialogTitle>
                 <DialogContent>
-                    <Typography gutterBottom variant="h6" color="primary">
-                        Selected Officer: {officers.find(o => o._id === selectedOfficer)?.name || 'None selected'}
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Select an officer to handle <strong>Case {selectedCase?.id}</strong>. You can also provide specific investigation instructions.
                     </Typography>
-
-                    {officers.length === 0 && (
-                        <Alert severity="warning" sx={{ mt: 2, mb: 1 }}>
-                            No active investigation officers found. Please ensure that officers are registered and active in the System Admin panel.
-                        </Alert>
-                    )}
-
+                    
                     <Autocomplete
-                        fullWidth
-                        disablePortal
-                        sx={{ mt: 2 }}
                         options={officers}
-                        getOptionLabel={(option) => {
-                            if (typeof option === 'string') return option;
-                            return `${option.name} ${option.email ? `(${option.email})` : ''}`;
-                        }}
-                        isOptionEqualToValue={(option, value) => option._id === value._id}
-                        value={officers.find(o => o._id === selectedOfficer) || null}
-                        onChange={(event, newValue) => {
-                            setSelectedOfficer(newValue ? newValue._id : '');
-                        }}
-                        renderInput={(params) => (
-                            <TextField
-                                {...params}
-                                label="Select Investigation Officer"
-                                variant="outlined"
-                                placeholder={officers.length === 0 ? "No officers found" : "Search and select officer..."}
-                            />
-                        )}
-                        ListboxProps={{
-                            style: {
-                                maxHeight: '250px'
-                            }
-                        }}
-                        disabled={officers.length === 0}
-                        noOptionsText="No active investigation officers found"
-                        loading={officersLoading}
+                        getOptionLabel={(option) => option.name || ''}
+                        renderInput={(params) => <TextField {...params} label="Select Officer" variant="outlined" size="small" />}
+                        onChange={(e, value) => setSelectedOfficer(value?._id || null)}
+                        sx={{ mb: 3 }}
                     />
 
                     <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Assignment Instructions"
-                        placeholder="Provide detailed instructions for the investigation officer..."
                         fullWidth
+                        label="Assignment Notes / Instructions"
                         multiline
-                        rows={6}
+                        rows={4}
+                        variant="outlined"
                         value={assignmentNotes}
                         onChange={(e) => setAssignmentNotes(e.target.value)}
-                        sx={{ mt: 3 }}
-                        helperText="These instructions will be saved and visible to the assigned investigation officer"
+                        placeholder="Provide detailed instructions for the investigation..."
                     />
                 </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() => {
-                            setAssignDialogOpen(false);
-                            setAssignmentNotes('');
-                            setSelectedOfficer(null);
-                        }}
-                    >
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            handleAssignOfficer(selectedCase.reportId, selectedOfficer, assignmentNotes);
-                        }}
-                        color="primary"
-                        variant="contained"
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setAssignDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="primary" 
+                        onClick={() => handleAssignOfficer(selectedCase.reportId, selectedOfficer, assignmentNotes)}
                         disabled={!selectedOfficer || officersLoading}
                     >
-                        {officersLoading ? <CircularProgress size={24} /> : 'Assign Officer'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Send to Assistant Commissioner Dialog */}
-            <Dialog open={sendToCommissionerDialogOpen} onClose={() => setSendToCommissionerDialogOpen(false)}>
-                <DialogTitle>Send Case Plan to Assistant Commissioner</DialogTitle>
-                <DialogContent>
-                    <Typography gutterBottom variant="h6" color="primary">
-                        Case ID: {selectedCaseForCommissioner?.id}
-                    </Typography>
-                    <Typography variant="body1" paragraph>
-                        Are you sure you want to send this case plan to the Assistant Commissioner for approval?
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                        Once sent, the Assistant Commissioner will review and can either approve or reject the case plan.
-                    </Typography>
-                    <Typography variant="body2" color="warning.main" sx={{ fontWeight: 'bold' }}>
-                        Note: This action cannot be undone.
-                    </Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => {
-                        setSendToCommissionerDialogOpen(false);
-                        setSelectedCaseForCommissioner(null);
-                    }}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={() => handleSendToAssistantCommissioner(selectedCaseForCommissioner.reportId)}
-                        color="secondary"
-                        variant="contained"
-                        disabled={officersLoading}
-                    >
-                        {officersLoading ? <CircularProgress size={24} /> : 'Send to Assistant Commissioner'}
+                        {officersLoading ? <CircularProgress size={24} /> : 'Confirm Assignment'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
             {/* Reject Dialog */}
             <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
-                <DialogTitle>Reject Report</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 700 }}>Provide Rejection Reason</DialogTitle>
                 <DialogContent>
-                    <Typography gutterBottom>Case ID: {selectedCase?.id}</Typography>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        You are rejecting the 
+                        {selectedCase?.investigationReportStatus === 'submitted' ? ' Investigation Report ' : 
+                         selectedCase?.casePlanStatus === 'submitted' ? ' Strategic Plan ' : ' Case '}
+                        for <strong>{selectedCase?.id}</strong>.
+                    </Typography>
                     <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Rejection Reason"
-                        placeholder="Provide detailed reason for rejection..."
                         fullWidth
                         multiline
-                        rows={4}
+                        rows={3}
+                        label="Reason for Rejection"
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
-                        sx={{ mt: 2 }}
+                        variant="outlined"
+                        autoFocus
                     />
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => {
-                        setRejectDialogOpen(false);
-                        setRejectionReason('');
-                    }}>
-                        Cancel
-                    </Button>
-                    <Button
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        color="error" 
                         onClick={handleReject}
-                        color="error"
-                        variant="contained"
                         disabled={!rejectionReason.trim()}
                     >
-                        Reject Report
+                        Confirm Rejection
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Report Details Dialog */}
-            <Dialog
-                open={viewReportDialogOpen}
-                onClose={() => setViewReportDialogOpen(false)}
-                fullWidth
-                maxWidth="md"
-            >
-                <DialogTitle>Report Details - Case {selectedCase?.id}</DialogTitle>
-                <DialogContent>
-                    {loading ? (
-                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <>
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom>Description:</Typography>
-                                <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                    {currentReport?.description || 'No description available'}
-                                </Typography>
-                            </Box>
-
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom>Status:</Typography>
-                                <Typography variant="body1">
-                                    {currentReport?.status || 'No status available'}
-                                </Typography>
-                            </Box>
-
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom>Created By:</Typography>
-                                <Typography variant="body1">
-                                    {currentReport?.createdBy || 'Unknown'}
-                                </Typography>
-                            </Box>
-
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom>Created At:</Typography>
-                                <Typography variant="body1">
-                                    {currentReport?.createdAt ? new Date(currentReport.createdAt).toLocaleString() : 'Unknown'}
-                                </Typography>
-                            </Box>
-
-                            {currentReport?.attachmentPaths && currentReport.attachmentPaths.length > 0 && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography variant="h6" gutterBottom>Attachments:</Typography>
-                                    {currentReport.attachmentPaths.map((attachment, index) => (
-                                        <Button
-                                            key={index}
-                                            variant="outlined"
-                                            startIcon={<Download />}
-                                            onClick={() => {
-                                                ReportApi.downloadAttachment(currentReport.id, attachment);
-                                            }}
-                                            disabled={downloadLoading}
-                                            sx={{ mr: 1, mb: 1 }}
-                                        >
-                                            Download {index + 1}
-                                        </Button>
-                                    ))}
-                                </Box>
-                            )}
-                        </>
+            {/* Report Details Dialog (Internal Report) */}
+            <Dialog open={viewReportDialogOpen} onClose={() => setViewReportDialogOpen(false)} fullWidth maxWidth="md">
+                <DialogTitle sx={{ fontWeight: 700 }}>Case Detail - {selectedCase?.id}</DialogTitle>
+                <DialogContent dividers>
+                    {currentReport && (
+                        <Grid container spacing={2}>
+                            <Grid item xs={12}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Description</Typography>
+                                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', mb: 2 }}>{currentReport.description}</Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Status</Typography>
+                                <Chip label={STATUS_LABELS[currentReport.status] || currentReport.status} size="small" color={getStatusColor(currentReport.status)} />
+                            </Grid>
+                            <Grid item xs={6}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Reported By</Typography>
+                                <Typography variant="body1">{currentReport.createdBy || 'N/A'}</Typography>
+                            </Grid>
+                        </Grid>
                     )}
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setViewReportDialogOpen(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Findings Dialog */}
-            <Dialog
-                open={viewFindingsDialogOpen}
-                onClose={() => setViewFindingsDialogOpen(false)}
-                fullWidth
-                maxWidth="lg"
-            >
-                <DialogTitle>
-                    Investigation Findings - Case {selectedCase?.id}
-                </DialogTitle>
-                <DialogContent>
-                    {loading ? (
-                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <>
-                            {currentFindings?.assignmentNotes && (
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                        Assignment Instructions
-                                    </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <Paper elevation={1} sx={{ p: 2, backgroundColor: '#f0f7ff', borderRadius: 2 }}>
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {currentFindings.assignmentNotes}
-                                        </Typography>
-                                    </Paper>
-                                </Box>
-                            )}
-
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    Investigation Findings
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-                                {currentFindings?.findings ? (
-                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {currentFindings.findings}
-                                        </Typography>
-                                    </Paper>
-                                ) : (
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                        No findings submitted
-                                    </Typography>
-                                )}
-                            </Box>
-
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    Recommendations
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-                                {currentFindings?.recommendations ? (
-                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {currentFindings.recommendations}
-                                        </Typography>
-                                    </Paper>
-                                ) : (
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                        No recommendations submitted
-                                    </Typography>
-                                )}
-                            </Box>
-
-                            {currentFindings?.attachments?.length > 0 && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                        Supporting Attachments ({currentFindings.attachments.length})
-                                    </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <List>
-                                        {currentFindings.attachments.map((attachment, index) => (
-                                            <ListItem
-                                                key={index}
-                                                sx={{
-                                                    border: '1px solid #e0e0e0',
-                                                    borderRadius: 1,
-                                                    mb: 1,
-                                                    '&:hover': {
-                                                        backgroundColor: '#f5f5f5'
-                                                    }
-                                                }}
-                                                secondaryAction={
-                                                    <Tooltip title="Download Attachment">
-                                                        <IconButton
-                                                            edge="end"
-                                                            onClick={() => handleDownloadAttachment(selectedCase.reportId, index)}
-                                                            disabled={downloadLoading && downloadAttachmentIndex === index}
-                                                        >
-                                                            {downloadLoading && downloadAttachmentIndex === index ?
-                                                                <CircularProgress size={24} /> :
-                                                                <Download />}
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                }
-                                            >
-                                                <ListItemText
-                                                    primary={
-                                                        <Typography variant="body1">
-                                                            {attachment.substring(attachment.indexOf('_') + 1)}
-                                                        </Typography>
-                                                    }
-                                                    secondary={`Attachment ${index + 1}`}
-                                                />
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                </Box>
-                            )}
-                        </>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() => setViewFindingsDialogOpen(false)}
-                        variant="contained"
-                        color="primary"
-                    >
-                        Close Findings
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Case Plan Dialog */}
-            <Dialog
-                open={viewCasePlanDialogOpen}
-                onClose={() => setViewCasePlanDialogOpen(false)}
-                fullWidth
-                maxWidth="lg"
-            >
-                <DialogTitle>
-                    Case Plan - Report #{selectedCase?.id}
-                </DialogTitle>
-                <DialogContent>
-                    {loading ? (
-                        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <>
-                            <Box sx={{ mb: 3 }}>
-                                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                    Case Plan Details
-                                </Typography>
-                                <Divider sx={{ mb: 2 }} />
-                                {currentCasePlan?.casePlan ? (
-                                    <Paper elevation={0} sx={{ p: 2, backgroundColor: '#f9f9f9', borderRadius: 2 }}>
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-line' }}>
-                                            {currentCasePlan.casePlan}
-                                        </Typography>
-                                    </Paper>
-                                ) : (
-                                    <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                        No case plan details provided
-                                    </Typography>
-                                )}
-                            </Box>
-
-                            {currentCasePlan?.attachments?.length > 0 && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                        Supporting Attachments ({currentCasePlan.attachments.length})
-                                    </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <List>
-                                        {currentCasePlan.attachments.map((attachment, index) => (
-                                            <ListItem
-                                                key={index}
-                                                sx={{
-                                                    border: '1px solid #e0e0e0',
-                                                    borderRadius: 1,
-                                                    mb: 1,
-                                                    '&:hover': { backgroundColor: '#f5f5f5' }
-                                                }}
-                                                secondaryAction={
-                                                    <Tooltip title="Download Attachment">
-                                                        <IconButton
-                                                            edge="end"
-                                                            onClick={() => handleDownloadAttachment(currentCasePlan.reportId, index)}
-                                                            disabled={downloadLoading && downloadAttachmentIndex === index}
-                                                        >
-                                                            {downloadLoading && downloadAttachmentIndex === index ?
-                                                                <CircularProgress size={24} /> :
-                                                                <Download />}
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                }
-                                            >
-                                                <ListItemText
-                                                    primary={
-                                                        <Typography variant="body1">
-                                                            {attachment.substring(attachment.indexOf('_') + 1)}
-                                                        </Typography>
-                                                    }
-                                                    secondary={`Attachment ${index + 1}`}
-                                                />
-                                            </ListItem>
-                                        ))}
-                                    </List>
-                                </Box>
-                            )}
-                        </>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() => setViewCasePlanDialogOpen(false)}
-                        color="primary"
-                    >
-                        Cancel
-                    </Button>
-                    {currentCasePlan?.status &&
-                        currentCasePlan.status.includes('CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION') && (
-                            <>
-                                <Button
-                                    onClick={() => {
-                                        setCasePlanRejectDialogOpen(true);
-                                        setCasePlanRejectionReason('');
-                                    }}
-                                    color="error"
-                                    variant="outlined"
-                                >
-                                    Reject Case Plan
-                                </Button>
-                                <Button
-                                    onClick={() => handleApproveCasePlan(currentCasePlan.reportId)}
-                                    color="success"
-                                    variant="contained"
-                                    disabled={officersLoading}
-                                >
-                                    {officersLoading ? <CircularProgress size={24} /> : 'Approve Case Plan'}
-                                </Button>
-                            </>
-                        )}
-                </DialogActions>
-            </Dialog>
-
-            {/* Case Plan Reject Dialog */}
-            <Dialog open={casePlanRejectDialogOpen} onClose={() => setCasePlanRejectDialogOpen(false)}>
-                <DialogTitle>Reject Case Plan</DialogTitle>
-                <DialogContent>
-                    <Typography gutterBottom>Report ID: {selectedCase?.id}</Typography>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Rejection Reason"
-                        placeholder="Provide detailed reason for rejecting the case plan..."
-                        fullWidth
-                        multiline
-                        rows={4}
-                        value={casePlanRejectionReason}
-                        onChange={(e) => setCasePlanRejectionReason(e.target.value)}
-                        sx={{ mt: 2 }}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => {
-                        setCasePlanRejectDialogOpen(false);
-                        setCasePlanRejectionReason('');
-                    }}>
-                        Cancel
-                    </Button>
-                    <Button
-                        onClick={handleRejectCasePlan}
-                        color="error"
-                        variant="contained"
-                        disabled={!casePlanRejectionReason.trim()}
-                    >
-                        Reject Case Plan
-                    </Button>
                 </DialogActions>
             </Dialog>
 
@@ -1815,10 +1074,7 @@ const DirectorInvestigation = () => {
                 onClose={() => setSnackbar({ ...snackbar, open: false })}
                 anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-                <Alert
-                    severity={snackbar.severity}
-                    onClose={() => setSnackbar({ ...snackbar, open: false })}
-                >
+                <Alert severity={snackbar.severity} sx={{ borderRadius: 2 }}>
                     {snackbar.message}
                 </Alert>
             </Snackbar>
