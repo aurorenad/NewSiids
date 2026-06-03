@@ -18,6 +18,9 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    @Value("${app.frontend-url:http://localhost:5173}")
+    private String frontendUrl;
+
     public void sendOtpEmail(String toEmail, String otp) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
@@ -68,6 +71,27 @@ public class EmailService {
         } catch (MailException e) {
             log.error("Failed to send welcome email", e);
             throw new RuntimeException("Failed to send welcome email", e);
+        }
+    }
+
+    public void sendPasswordSetupEmail(String toEmail, String employeeId, String setupToken) {
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(fromEmail);
+            message.setTo(toEmail);
+            message.setSubject("SIIDS - Set Your Account Password");
+            String setupLink = frontendUrl + "/setup-password?token=" + setupToken;
+            message.setText("Welcome to SIIDS.\n\n"
+                    + "Your account has been created.\n\n"
+                    + "Employee ID (Username): " + employeeId + "\n"
+                    + "Password setup link: " + setupLink + "\n\n"
+                    + "This token expires in 60 minutes and can be used only once.\n\n"
+                    + "If you did not expect this account, contact your system administrator.");
+
+            mailSender.send(message);
+        } catch (MailException e) {
+            log.error("Failed to send password setup email", e);
+            throw new RuntimeException("Failed to send password setup email", e);
         }
     }
 }

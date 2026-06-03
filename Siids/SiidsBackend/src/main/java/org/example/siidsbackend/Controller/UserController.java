@@ -7,6 +7,7 @@ import org.example.siidsbackend.Service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,59 +25,22 @@ public class UserController {
     @Autowired
     private UserService service;
 
-
-    @Autowired
-    private org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
-
-
-    @Autowired
-    private org.example.siidsbackend.Repository.UserRepo userRepo;
-
-
     @PostMapping("/register")
-    public User register(@RequestBody User user) {
-        return service.register(user);
+    public ResponseEntity<?> register(@RequestBody User user) {
+        return ResponseEntity.status(HttpStatus.GONE)
+                .body(Map.of("error", "Public registration is disabled. Contact a system administrator."));
     }
 
     @PostMapping("/admin/register-user")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
-    public ResponseEntity<?> adminRegisterUser(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> adminRegisterUser(@RequestBody Map<String, String> request, Authentication authentication) {
         try {
-            String username = request.get("username");
-            String role = request.get("role");
-
-            if (username == null || role == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Username and role are required"));
-            }
-
-            // Verify employee
-            Optional<Employee> employeeOpt = employeeRepo.findByEmployeeId(username);
-            if (employeeOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Employee not found with ID: " + username));
-            }
-
-            // Check if user already exists
-            User existingUser = userRepo.findByUsername(username).orElse(null);
-            if (existingUser != null) {
-                return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of("error", "A user account for this Employee ID already exists."));
-            }
-
-            // Create user
-            User user = new User();
-            user.setUsername(username);
-            user.setRole(role);
-            user.setPassword(java.util.UUID.randomUUID().toString()); // Placeholder password
-            service.register(user);
-
-            // Send specialized welcome email
-            Map<String, String> emailResult = service.sendWelcomeEmail(username);
-            if (emailResult.containsKey("error")) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body(Map.of("error", "User registered, but failed to send welcome email: " + emailResult.get("error")));
-            }
-
-            return ResponseEntity.ok(Map.of("message", "User successfully registered and welcome email sent"));
+            String performedBy = authentication != null ? authentication.getName() : "system";
+            return ResponseEntity.ok(service.adminCreateUser(request, performedBy));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             log.error("Error in admin register", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -104,7 +68,7 @@ public class UserController {
             }
 
             // Get the employee details
-            Optional<Employee> employee = employeeRepo.findByEmployeeId(user.getUsername());
+            Optional<Employee> employee = service.getEmployeeById(user.getUsername());
 
             Map<String, String> response = new HashMap<>();
             response.put("token", result.get("token"));
@@ -192,6 +156,23 @@ public class UserController {
         }
     }
 
+    @PostMapping("/setup-password")
+    public ResponseEntity<?> setupPassword(@RequestBody Map<String, String> request) {
+        try {
+            Map<String, String> result = service.setupPassword(request.get("token"), request.get("newPassword"));
+
+            if (result.containsKey("error")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("error", "Failed to setup password");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
     @org.springframework.web.bind.annotation.GetMapping("/users")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
     public java.util.List<User> getAllUsers() {
@@ -200,10 +181,12 @@ public class UserController {
 
     @org.springframework.web.bind.annotation.PutMapping("/users/{id}/role")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
-    public ResponseEntity<?> updateUserRole(@org.springframework.web.bind.annotation.PathVariable Integer id, @RequestBody Map<String, String> request) {
+    public ResponseEntity<?> updateUserRole(@org.springframework.web.bind.annotation.PathVariable Integer id, @RequestBody Map<String, String> request, Authentication authentication) {
         try {
             String role = request.get("role");
-            User updatedUser = service.updateUserRole(id, role);
+            String reason = request.get("reason");
+            String performedBy = authentication != null ? authentication.getName() : "system";
+            User updatedUser = service.updateUserRole(id, role, performedBy, reason);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
@@ -214,9 +197,10 @@ public class UserController {
 
     @org.springframework.web.bind.annotation.PutMapping("/users/{id}/deactivate")
     @org.springframework.security.access.prepost.PreAuthorize("hasAnyAuthority('Admin', 'admin')")
-    public ResponseEntity<?> toggleUserActiveStatus(@org.springframework.web.bind.annotation.PathVariable Integer id) {
+    public ResponseEntity<?> toggleUserActiveStatus(@org.springframework.web.bind.annotation.PathVariable Integer id, Authentication authentication) {
         try {
-            User updatedUser = service.toggleUserActiveStatus(id);
+            String performedBy = authentication != null ? authentication.getName() : "system";
+            User updatedUser = service.toggleUserActiveStatus(id, performedBy);
             return ResponseEntity.ok(updatedUser);
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();

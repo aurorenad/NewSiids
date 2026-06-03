@@ -81,3 +81,6 @@ Screenshot*.png
 
 # Accidental root package lock; keep the frontend lockfile instead
 /package-lock.json
+
+# Local documentation and audit notes
+/docs/

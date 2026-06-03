@@ -11,6 +11,7 @@ const UNAUTHENTICATED_ENDPOINTS = [
     '/forgot-password',
     '/verify-otp',
     '/reset-password',
+    '/setup-password',
     '/api/auth/refresh'
 ];
 

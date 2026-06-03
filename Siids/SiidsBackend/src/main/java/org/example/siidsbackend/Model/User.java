@@ -30,6 +30,18 @@ public class User {
     @Column(name = "active", columnDefinition = "boolean default true")
     private Boolean active = true;
 
+    @Column(name = "auth_provider")
+    private String authProvider = "LOCAL";
+
+    @Column(name = "external_subject_id")
+    private String externalSubjectId;
+
+    @Column(name = "password_setup_token")
+    private String passwordSetupToken;
+
+    @Column(name = "password_setup_expiry_time")
+    private LocalDateTime passwordSetupExpiryTime;
+
     public Integer getId() {
         return id;
     }
@@ -85,13 +97,46 @@ public class User {
         this.active = active;
     }
 
+    public String getAuthProvider() {
+        return authProvider;
+    }
+
+    public void setAuthProvider(String authProvider) {
+        this.authProvider = authProvider;
+    }
+
+    public String getExternalSubjectId() {
+        return externalSubjectId;
+    }
+
+    public void setExternalSubjectId(String externalSubjectId) {
+        this.externalSubjectId = externalSubjectId;
+    }
+
+    public String getPasswordSetupToken() {
+        return passwordSetupToken;
+    }
+
+    public void setPasswordSetupToken(String passwordSetupToken) {
+        this.passwordSetupToken = passwordSetupToken;
+    }
+
+    public LocalDateTime getPasswordSetupExpiryTime() {
+        return passwordSetupExpiryTime;
+    }
+
+    public void setPasswordSetupExpiryTime(LocalDateTime passwordSetupExpiryTime) {
+        this.passwordSetupExpiryTime = passwordSetupExpiryTime;
+    }
+
     @Override
     public String toString() {
         return "User{" +
                 "id=" + id +
                 ", username='" + username + '\'' +
-                ", password='" + password + '\'' +
                 ", role='" + role + '\'' +
+                ", active=" + active +
+                ", authProvider='" + authProvider + '\'' +
                 '}';
     }
 }

@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(request -> request
                         // RULE 1: Global Open Endpoints
                         .requestMatchers("/login", "/register", "/ws-notifications/**", "/api/auth/**",
-                                "/reset-password", "/verify-otp", "/forgot-password", "/error")
+                                "/reset-password", "/setup-password", "/verify-otp", "/forgot-password", "/error")
                         .permitAll()
                         
                         // RULE 2: Specific Stock Bypass (For Debugging 403)

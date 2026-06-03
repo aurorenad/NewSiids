@@ -1,10 +1,14 @@
 package org.example.siidsbackend.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.siidsbackend.Model.AccountAuditLog;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
+import org.example.siidsbackend.Model.UserRoleHistory;
+import org.example.siidsbackend.Repository.AccountAuditLogRepository;
 import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Repository.UserRepo;
+import org.example.siidsbackend.Repository.UserRoleHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -15,11 +19,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -41,6 +50,12 @@ public class UserService {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private UserRoleHistoryRepository userRoleHistoryRepository;
+
+    @Autowired
+    private AccountAuditLogRepository accountAuditLogRepository;
+
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
 
     private User getSingleUser(String username) {
@@ -51,6 +66,54 @@ public class UserService {
         user.setPassword(encoder.encode(user.getPassword()));
         repo.save(user);
         return user;
+    }
+
+    public Map<String, String> adminCreateUser(Map<String, String> request, String performedBy) {
+        String employeeId = trim(request.getOrDefault("employeeId", request.get("username")));
+        String role = trim(request.get("role"));
+        String givenName = trim(request.get("givenName"));
+        String familyName = trim(request.get("familyName"));
+        String workEmail = trim(request.get("workEmail"));
+        String phoneNumber = trim(request.get("phoneNumber"));
+
+        if (employeeId == null || role == null || givenName == null || familyName == null || workEmail == null) {
+            throw new IllegalArgumentException("Employee ID, given name, family name, work email, and role are required");
+        }
+
+        if (repo.findByUsername(employeeId).isPresent()) {
+            throw new IllegalStateException("A user account for this Employee ID already exists.");
+        }
+
+        Employee employee = employeeRepo.findByEmployeeId(employeeId).orElseGet(Employee::new);
+        employee.setEmployeeId(employeeId);
+        employee.setGivenName(givenName);
+        employee.setFamilyName(familyName);
+        employee.setWorkEmail(workEmail);
+        employee.setPhoneNumber(phoneNumber);
+        applyEmployeeDefaults(employee);
+        employeeRepo.save(employee);
+
+        User user = new User();
+        user.setUsername(employeeId);
+        user.setRole(role);
+        user.setActive(true);
+        user.setAuthProvider("LOCAL");
+        user.setPassword(encoder.encode(UUID.randomUUID().toString()));
+        String rawSetupToken = UUID.randomUUID().toString();
+        user.setPasswordSetupToken(hashToken(rawSetupToken));
+        user.setPasswordSetupExpiryTime(LocalDateTime.now().plusMinutes(60));
+        repo.save(user);
+
+        recordRoleHistory(user, null, role, performedBy, "Initial user onboarding");
+        recordAccountAudit("USER_CREATED", employeeId, performedBy, "Created employee profile and user account with role " + role);
+
+        emailService.sendPasswordSetupEmail(workEmail, employeeId, rawSetupToken);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "User created and password setup email sent");
+        response.put("username", employeeId);
+        response.put("role", role);
+        return response;
     }
 
     public Map<String, String> verify(User user) {
@@ -246,19 +309,123 @@ public class UserService {
         return response;
     }
 
+    public Map<String, String> setupPassword(String token, String newPassword) {
+        Map<String, String> response = new HashMap<>();
+
+        if (token == null || token.isBlank() || newPassword == null || newPassword.isBlank()) {
+            response.put("error", "Token and new password are required");
+            return response;
+        }
+
+        User user = repo.findByPasswordSetupToken(hashToken(token))
+                .orElse(null);
+
+        if (user == null) {
+            response.put("error", "Invalid password setup token");
+            return response;
+        }
+
+        if (user.getPasswordSetupExpiryTime() == null || user.getPasswordSetupExpiryTime().isBefore(LocalDateTime.now())) {
+            response.put("error", "Password setup token expired");
+            return response;
+        }
+
+        user.setPassword(encoder.encode(newPassword));
+        user.setPasswordSetupToken(null);
+        user.setPasswordSetupExpiryTime(null);
+        user.setActive(true);
+        repo.save(user);
+
+        recordAccountAudit("PASSWORD_SETUP_COMPLETED", user.getUsername(), user.getUsername(), "User completed password setup");
+
+        response.put("message", "Password created successfully");
+        return response;
+    }
+
     public java.util.List<User> getAllUsers() {
         return repo.findAll();
     }
 
+    public Optional<Employee> getEmployeeById(String employeeId) {
+        return employeeRepo.findByEmployeeId(employeeId);
+    }
+
     public User updateUserRole(Integer id, String role) {
+        return updateUserRole(id, role, "system", null);
+    }
+
+    public User updateUserRole(Integer id, String role, String performedBy, String reason) {
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        String previousRole = user.getRole();
         user.setRole(role);
-        return repo.save(user);
+        User saved = repo.save(user);
+        recordRoleHistory(saved, previousRole, role, performedBy, reason);
+        recordAccountAudit("USER_ROLE_UPDATED", saved.getUsername(), performedBy,
+                "Role changed from " + previousRole + " to " + role);
+        return saved;
     }
 
     public User toggleUserActiveStatus(Integer id) {
+        return toggleUserActiveStatus(id, "system");
+    }
+
+    public User toggleUserActiveStatus(Integer id, String performedBy) {
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         user.setActive(user.getActive() == null ? false : !user.getActive());
-        return repo.save(user);
+        User saved = repo.save(user);
+        recordAccountAudit(Boolean.TRUE.equals(saved.getActive()) ? "USER_ACTIVATED" : "USER_DEACTIVATED",
+                saved.getUsername(), performedBy, "Active status changed to " + saved.getActive());
+        return saved;
+    }
+
+    private void applyEmployeeDefaults(Employee employee) {
+        employee.setProfileFlag(employee.isProfileFlag());
+        employee.setCurrJobFlag(employee.isCurrJobFlag());
+        employee.setRraJobCount(employee.getRraJobCount());
+        employee.setExtJobCount(employee.getExtJobCount());
+        employee.setPunished(employee.isPunished());
+        employee.setConfirmStatus(employee.isConfirmStatus());
+        employee.setLetterConfirm(employee.getLetterConfirm());
+        employee.setJobDescriptionsConfirm(employee.getJobDescriptionsConfirm());
+        employee.setPmappConfirm(employee.getPmappConfirm());
+        employee.setAppealLetterConfirm(employee.getAppealLetterConfirm());
+    }
+
+    private void recordRoleHistory(User user, String previousRole, String newRole, String performedBy, String reason) {
+        UserRoleHistory history = new UserRoleHistory();
+        history.setUser(user);
+        history.setUsername(user.getUsername());
+        history.setPreviousRole(previousRole);
+        history.setNewRole(newRole);
+        history.setChangedBy(performedBy);
+        history.setReason(reason);
+        userRoleHistoryRepository.save(history);
+    }
+
+    private void recordAccountAudit(String action, String targetUsername, String performedBy, String details) {
+        AccountAuditLog auditLog = new AccountAuditLog();
+        auditLog.setAction(action);
+        auditLog.setTargetUsername(targetUsername);
+        auditLog.setPerformedBy(performedBy);
+        auditLog.setDetails(details);
+        accountAuditLogRepository.save(auditLog);
+    }
+
+    private String trim(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String hashToken(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 is not available", e);
+        }
     }
 }

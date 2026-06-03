@@ -15,7 +15,6 @@ import NewSurveillenceCase from "./Components/SurveillenceOffice/NewSurveillence
 import TaxReportView from "./Components/TaxReportView.jsx";
 import History from './Components/History';
 import NewCase from './Components/TaxReportForm.jsx';
-import Register from './Components/Register';
 import './App.css';
 import { ClaimForm as ClaimForm } from "./Components/ClaimForm.jsx";
 import { SClaimForm as SClaimForm } from "./Components/SClaimForm.jsx";
@@ -27,6 +26,7 @@ import FinesReport from "./Components/FinesReport.jsx";
 import DirectorIntelligenceCaseReports from "./Components/DirectorIntelligenceCaseReports.jsx";
 import T3OfficersReports from "./Components/T3OfficersReports.jsx";
 import ForgotPassword from "./Components/ForgotPassword.jsx";
+import SetupPassword from "./Components/SetupPassword.jsx";
 import LegalAdvisor from "./Components/LegalAdvisor.jsx"
 import EditReport from "./Components/EditReport.jsx";
 import StockManagement from "./Components/StockManagement.jsx";
@@ -86,8 +86,8 @@ const withProtected = (element, allowedRoles) => (
 );
 
 const publicRoutes = [
-    { path: "/register", element: <Register /> },
     { path: "/forgot-password", element: <ForgotPassword /> },
+    { path: "/setup-password", element: <SetupPassword /> },
     { path: "/", element: <Login /> },
 ];
 
