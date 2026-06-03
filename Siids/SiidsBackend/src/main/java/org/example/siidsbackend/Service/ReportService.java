@@ -1650,7 +1650,7 @@ public class ReportService {
 
         if (!isLegalAdvisor) {
             org.example.siidsbackend.Model.User user = userRepo.findByUsername(legalAdvisorId).orElse(null);
-            if (!rbacService.hasAnyRole(user, "Admin", "legalAdvisor")) {
+            if (!rbacService.hasAnyRole(user, "Admin", "LegalAdvisor")) {
                 throw new RuntimeException("Employee is not a Legal Advisor");
             }
         }

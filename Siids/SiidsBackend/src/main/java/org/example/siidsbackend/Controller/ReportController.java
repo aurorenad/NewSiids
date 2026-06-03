@@ -811,7 +811,7 @@ public class ReportController {
                     "DirectorInvestigation",
                     "InvestigationOfficer",
                     "AssistantCommissioner",
-                    "legalAdvisor")) {
+                    "LegalAdvisor")) {
                 return; // Privileged role has access
             }
         }
