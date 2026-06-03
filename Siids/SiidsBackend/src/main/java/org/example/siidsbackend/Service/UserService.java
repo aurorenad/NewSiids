@@ -25,6 +25,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
@@ -354,6 +355,24 @@ public class UserService {
         return employeeRepo.findByEmployeeId(employeeId);
     }
 
+    public List<Map<String, Object>> getRoleHistory(String username) {
+        return userRoleHistoryRepository.findByUsernameOrderByChangedAtDesc(username).stream()
+                .map(this::toRoleHistoryResponse)
+                .toList();
+    }
+
+    public List<Map<String, Object>> getAccountAuditLogs() {
+        return accountAuditLogRepository.findAllByOrderByPerformedAtDesc().stream()
+                .map(this::toAccountAuditResponse)
+                .toList();
+    }
+
+    public List<Map<String, Object>> getAccountAuditLogsForUser(String username) {
+        return accountAuditLogRepository.findByTargetUsernameOrderByPerformedAtDesc(username).stream()
+                .map(this::toAccountAuditResponse)
+                .toList();
+    }
+
     public User updateUserRole(Integer id, String role) {
         return updateUserRole(id, role, "system", null);
     }
@@ -413,6 +432,29 @@ public class UserService {
         auditLog.setPerformedBy(performedBy);
         auditLog.setDetails(details);
         accountAuditLogRepository.save(auditLog);
+    }
+
+    private Map<String, Object> toRoleHistoryResponse(UserRoleHistory history) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", history.getId());
+        response.put("username", history.getUsername());
+        response.put("previousRole", history.getPreviousRole());
+        response.put("newRole", history.getNewRole());
+        response.put("changedBy", history.getChangedBy());
+        response.put("changedAt", history.getChangedAt());
+        response.put("reason", history.getReason());
+        return response;
+    }
+
+    private Map<String, Object> toAccountAuditResponse(AccountAuditLog auditLog) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", auditLog.getId());
+        response.put("action", auditLog.getAction());
+        response.put("targetUsername", auditLog.getTargetUsername());
+        response.put("performedBy", auditLog.getPerformedBy());
+        response.put("performedAt", auditLog.getPerformedAt());
+        response.put("details", auditLog.getDetails());
+        return response;
     }
 
     private String trim(String value) {

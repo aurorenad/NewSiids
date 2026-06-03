@@ -18,8 +18,9 @@ import {
   Box,
   Chip,
   CircularProgress,
+  Divider,
 } from '@mui/material';
-import { PersonAdd } from '@mui/icons-material';
+import { History, PersonAdd } from '@mui/icons-material';
 import UserOnboardingForm from './admin/UserOnboardingForm.jsx';
 import RoleSelectField from './admin/RoleSelectField.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
@@ -33,7 +34,11 @@ const SystemAdmin = () => {
   const [error, setError] = useState('');
   const [openRegister, setOpenRegister] = useState(false);
   const [openRole, setOpenRole] = useState(false);
+  const [openHistory, setOpenHistory] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [roleHistory, setRoleHistory] = useState([]);
+  const [accountAudit, setAccountAudit] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [formData, setFormData] = useState({
     employeeId: '',
     givenName: '',
@@ -46,7 +51,8 @@ const SystemAdmin = () => {
   const canCreateUser = hasPermission(authState, PERMISSIONS.USER_CREATE);
   const canUpdateRole = hasPermission(authState, PERMISSIONS.USER_ROLE_UPDATE);
   const canUpdateStatus = hasPermission(authState, PERMISSIONS.USER_STATUS_UPDATE);
-  const hasActions = canUpdateRole || canUpdateStatus;
+  const canViewUserHistory = hasPermission(authState, PERMISSIONS.USER_VIEW);
+  const hasActions = canUpdateRole || canUpdateStatus || canViewUserHistory;
 
   useEffect(() => {
     fetchUsers();
@@ -132,6 +138,35 @@ const SystemAdmin = () => {
     }
   };
 
+  const handleHistoryOpen = async (user) => {
+    setSelectedUser(user);
+    setOpenHistory(true);
+    setHistoryLoading(true);
+    setError('');
+
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { Authorization: `Bearer ${token}` };
+      const [roleHistoryResponse, accountAuditResponse] = await Promise.all([
+        axios.get(`/users/${user.username}/role-history`, { headers }),
+        axios.get(`/users/${user.username}/account-audit-logs`, { headers }),
+      ]);
+      setRoleHistory(roleHistoryResponse.data || []);
+      setAccountAudit(accountAuditResponse.data || []);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error loading user history.');
+      setRoleHistory([]);
+      setAccountAudit([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return '-';
+    return new Date(value).toLocaleString();
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={6}>
@@ -205,6 +240,16 @@ const SystemAdmin = () => {
                         {user.active !== false ? 'Deactivate' : 'Activate'}
                       </Button>
                     )}
+                    {canViewUserHistory && (
+                      <Button
+                        variant="text"
+                        size="small"
+                        startIcon={<History />}
+                        onClick={() => handleHistoryOpen(user)}
+                      >
+                        History
+                      </Button>
+                    )}
                   </TableCell>
                 )}
               </TableRow>
@@ -268,6 +313,99 @@ const SystemAdmin = () => {
             Cancel
           </Button>
           <Button onClick={handleRoleUpdateSubmit}>Save</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openHistory}
+        onClose={() => setOpenHistory(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          User History {selectedUser?.username ? `- ${selectedUser.username}` : ''}
+        </DialogTitle>
+        <DialogContent dividers>
+          {historyLoading ? (
+            <Box display="flex" justifyContent="center" py={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                Role Changes
+              </Typography>
+              <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Changed At</TableCell>
+                      <TableCell>Previous Role</TableCell>
+                      <TableCell>New Role</TableCell>
+                      <TableCell>Changed By</TableCell>
+                      <TableCell>Reason</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {roleHistory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5}>No role history found.</TableCell>
+                      </TableRow>
+                    ) : (
+                      roleHistory.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>{formatDateTime(entry.changedAt)}</TableCell>
+                          <TableCell>{entry.previousRole || '-'}</TableCell>
+                          <TableCell>{entry.newRole}</TableCell>
+                          <TableCell>{entry.changedBy || '-'}</TableCell>
+                          <TableCell>{entry.reason || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              <Divider sx={{ mb: 2 }} />
+
+              <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                Account Audit
+              </Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Performed At</TableCell>
+                      <TableCell>Action</TableCell>
+                      <TableCell>Performed By</TableCell>
+                      <TableCell>Details</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {accountAudit.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4}>No account audit logs found.</TableCell>
+                      </TableRow>
+                    ) : (
+                      accountAudit.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>{formatDateTime(entry.performedAt)}</TableCell>
+                          <TableCell>{entry.action}</TableCell>
+                          <TableCell>{entry.performedBy || '-'}</TableCell>
+                          <TableCell>{entry.details || '-'}</TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenHistory(false)} variant="outlined">
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

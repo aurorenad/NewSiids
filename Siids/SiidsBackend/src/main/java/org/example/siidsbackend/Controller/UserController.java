@@ -185,6 +185,24 @@ public class UserController {
         return service.getAllUsers();
     }
 
+    @GetMapping("/users/{username}/role-history")
+    @PreAuthorize("hasAnyAuthority('USER_VIEW', 'AUDIT_VIEW')")
+    public List<Map<String, Object>> getUserRoleHistory(@PathVariable String username) {
+        return service.getRoleHistory(username);
+    }
+
+    @GetMapping("/account-audit-logs")
+    @PreAuthorize("hasAuthority('AUDIT_VIEW')")
+    public List<Map<String, Object>> getAccountAuditLogs() {
+        return service.getAccountAuditLogs();
+    }
+
+    @GetMapping("/users/{username}/account-audit-logs")
+    @PreAuthorize("hasAnyAuthority('USER_VIEW', 'AUDIT_VIEW')")
+    public List<Map<String, Object>> getUserAccountAuditLogs(@PathVariable String username) {
+        return service.getAccountAuditLogsForUser(username);
+    }
+
     @PutMapping("/users/{id}/role")
     @PreAuthorize("hasAuthority('USER_ROLE_UPDATE')")
     public ResponseEntity<?> updateUserRole(@PathVariable Integer id, @RequestBody Map<String, String> request, Authentication authentication) {
