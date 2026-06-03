@@ -141,6 +141,25 @@ public class PhysicalStockService {
         return seizureNoteRepository.findByPvInChargeOrderByCreatedAtDesc(officer);
     }
 
+    public List<SeizureNote> getSeizureHistory(String username) {
+        if (isAdminUsername(username)) {
+            return seizureNoteRepository.findAllByOrderByCreatedAtDesc();
+        }
+        return getSeizureHistory(getEmployeeByUsername(username));
+    }
+
+    private boolean isAdminUsername(String username) {
+        return userRepo.findByUsername(username)
+                .map(User::getRole)
+                .map(this::normalizeRole)
+                .map("admin"::equals)
+                .orElse(false);
+    }
+
+    private String normalizeRole(String role) {
+        return role == null ? "" : role.replace("ROLE_", "").replace(" ", "").replace("_", "").toLowerCase();
+    }
+
     public String generateNextSeizureNumber() {
         String currentYear = String.valueOf(LocalDateTime.now().getYear());
         String prefix = "SN-" + currentYear + "-";

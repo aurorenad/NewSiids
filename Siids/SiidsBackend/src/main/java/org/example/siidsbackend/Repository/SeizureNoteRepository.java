@@ -12,6 +12,7 @@ import java.util.Optional;
 @Repository
 public interface SeizureNoteRepository extends JpaRepository<SeizureNote, Integer> {
     List<SeizureNote> findByStatus(PhysicalStockStatus status);
+    List<SeizureNote> findAllByOrderByCreatedAtDesc();
     List<SeizureNote> findByPvInChargeOrderByCreatedAtDesc(Employee officer);
     Optional<SeizureNote> findFirstByOrderByCreatedAtDesc();
     Optional<SeizureNote> findFirstBySeizureNumberStartingWithOrderByIdDesc(String prefix);

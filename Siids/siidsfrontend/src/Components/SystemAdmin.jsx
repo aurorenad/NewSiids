@@ -9,6 +9,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  TextField,
   Button,
   Dialog,
   DialogTitle,
@@ -48,6 +49,7 @@ const SystemAdmin = () => {
     role: '',
   });
   const [newRole, setNewRole] = useState('');
+  const [roleChangeReason, setRoleChangeReason] = useState('');
   const canCreateUser = hasPermission(authState, PERMISSIONS.USER_CREATE);
   const canUpdateRole = hasPermission(authState, PERMISSIONS.USER_ROLE_UPDATE);
   const canUpdateStatus = hasPermission(authState, PERMISSIONS.USER_STATUS_UPDATE);
@@ -119,19 +121,26 @@ const SystemAdmin = () => {
   const handleRoleUpdateOpen = (user) => {
     setSelectedUser(user);
     setNewRole(user.role);
+    setRoleChangeReason('');
     setOpenRole(true);
   };
 
   const handleRoleUpdateSubmit = async () => {
     if (!selectedUser) return;
+    if (!roleChangeReason.trim()) {
+      setError('Role change reason is required.');
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       await axios.put(
         `/users/${selectedUser.id}/role`,
-        { role: newRole },
+        { role: newRole, reason: roleChangeReason.trim() },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       setOpenRole(false);
+      setRoleChangeReason('');
       fetchUsers();
     } catch (err) {
       setError(err.response?.data?.error || err.response?.data?.message || 'Error updating role.');
@@ -289,7 +298,10 @@ const SystemAdmin = () => {
       {/* Edit Role Dialog */}
       <Dialog
         open={openRole}
-        onClose={() => setOpenRole(false)}
+        onClose={() => {
+          setOpenRole(false);
+          setRoleChangeReason('');
+        }}
         maxWidth="xs"
         fullWidth
         PaperProps={{
@@ -307,12 +319,31 @@ const SystemAdmin = () => {
             onChange={(e) => setNewRole(e.target.value)}
             sx={{ mt: 1 }}
           />
+          <TextField
+            label="Reason for role change"
+            value={roleChangeReason}
+            onChange={(e) => setRoleChangeReason(e.target.value)}
+            required
+            multiline
+            minRows={3}
+            fullWidth
+            margin="normal"
+            placeholder="Example: Employee transferred from Investigation to Legal unit."
+          />
         </DialogContent>
         <DialogActions sx={{ px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 2.5 }, flexWrap: 'wrap', gap: 1 }}>
-          <Button onClick={() => setOpenRole(false)} variant="outlined">
+          <Button
+            onClick={() => {
+              setOpenRole(false);
+              setRoleChangeReason('');
+            }}
+            variant="outlined"
+          >
             Cancel
           </Button>
-          <Button onClick={handleRoleUpdateSubmit}>Save</Button>
+          <Button onClick={handleRoleUpdateSubmit} disabled={!newRole || !roleChangeReason.trim()}>
+            Save
+          </Button>
         </DialogActions>
       </Dialog>
 

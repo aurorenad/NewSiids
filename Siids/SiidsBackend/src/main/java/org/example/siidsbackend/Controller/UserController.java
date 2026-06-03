@@ -1,10 +1,10 @@
 package org.example.siidsbackend.Controller;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,10 +25,10 @@ import java.util.Optional;
 @RestController
 @CrossOrigin(origins = {"http://localhost:3000", "http://localhost:5173", "http://localhost:5174"})
 @Slf4j
+@RequiredArgsConstructor
 public class UserController {
 
-    @Autowired
-    private UserService service;
+    private final UserService service;
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User user) {
@@ -212,6 +212,8 @@ public class UserController {
             String performedBy = authentication != null ? authentication.getName() : "system";
             User updatedUser = service.updateUserRole(id, role, performedBy, reason);
             return ResponseEntity.ok(updatedUser);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to update user role");

@@ -1,8 +1,8 @@
 package org.example.siidsbackend.Controller;
 
+import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.Model.Informer;
 import org.example.siidsbackend.Service.InformerService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -11,10 +11,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/informers")
+@RequiredArgsConstructor
 public class InformerController {
 
-    @Autowired
-    private InformerService informerService;
+    private final InformerService informerService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('INFORMER_MANAGE')")

@@ -374,17 +374,26 @@ public class UserService {
     }
 
     public User updateUserRole(Integer id, String role) {
-        return updateUserRole(id, role, "system", null);
+        return updateUserRole(id, role, "system", "System role update");
     }
 
     public User updateUserRole(Integer id, String role, String performedBy, String reason) {
+        String normalizedRoleInput = trim(role);
+        String normalizedReason = trim(reason);
+        if (normalizedRoleInput == null) {
+            throw new IllegalArgumentException("Role is required");
+        }
+        if (normalizedReason == null) {
+            throw new IllegalArgumentException("Role change reason is required");
+        }
+
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         String previousRole = user.getRole();
-        user.setRole(role);
+        user.setRole(normalizedRoleInput);
         User saved = repo.save(user);
-        recordRoleHistory(saved, previousRole, role, performedBy, reason);
+        recordRoleHistory(saved, previousRole, normalizedRoleInput, performedBy, normalizedReason);
         recordAccountAudit("USER_ROLE_UPDATED", saved.getUsername(), performedBy,
-                "Role changed from " + previousRole + " to " + role);
+                "Role changed from " + previousRole + " to " + normalizedRoleInput + ". Reason: " + normalizedReason);
         return saved;
     }
 

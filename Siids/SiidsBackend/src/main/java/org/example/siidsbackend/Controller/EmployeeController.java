@@ -3,7 +3,6 @@ package org.example.siidsbackend.Controller;
 import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Service.employeeService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -12,8 +11,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/employees")
 @RequiredArgsConstructor
 public class EmployeeController {
-    @Autowired
-    private  final employeeService employeeService;
+    private final employeeService employeeService;
 
     @GetMapping("/{employeeId}")
     @PreAuthorize("hasAuthority('EMPLOYEE_VIEW')")

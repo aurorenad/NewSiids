@@ -1,8 +1,8 @@
 package org.example.siidsbackend.Controller;
 
+import lombok.RequiredArgsConstructor;
 import org.example.siidsbackend.Model.structures;
 import org.example.siidsbackend.Service.ReportService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,10 +13,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/departments")
+@RequiredArgsConstructor
 public class DepartmentsController {
 
-    @Autowired
-    private ReportService reportService;
+    private final ReportService reportService;
+
     @GetMapping
     @PreAuthorize("hasAuthority('DEPARTMENT_VIEW')")
     public ResponseEntity<List<structures>> getDepartments() {

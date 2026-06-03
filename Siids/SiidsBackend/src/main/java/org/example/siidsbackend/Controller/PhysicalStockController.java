@@ -37,7 +37,7 @@ public class PhysicalStockController {
     @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getSeizureHistory() {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(physicalStockService.getSeizureHistory(physicalStockService.getEmployeeByUsername(username)));
+        return ResponseEntity.ok(physicalStockService.getSeizureHistory(username));
     }
 
     @GetMapping("/temporary/next-reference")
