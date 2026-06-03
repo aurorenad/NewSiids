@@ -185,6 +185,57 @@ public class ReportService {
     }
 
     @Transactional
+    public Map<String, Object> generateInvestigationDraft(Report report) {
+        Map<String, Object> draft = new HashMap<>();
+
+        // Generate Summary
+        StringBuilder summary = new StringBuilder();
+        if (report.getRelatedCase() != null) {
+            summary.append("Case Summary: ").append(report.getRelatedCase().getSummaryOfInformationCase()).append("\n");
+            summary.append("Department: ").append(report.getRelatedCase().getDepartmentName()).append("\n");
+            if (report.getRelatedCase().getEstimatedEvasionAmount() != null) {
+                summary.append("Estimated Evasion Amount: RWF ").append(report.getRelatedCase().getEstimatedEvasionAmount()).append("\n");
+            }
+        }
+        if (report.getDescription() != null && !report.getDescription().isEmpty()) {
+            summary.append("\nInitial Report Description:\n").append(report.getDescription());
+        }
+        draft.put("summary", summary.toString().trim());
+
+        // Generate Findings (from previous data if any, or empty)
+        StringBuilder findings = new StringBuilder();
+        if (report.getAssignmentNotes() != null && !report.getAssignmentNotes().isEmpty()) {
+            findings.append("Assignment Notes:\n").append(report.getAssignmentNotes()).append("\n\n");
+        }
+        if (report.getCasePlanDescription() != null && !report.getCasePlanDescription().isEmpty()) {
+            findings.append("Case Plan Strategy:\n").append(report.getCasePlanDescription()).append("\n\n");
+        }
+        draft.put("findings", findings.toString().trim());
+
+        // Process Evidence Attachments (filtering to exclude non-evidence, assuming paths with 'evidence' or taking all if none explicitly tagged)
+        List<String> evidenceFiles = new ArrayList<>();
+        if (report.getAttachmentPaths() != null) {
+            for (String path : report.getAttachmentPaths()) {
+                String lowerPath = path.toLowerCase();
+                // Simple heuristic for evidence tags based on file paths
+                if (lowerPath.contains("evidence") || lowerPath.contains("proof") || lowerPath.endsWith(".pdf") || lowerPath.endsWith(".jpg") || lowerPath.endsWith(".png")) {
+                    evidenceFiles.add(path);
+                }
+            }
+        }
+        draft.put("evidencePaths", evidenceFiles);
+        draft.put("evidenceText", "Gathered " + evidenceFiles.size() + " supporting documents.");
+
+        // Generate Conclusion
+        draft.put("conclusion", "Based on the preliminary findings and evidence gathered, the investigation indicates...");
+
+        // Update Report generation type
+        report.setGenerationType("AUTO_GENERATED");
+        reportRepo.save(report);
+
+        return draft;
+    }
+
     public Report generateFinalReport(Integer reportId) throws Exception {
         Report report = getReport(reportId);
         

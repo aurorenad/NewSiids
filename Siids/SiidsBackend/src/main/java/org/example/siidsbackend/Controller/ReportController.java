@@ -587,6 +587,18 @@ public class ReportController {
     }
 
     //
+    @PostMapping("/{id}/generate-draft")
+    public ResponseEntity<?> generateFinalDraft(@PathVariable Integer id, Authentication authentication) {
+        try {
+            Report report = reportService.getReport(id);
+            Map<String, Object> draft = reportService.generateInvestigationDraft(report);
+            return ResponseEntity.ok(draft);
+        } catch (Exception e) {
+            log.error("Error generating final draft: ", e);
+            return ResponseEntity.badRequest().body("Failed to generate draft: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/{id}/generate")
     @PreAuthorize("hasAnyRole('Admin', 'IntelligenceOfficer', 'DirectorIntelligence', 'AssistantCommissioner')")
     public ResponseEntity<?> generateFinalReport(@PathVariable Integer id) {
