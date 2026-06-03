@@ -24,6 +24,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +61,7 @@ public class ReportController {
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("application/pdf");
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<?> createReport(
             @RequestPart("reportData") String reportDataJson,
             @RequestPart(value = "attachments", required = false) MultipartFile[] attachments, // Change to array
@@ -96,6 +98,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/attachment")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<?> downloadAttachment(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -199,6 +202,7 @@ public class ReportController {
     }
 
     @PostMapping(value = "/{id}/submit-findings", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<?> submitFindings(
             @PathVariable Integer id,
             @RequestPart("findingsData") String findingsDataJson,
@@ -225,6 +229,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/findings-attachments/by-name/{filename}")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<?> downloadFindingsAttachmentByName(
             @PathVariable Integer id,
             @PathVariable String filename,
@@ -264,6 +269,7 @@ public class ReportController {
     }
 
     @GetMapping("/my-reports")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getMyReports(
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -281,6 +287,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<ReportResponseDTO> getReport(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -295,6 +302,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/participants")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<Map<String, String>> getReportParticipants(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -353,6 +361,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-director-intelligence")
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<?> sendToDirectorIntelligence(
             @PathVariable("id") Integer reportId,
             Authentication authentication) {
@@ -367,6 +376,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-commissioner-intelligence")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<?> sendToAssistantCommissioner(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -381,6 +391,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-director-investigation")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<?> sendToDirectorInvestigation(
             @PathVariable("id") Integer reportId,
             Authentication authentication) {
@@ -395,6 +406,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/return")
+    @PreAuthorize("hasAnyAuthority('REPORT_APPROVE_INTELLIGENCE', 'REPORT_APPROVE_INVESTIGATION', 'REPORT_APPROVE_ASSISTANT_COMMISSIONER', 'LEGAL_REVIEW')")
     public ResponseEntity<?> returnReport(
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
@@ -419,6 +431,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-intelligence/reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<List<ReportResponseDTO>> getReportsForDirectorIntelligence(
             Authentication authentication) {
         String directorId = authentication.getName();
@@ -439,6 +452,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<?> approveReport(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -454,6 +468,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<?> rejectReport(
             @PathVariable Integer id,
             @RequestParam(required = false) String rejectionReason,
@@ -470,6 +485,7 @@ public class ReportController {
     }
 
     @GetMapping("/assistant-commissioner/approved-reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<?> getApprovedReportsForAssistantCommissioner(
             Authentication authentication) {
         try {
@@ -490,6 +506,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-investigation/approved-reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<List<ReportResponseDTO>> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(
             Authentication authentication) {
         String directorId = authentication.getName();
@@ -511,6 +528,7 @@ public class ReportController {
     }
 
     @PatchMapping("/{id}/investigation-status")
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<?> updateInvestigationStatus(
             @PathVariable Integer id,
             @RequestBody Map<String, String> payload,
@@ -528,6 +546,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/assign-to-investigation-officer")
+    @PreAuthorize("hasAuthority('REPORT_ASSIGN_INVESTIGATION')")
     public ResponseEntity<?> assignToInvestigationOfficer(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
@@ -547,6 +566,7 @@ public class ReportController {
     }
 
     @GetMapping({"/available-investigation-officers", "/investigation-officers"})
+    @PreAuthorize("hasAuthority('REPORT_ASSIGN_INVESTIGATION')")
     public ResponseEntity<List<Employee>> getAvailableInvestigationOfficersWithHeader(
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -561,6 +581,7 @@ public class ReportController {
     }
 
     @GetMapping("/investigation-officer/dashboard-worklist")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getAssignedReportsForInvestigationOfficer(
             Authentication authentication) {
         String officerId = authentication.getName();
@@ -579,6 +600,7 @@ public class ReportController {
 
     //
     @GetMapping("/{id}/findings")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<ReportResponseDTO> getFindings(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -860,6 +882,7 @@ public class ReportController {
     }
 
     @GetMapping("/download/{reportId}/{filename}")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<Resource> downloadReportAttachment(
             @PathVariable Integer reportId,
             @PathVariable String filename,
@@ -869,6 +892,7 @@ public class ReportController {
     }
 
     @GetMapping("/by-case")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getReportsByCaseNum(
             @RequestParam String caseNum,
             Authentication authentication) {
@@ -899,6 +923,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-intelligence/all-reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorIntelligence(
             Authentication authentication) {
         String directorId = authentication.getName();
@@ -918,6 +943,7 @@ public class ReportController {
     }
 
     @GetMapping("/assistant-commissioner/all-reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForAssistantCommissioner(
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -937,6 +963,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-investigation/all-reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorInvestigation(
             Authentication authentication) {
         String directorId = authentication.getName();
@@ -956,6 +983,7 @@ public class ReportController {
     }
 
     @PutMapping("/{id}/update-returned-report")
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<ReportResponseDTO> updateReturnedReport(
             @PathVariable Integer id,
             @RequestBody ReportRequestDTO reportData,
@@ -990,6 +1018,7 @@ public class ReportController {
     }
 
     @GetMapping("/assistant-commissioner/fines-report")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<FinesReportDTO> getFinesReportForAssistantCommissioner(
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -1006,6 +1035,7 @@ public class ReportController {
     }
 
     @GetMapping("/assistant-commissioner/penalties-report")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<FinesReportDTO> getPenaltiesReportForAssistantCommissioner(
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -1022,6 +1052,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-intelligence/case-reports")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<List<DirectorIntelligenceReportDTO>> getDirectorIntelligenceCaseReports(
             Authentication authentication) {
         String directorId = authentication.getName();
@@ -1038,6 +1069,7 @@ public class ReportController {
     }
 
     @GetMapping("/t3-officers-reports")
+    @PreAuthorize("hasAuthority('REPORT_ASSIGN_INVESTIGATION')")
     public ResponseEntity<List<OfficerReportsDTO>> getReportsByT3Officers() {
         try {
             List<OfficerReportsDTO> reports = reportService.getReportsByT3Officers();
@@ -1049,6 +1081,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/receive-case")
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<ReportResponseDTO> receiveCase(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1063,6 +1096,7 @@ public class ReportController {
     }
 
     @GetMapping("/investigation-officer/active-reports")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
             Authentication authentication) {
         String officerId = authentication.getName();
@@ -1082,6 +1116,7 @@ public class ReportController {
     }
 
     @GetMapping("/investigation-officer/all-reports")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
             Authentication authentication) {
         String officerId = authentication.getName();
@@ -1101,6 +1136,7 @@ public class ReportController {
     }
 
     @GetMapping("/investigation-officers/assigned-reports")
+    @PreAuthorize("hasAuthority('REPORT_ASSIGN_INVESTIGATION')")
     public ResponseEntity<List<ReportResponseDTO>> getReportsAssignedToInvestigationOfficers(
             @RequestParam String employeeId) {
         try {
@@ -1125,6 +1161,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send")
+    @PreAuthorize("hasAnyAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER', 'REPORT_APPROVE_INVESTIGATION', 'REPORT_APPROVE_INTELLIGENCE')")
     public ResponseEntity<?> sendReportToDepartment(
             @PathVariable Integer id,
             @RequestBody Map<String, String> request) {
@@ -1142,6 +1179,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-legal-advisor")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<ReportResponseDTO> sendToLegalAdvisor(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1159,6 +1197,7 @@ public class ReportController {
     }
 
     @GetMapping("/legal-advisor/my-reports")
+    @PreAuthorize("hasAuthority('LEGAL_REVIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getReportsForLegalAdvisor(
             Authentication authentication) {
         String legalAdvisorId = authentication.getName();
@@ -1178,6 +1217,7 @@ public class ReportController {
     }
 
     @GetMapping("/legal-advisor/all-reports")
+    @PreAuthorize("hasAuthority('LEGAL_REVIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsWithLegalAdvisors() {
         try {
             List<Report> reports = reportService.getAllReportsWithLegalAdvisors();
@@ -1192,6 +1232,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/return-to-assistant-commissioner")
+    @PreAuthorize("hasAuthority('LEGAL_REVIEW')")
     public ResponseEntity<?> returnToAssistantCommissioner(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
@@ -1228,6 +1269,7 @@ public class ReportController {
     }
 
     @PostMapping(value = "/{id}/return-with-document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('REPORT_APPROVE_INTELLIGENCE', 'REPORT_APPROVE_INVESTIGATION', 'REPORT_APPROVE_ASSISTANT_COMMISSIONER', 'LEGAL_REVIEW')")
     public ResponseEntity<ReportResponseDTO> returnReportWithDocument(
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
@@ -1308,6 +1350,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/return-document")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<Resource> downloadReturnDocument(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1378,6 +1421,7 @@ public class ReportController {
     }
 
     @PutMapping("/{id}/edit")
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<ReportResponseDTO> editReport(
             @PathVariable Integer id,
             @RequestPart("reportData") String reportDataJson,
@@ -1433,6 +1477,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/edit-permission")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<Map<String, Object>> checkEditPermission(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1491,6 +1536,7 @@ public class ReportController {
     }
 
     @PostMapping(value = "/{id}/submit-case-plan", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
     public ResponseEntity<?> submitCasePlan(
             @PathVariable Integer id,
             @RequestPart(value = "casePlanText", required = false) String casePlanDescription,
@@ -1510,6 +1556,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-case-plan-to-assistant-commissioner")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<?> sendCasePlanToAssistantCommissioner(
             @PathVariable("id") Integer id,
             Authentication authentication) {
@@ -1524,6 +1571,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-case-plan-to-director-investigation")
+    @PreAuthorize("hasAuthority('LEGAL_REVIEW')")
     public ResponseEntity<?> sendToDirectorInvestigationFromLegal(
             @PathVariable("id") Integer id,
             Authentication authentication) {
@@ -1541,6 +1589,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-investigation/case-plans")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<List<ReportResponseDTO>> getCasePlansForDirectorInvestigation(
             Authentication authentication) {
         String directorId = authentication.getName();
@@ -1560,6 +1609,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/case-plan")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<ReportResponseDTO> getCasePlan(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1582,6 +1632,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/approve-case-plan")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<?> approveCasePlan(
             @PathVariable("id") Integer id,
             Authentication authentication) {
@@ -1599,6 +1650,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/reject-case-plan")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<?> rejectCasePlan(
             @PathVariable Integer id,
             @RequestParam(required = false) String rejectionReason,
@@ -1617,6 +1669,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/approve-investigation-report")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<?> approveInvestigationReport(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1634,6 +1687,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/reject-investigation-report")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<?> rejectInvestigationReport(
             @PathVariable Integer id,
             @RequestParam String rejectionReason,
@@ -1652,6 +1706,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/return-investigation-report")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
     public ResponseEntity<?> returnInvestigationReport(
             @PathVariable Integer id,
             @RequestBody Map<String, String> requestBody,
@@ -1674,6 +1729,7 @@ public class ReportController {
         }
     }
     @GetMapping("/assistant-commissioner/case-plans")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<?> getCasePlansForAssistantCommissioner(
             Authentication authentication) {
         try {
@@ -1693,6 +1749,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/approve-case-plan-assistant-commissioner")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<?> approveCasePlanByAssistantCommissioner(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -1710,6 +1767,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/reject-case-plan-assistant-commissioner")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<?> rejectCasePlanByAssistantCommissioner(
             @PathVariable Integer id,
             @RequestParam String rejectionReason,
