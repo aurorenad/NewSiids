@@ -204,7 +204,7 @@ const NewSurveillenceCase = () => {
             }
 
             if (response.data) {
-                setTimeout(() => navigate('/surveillence-officer'), 1500);
+                setTimeout(() => navigate(ROUTES.SURVEILLANCE), 1500);
             }
         } catch (err) {
             console.error('Error saving case:', err);

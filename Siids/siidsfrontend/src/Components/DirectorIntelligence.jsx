@@ -15,6 +15,7 @@ import {
     Download, Delete
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
+import { ROUTES, routeTo } from '../constants/routes';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
@@ -538,7 +539,7 @@ const DirectorIntelligence = () => {
                         variant="contained"
                         color="primary"
                         startIcon={<ListAlt />}
-                        onClick={() => navigate('/director-intelligence/case-reports')}
+                        onClick={() => navigate(ROUTES.DIRECTOR_INTELLIGENCE_CASE_REPORTS)}
                         sx={{ ml: 1 }}
                     >
                         Case Reports
@@ -606,7 +607,7 @@ const DirectorIntelligence = () => {
                                         <Box display="flex" gap={0.5} justifyContent="center">
                                             <Tooltip title="View Details">
                                                 <IconButton
-                                                    onClick={() => navigate(`/view-report/${report.id}`)}
+                                                    onClick={() => navigate(routeTo.reportDetails(report.id))}
                                                     size="small"
                                                 >
                                                     <Description fontSize="small" />

@@ -10,6 +10,7 @@ import {
 } from "@mui/icons-material";
 
 import { useNavigate } from 'react-router-dom';
+import { routeTo } from '../constants/routes';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
@@ -190,7 +191,7 @@ const AssistantCommissioner = () => {
                                                 color="primary"
                                                 size="small"
                                                 startIcon={<Description />}
-                                                onClick={() => navigate(`/view-report/${r.id}`)}
+                                                onClick={() => navigate(routeTo.reportDetails(r.id))}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 View

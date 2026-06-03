@@ -132,7 +132,7 @@ const TaxReportView = () => {
             <Box sx={{ p: 3 }}>
                 <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
                 <Box display="flex" gap={2}>
-                    <Button variant="contained" startIcon={<ArrowBack />} onClick={() => navigate('/intelligence-officer')}>
+                    <Button variant="contained" startIcon={<ArrowBack />} onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER)}>
                         Back to Cases
                     </Button>
                     <Button variant="outlined" onClick={fetchCaseDetails}>
@@ -149,7 +149,7 @@ const TaxReportView = () => {
                 <Alert severity="warning" sx={{ mb: 2 }}>
                     Case not found
                 </Alert>
-                <Button variant="contained" startIcon={<ArrowBack />} onClick={() => navigate('/intelligence-officer')}>
+                <Button variant="contained" startIcon={<ArrowBack />} onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER)}>
                     Back to Cases
                 </Button>
             </Box>

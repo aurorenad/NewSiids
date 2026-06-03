@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 import axios from '../api/axios';
 import {
     Link,
@@ -80,7 +81,7 @@ const ForgotPassword = () => {
         try {
             const response = await axios.post('/reset-password', { username: email, otp, newPassword });
             setSuccess(response.data.message || 'Password reset successfully. You can now login.');
-            setTimeout(() => navigate('/'), 2000);
+            setTimeout(() => navigate(ROUTES.LOGIN), 2000);
         } catch (err) {
             setError(err.response?.data?.error || 'Failed to reset password. Please try again.');
         } finally {

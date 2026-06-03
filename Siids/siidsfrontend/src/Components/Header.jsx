@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { NotificationBell } from './../NotificationComponents/NotificationBell.jsx';
 import {
@@ -19,7 +20,7 @@ const Header = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/');
+        navigate(ROUTES.LOGIN);
     };
 
     return (

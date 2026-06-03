@@ -33,6 +33,7 @@ import {
     Gavel as GavelIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes';
 import { CaseService } from '../../api/Axios/caseApi.jsx';
 import { stockApi } from '../../api/stockApi';
 import { AuthContext } from '../../context/AuthContext.jsx';
@@ -203,7 +204,7 @@ const SurveillanceOfficer = () => {
                         <Button
                             variant="outlined"
                             startIcon={<InventoryIcon />}
-                            onClick={() => navigate('/pv/temporary-stock')}
+                            onClick={() => navigate(ROUTES.TEMPORARY_STOCK)}
                             sx={{ 
                                 color: '#003DA5', 
                                 borderColor: '#003DA5',
@@ -219,7 +220,7 @@ const SurveillanceOfficer = () => {
                         <Button
                             variant="contained"
                             startIcon={<AddIcon />}
-                            onClick={() => navigate('/surveillence-officer/new')}
+                            onClick={() => navigate(ROUTES.SURVEILLANCE_NEW)}
                             sx={{ 
                                 backgroundColor: '#009A44', 
                                 '&:hover': { backgroundColor: '#007a33' },
@@ -265,7 +266,7 @@ const SurveillanceOfficer = () => {
                         <Button 
                             variant="contained" 
                             size="small"
-                            onClick={() => navigate('/pv/temporary-stock')}
+                            onClick={() => navigate(ROUTES.TEMPORARY_STOCK)}
                             sx={{ 
                                 backgroundColor: '#F5A800', 
                                 color: '#fff',
@@ -408,7 +409,7 @@ const SurveillanceOfficer = () => {
                                                     {canUpdateCase && (caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
                                                         <Tooltip title="Edit Case">
                                                             <IconButton
-                                                                onClick={() => navigate('/surveillence-officer/edit-case', { state: { caseData: caseItem } })}
+                                                                onClick={() => navigate(ROUTES.SURVEILLANCE_EDIT_CASE, { state: { caseData: caseItem } })}
                                                                 size="small"
                                                                 sx={{ color: 'var(--rra-blue)', backgroundColor: 'rgba(0, 61, 165, 0.05)' }}
                                                             >
@@ -421,7 +422,7 @@ const SurveillanceOfficer = () => {
                                                             variant="contained"
                                                             size="small"
                                                             startIcon={<InventoryIcon fontSize="small" />}
-                                                            onClick={() => navigate('/pv/temporary-stock', { state: { caseRef: caseItem.caseNum } })}
+                                                            onClick={() => navigate(ROUTES.TEMPORARY_STOCK, { state: { caseRef: caseItem.caseNum } })}
                                                             sx={{ 
                                                                 backgroundColor: '#F5A800', 
                                                                 color: '#fff',
@@ -436,7 +437,7 @@ const SurveillanceOfficer = () => {
                                                     )}
                                                     <Tooltip title="View Case">
                                                         <IconButton
-                                                            onClick={() => navigate(`/surveillence-officer/view/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                            onClick={() => navigate(routeTo.surveillanceViewCase(caseItem.caseNum))}
                                                             size="small"
                                                             sx={{ color: '#003DA5', backgroundColor: 'rgba(0, 61, 165, 0.1)' }}
                                                         >

@@ -123,7 +123,7 @@ const InvestigationOfficer = () => {
                                 <TableCell align="center">
                                     <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                                         <Tooltip title="View Details">
-                                            <IconButton color="info" onClick={() => navigate(`/view-report/${r.id}`)}><Visibility /></IconButton>
+                                            <IconButton color="info" onClick={() => navigate(routeTo.reportDetails(r.id))}><Visibility /></IconButton>
                                         </Tooltip>
                                         
                                         {canCreateReport && (

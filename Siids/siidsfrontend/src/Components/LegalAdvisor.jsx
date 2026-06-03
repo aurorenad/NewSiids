@@ -456,7 +456,7 @@ const LegalAdvisorDashboard = () => {
                                                     <IconButton
                                                         color="primary"
                                                         component={Link}
-                                                        to={`/reports/${report.id}/findings`}
+                                                        to={routeTo.reportFindings(report.id)}
                                                         size="small"
                                                     >
                                                         <VisibilityIcon fontSize="small" />

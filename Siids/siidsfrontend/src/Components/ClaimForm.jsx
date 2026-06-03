@@ -121,7 +121,7 @@ export const ClaimForm = () => {
 
             // Navigate back after successful submission
             setTimeout(() => {
-                navigate('/intelligence-officer', {
+                navigate(ROUTES.INTELLIGENCE_OFFICER, {
                     state: {
                         newReport: response,
                         caseNum: caseNum,
@@ -159,7 +159,7 @@ export const ClaimForm = () => {
         setAttachments([]);
         setError('');
         setSuccess('');
-        navigate('/intelligence-officer');
+        navigate(ROUTES.INTELLIGENCE_OFFICER);
     };
 
     const formatFileSize = (bytes) => {

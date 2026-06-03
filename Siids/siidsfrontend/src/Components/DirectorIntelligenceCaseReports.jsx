@@ -9,6 +9,7 @@ import {
 import { Search, Description } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import { useNavigate } from 'react-router-dom';
+import { routeTo } from '../constants/routes';
 
 const DirectorIntelligenceCaseReports = () => {
     const [reports, setReports] = useState([]);
@@ -201,7 +202,7 @@ const DirectorIntelligenceCaseReports = () => {
                                         <Box display="flex" gap={1}>
                                             <Tooltip title="View Details">
                                                 <IconButton
-                                                    onClick={() => navigate(`/view-report/${report.id}`)}
+                                                    onClick={() => navigate(routeTo.reportDetails(report.id))}
                                                     size="small"
                                                 >
                                                     <Description fontSize="small" />
@@ -209,7 +210,7 @@ const DirectorIntelligenceCaseReports = () => {
                                             </Tooltip>
                                             {/*<Tooltip title="More Info">*/}
                                             {/*    <IconButton*/}
-                                            {/*        onClick={() => navigate(`/reports/${report.id}`)}*/}
+                                            {/*        onClick={() => navigate(routeTo.reportView(report.id))}*/}
                                             {/*        size="small"*/}
                                             {/*    >*/}
                                             {/*        <Info fontSize="small" />*/}

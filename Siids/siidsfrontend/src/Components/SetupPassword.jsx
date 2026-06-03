@@ -53,7 +53,7 @@ const SetupPassword = () => {
     try {
       const response = await axios.post('/setup-password', { token, newPassword });
       setSuccess(response.data.message || 'Password created successfully. You can now login.');
-      setTimeout(() => navigate('/'), 2000);
+      setTimeout(() => navigate(ROUTES.LOGIN), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create password. Please request a new setup link.');
     } finally {

@@ -1,5 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 import { AuthContext } from '../context/AuthContext.jsx';
 import axios from '../api/axios.jsx';
 import {
@@ -33,7 +34,7 @@ const Login = () => {
 
     useEffect(() => {
         if (authState?.token && authState?.employeeId) {
-            navigate('/home', { replace: true });
+            navigate(ROUTES.HOME, { replace: true });
         }
     }, [authState, navigate]);
 

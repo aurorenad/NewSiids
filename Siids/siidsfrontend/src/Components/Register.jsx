@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 import axios from './../api/axios.jsx';
 import {
     TextField,
@@ -61,7 +62,7 @@ const Register = () => {
                         localStorage.setItem('employeeId', loginResponse.data.employeeId);
                         localStorage.setItem('role', loginResponse.data.role);
                         localStorage.setItem('name', loginResponse.data.name);
-                        setTimeout(() => navigate('/home'), 2000);
+                        setTimeout(() => navigate(ROUTES.HOME), 2000);
                     }
                 } catch (loginError) {
                     console.error('Auto-login failed:', loginError);

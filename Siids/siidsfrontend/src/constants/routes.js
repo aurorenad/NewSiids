@@ -35,3 +35,20 @@ export const ROUTES = {
   TEMPORARY_STOCK: '/pv/temporary-stock',
   SETUP_PASSWORD: '/setup-password',
 };
+
+const buildRoute = (route, params = {}) =>
+  Object.entries(params).reduce(
+    (path, [key, value]) => path.replace(`:${key}`, encodeURIComponent(value ?? '')),
+    route,
+  );
+
+export const routeTo = {
+  intelligenceOfficerClaimForm: (caseNum) =>
+    buildRoute(ROUTES.INTELLIGENCE_OFFICER_CLAIM_FORM, { caseNum }),
+  intelligenceOfficerEditReport: (reportId) =>
+    buildRoute(ROUTES.INTELLIGENCE_OFFICER_EDIT_REPORT, { reportId }),
+  reportDetails: (id) => buildRoute(ROUTES.REPORT_DETAILS, { id }),
+  reportFindings: (id) => buildRoute(ROUTES.REPORT_FINDINGS, { id }),
+  surveillanceViewCase: (caseNum) =>
+    ROUTES.SURVEILLANCE_VIEW_CASE.replace('*', encodeURIComponent(caseNum ?? '')),
+};

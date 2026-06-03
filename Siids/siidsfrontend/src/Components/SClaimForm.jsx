@@ -99,7 +99,7 @@ export const SClaimForm = () => {
 
             // Navigate back after successful submission
             setTimeout(() => {
-                navigate('/surveillence-officer', {
+                navigate(ROUTES.SURVEILLANCE, {
                     state: {
                         newReport: response,
                         caseNum: caseNum,
@@ -137,7 +137,7 @@ export const SClaimForm = () => {
         setAttachment(null);
         setError('');
         setSuccess('');
-        navigate('/surveillence-officer');
+        navigate(ROUTES.SURVEILLANCE);
     };
 
     return (

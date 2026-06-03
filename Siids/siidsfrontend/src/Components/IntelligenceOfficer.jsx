@@ -22,6 +22,7 @@ import {
 import * as XLSX from 'xlsx';
 import { format, subDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES, routeTo } from '../constants/routes';
 import { CaseService, ReportApi } from '../api/Axios/caseApi';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -378,7 +379,7 @@ const IntelligenceOfficer = () => {
             }
 
             // Navigate to edit page
-            navigate(`/intelligence-officer/edit-report/${caseItem.reportId}`);
+            navigate(routeTo.intelligenceOfficerEditReport(caseItem.reportId));
         } catch (err) {
             showSnackbar('Error accessing report', 'error');
             console.error('Error accessing report:', err);
@@ -1026,7 +1027,7 @@ const IntelligenceOfficer = () => {
                             variant="contained"
                             color="primary"
                             startIcon={<AddIcon />}
-                            onClick={() => navigate('/intelligence-officer/newCase')}
+                            onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER_NEW_CASE)}
                         >
                             New Case
                         </Button>
@@ -1181,7 +1182,7 @@ const IntelligenceOfficer = () => {
                                                                         variant="outlined"
                                                                         color="info"
                                                                         startIcon={<VisibilityIcon />}
-                                                                        onClick={() => navigate(`/view-report/${caseItem.reportId}`)}
+                                                                        onClick={() => navigate(routeTo.reportDetails(caseItem.reportId))}
                                                                         size="small"
                                                                         fullWidth
                                                                     >
@@ -1230,7 +1231,7 @@ const IntelligenceOfficer = () => {
                                                                 variant="contained"
                                                                 color="primary"
                                                                 startIcon={<AddIcon />}
-                                                                onClick={() => navigate(`/intelligence-officer/claim-form/${encodeURIComponent(caseItem.caseNum)}`)}
+                                                                onClick={() => navigate(routeTo.intelligenceOfficerClaimForm(caseItem.caseNum))}
                                                                 size="small"
                                                                 fullWidth
                                                             >
@@ -1422,7 +1423,7 @@ const IntelligenceOfficer = () => {
                                         color="info"
                                         onClick={() => {
                                             handleCloseReturnDetails();
-                                            navigate(`/view-report/${selectedReturnReport.reportId}`);
+                                            navigate(routeTo.reportDetails(selectedReturnReport.reportId));
                                         }}
                                     >
                                         View Full Report

@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes';
 import {
     Paper,
     Typography,
@@ -79,7 +80,7 @@ const SurveillanceCaseView = () => {
     };
 
     const handleEdit = () => {
-        navigate('/surveillence-officer/edit-case', {
+        navigate(ROUTES.SURVEILLANCE_EDIT_CASE, {
             state: { caseData }
         });
     };
@@ -108,7 +109,7 @@ const SurveillanceCaseView = () => {
                 <Button
                     variant="contained"
                     startIcon={<ArrowBack />}
-                    onClick={() => navigate('/surveillence-officer')}
+                    onClick={() => navigate(ROUTES.SURVEILLANCE)}
                     sx={{ bgcolor: 'var(--rra-blue)', borderRadius: 2 }}
                 >
                     Back to Dashboard

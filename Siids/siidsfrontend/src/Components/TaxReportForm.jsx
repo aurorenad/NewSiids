@@ -77,7 +77,7 @@ const TaxReportForm = () => {
 
         if (!token) {
             setError('No authentication token found. Please log in again.');
-            setTimeout(() => navigate('/'), 2000);
+            setTimeout(() => navigate(ROUTES.LOGIN), 2000);
             return;
         }
 
@@ -286,14 +286,14 @@ const TaxReportForm = () => {
 
             if (response.data) {
                 setSuccess('Case created successfully!');
-                const id = setTimeout(() => navigate('/intelligence-officer'), 2000);
+                const id = setTimeout(() => navigate(ROUTES.INTELLIGENCE_OFFICER), 2000);
                 setTimeoutId(id);
             }
         } catch (err) {
             console.error('Error creating case:', err);
             if (err.response?.status === 401) {
                 setError('Session expired. Please log in again.');
-                const id = setTimeout(() => navigate('/'), 2000);
+                const id = setTimeout(() => navigate(ROUTES.LOGIN), 2000);
                 setTimeoutId(id);
             } else if (err.response?.data?.message) {
                 setError(err.response.data.message);

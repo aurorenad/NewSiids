@@ -1,5 +1,6 @@
 import React, { useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 import { AuthContext } from '../context/AuthContext';
 import { Card, CardContent, Typography, Box } from '@mui/material';
 import { Dashboard } from '@mui/icons-material';
@@ -14,13 +15,13 @@ const Home = () => {
         if (!authState?.token) return;
 
         if (hasPermission(authState, PERMISSIONS.USER_VIEW)) {
-            navigate('/system-admin');
+            navigate(ROUTES.SYSTEM_ADMIN);
         } else if (hasPermission(authState, PERMISSIONS.STOCK_APPROVE_RELEASE)) {
-            navigate('/prso/approvals');
+            navigate(ROUTES.PRSO_APPROVALS);
         } else if (hasPermission(authState, PERMISSIONS.STOCK_VIEW)) {
-            navigate('/stock/inventory');
+            navigate(ROUTES.STOCK_INVENTORY);
         } else if (hasPermission(authState, PERMISSIONS.SURVEILLANCE_VIEW)) {
-            navigate('/pv/temporary-stock');
+            navigate(ROUTES.TEMPORARY_STOCK);
         }
     }, [authState, navigate]);
 

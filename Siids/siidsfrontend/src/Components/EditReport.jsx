@@ -134,7 +134,7 @@ const EditReport = () => {
 
             setSuccess(true);
             setTimeout(() => {
-                navigate('/intelligence-officer');
+                navigate(ROUTES.INTELLIGENCE_OFFICER);
             }, 1500);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update report');
@@ -165,7 +165,7 @@ const EditReport = () => {
                 <Alert severity="error">{error}</Alert>
                 <Button
                     startIcon={<ArrowBack />}
-                    onClick={() => navigate('/intelligence-officer')}
+                    onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER)}
                     sx={{ mt: 2 }}
                 >
                     Back to Dashboard
@@ -182,7 +182,7 @@ const EditReport = () => {
                 </Alert>
                 <Button
                     startIcon={<ArrowBack />}
-                    onClick={() => navigate('/intelligence-officer')}
+                    onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER)}
                     sx={{ mt: 2 }}
                 >
                     Back to Dashboard
@@ -195,7 +195,7 @@ const EditReport = () => {
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Button
                 startIcon={<ArrowBack />}
-                onClick={() => navigate('/intelligence-officer')}
+                onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER)}
                 sx={{ mb: 3 }}
             >
                 Back to Dashboard
@@ -317,7 +317,7 @@ const EditReport = () => {
                     <Box display="flex" justifyContent="flex-end" gap={2} mt={4}>
                         <Button
                             variant="outlined"
-                            onClick={() => navigate('/intelligence-officer')}
+                            onClick={() => navigate(ROUTES.INTELLIGENCE_OFFICER)}
                             disabled={saving}
                         >
                             Cancel
