@@ -242,16 +242,7 @@ const SystemAdmin = () => {
                         />
                         <FormControl fullWidth margin="dense" required>
                             <InputLabel>Role</InputLabel>
-<<<<<<< HEAD
                             <Select name="role" value={formData.role} label="Role" onChange={handleFormChange} MenuProps={{ sx: { zIndex: 99999 } }}>
-=======
-                            <Select
-                                name="role"
-                                value={formData.role}
-                                label="Role"
-                                onChange={(e) => setFormData((prev) => ({ ...prev, role: e.target.value }))}
-                            >
->>>>>>> f5ce6da03bea6193aaa13b91f8f32675acec8118
                                 {ROLES.map((r) => (
                                     <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>
                                 ))}
