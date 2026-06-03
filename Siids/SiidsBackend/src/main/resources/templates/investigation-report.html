@@ -2,90 +2,91 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
-    <title>Investigation Report</title>
+    <title>Intelligence Report</title>
     <style>
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 14px; line-height: 1.5; color: #333; margin: 0; padding: 20px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center; border-bottom: 2px solid #003DA5; padding-bottom: 10px; }
-        .header img { max-height: 80px; }
-        .header-title { text-align: center; flex-grow: 1; }
-        .header-title h1 { margin: 0; font-size: 20px; color: #003DA5; }
-        .header-title h2 { margin: 5px 0 0; font-size: 16px; color: #666; }
-        .section { margin-bottom: 20px; }
-        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; background-color: #f0f0f0; padding: 5px; border-left: 4px solid #003DA5; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f9f9f9; font-weight: bold; width: 30%; }
-        .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #777; border-top: 1px solid #ddd; padding-top: 10px; }
-        .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 13px; line-height: 1.5; color: #222; margin: 0; padding: 24px; }
+        .letterhead { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #003DA5; padding-bottom: 12px; margin-bottom: 8px; }
+        .letterhead img { max-height: 80px; }
+        .letterhead-center { text-align: center; flex-grow: 1; }
+        .letterhead-center h1 { margin: 0; font-size: 18px; color: #003DA5; text-transform: uppercase; }
+        .letterhead-center h2 { margin: 4px 0 0; font-size: 13px; color: #555; }
+        .letterhead-center h3 { margin: 4px 0 0; font-size: 13px; font-weight: bold; color: #003DA5; text-transform: uppercase; }
+        .ref-block { display: flex; justify-content: space-between; margin: 12px 0; font-size: 12px; color: #444; }
+        .subject-line { margin: 16px 0 8px; font-weight: bold; font-size: 14px; border-left: 4px solid #003DA5; padding-left: 8px; }
+        .section { margin-bottom: 18px; }
+        .section-title { font-size: 13px; font-weight: bold; margin-bottom: 8px; background-color: #eef2ff; padding: 5px 8px; border-left: 4px solid #003DA5; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        th, td { border: 1px solid #ccc; padding: 7px 10px; text-align: left; }
+        th { background-color: #f4f6fb; font-weight: bold; width: 32%; }
+        .content-box { white-space: pre-wrap; padding: 10px; border: 1px solid #ddd; background-color: #fafafa; min-height: 60px; }
+        .signatures { display: flex; justify-content: space-between; margin-top: 48px; gap: 20px; }
         .signature-block { width: 45%; text-align: center; }
-        .signature-img { max-width: 150px; max-height: 60px; margin: 10px 0; }
-        .signature-line { border-bottom: 1px solid #000; margin-bottom: 5px; }
+        .sig-image-area { height: 70px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+        .sig-image-area img { max-height: 65px; max-width: 160px; }
+        .signature-line { border-bottom: 1px solid #333; margin-bottom: 4px; padding-bottom: 2px; }
+        .sig-name { font-weight: bold; font-size: 13px; }
+        .sig-title { font-size: 11px; color: #555; }
+        .sig-date { font-size: 11px; color: #777; margin-top: 2px; }
+        .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #ddd; padding-top: 8px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div th:if="${logoBase64 != null}">
-            <img th:src="'data:image/jpeg;base64,' + ${logoBase64}" alt="RRA Logo"/>
+    <!-- Letterhead -->
+    <div class="letterhead">
+        <div>
+            <img th:if="${logoBase64 != null}" th:src="'data:image/jpeg;base64,' + ${logoBase64}" alt="RRA Logo"/>
         </div>
-        <div class="header-title">
-            <h1>RWANDA REVENUE AUTHORITY</h1>
-            <h2>REVENUE INVESTIGATION AND ENFORCEMENT DEPARTMENT</h2>
-            <h2>INVESTIGATION REPORT</h2>
-        </div>
-        <div th:if="${watermarkBase64 != null}" style="position: absolute; top: 0; right: 0; z-index: -1; opacity: 0.1;">
-            <img th:src="'data:image/png;base64,' + ${watermarkBase64}" alt="Watermark" style="max-height: 800px;"/>
+        <div class="letterhead-center">
+            <h1>Rwanda Revenue Authority</h1>
+            <h2>Intelligence &amp; Enforcement Division</h2>
+            <h3>Intelligence Report</h3>
         </div>
     </div>
 
+    <!-- Reference block -->
+    <div class="ref-block">
+        <span>Ref: <strong th:text="${report.relatedCase.caseNum}">CAS-000000</strong></span>
+        <span>Date: <strong th:text="${#temporals.format(report.createdAt, 'dd MMMM yyyy')}">01 January 2026</strong></span>
+        <span>Classification: <strong>CONFIDENTIAL</strong></span>
+    </div>
+
+    <!-- Subject line -->
+    <div th:if="${report.subject != null}" class="subject-line">
+        RE: <span th:text="${report.subject}">Subject</span>
+    </div>
+
+    <!-- 1. Case Information -->
     <div class="section">
         <div class="section-title">1. Case Information</div>
         <table>
-            <tr>
-                <th>Case Number</th>
-                <td th:text="${report.relatedCase.caseNum}">CAS-000000</td>
-            </tr>
+            <tr><th>Case Number</th><td th:text="${report.relatedCase.caseNum}">CAS-000000</td></tr>
             <tr>
                 <th>Taxpayer Name</th>
-                <td th:text="${report.relatedCase.targetName}">Target Name</td>
+                <td th:text="${report.relatedCase.tin != null ? report.relatedCase.tin.taxPayerName : 'N/A'}">Taxpayer</td>
             </tr>
             <tr>
                 <th>Taxpayer TIN</th>
-                <td th:text="${report.relatedCase.tin}">123456789</td>
+                <td th:text="${report.relatedCase.tin != null ? report.relatedCase.tin.taxPayerTIN : 'N/A'}">TIN</td>
             </tr>
-            <tr>
-                <th>Date Opened</th>
-                <td th:text="${#temporals.format(report.relatedCase.dateOpened, 'dd-MM-yyyy')}">01-01-2026</td>
-            </tr>
-            <tr>
-                <th>Department</th>
-                <td th:text="${report.relatedCase.departmentName}">Intelligence</td>
-            </tr>
-            <tr>
-                <th>Report Date</th>
-                <td th:text="${#temporals.format(report.createdAt, 'dd-MM-yyyy HH:mm')}">01-01-2026</td>
-            </tr>
+            <tr><th>Tax Type</th><td th:text="${report.relatedCase.taxType}">VAT</td></tr>
+            <tr><th>Tax Period</th><td th:text="${report.relatedCase.taxPeriod}">2025</td></tr>
+            <tr><th>Report Date</th><td th:text="${#temporals.format(report.createdAt, 'dd-MM-yyyy HH:mm')}">01-01-2026</td></tr>
+            <tr><th>Prepared By</th><td th:text="${report.createdBy.givenName} + ' ' + ${report.createdBy.familyName}">Officer</td></tr>
         </table>
     </div>
 
+    <!-- 2. Evasion Summary -->
     <div class="section">
         <div class="section-title">2. Evasion Summary</div>
         <table>
             <tr>
-                <th>Tax Type(s)</th>
-                <td th:text="${report.relatedCase.taxType}">VAT</td>
-            </tr>
-            <tr>
-                <th>Tax Period</th>
-                <td th:text="${report.relatedCase.taxPeriod}">2025</td>
-            </tr>
-            <tr>
-                <th>Estimated Principle Evaded (RWF)</th>
-                <td th:text="${#numbers.formatDecimal(report.principleAmount, 0, 'COMMA', 0, 'POINT')}">0</td>
+                <th>Estimated Principal Evaded (RWF)</th>
+                <td th:text="${report.principleAmount != null ? #numbers.formatDecimal(report.principleAmount, 0, 'COMMA', 0, 'POINT') : '0'}">0</td>
             </tr>
             <tr>
                 <th>Estimated Penalties (RWF)</th>
-                <td th:text="${#numbers.formatDecimal(report.penaltiesAmount, 0, 'COMMA', 0, 'POINT')}">0</td>
+                <td th:text="${report.penaltiesAmount != null ? #numbers.formatDecimal(report.penaltiesAmount, 0, 'COMMA', 0, 'POINT') : '0'}">0</td>
             </tr>
             <tr>
                 <th>Total Evasion Estimate (RWF)</th>
@@ -94,61 +95,58 @@
         </table>
     </div>
 
+    <!-- 3. Findings -->
     <div class="section">
-        <div class="section-title">3. Investigation Findings</div>
-        <div th:utext="${#strings.replace(#strings.escapeXml(report.findings), '&#10;', '&lt;br/&gt;')}" style="white-space: pre-wrap; padding: 10px; border: 1px solid #ddd; background-color: #fafafa;">
-            Findings detail...
-        </div>
+        <div class="section-title">3. Findings</div>
+        <div class="content-box" th:utext="${#strings.replace(#strings.escapeXml(report.findings != null ? report.findings : 'No findings provided.'), '&#10;', '&lt;br/&gt;')}">Findings...</div>
     </div>
 
+    <!-- 4. Recommendations -->
     <div class="section">
         <div class="section-title">4. Recommendations</div>
-        <div th:utext="${#strings.replace(#strings.escapeXml(report.recommendations), '&#10;', '&lt;br/&gt;')}" style="white-space: pre-wrap; padding: 10px; border: 1px solid #ddd; background-color: #fafafa;">
-            Recommendations detail...
-        </div>
+        <div class="content-box" th:utext="${#strings.replace(#strings.escapeXml(report.recommendations != null ? report.recommendations : 'No recommendations provided.'), '&#10;', '&lt;br/&gt;')}">Recommendations...</div>
     </div>
 
+    <!-- 5. Legal Basis -->
+    <div class="section" th:if="${report.legalBasis != null}">
+        <div class="section-title">5. Legal Basis</div>
+        <div class="content-box" th:utext="${#strings.replace(#strings.escapeXml(report.legalBasis), '&#10;', '&lt;br/&gt;')}">Legal basis...</div>
+    </div>
+
+    <!-- Signature blocks -->
     <div class="signatures">
         <div class="signature-block">
-            <div class="signature-line">
-                <span th:text="${report.createdBy.givenName} + ' ' + ${report.createdBy.familyName}">Officer Name</span>
+            <div class="sig-image-area">
+                <img th:if="${acSignatureBase64 != null}" th:src="'data:image/png;base64,' + ${acSignatureBase64}" alt="AC Signature"/>
             </div>
-            <div>Prepared By (Intelligence Officer)</div>
-            <div th:text="${#temporals.format(report.createdAt, 'dd-MM-yyyy')}">Date</div>
+            <div class="signature-line">
+                <span class="sig-name" th:text="${report.assistantCommissioner != null ? report.assistantCommissioner.givenName + ' ' + report.assistantCommissioner.familyName : 'Assistant Commissioner'}">AC Name</span>
+            </div>
+            <div class="sig-title">Assistant Commissioner</div>
+            <div class="sig-title">Intelligence &amp; Enforcement Division, RRA</div>
+            <div class="sig-date" th:text="${acSignedAt != null ? 'Date: ' + #temporals.format(acSignedAt, 'dd-MM-yyyy') : 'Date: __________'}">Date</div>
         </div>
 
         <div class="signature-block">
-            <div class="signature-line">
-                <div th:if="${doiSignatureBase64 != null}">
-                    <img th:src="'data:image/png;base64,' + ${doiSignatureBase64}" class="signature-img" alt="DOI Signature"/>
-                </div>
-                <div th:unless="${doiSignatureBase64 != null}" style="height: 60px;"></div>
-                <span th:text="${report.directorIntelligence != null ? report.directorIntelligence.givenName + ' ' + report.directorIntelligence.familyName : 'Director of Intelligence'}">DOI Name</span>
+            <div class="sig-image-area">
+                <img th:if="${doiSignatureBase64 != null}" th:src="'data:image/png;base64,' + ${doiSignatureBase64}" alt="Director Signature"/>
             </div>
-            <div>Approved By (Director of Intelligence)</div>
-            <div th:text="${doiSignedAt != null ? #temporals.format(doiSignedAt, 'dd-MM-yyyy') : ''}">Date</div>
+            <div class="signature-line">
+                <span class="sig-name" th:text="${report.directorIntelligence != null ? report.directorIntelligence.givenName + ' ' + report.directorIntelligence.familyName : 'Director of Intelligence'}">Director Name</span>
+            </div>
+            <div class="sig-title">Director of Intelligence</div>
+            <div class="sig-title">Intelligence &amp; Enforcement Division, RRA</div>
+            <div class="sig-date" th:text="${doiSignedAt != null ? 'Date: ' + #temporals.format(doiSignedAt, 'dd-MM-yyyy') : 'Date: __________'}">Date</div>
         </div>
     </div>
 
-    <div class="signatures">
-        <div class="signature-block">
-            <div class="signature-line">
-                <div th:if="${acSignatureBase64 != null}">
-                    <img th:src="'data:image/png;base64,' + ${acSignatureBase64}" class="signature-img" alt="AC Signature"/>
-                </div>
-                <div th:unless="${acSignatureBase64 != null}" style="height: 60px;"></div>
-                <span th:text="${report.assistantCommissioner != null ? report.assistantCommissioner.givenName + ' ' + report.assistantCommissioner.familyName : 'Assistant Commissioner'}">AC Name</span>
-            </div>
-            <div>Authorized By (Assistant Commissioner)</div>
-            <div th:text="${acSignedAt != null ? #temporals.format(acSignedAt, 'dd-MM-yyyy') : ''}">Date</div>
-        </div>
-    </div>
-
+    <!-- Footer -->
     <div class="footer">
         <div th:if="${footerBase64 != null}">
             <img th:src="'data:image/png;base64,' + ${footerBase64}" alt="Footer" style="max-width: 100%;"/>
         </div>
         <p>This document is generated automatically by SIIDS. Any unauthorized alteration is strictly prohibited.</p>
+        <p>Kicukiro-Sonatube, P.O.Box 3987 Kigali, Rwanda | Tel: 3004 | www.rra.gov.rw</p>
     </div>
 
 </body>
