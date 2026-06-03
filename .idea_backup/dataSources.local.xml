@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="dataSourceStorageLocal" created-in="IU-261.24374.151">
-    <data-source name="siidsDB@localhost" uuid="b4e1fc2d-e046-4b3e-8064-0e2a429bbf92">
+    <data-source name="siidsDB@localhost" uuid="ab1b6458-7964-4e27-855f-61149e73d0aa">
       <database-info product="PostgreSQL" version="18.3 (Ubuntu 18.3-1.pgdg24.04+1)" jdbc-version="4.2" driver-name="PostgreSQL JDBC Driver" driver-version="42.7.3" dbms="POSTGRES" exact-version="18.3" exact-driver-version="42.7">
         <identifier-quote-string>&quot;</identifier-quote-string>
       </database-info>

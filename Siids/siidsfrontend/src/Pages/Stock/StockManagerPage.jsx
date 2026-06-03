@@ -29,6 +29,11 @@ const StockManagerPage = () => {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
+<<<<<<< HEAD
+=======
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+>>>>>>> f5ce6da03bea6193aaa13b91f8f32675acec8118
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -105,9 +110,17 @@ const StockManagerPage = () => {
     return list;
   }, [filteredByStatus, searchQuery, sortBy]);
 
+<<<<<<< HEAD
   const paginatedStock = useMemo(() => {
     return processedStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   }, [processedStock, page, rowsPerPage]);
+=======
+  const processedStock = getProcessedStock();
+  const totalPages = Math.max(1, Math.ceil(processedStock.length / pageSize));
+  const paginatedStock = processedStock.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, sortBy, pageSize]);
+>>>>>>> f5ce6da03bea6193aaa13b91f8f32675acec8118
 
   const handleActionSuccess = () => {
     setReleaseModalOpen(false);
@@ -204,6 +217,7 @@ const StockManagerPage = () => {
             <Typography variant="h6" color="var(--gray-400)">{searchQuery ? 'No matching items found' : 'No items in this section'}</Typography>
           </Box>
         ) : (
+<<<<<<< HEAD
           <>
             <Box sx={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -275,6 +289,83 @@ const StockManagerPage = () => {
                             </Button>
                           )}
                           {activeTab === 2 && <Chip label="In Review" size="small" variant="outlined" color="info" />}
+=======
+          <div className="stock-table" style={{ maxHeight: 520, overflowY: 'auto' }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>PV Number</th>
+                  <th>Taxpayer</th>
+                  <th>Date In</th>
+                  <th>Law Reference</th>
+                  <th style={{ textAlign: 'center' }}>PV Document</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedStock.map(item => (
+                  <tr key={item.id}>
+                    <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
+                      {item.pvNumber}
+                    </td>
+                    <td>{item.seizureNote?.taxpayerName || 'Unknown'}</td>
+                    <td className="date">{item.transferDate ? format(new Date(item.transferDate), 'dd MMM yyyy') : '-'}</td>
+                    <td>{item.applicableLawReference}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="btn-base" 
+                        style={{ 
+                          padding: '6px 12px', 
+                          fontSize: '12px', 
+                          color: 'var(--rra-blue)', 
+                          border: '1px solid var(--rra-blue-tint)',
+                          background: 'var(--rra-blue-tint-light)'
+                        }}
+                        onClick={() => handleDownloadPV(item)}
+                      >
+                        Download PDF
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 4px', borderTop: '1px solid var(--gray-200)', marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>Rows per page:</span>
+            <select
+              className="form-control"
+              style={{ width: 70, padding: '2px 6px', fontSize: 12, height: 28 }}
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+            >
+              <option value={10}>10</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>
+              {processedStock.length === 0 ? '0' : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, processedStock.length)}`} of {processedStock.length}
+            </span>
+            <button
+              style={{ padding: '3px 10px', fontSize: 12, border: '1px solid var(--gray-300)', borderRadius: 4, background: 'white', color: currentPage === 1 ? 'var(--gray-300)' : 'var(--gray-700)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+              onClick={() => setCurrentPage(p => p - 1)}
+              disabled={currentPage === 1}
+            >Prev</button>
+            <span style={{ fontSize: 12 }}>{currentPage} / {totalPages}</span>
+            <button
+              style={{ padding: '3px 10px', fontSize: 12, border: '1px solid var(--gray-300)', borderRadius: 4, background: 'white', color: currentPage >= totalPages ? 'var(--gray-300)' : 'var(--gray-700)', cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer' }}
+              onClick={() => setCurrentPage(p => p + 1)}
+              disabled={currentPage >= totalPages}
+            >Next</button>
+          </div>
+        </div>
+      </div>
+>>>>>>> f5ce6da03bea6193aaa13b91f8f32675acec8118
 
                           {item.pvNumber && (
                             <Tooltip title="Download Statement of Offence (PV)">

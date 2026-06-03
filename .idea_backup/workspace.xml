@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ee60bd97-5220-492f-83a7-ff630b2c1c28" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="McpProjectServerCommands">
+    <commands />
+    <urls />
+  </component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="0.0" />
+      <entry key="S10" value="0.0" />
+      <entry key="S30" value="0.0" />
+      <entry key="S60" value="0.0" />
+      <entry key="M2" value="0.0" />
+      <entry key="M5" value="0.0" />
+      <entry key="M10" value="0.0" />
+      <entry key="M15" value="0.0" />
+      <entry key="M30" value="0.0" />
+      <entry key="H1" value="0.0" />
+      <entry key="H2" value="0.0" />
+      <entry key="H4" value="0.0" />
+      <entry key="D1" value="0.0" />
+      <entry key="W1" value="0.0" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="1.0000002302971802" />
+      <entry key="MS500" value="1.0487158464746382" />
+      <entry key="S2" value="1.6680693384517036" />
+      <entry key="S5" value="2.264400701727223" />
+      <entry key="S10" value="2.58475045667423" />
+      <entry key="S30" value="2.8492924921083977" />
+      <entry key="S60" value="2.9229850364606085" />
+      <entry key="M2" value="2.9610671932207957" />
+      <entry key="M5" value="2.984323487059787" />
+      <entry key="M10" value="2.992144401226569" />
+      <entry key="M15" value="2.9947590720684922" />
+      <entry key="M30" value="2.99737760292929" />
+      <entry key="H1" value="2.998688317801059" />
+      <entry key="H2" value="2.999344037936179" />
+      <entry key="H4" value="2.999671988720943" />
+      <entry key="D1" value="2.999945327251983" />
+      <entry key="W1" value="2.9999921895045256" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="2.8208086250641855E-7" />
+      <entry key="MS500" value="0.07328080485619537" />
+      <entry key="S2" value="1.008447299954495" />
+      <entry key="S5" value="1.8895315997696778" />
+      <entry key="S10" value="2.3690301850780937" />
+      <entry key="S30" value="2.7697044216548226" />
+      <entry key="S60" value="2.8821261638761873" />
+      <entry key="M2" value="2.9403629321665155" />
+      <entry key="M5" value="2.975974687207404" />
+      <entry key="M10" value="2.9879587224525594" />
+      <entry key="M15" value="2.991966105956625" />
+      <entry key="M30" value="2.995979861273923" />
+      <entry key="H1" value="2.997989131985247" />
+      <entry key="H2" value="2.998994366238914" />
+      <entry key="H4" value="2.9994971331696774" />
+      <entry key="D1" value="2.999916181923179" />
+      <entry key="W1" value="2.999988025819092" />
+    </decayedShown>
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;git-widget-placeholder&quot;: &quot;salomon&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;
+  }
+}</component>
+  <component name="TaskManager">
+    <servers />
+  </component>
+</project>
