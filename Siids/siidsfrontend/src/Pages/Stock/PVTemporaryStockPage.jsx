@@ -36,7 +36,7 @@ const PVTemporaryStockPage = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const canCreateSurveillance = hasPermission(authState, 'SURVEILLANCE_CREATE');
-  const canManageStock = hasPermission(authState, 'STOCK_MANAGE');
+  const canManageTempStock = hasPermission(authState, 'TEMP_STOCK_MANAGE');
 
   const fetchData = async () => {
     try {
@@ -562,7 +562,7 @@ const PVTemporaryStockPage = () => {
         onClose={() => setDrawerOpen(false)}
         title={`Item ${selectedItem?.seizureNumber}`}
         footerActions={
-          canManageStock && selectedItem?.status === 'IN_TEMPORARY_STOCK' ? (
+          canManageTempStock && selectedItem?.status === 'IN_TEMPORARY_STOCK' ? (
             <>
               <button className="btn-base btn-success" onClick={() => { setDrawerOpen(false); setReleaseDialog(true); }}>Release to Owner</button>
               <button className="btn-base btn-danger" onClick={() => { setDrawerOpen(false); setEscalateDialog(true); }}>Escalate to Main Stock</button>

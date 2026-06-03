@@ -33,6 +33,7 @@ public class RbacDataInitializer implements CommandLineRunner {
             Map.entry("SURVEILLANCE_VIEW", "View surveillance cases"),
             Map.entry("STOCK_VIEW", "View stock records"),
             Map.entry("STOCK_MANAGE", "Manage stock records"),
+            Map.entry("TEMP_STOCK_MANAGE", "Release or escalate temporary stock records"),
             Map.entry("STOCK_APPROVE_RELEASE", "Approve stock release actions"),
             Map.entry("LEGAL_REVIEW", "Review legal referrals")
     );
@@ -45,7 +46,7 @@ public class RbacDataInitializer implements CommandLineRunner {
             Map.entry("InvestigationOfficer", List.of("REPORT_VIEW", "REPORT_CREATE")),
             Map.entry("DirectorInvestigation", List.of("REPORT_VIEW", "REPORT_APPROVE_INVESTIGATION", "REPORT_ASSIGN_INVESTIGATION")),
             Map.entry("AssistantCommissioner", List.of("REPORT_VIEW", "REPORT_APPROVE_ASSISTANT_COMMISSIONER")),
-            Map.entry("Surveillance", List.of("SURVEILLANCE_CREATE", "SURVEILLANCE_VIEW", "STOCK_VIEW")),
+            Map.entry("Surveillance", List.of("SURVEILLANCE_CREATE", "SURVEILLANCE_VIEW", "STOCK_VIEW", "TEMP_STOCK_MANAGE")),
             Map.entry("StockManager", List.of("STOCK_VIEW", "STOCK_MANAGE")),
             Map.entry("PRSO", List.of("STOCK_VIEW", "STOCK_APPROVE_RELEASE")),
             Map.entry("legalAdvisor", List.of("REPORT_VIEW", "LEGAL_REVIEW")),

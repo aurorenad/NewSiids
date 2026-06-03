@@ -84,14 +84,14 @@ public class PhysicalStockController {
     }
 
     @PostMapping("/temporary/{id}/release")
-    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
+    @PreAuthorize("hasAuthority('TEMP_STOCK_MANAGE')")
     public ResponseEntity<?> releaseFromTempStock(@PathVariable Integer id, @RequestBody ReleaseNoteRequestDTO dto) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(physicalStockService.releaseFromTemporaryStock(id, dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
     @PostMapping("/temporary/{id}/escalate")
-    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
+    @PreAuthorize("hasAuthority('TEMP_STOCK_MANAGE')")
     public ResponseEntity<?> escalateToMainStock(@PathVariable Integer id, @RequestBody EscalateRequestDTO dto) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
         return ResponseEntity.ok(physicalStockService.escalateToMainStock(id, dto, physicalStockService.getEmployeeByUsername(username)));
@@ -200,7 +200,7 @@ public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
     }
 
     @PostMapping("/release-notes/preview")
-    @PreAuthorize("hasAuthority('STOCK_MANAGE')")
+    @PreAuthorize("hasAuthority('TEMP_STOCK_MANAGE')")
     public ResponseEntity<?> previewReleaseNote(@RequestBody java.util.Map<String, String> payload) {
         try {
             byte[] pdf = physicalStockService.generateReleaseNotePreview(payload);
