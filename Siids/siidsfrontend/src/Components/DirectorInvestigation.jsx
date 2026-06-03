@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
     IconButton,
     Paper,
@@ -51,8 +51,11 @@ import {
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { ReportApi, InvestigationApi } from './../api/Axios/caseApi';
+import { AuthContext } from '../context/AuthContext';
+import { hasPermission } from '../utils/authorization';
 
 const DirectorInvestigation = () => {
+    const { authState } = useContext(AuthContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [cases, setCases] = useState([]);
     const [officers, setOfficers] = useState([]);
@@ -87,6 +90,8 @@ const DirectorInvestigation = () => {
     const [investigationReturnReason, setInvestigationReturnReason] = useState('');
     const [selectedCaseForInvestigationReport, setSelectedCaseForInvestigationReport] = useState(null);
     const [activeTab, setActiveTab] = useState(0); // 0: All Cases, 1: Pending Review, 2: Investigation Reports
+    const canApproveInvestigation = hasPermission(authState, 'REPORT_APPROVE_INVESTIGATION');
+    const canAssignInvestigation = hasPermission(authState, 'REPORT_ASSIGN_INVESTIGATION');
 
     useEffect(() => {
         const fetchData = async () => {
@@ -1018,81 +1023,87 @@ const DirectorInvestigation = () => {
                                                 </Tooltip>
                                             )}
 
-                                            <Tooltip title="Approve Report">
-                                                <IconButton
-                                                    color="success"
-                                                    size="small"
-                                                    onClick={() => {
-                                                        if (caseItem.reportId) {
-                                                            handleApprove(caseItem.reportId);
-                                                        } else {
-                                                            console.error('Report ID is undefined for case:', caseItem);
-                                                            setSnackbar({
-                                                                open: true,
-                                                                message: 'Cannot approve: Report ID is missing',
-                                                                severity: 'error'
-                                                            });
+                                            {canApproveInvestigation && (
+                                                <Tooltip title="Approve Report">
+                                                    <IconButton
+                                                        color="success"
+                                                        size="small"
+                                                        onClick={() => {
+                                                            if (caseItem.reportId) {
+                                                                handleApprove(caseItem.reportId);
+                                                            } else {
+                                                                console.error('Report ID is undefined for case:', caseItem);
+                                                                setSnackbar({
+                                                                    open: true,
+                                                                    message: 'Cannot approve: Report ID is missing',
+                                                                    severity: 'error'
+                                                                });
+                                                            }
+                                                        }}
+                                                        disabled={caseItem.status.includes("Approved") ||
+                                                            caseItem.status.includes("Approved") ||
+                                                            caseItem.status.includes("Rejected") ||
+                                                            caseItem.casePlanSentToCommissioner ||
+                                                            caseItem.investigationReportStatus === 'approved' ||
+                                                            caseItem.casePlanStatus === 'approved' ||
+                                                            !(
+                                                                caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                                                                caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                                                                caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
+                                                                caseItem.investigationReportStatus === 'submitted' ||
+                                                                caseItem.casePlanStatus === 'submitted'
+                                                            )}
+                                                    >
+                                                        <Check />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+
+                                            {canAssignInvestigation && (
+                                                <Tooltip title="Assign Officer">
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
+                                                        onClick={() => handleOpenAssignDialog(caseItem)}
+                                                        disabled={
+                                                            caseItem.isAssigned && !caseItem.status.includes("REJECTED")
                                                         }
-                                                    }}
-                                                    disabled={caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Rejected") ||
-                                                        caseItem.casePlanSentToCommissioner ||
-                                                        caseItem.investigationReportStatus === 'approved' ||
-                                                        caseItem.casePlanStatus === 'approved' ||
-                                                        !(
-                                                            caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                                            caseItem.investigationReportStatus === 'submitted' ||
-                                                            caseItem.casePlanStatus === 'submitted'
-                                                        )}
-                                                >
-                                                    <Check />
-                                                </IconButton>
-                                            </Tooltip>
+                                                    >
+                                                        Assign
+                                                    </Button>
+                                                </Tooltip>
+                                            )}
 
-                                            <Tooltip title="Assign Officer">
-                                                <Button
-                                                    variant="outlined"
-                                                    size="small"
-                                                    onClick={() => handleOpenAssignDialog(caseItem)}
-                                                    disabled={
-                                                        caseItem.isAssigned && !caseItem.status.includes("REJECTED")
-                                                    }
-                                                >
-                                                    Assign
-                                                </Button>
-                                            </Tooltip>
-
-                                            <Tooltip title="Reject Report">
-                                                <IconButton
-                                                    color="error"
-                                                    size="small"
-                                                    onClick={() => {
-                                                        setSelectedCase(caseItem);
-                                                        setRejectDialogOpen(true);
-                                                    }}
-                                                    disabled={
-                                                        caseItem.status.includes("Approved") ||
-                                                        caseItem.status.includes("Rejected") ||
-                                                        caseItem.casePlanSentToCommissioner ||
-                                                        caseItem.investigationReportStatus === 'approved' ||
-                                                        caseItem.investigationReportStatus === 'rejected' ||
-                                                        caseItem.casePlanStatus === 'approved' ||
-                                                        caseItem.casePlanStatus === 'rejected' ||
-                                                        !(
-                                                            caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                                            caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                                            caseItem.investigationReportStatus === 'submitted' ||
-                                                            caseItem.casePlanStatus === 'submitted'
-                                                        )
-                                                    }
-                                                >
-                                                    <Close />
-                                                </IconButton>
-                                            </Tooltip>
+                                            {canApproveInvestigation && (
+                                                <Tooltip title="Reject Report">
+                                                    <IconButton
+                                                        color="error"
+                                                        size="small"
+                                                        onClick={() => {
+                                                            setSelectedCase(caseItem);
+                                                            setRejectDialogOpen(true);
+                                                        }}
+                                                        disabled={
+                                                            caseItem.status.includes("Approved") ||
+                                                            caseItem.status.includes("Rejected") ||
+                                                            caseItem.casePlanSentToCommissioner ||
+                                                            caseItem.investigationReportStatus === 'approved' ||
+                                                            caseItem.investigationReportStatus === 'rejected' ||
+                                                            caseItem.casePlanStatus === 'approved' ||
+                                                            caseItem.casePlanStatus === 'rejected' ||
+                                                            !(
+                                                                caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                                                                caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                                                                caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
+                                                                caseItem.investigationReportStatus === 'submitted' ||
+                                                                caseItem.casePlanStatus === 'submitted'
+                                                            )
+                                                        }
+                                                    >
+                                                        <Close />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
                                         </Box>
                                     </TableCell>
                                 </TableRow>
@@ -1202,7 +1213,7 @@ const DirectorInvestigation = () => {
                     <Button onClick={() => setInvestigationReportDialogOpen(false)}>
                         Close
                     </Button>
-                    {selectedCaseForInvestigationReport && shouldShowInvestigationReportActions(selectedCaseForInvestigationReport) && (
+                    {canApproveInvestigation && selectedCaseForInvestigationReport && shouldShowInvestigationReportActions(selectedCaseForInvestigationReport) && (
                         <>
                             <Button
                                 onClick={handleOpenInvestigationReportReturnDialog}
@@ -1263,7 +1274,7 @@ const DirectorInvestigation = () => {
                         onClick={handleRejectInvestigationReport}
                         color="error"
                         variant="contained"
-                        disabled={!investigationRejectionReason.trim()}
+                        disabled={!canApproveInvestigation || !investigationRejectionReason.trim()}
                     >
                         Reject Report
                     </Button>
@@ -1299,7 +1310,7 @@ const DirectorInvestigation = () => {
                         onClick={handleReturnInvestigationReport}
                         color="warning"
                         variant="contained"
-                        disabled={!investigationReturnReason.trim()}
+                        disabled={!canApproveInvestigation || !investigationReturnReason.trim()}
                         startIcon={<AssignmentReturned />}
                     >
                         Return for Revision
@@ -1385,7 +1396,7 @@ const DirectorInvestigation = () => {
                         }}
                         color="primary"
                         variant="contained"
-                        disabled={!selectedOfficer || officersLoading}
+                        disabled={!canAssignInvestigation || !selectedOfficer || officersLoading}
                     >
                         {officersLoading ? <CircularProgress size={24} /> : 'Assign Officer'}
                     </Button>
@@ -1420,7 +1431,7 @@ const DirectorInvestigation = () => {
                         onClick={() => handleSendToAssistantCommissioner(selectedCaseForCommissioner.reportId)}
                         color="secondary"
                         variant="contained"
-                        disabled={officersLoading}
+                        disabled={!canApproveInvestigation || officersLoading}
                     >
                         {officersLoading ? <CircularProgress size={24} /> : 'Send to Assistant Commissioner'}
                     </Button>
@@ -1456,7 +1467,7 @@ const DirectorInvestigation = () => {
                         onClick={handleReject}
                         color="error"
                         variant="contained"
-                        disabled={!rejectionReason.trim()}
+                        disabled={!canApproveInvestigation || !rejectionReason.trim()}
                     >
                         Reject Report
                     </Button>
@@ -1747,7 +1758,7 @@ const DirectorInvestigation = () => {
                     >
                         Cancel
                     </Button>
-                    {currentCasePlan?.status &&
+                    {canApproveInvestigation && currentCasePlan?.status &&
                         currentCasePlan.status.includes('CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION') && (
                             <>
                                 <Button
@@ -1802,7 +1813,7 @@ const DirectorInvestigation = () => {
                         onClick={handleRejectCasePlan}
                         color="error"
                         variant="contained"
-                        disabled={!casePlanRejectionReason.trim()}
+                        disabled={!canApproveInvestigation || !casePlanRejectionReason.trim()}
                     >
                         Reject Case Plan
                     </Button>

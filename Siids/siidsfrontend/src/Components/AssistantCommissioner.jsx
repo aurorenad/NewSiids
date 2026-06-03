@@ -12,6 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
+import { hasPermission } from '../utils/authorization';
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
@@ -31,6 +32,7 @@ const AssistantCommissioner = () => {
     const [selectedReport, setSelectedReport] = useState(null);
 
     const navigate = useNavigate();
+    const canApproveAssistantCommissioner = hasPermission(authState, 'REPORT_APPROVE_ASSISTANT_COMMISSIONER');
 
     const fetchAllData = async () => {
         try {
@@ -193,33 +195,37 @@ const AssistantCommissioner = () => {
                                                 View
                                             </Button>
 
-                                            <Button
-                                                variant="contained"
-                                                color="success"
-                                                size="small"
-                                                startIcon={<Check />}
-                                                onClick={() => handleApproveAction(r)}
-                                                disabled={submitting}
-                                                sx={{ textTransform: 'none', fontWeight: 700 }}
-                                            >
-                                                Approve
-                                            </Button>
-                                            
-                                            <Button
-                                                variant="contained"
-                                                color="error"
-                                                size="small"
-                                                startIcon={<Undo />}
-                                                onClick={() => {
-                                                    setSelectedReport(r);
-                                                    setCloseReason("");
-                                                    setCloseDialogOpen(true);
-                                                }}
-                                                disabled={submitting}
-                                                sx={{ textTransform: 'none', fontWeight: 700 }}
-                                            >
-                                                Reject
-                                            </Button>
+                                            {canApproveAssistantCommissioner && (
+                                                <Button
+                                                    variant="contained"
+                                                    color="success"
+                                                    size="small"
+                                                    startIcon={<Check />}
+                                                    onClick={() => handleApproveAction(r)}
+                                                    disabled={submitting}
+                                                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                                                >
+                                                    Approve
+                                                </Button>
+                                            )}
+
+                                            {canApproveAssistantCommissioner && (
+                                                <Button
+                                                    variant="contained"
+                                                    color="error"
+                                                    size="small"
+                                                    startIcon={<Undo />}
+                                                    onClick={() => {
+                                                        setSelectedReport(r);
+                                                        setCloseReason("");
+                                                        setCloseDialogOpen(true);
+                                                    }}
+                                                    disabled={submitting}
+                                                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                                                >
+                                                    Reject
+                                                </Button>
+                                            )}
                                         </Box>
                                     </TableCell>
                                 </TableRow>

@@ -20,7 +20,7 @@ import AuthLayout from './ui/AuthLayout.jsx';
 
 const SetupPassword = () => {
   const [searchParams] = useSearchParams();
-  const [token, setToken] = useState(searchParams.get('token') || '');
+  const token = searchParams.get('token') || '';
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +33,11 @@ const SetupPassword = () => {
     event.preventDefault();
     setError('');
     setSuccess('');
+
+    if (!token) {
+      setError('Invalid setup link. Please request a new password setup email.');
+      return;
+    }
 
     if (newPassword !== confirmPassword) {
       setError('Passwords do not match');
@@ -70,13 +75,11 @@ const SetupPassword = () => {
 
             <form onSubmit={handleSubmit}>
               <Stack spacing={2}>
-                <TextField
-                  label="Setup Token"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  required
-                  disabled={loading}
-                />
+                {!token && (
+                  <Alert severity="warning">
+                    This setup link is missing its security token. Please use the link from your email.
+                  </Alert>
+                )}
                 <TextField
                   label="New Password"
                   helperText="Use at least 8 characters."
@@ -108,7 +111,7 @@ const SetupPassword = () => {
                   required
                   disabled={loading}
                 />
-                <Button type="submit" fullWidth disabled={loading} sx={{ py: 1.2 }}>
+                <Button type="submit" fullWidth disabled={loading || !token} sx={{ py: 1.2 }}>
                   {loading ? <CircularProgress size={22} color="inherit" /> : 'Create Password'}
                 </Button>
                 <Box textAlign="center">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     TextField, IconButton, Button, Typography, Box, CircularProgress,
@@ -11,8 +11,11 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { ReportApi } from "./../api/Axios/caseApi";
+import { AuthContext } from "../context/AuthContext";
+import { hasPermission } from "../utils/authorization";
 
 const InvestigationOfficer = () => {
+    const { authState } = useContext(AuthContext);
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -23,6 +26,7 @@ const InvestigationOfficer = () => {
     // Dialog States
     const [casePlanDialog, setCasePlanDialog] = useState({ open: false, report: null, text: "", file: null });
     const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
+    const canCreateReport = hasPermission(authState, 'REPORT_CREATE');
 
     useEffect(() => { fetchReports(); }, [activeTab]);
 
@@ -122,20 +126,24 @@ const InvestigationOfficer = () => {
                                             <IconButton color="info" onClick={() => navigate(`/view-report/${r.id}`)}><Visibility /></IconButton>
                                         </Tooltip>
                                         
-                                        <Tooltip title="Create/Edit Plan">
-                                            <IconButton color="primary" onClick={() => setCasePlanDialog({ open: true, report: r, text: r.casePlanDescription || "", file: null })}><NoteAdd /></IconButton>
-                                        </Tooltip>
-                                        
-                                        <Button
-                                            variant="contained"
-                                            color="success"
-                                            size="small"
-                                            startIcon={<Assessment />}
-                                            onClick={() => setFindingsDialog({ open: true, report: r, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] })}
-                                            sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
-                                        >
-                                            Create Final Report
-                                        </Button>
+                                        {canCreateReport && (
+                                            <Tooltip title="Create/Edit Plan">
+                                                <IconButton color="primary" onClick={() => setCasePlanDialog({ open: true, report: r, text: r.casePlanDescription || "", file: null })}><NoteAdd /></IconButton>
+                                            </Tooltip>
+                                        )}
+
+                                        {canCreateReport && (
+                                            <Button
+                                                variant="contained"
+                                                color="success"
+                                                size="small"
+                                                startIcon={<Assessment />}
+                                                onClick={() => setFindingsDialog({ open: true, report: r, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] })}
+                                                sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
+                                            >
+                                                Create Final Report
+                                            </Button>
+                                        )}
                                     </Box>
                                 </TableCell>
                             </TableRow>

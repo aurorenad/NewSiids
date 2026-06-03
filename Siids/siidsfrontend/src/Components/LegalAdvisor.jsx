@@ -1,5 +1,5 @@
 // LEGAL ADVISOR DASHBOARD - UPDATED WITH RETURN TO INVESTIGATION OFFICER FUNCTIONALITY
-import React, { useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
     Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
     IconButton, Paper, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead,
@@ -13,8 +13,11 @@ import {
 
 import { Link } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
+import { AuthContext } from '../context/AuthContext';
+import { hasPermission } from '../utils/authorization';
 
 const LegalAdvisorDashboard = () => {
+    const { authState } = useContext(AuthContext);
     const [reports, setReports] = useState([]);
     const [filteredReports, setFilteredReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -31,6 +34,7 @@ const LegalAdvisorDashboard = () => {
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [selectedReport, setSelectedReport] = useState(null);
     const [returnReason, setReturnReason] = useState('');
+    const canLegalReview = hasPermission(authState, 'LEGAL_REVIEW');
     useEffect(() => {
         fetchLegalAdvisorReports();
     }, []);
@@ -459,7 +463,7 @@ const LegalAdvisorDashboard = () => {
                                                 </Tooltip>
 
                                                 {/* Return Button */}
-                                                {canReturn && (
+                                                {canLegalReview && canReturn && (
                                                     <Tooltip title="Return to Assistant Commissioner">
                                                         <IconButton
                                                             color="warning"

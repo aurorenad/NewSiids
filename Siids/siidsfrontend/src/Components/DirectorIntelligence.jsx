@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, Paper, IconButton,
@@ -16,8 +16,11 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { AuthContext } from '../context/AuthContext';
+import { hasPermission } from '../utils/authorization';
 
 const DirectorIntelligence = () => {
+    const { authState } = useContext(AuthContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -49,6 +52,8 @@ const DirectorIntelligence = () => {
     const [sortOrder, setSortOrder] = useState('desc');
 
     const navigate = useNavigate();
+    const canApproveIntelligence = hasPermission(authState, 'REPORT_APPROVE_INTELLIGENCE');
+    const canReturnReport = hasPermission(authState, 'REPORT_APPROVE_INTELLIGENCE');
 
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
@@ -607,48 +612,54 @@ const DirectorIntelligence = () => {
                                                 </IconButton>
                                             </Tooltip>
 
-                                            <Tooltip title="Approve">
-                                                <span>
-                                                    <IconButton
-                                                        disabled={isActionDisabled(report)}
-                                                        onClick={() => handleApprove(report)}
-                                                        size="small"
-                                                        color="success"
-                                                    >
-                                                        {isReportLoading(report.id) ? (
-                                                            <CircularProgress size={16} />
-                                                        ) : (
-                                                            <Check fontSize="small" />
-                                                        )}
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
+                                            {canApproveIntelligence && (
+                                                <Tooltip title="Approve">
+                                                    <span>
+                                                        <IconButton
+                                                            disabled={isActionDisabled(report)}
+                                                            onClick={() => handleApprove(report)}
+                                                            size="small"
+                                                            color="success"
+                                                        >
+                                                            {isReportLoading(report.id) ? (
+                                                                <CircularProgress size={16} />
+                                                            ) : (
+                                                                <Check fontSize="small" />
+                                                            )}
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            )}
 
-                                            <Tooltip title="Close">
-                                                <span>
-                                                    <IconButton
-                                                        disabled={isActionDisabled(report)}
-                                                        onClick={() => handleOpenRejectDialog(report)}
-                                                        size="small"
-                                                        color="error"
-                                                    >
-                                                        <Close fontSize="small" />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
+                                            {canApproveIntelligence && (
+                                                <Tooltip title="Close">
+                                                    <span>
+                                                        <IconButton
+                                                            disabled={isActionDisabled(report)}
+                                                            onClick={() => handleOpenRejectDialog(report)}
+                                                            size="small"
+                                                            color="error"
+                                                        >
+                                                            <Close fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            )}
 
-                                            <Tooltip title="Return">
-                                                <span>
-                                                    <IconButton
-                                                        disabled={isActionDisabled(report)}
-                                                        onClick={() => handleOpenReturnDialog(report)}
-                                                        size="small"
-                                                        color="warning"
-                                                    >
-                                                        <Reply fontSize="small" />
-                                                    </IconButton>
-                                                </span>
-                                            </Tooltip>
+                                            {canReturnReport && (
+                                                <Tooltip title="Return">
+                                                    <span>
+                                                        <IconButton
+                                                            disabled={isActionDisabled(report)}
+                                                            onClick={() => handleOpenReturnDialog(report)}
+                                                            size="small"
+                                                            color="warning"
+                                                        >
+                                                            <Reply fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            )}
 
                                             {report.returnDocumentPath && (
                                                 <Tooltip title="Download Return Document">
