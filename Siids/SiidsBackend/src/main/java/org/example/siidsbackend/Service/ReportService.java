@@ -2190,8 +2190,12 @@ public class ReportService {
             throw new RuntimeException("Only Director of Investigation can approve case plans");
         }
 
-        // Update case status
         Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION) {
+            throw new IllegalStateException("Case plan not in correct status for Director Investigation approval");
+        }
+
+        // Update case status
         relatedCase.setStatus(WorkflowStatus.CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION);
         caseRepo.save(relatedCase);
 
@@ -2248,6 +2252,10 @@ public class ReportService {
         }
 
         Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION) {
+            throw new IllegalStateException("Case plan not in correct status for Director Investigation rejection");
+        }
+
         relatedCase.setStatus(WorkflowStatus.CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION);
         caseRepo.save(relatedCase);
 
@@ -2370,49 +2378,26 @@ public class ReportService {
         Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
                 .orElseThrow(() -> new RuntimeException("Rejector not found"));
 
-        WorkflowStatus newStatus;
-        switch (report.getRelatedCase().getStatus()) {
-            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
-            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
-                newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
-                report.setDirectorIntelligence(rejector);
-                break;
-            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
-                newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
-                report.setDirectorInvestigation(rejector);
-                break;
-            case INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION:
-                newStatus = WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
-                report.setDirectorInvestigation(rejector);
-                report.setInvestigationReportRejectedBy(rejectorId); // Store ID, not object
-                report.setInvestigationReportRejectionReason(rejectionReason);
-                report.setInvestigationReportRejectedAt(LocalDateTime.now());
-
-                // Return to investigation officer
-                if (report.getInvestigationOfficer() != null) {
-                    report.setCurrentRecipient(report.getInvestigationOfficer());
-                } else {
-                    report.setCurrentRecipient(report.getCreatedBy());
-                }
-                break;
-            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
-                newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
-                report.setAssistantCommissioner(rejector);
-                break;
-            default:
-                throw new IllegalStateException(
-                        "Cannot reject report in current status: " + report.getRelatedCase().getStatus());
+        Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION) {
+            throw new IllegalStateException(
+                    "Investigation report not in correct status for rejection");
         }
 
-        // For non-investigation report cases, set common fields
-        if (report.getRelatedCase().getStatus() != WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION) {
-            report.setRejectedBy(rejector);
-            report.setRejectionReason(rejectionReason);
-            report.setRejectedAt(LocalDateTime.now());
+        WorkflowStatus newStatus = WorkflowStatus.INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
+        report.setDirectorInvestigation(rejector);
+        report.setInvestigationReportRejectedBy(rejectorId);
+        report.setInvestigationReportRejectionReason(rejectionReason);
+        report.setInvestigationReportRejectedAt(LocalDateTime.now());
+
+        // Return to investigation officer
+        if (report.getInvestigationOfficer() != null) {
+            report.setCurrentRecipient(report.getInvestigationOfficer());
+        } else {
             report.setCurrentRecipient(report.getCreatedBy());
         }
 
-        report.getRelatedCase().setStatus(newStatus);
+        relatedCase.setStatus(newStatus);
         report.setUpdatedAt(LocalDateTime.now());
 
         Report savedReport = reportRepo.save(report);
@@ -2449,6 +2434,10 @@ public class ReportService {
         }
 
         Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION) {
+            throw new IllegalStateException("Investigation report not in correct status for return");
+        }
+
         relatedCase.setStatus(WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER);
         caseRepo.save(relatedCase);
 
@@ -2532,6 +2521,10 @@ public class ReportService {
                 .orElseThrow(() -> new RuntimeException("Rejector not found"));
 
         Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER) {
+            throw new RuntimeException("Case plan not in correct status for AC rejection");
+        }
+
         relatedCase.setStatus(WorkflowStatus.CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER);
         caseRepo.save(relatedCase);
 

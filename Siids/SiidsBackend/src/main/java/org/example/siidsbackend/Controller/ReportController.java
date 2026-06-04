@@ -891,8 +891,9 @@ public class ReportController {
     public ResponseEntity<Resource> downloadReportAttachment(
             @PathVariable Integer reportId,
             @PathVariable String filename,
-            @RequestParam String requesterId) {
+            Authentication authentication) {
 
+        String requesterId = authentication.getName();
         return reportService.downloadReportAttachment(reportId, filename, requesterId);
     }
 

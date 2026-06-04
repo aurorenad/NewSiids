@@ -239,6 +239,9 @@ export const ReportApi = {
     getEditPermission: (reportId) => {
         return caseApi.get(`/api/reports/${reportId}/edit-permission`);
     },
+    checkEditPermission: (reportId) => {
+        return caseApi.get(`/api/reports/${reportId}/edit-permission`);
+    },
 
     editReport: (reportId, formData) => {
         return caseApi.put(`/api/reports/${reportId}/edit`, formData, {
@@ -385,12 +388,9 @@ export const ReportApi = {
 
     downloadAttachment: async (reportId, storedFilename) => {
         try {
-            const requesterId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
             const response = await caseApi.get(
                 `/api/reports/download/${reportId}/${storedFilename}`,
                 {
-                    params: { requesterId },
                     responseType: 'blob'
                 }
             );
