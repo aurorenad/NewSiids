@@ -287,10 +287,19 @@ public class ReportService {
         
         // Status updates based on who signed
         if ("DIRECTOR_INTELLIGENCE".equals(role)) {
-            report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
+            boolean isAcSigned = report.getSignatures().stream().anyMatch(s -> "ASSISTANT_COMMISSIONER".equals(s.getSignatureRole()));
+            if (isAcSigned) {
+                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
+            } else {
+                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
+            }
         } else if ("ASSISTANT_COMMISSIONER".equals(role)) {
-            report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
-            // If AC signs, it's fully finalized from intelligence point of view
+            boolean isDiSigned = report.getSignatures().stream().anyMatch(s -> "DIRECTOR_INTELLIGENCE".equals(s.getSignatureRole()));
+            if (isDiSigned) {
+                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
+            } else {
+                report.getRelatedCase().setStatus(WorkflowStatus.PENDING_DIRECTOR_SIGNATURE);
+            }
         }
 
         report.setUpdatedAt(LocalDateTime.now());
@@ -975,12 +984,16 @@ public class ReportService {
                 break;
 
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
-                newStatus = WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION;
                 report.setAssistantCommissioner(approver);
-                // After Assistant Commissioner approves, send to Director of Investigation
-                List<Employee> directors = reportRepo.DirectorsOfInvestigation();
-                if (!directors.isEmpty()) {
-                    report.setCurrentRecipient(directors.get(0));
+                if (relatedCase.getRoutedTo() == null || relatedCase.getRoutedTo() == org.example.siidsbackend.Model.RoutedTo.DIRECTOR_OF_INVESTIGATION) {
+                    newStatus = WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION;
+                    List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+                    if (!directors.isEmpty()) {
+                        report.setCurrentRecipient(directors.get(0));
+                    }
+                } else {
+                    newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+                    report.setCurrentRecipient(null); // Or assign to a specific dept lead if implemented
                 }
                 break;
 
