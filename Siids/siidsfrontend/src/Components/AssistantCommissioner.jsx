@@ -24,11 +24,16 @@ const AssistantCommissioner = () => {
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
     
     // Action States
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [menuReport, setMenuReport] = useState(null);
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
     const [closeReason, setCloseReason] = useState("");
     const [selectedReport, setSelectedReport] = useState(null);
+
+    // Routing Modal States
+    const [routeDialogOpen, setRouteDialogOpen] = useState(false);
+    const [routeDestination, setRouteDestination] = useState("Director of Investigation");
+    const [customDepartment, setCustomDepartment] = useState("");
+    const [routingNotes, setRoutingNotes] = useState("");
+    const [reportToRoute, setReportToRoute] = useState(null);
 
     const navigate = useNavigate();
 
@@ -64,6 +69,42 @@ const AssistantCommissioner = () => {
             "INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER": "Approved"
         };
         return map[status] || status?.replace(/_/g, ' ') || 'Unknown';
+    };
+
+    const handleApproveClick = (report) => {
+        if (activeTab === 0) {
+            setReportToRoute(report);
+            setRouteDestination("Director of Investigation");
+            setCustomDepartment("");
+            setRoutingNotes("");
+            setRouteDialogOpen(true);
+        } else {
+            handleApproveAction(report);
+        }
+    };
+
+    const handleRouteAndApprove = async () => {
+        try {
+            setSubmitting(true);
+            const finalDepartment = routeDestination === "Other Departments" ? customDepartment : routeDestination;
+            
+            // Route case first
+            if (reportToRoute.relatedCase?.id) {
+                await ReportApi.routeCase(reportToRoute.relatedCase.id, finalDepartment, routingNotes);
+            }
+            
+            // Then approve the report
+            await ReportApi.approveReport(reportToRoute.id);
+            
+            showSnackbar(`Case approved and routed to ${finalDepartment}`);
+            setRouteDialogOpen(false);
+            await fetchAllData();
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.response?.data || "Routing failed";
+            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Routing failed", "error");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const handleApproveAction = async (report) => {
@@ -198,7 +239,7 @@ const AssistantCommissioner = () => {
                                                 color="success"
                                                 size="small"
                                                 startIcon={<Check />}
-                                                onClick={() => handleApproveAction(r)}
+                                                onClick={() => handleApproveClick(r)}
                                                 disabled={submitting}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
@@ -229,14 +270,55 @@ const AssistantCommissioner = () => {
                 </TableContainer>
             </Paper>
 
-            {/* Decision Menus */}
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                <MenuItem onClick={handleApproveAction}>Finalize Approval</MenuItem>
-                <Divider />
-                <MenuItem onClick={() => handleSendToDept('Investigation')}>Approve & Assign Investigation</MenuItem>
-                <MenuItem onClick={() => handleSendToDept('Legal')}>Refer to Legal Counsel</MenuItem>
-                <MenuItem onClick={() => handleSendToDept('Finance')}>Refer to Finance Unit</MenuItem>
-            </Menu>
+            {/* Routing / Approval Portal */}
+            <Dialog open={routeDialogOpen} onClose={() => setRouteDialogOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle sx={{ bgcolor: '#3b82f6', color: '#fff' }}>Route Approved Case</DialogTitle>
+                <DialogContent sx={{ mt: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        Where should this case be routed after your approval?
+                    </Typography>
+                    <TextField
+                        select
+                        fullWidth
+                        label="Destination Department"
+                        value={routeDestination}
+                        onChange={(e) => setRouteDestination(e.target.value)}
+                        sx={{ mb: 2 }}
+                    >
+                        <MenuItem value="Director of Investigation">Director of Investigation</MenuItem>
+                        <MenuItem value="Prosecution">Prosecution</MenuItem>
+                        <MenuItem value="Enforcement">Enforcement</MenuItem>
+                        <MenuItem value="Collection">Collection</MenuItem>
+                        <MenuItem value="To be filled">To be filled</MenuItem>
+                        <MenuItem value="Other Departments">Other Departments</MenuItem>
+                    </TextField>
+
+                    {routeDestination === "Other Departments" && (
+                        <TextField
+                            fullWidth
+                            label="Enter Department Name"
+                            value={customDepartment}
+                            onChange={(e) => setCustomDepartment(e.target.value)}
+                            sx={{ mb: 2 }}
+                        />
+                    )}
+
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Routing Notes (Optional)"
+                        value={routingNotes}
+                        onChange={(e) => setRoutingNotes(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setRouteDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleRouteAndApprove} variant="contained" color="primary" disabled={submitting}>
+                        Confirm Route & Approve
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Rejection Portal */}
             <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} fullWidth>
