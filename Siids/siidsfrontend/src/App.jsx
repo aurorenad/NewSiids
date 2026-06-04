@@ -31,7 +31,6 @@ import LegalAdvisor from "./Components/LegalAdvisor.jsx"
 import EditReport from "./Components/EditReport.jsx";
 import StockManagement from "./Components/StockManagement.jsx";
 import SystemAdmin from "./Components/SystemAdmin.jsx";
-import PrsoReleases from "./Components/PrsoReleases.jsx";
 import { Box } from '@mui/material';
 import { Toaster } from 'sonner';
 import { hasAllPermissions, hasAnyPermission } from './utils/authorization';
@@ -129,7 +128,7 @@ const protectedRoutes = [
     { path: ROUTES.INTELLIGENCE_OFFICER_EDIT_REPORT, element: <EditReport />, permissions: [PERMISSIONS.REPORT_CREATE] },
     { path: ROUTES.STOCK_MANAGEMENT, element: <StockManagement />, permissions: [PERMISSIONS.STOCK_MANAGE] },
     { path: ROUTES.SYSTEM_ADMIN, element: <SystemAdmin />, permissions: [PERMISSIONS.USER_VIEW] },
-    { path: ROUTES.SURVEILLANCE_RELEASES, element: <PrsoReleases />, permissions: [PERMISSIONS.STOCK_APPROVE_RELEASE] },
+    { path: ROUTES.SURVEILLANCE_RELEASES, element: <Navigate to={ROUTES.PRSO_APPROVALS} replace />, permissions: [PERMISSIONS.STOCK_APPROVE_RELEASE] },
     // --- NEW PHYSICAL STOCK MODULE ROUTES ---
     { path: ROUTES.TEMPORARY_STOCK, element: <PVTemporaryStockPage />, permissions: [PERMISSIONS.STOCK_VIEW] },
     { path: ROUTES.STOCK_INVENTORY, element: <StockManagerPage />, permissions: [PERMISSIONS.STOCK_VIEW] },

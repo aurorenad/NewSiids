@@ -16,7 +16,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, routeTo } from '../constants/routes';
-import axios from 'axios';
+import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
@@ -57,8 +57,6 @@ const DirectorIntelligence = () => {
     const canApproveIntelligence = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_INTELLIGENCE);
     const canReturnReport = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_INTELLIGENCE);
 
-    const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
-
     useEffect(() => {
         fetchReports();
     }, []);
@@ -66,15 +64,7 @@ const DirectorIntelligence = () => {
     const fetchReports = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            const response = await axios.get(`${BASE_URL}/api/reports/director-intelligence/reports`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'employee_id': employeeId
-                }
-            });
+            const response = await ReportApi.getReportsForDirectorIntelligence();
 
             const reportsWithDate = response.data.map(report => ({
                 ...report,
@@ -121,19 +111,7 @@ const DirectorIntelligence = () => {
     const handleApprove = async (report) => {
         setReportLoading(report.id, true);
         try {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            await axios.post(
-                `${BASE_URL}/api/reports/${report.id}/approve`,
-                {},
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'employee_id': employeeId
-                    }
-                }
-            );
+            await ReportApi.approveReport(report.id);
 
             setReports(prev => prev.map(r =>
                 r.id === report.id ? {
@@ -176,20 +154,7 @@ const DirectorIntelligence = () => {
 
         setReportLoading(selectedReport.id, true);
         try {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            await axios.post(
-                `${BASE_URL}/api/reports/${selectedReport.id}/reject`,
-                null,
-                {
-                    params: { rejectionReason },
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'employee_id': employeeId
-                    }
-                }
-            );
+            await ReportApi.rejectReport(selectedReport.id, rejectionReason);
 
             setReports(prev => prev.map(r =>
                 r.id === selectedReport.id ? {
@@ -271,19 +236,7 @@ const DirectorIntelligence = () => {
 
     const handleDownloadReturnDocument = async (reportId) => {
         try {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            const response = await axios.get(
-                `${BASE_URL}/api/reports/${reportId}/return-document`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'employee_id': employeeId
-                    },
-                    responseType: 'blob'
-                }
-            );
+            const response = await ReportApi.downloadReturnDocument(reportId);
 
             const url = window.URL.createObjectURL(new Blob([response.data]));
             const link = document.createElement('a');
@@ -335,30 +288,16 @@ const DirectorIntelligence = () => {
         setUploadProgress(0);
 
         try {
-            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-            const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-
-            const formData = new FormData();
-            formData.append('returnToEmployeeId', targetEmployeeId);
-            formData.append('returnReason', returnReasonText || 'Document attached');
-
-            if (returnAttachment) {
-                formData.append('returnDocument', returnAttachment);
-            }
-
-            const response = await axios.post(
-                `${BASE_URL}/api/reports/${selectedReport.id}/return-with-document`,
-                formData,
+            const responseData = await ReportApi.returnReportWithAttachment(
+                selectedReport.id,
+                targetEmployeeId,
+                returnReasonText || 'Document attached',
+                returnAttachment,
                 {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'employee_id': employeeId,
-                        'Content-Type': 'multipart/form-data'
-                    },
                     onUploadProgress: (progressEvent) => {
-                        const percentCompleted = Math.round(
-                            (progressEvent.loaded * 100) / progressEvent.total
-                        );
+                        const percentCompleted = progressEvent.total
+                            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
+                            : 100;
                         setUploadProgress(percentCompleted);
                     }
                 }
@@ -374,7 +313,7 @@ const DirectorIntelligence = () => {
                     returnedBy: currentUser,
                     returnedToEmployeeId: targetEmployeeId,
                     hasReturnDocument: !!returnAttachment,
-                    returnDocumentPath: response.data.returnDocumentPath || null
+                    returnDocumentPath: responseData?.returnDocumentPath || null
                 } : r
             ));
 

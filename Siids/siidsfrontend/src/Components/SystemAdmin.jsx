@@ -1,5 +1,4 @@
 import React, { useContext, useState, useEffect } from 'react';
-import axios from '../api/axios.jsx';
 import {
   Typography,
   Paper,
@@ -27,6 +26,7 @@ import RoleSelectField from './admin/RoleSelectField.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
 import { hasPermission } from '../utils/authorization.js';
 import { PERMISSIONS } from '../constants/permissions';
+import { adminApi } from '../api/adminApi.js';
 
 const SystemAdmin = () => {
   const { authState } = useContext(AuthContext);
@@ -62,8 +62,7 @@ const SystemAdmin = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/users', { headers: { Authorization: `Bearer ${token}` } });
+      const response = await adminApi.getUsers();
       setUsers(response.data);
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -84,10 +83,7 @@ const SystemAdmin = () => {
     e.preventDefault();
     setError('');
     try {
-      const token = localStorage.getItem('token');
-      await axios.post('/admin/register-user', formData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await adminApi.registerUser(formData);
       alert('User created successfully. A password setup token has been emailed to the user.');
       handleRegisterToggle();
       fetchUsers();
@@ -106,12 +102,7 @@ const SystemAdmin = () => {
 
   const toggleStatus = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `/users/${id}/deactivate`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await adminApi.deactivateUser(id);
       fetchUsers();
     } catch {
       setError('Error updating status.');
@@ -133,12 +124,7 @@ const SystemAdmin = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `/users/${selectedUser.id}/role`,
-        { role: newRole, reason: roleChangeReason.trim() },
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
+      await adminApi.updateUserRole(selectedUser.id, { role: newRole, reason: roleChangeReason.trim() });
       setOpenRole(false);
       setRoleChangeReason('');
       fetchUsers();
@@ -154,11 +140,9 @@ const SystemAdmin = () => {
     setError('');
 
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
       const [roleHistoryResponse, accountAuditResponse] = await Promise.all([
-        axios.get(`/users/${user.username}/role-history`, { headers }),
-        axios.get(`/users/${user.username}/account-audit-logs`, { headers }),
+        adminApi.getRoleHistory(user.username),
+        adminApi.getAccountAuditLogs(user.username),
       ]);
       setRoleHistory(roleHistoryResponse.data || []);
       setAccountAudit(accountAuditResponse.data || []);

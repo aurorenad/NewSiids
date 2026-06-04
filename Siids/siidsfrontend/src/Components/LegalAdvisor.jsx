@@ -256,26 +256,7 @@ const LegalAdvisorDashboard = () => {
         }
 
         try {
-            // Create the request body
-            const requestBody = {
-                returnReason: returnReason
-            };
-
-            // Call the API - updated to return to Assistant Commissioner
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'}/api/reports/${selectedReport.id}/return-to-assistant-commissioner`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`,
-                    'employee_id': localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId')
-                },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
+            await ReportApi.returnToAssistantCommissioner(selectedReport.id, returnReason);
 
             setSnackbar({
                 open: true,
@@ -290,7 +271,7 @@ const LegalAdvisorDashboard = () => {
             console.error('Error returning report:', error);
             setSnackbar({
                 open: true,
-                message: error.message || 'Failed to return report',
+                message: error.response?.data?.message || error.message || 'Failed to return report',
                 severity: 'error'
             });
         }

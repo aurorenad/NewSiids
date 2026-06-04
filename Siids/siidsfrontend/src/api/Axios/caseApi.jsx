@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005';
 
 const caseApi = axios.create({
     baseURL: BASE_URL,
@@ -132,7 +132,7 @@ export const ReportApi = {
             { returnReason }
         );
     },
-    returnReportWithAttachment: async (reportId, returnToEmployeeId, returnReason, returnDocument) => {
+    returnReportWithAttachment: async (reportId, returnToEmployeeId, returnReason, returnDocument, options = {}) => {
         try {
             const formData = new FormData();
 
@@ -158,7 +158,8 @@ export const ReportApi = {
                     },
                     headers: {
                         'Content-Type': 'multipart/form-data'
-                    }
+                    },
+                    ...options
                 }
             );
             return response.data;
@@ -348,6 +349,12 @@ export const ReportApi = {
     rejectReport: (reportId, rejectionReason) => {
         return caseApi.post(`/api/reports/${reportId}/reject`, null, {
             params: { rejectionReason }
+        });
+    },
+
+    returnToAssistantCommissioner: (reportId, returnReason) => {
+        return caseApi.post(`/api/reports/${reportId}/return-to-assistant-commissioner`, {
+            returnReason
         });
     },
 
