@@ -111,7 +111,8 @@
     <table class="signature-section">
         <tr>
             <td class="sig-block">
-                <div style="height: 60px;"></div>
+                <div style="height: 60px; color: #009A44; font-weight: bold; font-family: monospace; padding-top: 20px;">[ DIGITAL SIGNATURE ]</div>
+                <div class="officer-name" th:text="${note.taxpayerName ?: 'UNKNOWN'}">TAXPAYER NAME</div>
                 <div class="sig-label">Signature of Offender / Representative</div>
             </td>
             <td class="sig-block" style="text-align: right;">
