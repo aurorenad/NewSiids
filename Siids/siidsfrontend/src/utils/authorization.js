@@ -20,3 +20,10 @@ export const hasAnyPermission = (authState, permissions = []) => {
     const userPermissions = new Set(getPermissions(authState));
     return permissions.some((permission) => userPermissions.has(normalizePermission(permission)));
 };
+
+export const hasAllPermissions = (authState, permissions = []) => {
+    if (!permissions || permissions.length === 0) return true;
+    if (isAdmin(authState)) return true;
+    const userPermissions = new Set(getPermissions(authState));
+    return permissions.every((permission) => userPermissions.has(normalizePermission(permission)));
+};

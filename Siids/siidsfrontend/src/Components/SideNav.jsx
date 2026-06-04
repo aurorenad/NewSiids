@@ -71,7 +71,7 @@ const Sidebar = () => {
             label: 'Surveillance',
             links: [
                 can(PERMISSIONS.SURVEILLANCE_VIEW) && { to: ROUTES.SURVEILLANCE, label: 'Surveillance Officer', icon: <CameraOutdoor /> },
-                canAny([PERMISSIONS.STOCK_VIEW, PERMISSIONS.SURVEILLANCE_VIEW]) && { to: ROUTES.TEMPORARY_STOCK, label: 'Temporary Stock', icon: <Storefront /> },
+                can(PERMISSIONS.STOCK_VIEW) && { to: ROUTES.TEMPORARY_STOCK, label: 'Temporary Stock', icon: <Storefront /> },
             ].filter(Boolean),
         },
         {

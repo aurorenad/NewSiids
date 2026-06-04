@@ -10,26 +10,24 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class RewardMemoService {
+    private static final Set<String> REWARD_MEMO_ATTACHMENT_EXTENSIONS = Set.of(
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg");
+
     private final RewardMemoRepo rewardMemoRepo;
     private final CaseRepo caseRepo;
     private final EmployeeRepo employeeRepo;
     private final ReportRepo reportRepo;
     private final NotificationRepo notificationRepo;
     private final WebSocketNotificationService webSocketNotificationService;
-
-    private final String uploadDir = "uploads/reward-memos";
+    private final FileStorageService fileStorageService;
 
     @Transactional
     public RewardMemo submitRewardMemo(String caseNum, String employeeId, Double amount, String description, List<MultipartFile> attachments) throws IOException {
@@ -48,13 +46,11 @@ public class RewardMemoService {
         
         // Handle attachments
         if (attachments != null && !attachments.isEmpty()) {
-            Path root = Paths.get(uploadDir);
-            if (!Files.exists(root)) Files.createDirectories(root);
-            
             for (MultipartFile file : attachments) {
-                String filename = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
-                Files.copy(file.getInputStream(), root.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
-                memo.getAttachmentPaths().add(filename);
+                String storedPath = fileStorageService.store(file, "reward-memos", REWARD_MEMO_ATTACHMENT_EXTENSIONS);
+                if (storedPath != null) {
+                    memo.getAttachmentPaths().add(storedPath);
+                }
             }
         }
 
@@ -76,6 +72,9 @@ public class RewardMemoService {
                 .orElseThrow(() -> new RuntimeException("Memo not found"));
         Employee director = employeeRepo.findByEmployeeId(directorId)
                 .orElseThrow(() -> new RuntimeException("Director not found"));
+        requireStatus(memo, WorkflowStatus.REWARD_MEMO_SENT_TO_DIRECTOR_INTELLIGENCE);
+        requireCurrentRecipientOrListedEmployee(memo, directorId, reportRepo.DirectorsOfIntelligence(),
+                "Only the assigned Director of Intelligence can approve this reward memo");
 
         memo.setDirectorIntelligence(director);
         memo.setStatus(WorkflowStatus.REWARD_MEMO_SENT_TO_ASSISTANT_COMMISSIONER);
@@ -96,6 +95,9 @@ public class RewardMemoService {
                 .orElseThrow(() -> new RuntimeException("Memo not found"));
         Employee ac = employeeRepo.findByEmployeeId(acId)
                 .orElseThrow(() -> new RuntimeException("AC not found"));
+        requireStatus(memo, WorkflowStatus.REWARD_MEMO_SENT_TO_ASSISTANT_COMMISSIONER);
+        requireCurrentRecipientOrListedEmployee(memo, acId, reportRepo.assistantCommissioner(),
+                "Only the assigned Assistant Commissioner can approve this reward memo");
 
         memo.setAssistantCommissioner(ac);
         memo.setStatus(WorkflowStatus.REWARD_MEMO_APPROVED_BY_ASSISTANT_COMMISSIONER);
@@ -116,6 +118,10 @@ public class RewardMemoService {
     public RewardMemo processByFinance(Integer memoId, String checkNumber) {
         RewardMemo memo = rewardMemoRepo.findById(memoId)
                 .orElseThrow(() -> new RuntimeException("Memo not found"));
+        requireStatus(memo, WorkflowStatus.REWARD_MEMO_SENT_TO_FINANCE);
+        if (checkNumber == null || checkNumber.isBlank()) {
+            throw new IllegalArgumentException("Bank check number is required");
+        }
         
         memo.setProcessedByFinance(true);
         memo.setFinanceProcessedAt(LocalDateTime.now());
@@ -134,6 +140,15 @@ public class RewardMemoService {
     public RewardMemo rejectMemo(Integer memoId, String reason, String rejectorId) {
         RewardMemo memo = rewardMemoRepo.findById(memoId)
                 .orElseThrow(() -> new RuntimeException("Memo not found"));
+        if (memo.getStatus() == WorkflowStatus.REWARD_MEMO_SENT_TO_DIRECTOR_INTELLIGENCE) {
+            requireCurrentRecipientOrListedEmployee(memo, rejectorId, reportRepo.DirectorsOfIntelligence(),
+                    "Only the assigned Director of Intelligence can reject this reward memo");
+        } else if (memo.getStatus() == WorkflowStatus.REWARD_MEMO_SENT_TO_ASSISTANT_COMMISSIONER) {
+            requireCurrentRecipientOrListedEmployee(memo, rejectorId, reportRepo.assistantCommissioner(),
+                    "Only the assigned Assistant Commissioner can reject this reward memo");
+        } else {
+            throw new IllegalStateException("Reward memo cannot be rejected from status: " + memo.getStatus());
+        }
         
         memo.setStatus(WorkflowStatus.REWARD_MEMO_REJECTED);
         memo.setRejectionReason(reason);
@@ -151,6 +166,27 @@ public class RewardMemoService {
 
     public List<RewardMemo> getMyMemos(String employeeId) {
         return rewardMemoRepo.findByCreatedBy_EmployeeId(employeeId);
+    }
+
+    private void requireStatus(RewardMemo memo, WorkflowStatus expectedStatus) {
+        if (memo.getStatus() != expectedStatus) {
+            throw new IllegalStateException(
+                    "Reward memo must be in status " + expectedStatus + " but was " + memo.getStatus());
+        }
+    }
+
+    private void requireCurrentRecipientOrListedEmployee(
+            RewardMemo memo,
+            String employeeId,
+            List<Employee> allowedEmployees,
+            String message) {
+        boolean isCurrentRecipient = memo.getCurrentRecipient() != null
+                && employeeId.equals(memo.getCurrentRecipient().getEmployeeId());
+        boolean isListedEmployee = allowedEmployees != null
+                && allowedEmployees.stream().anyMatch(employee -> employeeId.equals(employee.getEmployeeId()));
+        if (!isCurrentRecipient && !isListedEmployee) {
+            throw new SecurityException(message);
+        }
     }
 
     private void createNotification(RewardMemo memo, String message) {

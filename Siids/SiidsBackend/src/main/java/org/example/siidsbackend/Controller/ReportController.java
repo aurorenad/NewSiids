@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,9 +53,6 @@ public class ReportController {
     private final org.example.siidsbackend.Repository.UserRepo userRepo;
     private final RbacService rbacService;
     private final FileStorageService fileStorageService;
-
-    @Value("${file.upload-dir}")
-    private String uploadDir;
 
     @Value("${file.max-size:10485760}")
     private String maxFileSize;
@@ -116,35 +112,17 @@ public class ReportController {
                 return ResponseEntity.notFound().build();
             }
 
-            // DEBUG: Log the values
-            log.info("Upload directory: {}", uploadDir);
             log.info("Attachment path from DB: {}", report.getAttachmentPath());
 
-            // Resolve and validate file path
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             Path filePath = fileStorageService.resolveStoredPath(report.getAttachmentPath());
 
-            // DEBUG: Log resolved paths
-            log.info("Upload directory resolved: {}", uploadPath);
             log.info("File path resolved: {}", filePath);
             log.info("File exists: {}", Files.exists(filePath));
             log.info("File is readable: {}", Files.isReadable(filePath));
             log.info("File size: {}", Files.exists(filePath) ? Files.size(filePath) : "N/A");
 
-            // Security: Prevent path traversal
-            if (!filePath.startsWith(uploadPath)) {
-                log.error("Path traversal attempt detected for file: {}", filePath);
-                return ResponseEntity.badRequest().body("Invalid file path");
-            }
-
             if (!Files.exists(filePath)) {
                 log.error("File not found: {}", filePath);
-                try {
-                    log.info("Upload directory contents: {}",
-                            Files.list(uploadPath).map(Path::getFileName).collect(Collectors.toList()));
-                } catch (IOException e) {
-                    log.error("Cannot list directory contents: {}", e.getMessage());
-                }
                 return ResponseEntity.notFound().build();
             }
 
@@ -1314,13 +1292,7 @@ public class ReportController {
 
         try {
             Report report = reportService.getReport(id);
-
-            // Check access
-            if (!report.getCreatedBy().getEmployeeId().equals(employeeId) &&
-                    !report.getCurrentRecipient().getEmployeeId().equals(employeeId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(null);
-            }
+            validateAttachmentAccess(report, employeeId);
 
             if (report.getReturnDocumentPath() == null) {
                 return ResponseEntity.notFound().build();

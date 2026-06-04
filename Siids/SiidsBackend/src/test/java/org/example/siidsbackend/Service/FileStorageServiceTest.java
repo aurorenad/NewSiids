@@ -62,6 +62,20 @@ class FileStorageServiceTest {
     }
 
     @Test
+    void storeBytes_ShouldStoreSanitizedFilenameUnderSubDirectory() throws Exception {
+        FileStorageService service = new FileStorageService(tempDir.toString());
+
+        String storedPath = service.storeBytes(
+                "%PDF-1.7\ncontent".getBytes(),
+                "../SeizureNote-SN-TEST.pdf",
+                "seizure-notes",
+                Set.of(".pdf"));
+
+        assertEquals("seizure-notes/SeizureNote-SN-TEST.pdf", storedPath);
+        assertTrue(Files.exists(tempDir.resolve(storedPath)));
+    }
+
+    @Test
     void resolveStoredPath_ShouldRejectTraversal() {
         FileStorageService service = new FileStorageService(tempDir.toString());
 

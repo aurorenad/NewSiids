@@ -34,7 +34,7 @@ import SystemAdmin from "./Components/SystemAdmin.jsx";
 import PrsoReleases from "./Components/PrsoReleases.jsx";
 import { Box } from '@mui/material';
 import { Toaster } from 'sonner';
-import { hasAnyPermission } from './utils/authorization';
+import { hasAllPermissions, hasAnyPermission } from './utils/authorization';
 import { PERMISSIONS } from './constants/permissions';
 import { ROUTES } from './constants/routes';
 
@@ -53,7 +53,7 @@ const AppShell = ({ children }) => (
     </Box>
 );
 
-const ProtectedRoute = ({ children, permissions }) => {
+const ProtectedRoute = ({ children, permissions, requireAllPermissions = false }) => {
     const { authState, loading } = useContext(AuthContext);
 
     if (loading) {
@@ -66,7 +66,10 @@ const ProtectedRoute = ({ children, permissions }) => {
     }
 
     if (permissions?.length) {
-        if (!hasAnyPermission(authState, permissions)) {
+        const hasAccess = requireAllPermissions
+            ? hasAllPermissions(authState, permissions)
+            : hasAnyPermission(authState, permissions);
+        if (!hasAccess) {
             console.warn(`ProtectedRoute: Access denied. Required permissions [${permissions.join(', ')}]. Redirecting to /home`);
             return <Navigate to={ROUTES.HOME} replace />;
         }
@@ -75,8 +78,8 @@ const ProtectedRoute = ({ children, permissions }) => {
     return <AppShell>{children}</AppShell>;
 };
 
-const withProtected = (element, permissions) => (
-    <ProtectedRoute permissions={permissions}>{element}</ProtectedRoute>
+const withProtected = (element, permissions, requireAllPermissions) => (
+    <ProtectedRoute permissions={permissions} requireAllPermissions={requireAllPermissions}>{element}</ProtectedRoute>
 );
 
 const publicRoutes = [
@@ -87,7 +90,7 @@ const publicRoutes = [
 
 const protectedRoutes = [
     { path: ROUTES.HOME, element: <Home /> },
-    { path: ROUTES.DIRECTOR_INTELLIGENCE, element: <DirectorIntelligence />, permissions: [PERMISSIONS.REPORT_VIEW, PERMISSIONS.REPORT_APPROVE_INTELLIGENCE] },
+    { path: ROUTES.DIRECTOR_INTELLIGENCE, element: <DirectorIntelligence />, permissions: [PERMISSIONS.REPORT_VIEW, PERMISSIONS.REPORT_APPROVE_INTELLIGENCE], requireAllPermissions: true },
     { path: ROUTES.INTELLIGENCE_OFFICER, element: <IntelligenceOfficer />, permissions: [PERMISSIONS.REPORT_CREATE, PERMISSIONS.REPORT_VIEW] },
     { path: ROUTES.INTELLIGENCE_OFFICER_NEW_CASE, element: <NewCase />, permissions: [PERMISSIONS.CASE_CREATE] },
     { path: ROUTES.INTELLIGENCE_OFFICER_VIEW_CASE, element: <TaxReportView />, permissions: [PERMISSIONS.CASE_VIEW] },
@@ -99,8 +102,8 @@ const protectedRoutes = [
     { path: ROUTES.SURVEILLANCE_EDIT_CASE, element: <NewSurveillenceCase />, permissions: [PERMISSIONS.SURVEILLANCE_CREATE] },
     { path: ROUTES.SURVEILLANCE_VIEW_CASE, element: <SurveillanceCaseView />, permissions: [PERMISSIONS.SURVEILLANCE_VIEW] },
     { path: ROUTES.SURVEILLANCE_REPORT_FORM, element: <SClaimForm />, permissions: [PERMISSIONS.SURVEILLANCE_CREATE] },
-    { path: ROUTES.DIRECTOR_INVESTIGATION, element: <DirectorInvestigation />, permissions: [PERMISSIONS.REPORT_APPROVE_INVESTIGATION, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION] },
-    { path: ROUTES.LEGACY_DIRECTOR_INVESTIGATION, element: <Navigate to={ROUTES.DIRECTOR_INVESTIGATION} replace />, permissions: [PERMISSIONS.REPORT_APPROVE_INVESTIGATION, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION] },
+    { path: ROUTES.DIRECTOR_INVESTIGATION, element: <DirectorInvestigation />, permissions: [PERMISSIONS.REPORT_APPROVE_INVESTIGATION, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION], requireAllPermissions: true },
+    { path: ROUTES.LEGACY_DIRECTOR_INVESTIGATION, element: <Navigate to={ROUTES.DIRECTOR_INVESTIGATION} replace />, permissions: [PERMISSIONS.REPORT_APPROVE_INVESTIGATION, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION], requireAllPermissions: true },
     { path: ROUTES.ASSISTANT_COMMISSIONER, element: <AssistantCommissioner />, permissions: [PERMISSIONS.REPORT_APPROVE_ASSISTANT_COMMISSIONER] },
     { path: ROUTES.HISTORY, element: <History />, permissions: [PERMISSIONS.AUDIT_VIEW] },
     {
@@ -128,7 +131,7 @@ const protectedRoutes = [
     { path: ROUTES.SYSTEM_ADMIN, element: <SystemAdmin />, permissions: [PERMISSIONS.USER_VIEW] },
     { path: ROUTES.SURVEILLANCE_RELEASES, element: <PrsoReleases />, permissions: [PERMISSIONS.STOCK_APPROVE_RELEASE] },
     // --- NEW PHYSICAL STOCK MODULE ROUTES ---
-    { path: ROUTES.TEMPORARY_STOCK, element: <PVTemporaryStockPage />, permissions: [PERMISSIONS.STOCK_VIEW, PERMISSIONS.SURVEILLANCE_VIEW] },
+    { path: ROUTES.TEMPORARY_STOCK, element: <PVTemporaryStockPage />, permissions: [PERMISSIONS.STOCK_VIEW] },
     { path: ROUTES.STOCK_INVENTORY, element: <StockManagerPage />, permissions: [PERMISSIONS.STOCK_VIEW] },
     { path: ROUTES.PRSO_APPROVALS, element: <PRSOApprovalsPage />, permissions: [PERMISSIONS.STOCK_APPROVE_RELEASE] },
 ];
@@ -143,7 +146,7 @@ const AppRoutes = () => {
                 <Route
                     key={route.path}
                     path={route.path}
-                    element={withProtected(route.element, route.permissions)}
+                    element={withProtected(route.element, route.permissions, route.requireAllPermissions)}
                 />
             ))}
             <Route path="*" element={<Navigate to={ROUTES.LOGIN} replace />} />

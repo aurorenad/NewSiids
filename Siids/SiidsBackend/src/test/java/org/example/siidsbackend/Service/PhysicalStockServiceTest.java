@@ -62,6 +62,9 @@ class PhysicalStockServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private FileStorageService fileStorageService;
+
     private PhysicalStockService physicalStockService;
 
     @BeforeEach
@@ -77,7 +80,8 @@ class PhysicalStockServiceTest {
                 pdfService,
                 employeeRepo,
                 userRepo,
-                passwordEncoder
+                passwordEncoder,
+                fileStorageService
         );
     }
 

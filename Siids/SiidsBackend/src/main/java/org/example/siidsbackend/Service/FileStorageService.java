@@ -30,6 +30,33 @@ public class FileStorageService {
         return store(file, subDirectory, Set.of(".pdf"));
     }
 
+    public String storeBytes(byte[] data, String filename, String subDirectory, Set<String> allowedExtensions)
+            throws IOException {
+        if (data == null || data.length == 0) {
+            return null;
+        }
+
+        String safeFilename = sanitizeFilename(filename);
+        String extension = getExtension(safeFilename);
+        Set<String> normalizedAllowedExtensions = normalizeExtensions(allowedExtensions);
+        if (!normalizedAllowedExtensions.contains(extension)) {
+            throw new IllegalArgumentException("Unsupported file type: " + extension);
+        }
+
+        Path targetDirectory = resolveDirectory(subDirectory);
+        Files.createDirectories(targetDirectory);
+
+        Path targetFile = targetDirectory.resolve(safeFilename).normalize();
+        if (!targetFile.startsWith(targetDirectory)) {
+            throw new IOException("Invalid file path - security violation");
+        }
+
+        Files.write(targetFile, data);
+        return StringUtils.hasText(subDirectory)
+                ? subDirectory.replace('\\', '/') + "/" + safeFilename
+                : safeFilename;
+    }
+
     public String store(MultipartFile file, String subDirectory, Set<String> allowedExtensions) throws IOException {
         if (file == null || file.isEmpty()) {
             return null;
@@ -83,6 +110,15 @@ public class FileStorageService {
             throw new IllegalArgumentException("File must have an extension");
         }
         return filename.substring(extensionIndex).toLowerCase(Locale.ROOT);
+    }
+
+    private String sanitizeFilename(String filename) {
+        String cleanFilename = StringUtils.cleanPath(Objects.requireNonNull(filename));
+        Path fileNameOnly = Paths.get(cleanFilename).getFileName();
+        if (fileNameOnly == null || !StringUtils.hasText(fileNameOnly.toString())) {
+            throw new IllegalArgumentException("Filename is required");
+        }
+        return fileNameOnly.toString();
     }
 
     private Set<String> normalizeExtensions(Set<String> extensions) {

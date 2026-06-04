@@ -24,6 +24,7 @@ import java.util.ArrayList;
 @Service
 @lombok.extern.slf4j.Slf4j
 public class PhysicalStockService {
+    private static final java.util.Set<String> PDF_EXTENSIONS = java.util.Set.of(".pdf");
 
     private final SeizureNoteRepository seizureNoteRepository;
     private final PVDocumentRepository pvDocumentRepository;
@@ -36,6 +37,7 @@ public class PhysicalStockService {
     private final org.example.siidsbackend.Repository.EmployeeRepo employeeRepo;
     private final UserRepo userRepo;
     private final PasswordEncoder passwordEncoder;
+    private final FileStorageService fileStorageService;
 
     public PhysicalStockService(SeizureNoteRepository seizureNoteRepository,
                                 PVDocumentRepository pvDocumentRepository,
@@ -47,7 +49,8 @@ public class PhysicalStockService {
                                 PdfService pdfService,
                                 org.example.siidsbackend.Repository.EmployeeRepo employeeRepo,
                                 UserRepo userRepo,
-                                PasswordEncoder passwordEncoder) {
+                                PasswordEncoder passwordEncoder,
+                                FileStorageService fileStorageService) {
         this.seizureNoteRepository = seizureNoteRepository;
         this.pvDocumentRepository = pvDocumentRepository;
         this.releaseNoteRepository = releaseNoteRepository;
@@ -59,6 +62,7 @@ public class PhysicalStockService {
         this.employeeRepo = employeeRepo;
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
+        this.fileStorageService = fileStorageService;
     }
 
     public Employee getEmployeeByUsername(String username) {
@@ -729,12 +733,12 @@ public class PhysicalStockService {
 
     private void savePdfToLocal(byte[] data, String filename, String subDir) {
         try {
-            java.nio.file.Path path = java.nio.file.Paths.get("uploads", subDir);
-            if (!java.nio.file.Files.exists(path)) {
-                java.nio.file.Files.createDirectories(path);
+            String storedPath = fileStorageService.storeBytes(data, filename, subDir, PDF_EXTENSIONS);
+            if (storedPath != null) {
+                log.info("PDF archived successfully to: {}", storedPath);
+            } else {
+                log.warn("PDF archive skipped because no data was written");
             }
-            java.nio.file.Files.write(path.resolve(filename), data);
-            log.info("PDF archived successfully to: {}/{}", subDir, filename);
         } catch (Exception e) {
             log.error("Failed to archive PDF locally: {}", e.getMessage());
         }

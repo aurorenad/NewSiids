@@ -79,6 +79,8 @@ public class PhysicalStockController {
                     .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                     .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"SeizureNote-" + id + ".pdf\"")
                     .body(pdf);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
@@ -175,10 +177,13 @@ public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
         // Try to determine a filename
         String filename = "PV-Document-" + id + ".pdf";
 
-        return ResponseEntity.ok()
-                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
-                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .body(pdf);
+    return ResponseEntity.ok()
+            .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+            .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
+    } catch (SecurityException e) {
+        log.warn("PV PDF access denied for ID {}: {}", id, e.getMessage());
+        return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(e.getMessage());
     } catch (Exception e) {
         log.error("Error generating PV PDF for ID {}: {}", id, e.getMessage());
         return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
@@ -196,6 +201,8 @@ public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
                     .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                     .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ReleaseNote-" + id + ".pdf\"")
                     .body(pdf);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Error generating PDF: " + e.getMessage());
         }
