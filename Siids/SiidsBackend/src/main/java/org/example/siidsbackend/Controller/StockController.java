@@ -174,14 +174,14 @@ public class StockController {
     }
 
     @GetMapping("/{id}/documents")
-    @PreAuthorize("hasAuthority('STOCK_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STOCK_MANAGE', 'STOCK_APPROVE_RELEASE')")
     public ResponseEntity<List<String>> getStockDocuments(@PathVariable Integer id) {
         Stock stock = stockService.getStock(id);
         return ResponseEntity.ok(stock.getDocumentPaths());
     }
 
     @GetMapping("/{id}/document/{index}")
-    @PreAuthorize("hasAuthority('STOCK_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STOCK_MANAGE', 'STOCK_APPROVE_RELEASE')")
     public ResponseEntity<Resource> downloadDocument(@PathVariable Integer id, @PathVariable Integer index) throws IOException {
         Stock stock = stockService.getStock(id);
         List<String> paths = stock.getDocumentPaths();
@@ -192,7 +192,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/another-document")
-    @PreAuthorize("hasAuthority('STOCK_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STOCK_MANAGE', 'STOCK_APPROVE_RELEASE')")
     public ResponseEntity<Resource> downloadAnotherDocument(@PathVariable Integer id) throws IOException {
         Stock stock = stockService.getStock(id);
         String path = stock.getAnotherDocumentPath();
@@ -200,7 +200,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/payment-proof/{releaseIndex}")
-    @PreAuthorize("hasAuthority('STOCK_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STOCK_MANAGE', 'STOCK_APPROVE_RELEASE')")
     public ResponseEntity<Resource> downloadPaymentProof(@PathVariable Integer id, @PathVariable Integer releaseIndex) throws IOException {
         Stock stock = stockService.getStock(id);
         if (stock.getReleases() == null || releaseIndex < 0 || releaseIndex >= stock.getReleases().size()) {
@@ -214,7 +214,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/release-document")
-    @PreAuthorize("hasAuthority('STOCK_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STOCK_MANAGE', 'STOCK_APPROVE_RELEASE')")
     public ResponseEntity<?> downloadGeneratedReleaseDocument(@PathVariable Integer id) {
         try {
             Stock stock = stockService.getStock(id);
@@ -233,7 +233,7 @@ public class StockController {
     }
 
     @GetMapping("/{id}/release-document/{releaseIndex}")
-    @PreAuthorize("hasAuthority('STOCK_VIEW')")
+    @PreAuthorize("hasAnyAuthority('STOCK_MANAGE', 'STOCK_APPROVE_RELEASE')")
     public ResponseEntity<?> downloadGeneratedReleaseDocumentByIndex(@PathVariable Integer id, @PathVariable int releaseIndex) {
         try {
             Stock stock = stockService.getStock(id);
@@ -255,7 +255,12 @@ public class StockController {
         if (relativePath == null)
             return ResponseEntity.notFound().build();
 
-        Path filePath = Paths.get(uploadDir).resolve(relativePath).normalize();
+        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path filePath = uploadPath.resolve(relativePath).normalize();
+        if (!filePath.startsWith(uploadPath)) {
+            return ResponseEntity.badRequest().build();
+        }
+
         Resource resource = new UrlResource(filePath.toUri());
 
         if (resource.exists() && resource.isReadable()) {

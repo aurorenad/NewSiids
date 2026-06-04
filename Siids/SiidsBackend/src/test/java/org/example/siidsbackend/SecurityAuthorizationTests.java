@@ -69,4 +69,25 @@ class SecurityAuthorizationTests {
         mockMvc.perform(patch("/api/stock/goods/1/approve-release"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(authorities = "STOCK_VIEW")
+    void stockUploadedDocumentDownloadRequiresManageOrReleaseApprovalPermission() throws Exception {
+        mockMvc.perform(get("/api/stock/1/document/0"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "STOCK_VIEW")
+    void stockPaymentProofDownloadRequiresManageOrReleaseApprovalPermission() throws Exception {
+        mockMvc.perform(get("/api/stock/1/payment-proof/0"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "STOCK_VIEW")
+    void stockReleaseDocumentDownloadRequiresManageOrReleaseApprovalPermission() throws Exception {
+        mockMvc.perform(get("/api/stock/1/release-document"))
+                .andExpect(status().isForbidden());
+    }
 }

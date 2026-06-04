@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -115,5 +116,46 @@ class PhysicalStockServiceTest {
         assertSame(officerHistory, result);
         verify(seizureNoteRepository).findByPvInChargeOrderByCreatedAtDesc(officer);
         verify(seizureNoteRepository, never()).findAllByOrderByCreatedAtDesc();
+    }
+
+    @Test
+    void generateSeizureNotePdf_ForUnrelatedUser_ShouldRejectBeforePdfGeneration() throws Exception {
+        Employee owner = new Employee();
+        owner.setEmployeeId("owner-1");
+        User requester = new User();
+        requester.setUsername("requester-1");
+        requester.setRole("Surveillance");
+        SeizureNote note = new SeizureNote();
+        note.setId(1);
+        note.setSeizureNumber("SN-TEST-1");
+        note.setPvInCharge(owner);
+
+        when(seizureNoteRepository.findById(1)).thenReturn(Optional.of(note));
+        when(userRepo.findByUsername("requester-1")).thenReturn(Optional.of(requester));
+
+        assertThrows(SecurityException.class,
+                () -> physicalStockService.generateSeizureNotePdf(1, "requester-1"));
+
+        verify(pdfService, never()).generateSeizureNote(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void generateSeizureNotePdf_ForStockManager_ShouldAllowPdfGeneration() throws Exception {
+        User stockManager = new User();
+        stockManager.setUsername("manager-1");
+        stockManager.setRole("StockManager");
+        SeizureNote note = new SeizureNote();
+        note.setId(1);
+        note.setSeizureNumber("SN-TEST-1");
+        byte[] pdf = new byte[] { 1, 2, 3 };
+
+        when(seizureNoteRepository.findById(1)).thenReturn(Optional.of(note));
+        when(userRepo.findByUsername("manager-1")).thenReturn(Optional.of(stockManager));
+        when(pdfService.generateSeizureNote(note)).thenReturn(pdf);
+
+        byte[] result = physicalStockService.generateSeizureNotePdf(1, "manager-1");
+
+        assertSame(pdf, result);
+        verify(pdfService).generateSeizureNote(note);
     }
 }

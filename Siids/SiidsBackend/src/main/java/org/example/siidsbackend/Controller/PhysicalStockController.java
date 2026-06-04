@@ -73,7 +73,8 @@ public class PhysicalStockController {
     public ResponseEntity<?> downloadSeizureNote(@PathVariable Integer id) {
         log.info("Download request received for Seizure Note ID: {}", id);
         try {
-            byte[] pdf = physicalStockService.generateSeizureNotePdf(id);
+            String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            byte[] pdf = physicalStockService.generateSeizureNotePdf(id, username);
             return ResponseEntity.ok()
                     .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                     .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"SeizureNote-" + id + ".pdf\"")
@@ -189,7 +190,8 @@ public ResponseEntity<?> downloadPVPdf(@PathVariable Integer id) {
     @PreAuthorize("hasAuthority('STOCK_VIEW')")
     public ResponseEntity<?> getReleaseNotePdf(@PathVariable Integer id) {
         try {
-            byte[] pdf = physicalStockService.generateReleaseNotePdf(id);
+            String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            byte[] pdf = physicalStockService.generateReleaseNotePdf(id, username);
             return ResponseEntity.ok()
                     .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                     .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ReleaseNote-" + id + ".pdf\"")

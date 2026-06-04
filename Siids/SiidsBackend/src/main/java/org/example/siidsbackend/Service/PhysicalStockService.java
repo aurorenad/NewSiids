@@ -703,6 +703,10 @@ public class PhysicalStockService {
     // Edit request methods removed as per requirements
 
     public byte[] generateSeizureNotePdf(Integer seizureId) throws java.io.IOException {
+        return generateSeizureNotePdf(seizureId, null);
+    }
+
+    public byte[] generateSeizureNotePdf(Integer seizureId, String username) throws java.io.IOException {
         SeizureNote note;
         if (seizureId > 1000000) {
             Stock stock = stockRepository.findById(seizureId - 1000000)
@@ -712,6 +716,8 @@ public class PhysicalStockService {
             note = seizureNoteRepository.findById(seizureId)
                     .orElseThrow(() -> new IllegalArgumentException("Seizure note not found"));
         }
+
+        validateSeizureNotePdfAccess(note, username);
         
         byte[] pdfBytes = pdfService.generateSeizureNote(note);
         
@@ -765,13 +771,94 @@ public class PhysicalStockService {
             throw new IllegalArgumentException("PV Document not found for ID: " + identifier);
         }
 
+        validatePVDocumentPdfAccess(pv, username);
+
         return pdfService.generatePVDocument(pv, stockManager);
     }
 
     public byte[] generateReleaseNotePdf(Integer releaseId) throws java.io.IOException {
+        return generateReleaseNotePdf(releaseId, null);
+    }
+
+    public byte[] generateReleaseNotePdf(Integer releaseId, String username) throws java.io.IOException {
         ReleaseNote release = releaseNoteRepository.findById(releaseId)
                 .orElseThrow(() -> new IllegalArgumentException("Release note not found"));
+        validateReleaseNotePdfAccess(release, username);
         return pdfService.generateReleaseNote(release);
+    }
+
+    private void validateSeizureNotePdfAccess(SeizureNote note, String username) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+        if (isPrivilegedStockPdfUser(username)) {
+            return;
+        }
+        if (note.getPvInCharge() != null && username.equals(note.getPvInCharge().getEmployeeId())) {
+            return;
+        }
+        if (note.getReleaseRequestedBy() != null && username.equals(note.getReleaseRequestedBy().getEmployeeId())) {
+            return;
+        }
+        if (note.getApprovedBy() != null && username.equals(note.getApprovedBy().getEmployeeId())) {
+            return;
+        }
+        throw new SecurityException("You do not have permission to access this seizure note PDF");
+    }
+
+    private void validatePVDocumentPdfAccess(PVDocument pv, String username) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+        if (isPrivilegedStockPdfUser(username)) {
+            return;
+        }
+        if (pv.getPvInCharge() != null && username.equals(pv.getPvInCharge().getEmployeeId())) {
+            return;
+        }
+        if (pv.getSeizureNote() != null) {
+            validateSeizureNotePdfAccess(pv.getSeizureNote(), username);
+            return;
+        }
+        throw new SecurityException("You do not have permission to access this PV document PDF");
+    }
+
+    private void validateReleaseNotePdfAccess(ReleaseNote release, String username) {
+        if (username == null || username.isBlank()) {
+            return;
+        }
+        if (isPrivilegedStockPdfUser(username)) {
+            return;
+        }
+        if (release.getReleasedBy() != null && username.equals(release.getReleasedBy().getEmployeeId())) {
+            return;
+        }
+        if (release.getPrsoApprover() != null && username.equals(release.getPrsoApprover().getEmployeeId())) {
+            return;
+        }
+        if (release.getSeizureNote() != null) {
+            validateSeizureNotePdfAccess(release.getSeizureNote(), username);
+            return;
+        }
+        if (release.getPvDocument() != null) {
+            validatePVDocumentPdfAccess(release.getPvDocument(), username);
+            return;
+        }
+        throw new SecurityException("You do not have permission to access this release note PDF");
+    }
+
+    private boolean isPrivilegedStockPdfUser(String username) {
+        return userRepo.findByUsername(username)
+                .map(user -> {
+                    String role = user.getRole() == null ? "" : user.getRole()
+                            .replace("ROLE_", "")
+                            .replace(" ", "")
+                            .replace("_", "")
+                            .trim()
+                            .toLowerCase();
+                    return role.equals("admin") || role.equals("stockmanager") || role.equals("prso");
+                })
+                .orElse(false);
     }
     public byte[] generateReleaseNotePreview(java.util.Map<String, String> payload) throws java.io.IOException {
         Integer pvId = Integer.parseInt(payload.get("pvId"));
