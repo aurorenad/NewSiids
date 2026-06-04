@@ -280,6 +280,10 @@ export const ReportApi = {
         return caseApi.post(`/api/reports/${reportId}/generate`, {}, { responseType: 'blob' });
     },
 
+    generateFinalDraft: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/generate-draft`);
+    },
+
     downloadFindingsAttachment: async (reportId, filename) => {
         try {
             const response = await caseApi.get(
