@@ -40,6 +40,8 @@ import { Toaster } from 'sonner';
 import PVTemporaryStockPage from "./Pages/Stock/PVTemporaryStockPage.jsx";
 import StockManagerPage from "./Pages/Stock/StockManagerPage.jsx";
 import PRSOApprovalsPage from "./Pages/Stock/PRSOApprovalsPage.jsx";
+import DeputyPrsoDashboard from "./Pages/Stock/DeputyPrsoDashboard.jsx";
+import SurveillanceReportsPage from "./Pages/Stock/SurveillanceReportsPage.jsx";
 
 const AppShell = ({ children }) => (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -135,8 +137,10 @@ const protectedRoutes = [
     { path: "/surveillence-officer/releases", element: <PrsoReleases />, roles: ['Surveillance', 'PRSO'] },
     // --- NEW PHYSICAL STOCK MODULE ROUTES ---
     { path: "/pv/temporary-stock", element: <PVTemporaryStockPage />, roles: ['Surveillance', 'SURVEILLANCE_OFFICER'] },
+    { path: "/pv/reports", element: <SurveillanceReportsPage />, roles: ['Surveillance', 'SURVEILLANCE_OFFICER'] },
     { path: "/stock/inventory", element: <StockManagerPage />, roles: ['StockManager', 'STOCK_MANAGER'] },
     { path: "/prso/approvals", element: <PRSOApprovalsPage />, roles: ['PRSO'] },
+    { path: "/prso/deputy-approvals", element: <DeputyPrsoDashboard />, roles: ['DEPUTY_PRSO', 'Deputy_PRSO'] },
 ];
 
 const AppRoutes = () => {

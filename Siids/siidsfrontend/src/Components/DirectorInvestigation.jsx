@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
 import {
     IconButton,
     Paper,
@@ -159,6 +160,11 @@ const DirectorInvestigation = () => {
     const [casePlanRejectionReason, setCasePlanRejectionReason] = useState('');
     const [sendToCommissionerDialogOpen, setSendToCommissionerDialogOpen] = useState(false);
     const [selectedCaseForCommissioner, setSelectedCaseForCommissioner] = useState(null);
+
+    // Signature states
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+    const [actionToConfirm, setActionToConfirm] = useState(null);
+    const sigCanvas = useRef({});
 
     // Filter states
     const [startDate, setStartDate] = useState('');
@@ -385,22 +391,38 @@ const DirectorInvestigation = () => {
         }
     };
 
-    const handleApprove = async (reportId) => {
+    const handleApprove = (reportId) => {
+        setActionToConfirm({ type: 'approve', reportId });
+        setSignatureDialogOpen(true);
+    };
+
+    const executeApprove = async () => {
+        if (sigCanvas.current.isEmpty()) {
+            setSnackbar({ open: true, message: 'Please provide a signature first.', severity: 'error' });
+            return;
+        }
+        
+        const signatureBase64 = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+        setSignatureDialogOpen(false);
+        const reportId = actionToConfirm.reportId;
+
         try {
             setOfficersLoading(true);
             const caseItem = cases.find(c => c.reportId === reportId);
             if (!caseItem) return;
+            
+            const payload = { signatureBase64: signatureBase64 };
 
             if (caseItem.investigationReportStatus === 'submitted') {
-                await ReportApi.approveInvestigationReport(reportId);
+                await ReportApi.approveInvestigationReport(reportId, payload);
                 setCases(prev => prev.map(c => c.reportId === reportId ? { ...c, status: 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION', investigationReportStatus: 'approved' } : c));
                 setSnackbar({ open: true, message: 'Investigation report approved successfully', severity: 'success' });
             } else if (caseItem.casePlanStatus === 'submitted') {
-                await ReportApi.approveCasePlan(reportId);
+                await ReportApi.approveCasePlan(reportId, payload);
                 setCases(prev => prev.map(c => c.reportId === reportId ? { ...c, status: 'CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION', casePlanStatus: 'approved' } : c));
                 setSnackbar({ open: true, message: 'Case plan approved successfully', severity: 'success' });
             } else {
-                await ReportApi.approveReport(reportId);
+                await ReportApi.approveReport(reportId, payload);
                 setCases(prev => prev.map(c => c.reportId === reportId ? { ...c, status: 'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION' } : c));
                 setSnackbar({ open: true, message: 'Report approved successfully', severity: 'success' });
             }
@@ -408,7 +430,14 @@ const DirectorInvestigation = () => {
             setSnackbar({ open: true, message: err.response?.data?.message || 'Failed to approve', severity: 'error' });
         } finally {
             setOfficersLoading(false);
+            setActionToConfirm(null);
+            if(viewFindingsDialogOpen) setViewFindingsDialogOpen(false);
+            if(viewCasePlanDialogOpen) setViewCasePlanDialogOpen(false);
         }
+    };
+    
+    const clearSignature = () => {
+        sigCanvas.current.clear();
     };
 
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
@@ -1078,6 +1107,28 @@ const DirectorInvestigation = () => {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
+
+            {/* Signature Dialog */}
+            <Dialog open={signatureDialogOpen} onClose={() => setSignatureDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>Provide Digital Signature</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        By signing, you are granting operational approval. This signature will be permanently attached to the dossier.
+                    </Typography>
+                    <Box sx={{ border: '2px dashed #ccc', borderRadius: 2, bgcolor: '#fafafa', p: 1 }}>
+                        <SignatureCanvas 
+                            ref={sigCanvas} 
+                            penColor="black" 
+                            canvasProps={{ width: 500, height: 200, className: 'sigCanvas' }} 
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setSignatureDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={clearSignature} color="error">Clear</Button>
+                    <Button onClick={executeApprove} variant="contained" color="primary">Submit Signature</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
