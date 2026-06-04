@@ -14,14 +14,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.example.siidsbackend.DTO.StockReleaseDTO;
@@ -35,6 +29,7 @@ public class StockService {
     private final ItemCategoryService itemCategoryService;
     private final org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository;
     private final PdfService pdfService;
+    private final FileStorageService fileStorageService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -377,26 +372,7 @@ public class StockService {
     }
 
     private String storeFile(MultipartFile file) throws IOException {
-        if (file == null || file.isEmpty())
-            return null;
-
-        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        if (!originalFilename.toLowerCase().endsWith(".pdf")) {
-            throw new IllegalArgumentException("Only PDF files are allowed");
-        }
-
-        Path uploadPath = Paths.get(uploadDir).resolve("stock-documents").toAbsolutePath().normalize();
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
-        Path filePath = uploadPath.resolve(secureFilename);
-
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        return "stock-documents/" + secureFilename;
+        return fileStorageService.storePdf(file, "stock-documents");
     }
 
     public StockResponseDTO toDTO(Stock stock) {

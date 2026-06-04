@@ -19,15 +19,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.*;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
@@ -35,6 +32,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ReportService {
+    private static final Set<String> FINDINGS_ATTACHMENT_EXTENSIONS = Set.of(
+            ".pdf", ".jpg", ".jpeg", ".png", ".doc", ".docx", ".xls", ".xlsx");
+    private static final Set<String> RETURN_DOCUMENT_EXTENSIONS = Set.of(".pdf", ".doc", ".docx");
+    private static final Set<String> CASE_PLAN_ATTACHMENT_EXTENSIONS = Set.of(
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg");
+
     private final ReportRepo reportRepo;
     private final EmployeeRepo employeeRepo;
     private final CaseRepo caseRepo;
@@ -44,9 +47,7 @@ public class ReportService {
     private final AuditService auditService;
     private final UserRepo userRepo;
     private final RbacService rbacService;
-
-    @Value("${file.upload-dir}")
-    private String uploadDir;
+    private final FileStorageService fileStorageService;
 
     @Value("${file.max-size:10485760}")
     private long maxFileSize;
@@ -188,59 +189,17 @@ public class ReportService {
         if (file == null || file.isEmpty())
             return null;
 
-        // Validate file type
         String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
         String lowerFilename = originalFilename.toLowerCase();
-
-        // Allow more file types for findings (PDF, images, documents)
-        if (!lowerFilename.endsWith(".pdf") &&
-                !lowerFilename.endsWith(".jpg") && !lowerFilename.endsWith(".jpeg") &&
-                !lowerFilename.endsWith(".png") &&
-                !lowerFilename.endsWith(".doc") && !lowerFilename.endsWith(".docx") &&
-                !lowerFilename.endsWith(".xls") && !lowerFilename.endsWith(".xlsx")) {
-            throw new Exception("Only PDF, images (JPG, PNG), and documents (DOC, DOCX, XLS, XLSX) are allowed");
-        }
-
-        // Validate file size
         if (file.getSize() > maxFileSize) {
             throw new Exception("File size exceeds maximum limit of " + maxFileSize + " bytes");
         }
 
-        // Create findings-attachments subdirectory
-        Path uploadPath = Paths.get(uploadDir).resolve("findings-attachments").toAbsolutePath().normalize();
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            try {
-                Files.setPosixFilePermissions(uploadPath,
-                        Set.of(PosixFilePermission.OWNER_READ,
-                                PosixFilePermission.OWNER_WRITE,
-                                PosixFilePermission.OWNER_EXECUTE));
-            } catch (UnsupportedOperationException e) {
-                log.warn("Unable to set POSIX permissions on Windows");
-            }
-        }
-
-        // Generate secure filename
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
-
-        Path filePath = uploadPath.resolve(secureFilename);
-
-        // Security check: prevent path traversal
-        if (!filePath.normalize().startsWith(uploadPath)) {
-            throw new IOException("Invalid file path - security violation");
-        }
-
+        String storedPath = null;
         try {
-            // Store the file
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            // Verify file was written correctly
-            if (!Files.exists(filePath) || Files.size(filePath) != file.getSize()) {
-                throw new IOException("File storage verification failed");
-            }
-
-            // Additional validation for certain file types
+            storedPath = fileStorageService.store(file, "findings-attachments", FINDINGS_ATTACHMENT_EXTENSIONS);
+            Path filePath = fileStorageService.resolveStoredPath(storedPath);
+            verifyStoredFile(filePath, file.getSize());
             if (lowerFilename.endsWith(".pdf")) {
                 verifyStoredPdf(filePath);
             } else if (lowerFilename.endsWith(".jpg") || lowerFilename.endsWith(".jpeg")) {
@@ -248,17 +207,30 @@ public class ReportService {
             } else if (lowerFilename.endsWith(".png")) {
                 verifyImageFile(filePath, "png");
             }
-
-            return "findings-attachments/" + secureFilename;
+            return storedPath;
 
         } catch (IOException e) {
-            // Clean up failed file if it exists
-            try {
-                Files.deleteIfExists(filePath);
-            } catch (IOException cleanupException) {
-                log.error("Failed to cleanup corrupted file: {}", cleanupException.getMessage());
-            }
+            cleanupStoredFile(storedPath);
             throw new IOException("Failed to store findings attachment: " + e.getMessage(), e);
+        } catch (IllegalArgumentException e) {
+            throw new Exception("Only PDF, images (JPG, PNG), and documents (DOC, DOCX, XLS, XLSX) are allowed", e);
+        }
+    }
+
+    private void verifyStoredFile(Path filePath, long expectedSize) throws IOException {
+        if (!Files.exists(filePath) || Files.size(filePath) != expectedSize) {
+            throw new IOException("File storage verification failed");
+        }
+    }
+
+    private void cleanupStoredFile(String storedPath) {
+        if (!StringUtils.hasText(storedPath)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(fileStorageService.resolveStoredPath(storedPath));
+        } catch (IOException cleanupException) {
+            log.error("Failed to cleanup corrupted file: {}", cleanupException.getMessage());
         }
     }
 
@@ -523,35 +495,11 @@ public class ReportService {
         if (file == null || file.isEmpty())
             return null;
 
-        // Validate file type
-        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String lowerFilename = originalFilename.toLowerCase();
-
-        if (!lowerFilename.endsWith(".doc") && !lowerFilename.endsWith(".docx") && !lowerFilename.endsWith(".pdf")) {
+        try {
+            return fileStorageService.store(file, "return-documents", RETURN_DOCUMENT_EXTENSIONS);
+        } catch (IllegalArgumentException e) {
             throw new IOException("Only DOC, DOCX, and PDF files are allowed for return documents");
         }
-
-        // Create return documents directory
-        Path returnDocsDir = Paths.get(uploadDir).resolve("return-documents").toAbsolutePath().normalize();
-        if (!Files.exists(returnDocsDir)) {
-            Files.createDirectories(returnDocsDir);
-        }
-
-        // Generate secure filename
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
-
-        Path filePath = returnDocsDir.resolve(secureFilename);
-
-        // Security check
-        if (!filePath.normalize().startsWith(returnDocsDir)) {
-            throw new IOException("Invalid file path - security violation");
-        }
-
-        // Store the file
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-        return "return-documents/" + secureFilename;
     }
 
     private void createNotification(Report report, String message) {
@@ -1128,12 +1076,7 @@ public class ReportService {
 
     public ResponseEntity<Resource> downloadAttachment(String filename) {
         try {
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(filename).normalize();
-
-            if (!filePath.startsWith(uploadPath)) {
-                throw new RuntimeException("Invalid file path");
-            }
+            Path filePath = fileStorageService.resolveStoredPath(filename);
 
             if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
                 throw new RuntimeException("File not found or not readable: " + filename);
@@ -1164,12 +1107,7 @@ public class ReportService {
 
     public Map<String, Object> getFileInfo(String filename) {
         try {
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(filename).normalize();
-
-            if (!filePath.startsWith(uploadPath)) {
-                throw new RuntimeException("Invalid file path");
-            }
+            Path filePath = fileStorageService.resolveStoredPath(filename);
 
             if (!Files.exists(filePath)) {
                 throw new RuntimeException("File not found: " + filename);
@@ -2105,50 +2043,14 @@ public class ReportService {
         if (file == null || file.isEmpty())
             return null;
 
-        // Create case-plans subdirectory
-        Path uploadPath = Paths.get(uploadDir).resolve("case-plans").toAbsolutePath().normalize();
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            try {
-                Files.setPosixFilePermissions(uploadPath,
-                        Set.of(PosixFilePermission.OWNER_READ,
-                                PosixFilePermission.OWNER_WRITE,
-                                PosixFilePermission.OWNER_EXECUTE));
-            } catch (UnsupportedOperationException e) {
-                log.warn("Unable to set POSIX permissions on Windows");
-            }
-        }
-
-        // Generate secure filename
-        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
-
-        Path filePath = uploadPath.resolve(secureFilename);
-
-        // Security check
-        if (!filePath.normalize().startsWith(uploadPath)) {
-            throw new IOException("Invalid file path - security violation");
-        }
-
+        String storedPath = null;
         try {
-            // Store the file
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-
-            // Verify file was written correctly
-            if (!Files.exists(filePath) || Files.size(filePath) != file.getSize()) {
-                throw new IOException("File storage verification failed");
-            }
-
-            return "case-plans/" + secureFilename;
+            storedPath = fileStorageService.store(file, "case-plans", CASE_PLAN_ATTACHMENT_EXTENSIONS);
+            verifyStoredFile(fileStorageService.resolveStoredPath(storedPath), file.getSize());
+            return storedPath;
 
         } catch (IOException e) {
-            // Clean up failed file
-            try {
-                Files.deleteIfExists(filePath);
-            } catch (IOException cleanupException) {
-                log.error("Failed to cleanup corrupted file: {}", cleanupException.getMessage());
-            }
+            cleanupStoredFile(storedPath);
             throw new IOException("Failed to store case plan file: " + e.getMessage(), e);
         }
     }

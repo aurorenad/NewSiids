@@ -54,6 +54,9 @@ class ReportServiceWorkflowTest {
     @Mock
     private RbacService rbacService;
 
+    @Mock
+    private FileStorageService fileStorageService;
+
     private ReportService reportService;
 
     @BeforeEach
@@ -67,7 +70,8 @@ class ReportServiceWorkflowTest {
                 webSocketNotificationService,
                 auditService,
                 userRepo,
-                rbacService
+                rbacService,
+                fileStorageService
         );
     }
 

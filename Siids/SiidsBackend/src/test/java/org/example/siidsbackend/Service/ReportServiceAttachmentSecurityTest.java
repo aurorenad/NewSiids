@@ -52,6 +52,9 @@ class ReportServiceAttachmentSecurityTest {
     @Mock
     private RbacService rbacService;
 
+    @Mock
+    private FileStorageService fileStorageService;
+
     private ReportService reportService;
 
     @BeforeEach
@@ -65,7 +68,8 @@ class ReportServiceAttachmentSecurityTest {
                 webSocketNotificationService,
                 auditService,
                 userRepo,
-                rbacService
+                rbacService,
+                fileStorageService
         );
     }
 

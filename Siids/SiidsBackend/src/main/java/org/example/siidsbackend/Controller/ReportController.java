@@ -16,6 +16,7 @@ import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.CaseRepo;
 
 import org.example.siidsbackend.Repository.ReportRepo;
+import org.example.siidsbackend.Service.FileStorageService;
 import org.example.siidsbackend.Service.RbacService;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,7 +37,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -53,6 +53,7 @@ public class ReportController {
     private final ObjectMapper objectMapper;
     private final org.example.siidsbackend.Repository.UserRepo userRepo;
     private final RbacService rbacService;
+    private final FileStorageService fileStorageService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -121,7 +122,7 @@ public class ReportController {
 
             // Resolve and validate file path
             Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path filePath = uploadPath.resolve(report.getAttachmentPath()).normalize();
+            Path filePath = fileStorageService.resolveStoredPath(report.getAttachmentPath());
 
             // DEBUG: Log resolved paths
             log.info("Upload directory resolved: {}", uploadPath);
@@ -246,11 +247,7 @@ public class ReportController {
                 return ResponseEntity.notFound().build();
             }
 
-            Path filePath = Paths.get(uploadDir).resolve(filename).normalize().toAbsolutePath();
-
-            if (!filePath.startsWith(Paths.get(uploadDir).normalize().toAbsolutePath())) {
-                return ResponseEntity.badRequest().body("Invalid path");
-            }
+            Path filePath = fileStorageService.resolveStoredPath(filename);
             if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
                 return ResponseEntity.notFound().build();
             }
@@ -731,40 +728,9 @@ public class ReportController {
         if (file == null || file.isEmpty())
             return null;
 
-        // Ensure upload directory exists with proper permissions
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-            // Set proper permissions (readable/writable by application only)
-            try {
-                Files.setPosixFilePermissions(uploadPath,
-                        Set.of(PosixFilePermission.OWNER_READ,
-                                PosixFilePermission.OWNER_WRITE,
-                                PosixFilePermission.OWNER_EXECUTE));
-            } catch (UnsupportedOperationException e) {
-                // Windows doesn't support POSIX permissions
-                log.warn("Unable to set POSIX permissions on Windows");
-            }
-        }
-
-        // Generate secure filename
-        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
-
-        Path filePath = uploadPath.resolve(secureFilename);
-
-        // Path traversal protection
-        if (!filePath.normalize().startsWith(uploadPath)) {
-            throw new IOException("Invalid file path - security violation");
-        }
-
-        // Store file with proper error handling and verification
+        String storedPath = fileStorageService.storePdf(file, null);
+        Path filePath = fileStorageService.resolveStoredPath(storedPath);
         try {
-            // Copy file in binary mode to prevent corruption
-            Files.copy(file.getInputStream(), filePath,
-                    StandardCopyOption.REPLACE_EXISTING);
-
             // Verify file was written correctly
             if (!Files.exists(filePath) || Files.size(filePath) != file.getSize()) {
                 throw new IOException("File storage verification failed");
@@ -773,7 +739,7 @@ public class ReportController {
             // Additional PDF integrity check after storage
             verifyStoredPdf(filePath);
 
-            return secureFilename;
+            return storedPath;
 
         } catch (IOException e) {
             // Clean up failed file if it exists
@@ -1336,23 +1302,7 @@ public class ReportController {
     }
 
     private String storeReturnDocument(MultipartFile file) throws IOException {
-        Path uploadPath = Paths.get(uploadDir).resolve("return-documents").toAbsolutePath().normalize();
-        if (!Files.exists(uploadPath)) {
-            Files.createDirectories(uploadPath);
-        }
-
-        String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf('.'));
-        String secureFilename = UUID.randomUUID().toString() + fileExtension;
-
-        Path filePath = uploadPath.resolve(secureFilename);
-
-        if (!filePath.normalize().startsWith(uploadPath)) {
-            throw new IOException("Invalid file path");
-        }
-
-        Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-        return "return-documents/" + secureFilename;
+        return fileStorageService.store(file, "return-documents", Set.of(".pdf", ".doc", ".docx"));
     }
 
     @GetMapping("/{id}/return-document")
@@ -1376,7 +1326,7 @@ public class ReportController {
                 return ResponseEntity.notFound().build();
             }
 
-            Path filePath = Paths.get(uploadDir).resolve(report.getReturnDocumentPath()).normalize();
+            Path filePath = fileStorageService.resolveStoredPath(report.getReturnDocumentPath());
 
             if (!Files.exists(filePath)) {
                 return ResponseEntity.notFound().build();

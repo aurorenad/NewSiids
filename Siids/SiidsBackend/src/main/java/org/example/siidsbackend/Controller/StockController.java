@@ -5,10 +5,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.StockRequestDTO;
 import org.example.siidsbackend.DTO.Response.StockResponseDTO;
 import org.example.siidsbackend.Model.*;
+import org.example.siidsbackend.Service.FileStorageService;
 import org.example.siidsbackend.Service.ItemCategoryService;
 import org.example.siidsbackend.Service.StockService;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -20,7 +20,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,19 +31,18 @@ public class StockController {
 
     private final StockService stockService;
     private final ItemCategoryService itemCategoryService;
+    private final FileStorageService fileStorageService;
     private final org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository;
     private final ObjectMapper objectMapper;
 
-    public StockController(StockService stockService, ItemCategoryService itemCategoryService, org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository, ObjectMapper objectMapper) {
+    public StockController(StockService stockService, ItemCategoryService itemCategoryService, FileStorageService fileStorageService, org.example.siidsbackend.Repository.SeizureReasonRepository seizureReasonRepository, ObjectMapper objectMapper) {
         this.stockService = stockService;
         this.itemCategoryService = itemCategoryService;
+        this.fileStorageService = fileStorageService;
         this.seizureReasonRepository = seizureReasonRepository;
         this.objectMapper = objectMapper;
         this.objectMapper.registerModule(new JavaTimeModule());
     }
-
-    @Value("${file.upload-dir}")
-    private String uploadDir;
 
     // --- Enum endpoints for frontend comboboxes ---
 
@@ -255,18 +253,13 @@ public class StockController {
         if (relativePath == null)
             return ResponseEntity.notFound().build();
 
-        Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path filePath = uploadPath.resolve(relativePath).normalize();
-        if (!filePath.startsWith(uploadPath)) {
-            return ResponseEntity.badRequest().build();
-        }
-
+        Path filePath = fileStorageService.resolveStoredPath(relativePath);
         Resource resource = new UrlResource(filePath.toUri());
 
         if (resource.exists() && resource.isReadable()) {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileStorageService.extractDownloadFilename(relativePath) + "\"")
                     .body(resource);
         } else {
             return ResponseEntity.notFound().build();
