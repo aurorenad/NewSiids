@@ -124,8 +124,8 @@ export const ReportApi = {
         );
     },
 
-    approveInvestigationReport: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/approve-investigation-report`, {});
+    approveInvestigationReport: (reportId, payload) => {
+        return caseApi.post(`/api/reports/${reportId}/approve-investigation-report`, payload || {});
     },
 
     rejectInvestigationReport: (reportId, rejectionReason) => {
@@ -223,8 +223,8 @@ export const ReportApi = {
         return caseApi.get(`/api/reports/${reportId}/case-plan`);
     },
 
-    approveCasePlan: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/approve-case-plan`, {});
+    approveCasePlan: (reportId, payload) => {
+        return caseApi.post(`/api/reports/${reportId}/approve-case-plan`, payload || {});
     },
 
     rejectCasePlan: (reportId, rejectionReason) => {
@@ -353,8 +353,8 @@ export const ReportApi = {
         return caseApi.get('/api/reports/assistant-commissioner/approved-reports');
     },
 
-    approveReport: (reportId) => {
-        return caseApi.post(`/api/reports/${reportId}/approve`, {});
+    approveReport: (reportId, payload) => {
+        return caseApi.post(`/api/reports/${reportId}/approve`, payload || {});
     },
 
     rejectReport: (reportId, rejectionReason) => {
@@ -377,9 +377,9 @@ export const ReportApi = {
         return caseApi.get(`/api/reports/${reportId}/case-plan`);
     },
 
-    approveCasePlanByAssistantCommissioner: (reportId, comments = '') => {
+    approveCasePlanByAssistantCommissioner: (reportId, comments = '', payload = {}) => {
         return caseApi.post(`/api/reports/${reportId}/approve-case-plan-assistant-commissioner`,
-            { comments },
+            { comments, ...payload },
             { params: { comments } }
         );
     },

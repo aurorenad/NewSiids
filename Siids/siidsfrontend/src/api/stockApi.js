@@ -15,6 +15,7 @@ export const stockApi = {
     approveIntake: (id) => axios.patch(`/api/stock/goods/${id}/approve-intake`),
     returnGoods: (id, reason) => axios.patch(`/api/stock/goods/${id}/return`, { reason }),
     requestReleaseMachine: (id, data) => axios.patch(`/api/stock/goods/${id}/request-release`, data),
+    verifyReleaseMachine: (id) => axios.patch(`/api/stock/goods/${id}/verify-release`),
     approveReleaseMachine: (id) => axios.patch(`/api/stock/goods/${id}/approve-release`),
     rejectReleaseMachine: (id, reason) => axios.patch(`/api/stock/goods/${id}/reject-release`, { reason }),
 
