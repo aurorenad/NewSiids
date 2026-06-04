@@ -110,6 +110,19 @@ public class PhysicalStockController {
         return ResponseEntity.ok(physicalStockService.requestRelease(id, dto, physicalStockService.getEmployeeByUsername(username)));
     }
 
+    @PatchMapping("/{id}/verify-release")
+    public ResponseEntity<?> verifyRelease(@PathVariable Integer id) {
+        log.info("Deputy PRSO Request to VERIFY RELEASE for Seizure Note ID: {}", id);
+        try {
+            String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+            Employee deputyPrso = physicalStockService.getEmployeeByUsername(username);
+            physicalStockService.verifyRelease(id, deputyPrso);
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(409).body(java.util.Map.of("error", "Invalid State Transition", "message", e.getMessage()));
+        }
+    }
+
     @PatchMapping("/{id}/approve-release")
     public ResponseEntity<?> approveReleaseMachine(@PathVariable Integer id) {
         log.info("PRSO Request to AUTHORIZE RELEASE for Seizure Note ID: {}", id);
