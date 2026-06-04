@@ -12,7 +12,7 @@ import {
     Description, Check, Close, Search, Reply,
     Person, Assignment, Info, ListAlt,
     ArrowUpward, ArrowDownward, CloudUpload,
-    Download, Delete
+    Download, Delete, DriveFileRenameOutline
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, routeTo } from '../constants/routes';
@@ -20,6 +20,7 @@ import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
+import ReportSignatureDialog from './ui/ReportSignatureDialog.jsx';
 
 const DirectorIntelligence = () => {
     const { authState } = useContext(AuthContext);
@@ -34,6 +35,7 @@ const DirectorIntelligence = () => {
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
 
     const [selectedReport, setSelectedReport] = useState(null);
 
@@ -259,6 +261,38 @@ const DirectorIntelligence = () => {
             window.URL.revokeObjectURL(url);
         } catch {
             setError('Failed to download return document');
+        }
+    };
+
+    const handleOpenSignatureDialog = (report) => {
+        setSelectedReport(report);
+        setSignatureDialogOpen(true);
+    };
+
+    const handleSignedReport = (updatedReport) => {
+        setReports(prev => prev.map(report =>
+            report.id === updatedReport.id ? { ...report, ...updatedReport } : report
+        ));
+        setError(null);
+    };
+
+    const handleDownloadInvestigationReport = async (report) => {
+        setReportLoading(report.id, true);
+        try {
+            const response = await ReportApi.downloadInvestigationReportPdf(report.id);
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `investigation-report-${report.id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            setError(null);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to download investigation report');
+        } finally {
+            setReportLoading(report.id, false);
         }
     };
 
@@ -602,6 +636,36 @@ const DirectorIntelligence = () => {
                                                 </Tooltip>
                                             )}
 
+                                            {canApproveIntelligence && (
+                                                <Tooltip title={report.directorSigned ? 'Update director signature' : 'Sign as Director Intelligence'}>
+                                                    <span>
+                                                        <IconButton
+                                                            disabled={isReportLoading(report.id)}
+                                                            onClick={() => handleOpenSignatureDialog(report)}
+                                                            size="small"
+                                                            color="primary"
+                                                        >
+                                                            <DriveFileRenameOutline fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            )}
+
+                                            {report.finalised && (
+                                                <Tooltip title="Download final investigation report">
+                                                    <span>
+                                                        <IconButton
+                                                            disabled={isReportLoading(report.id)}
+                                                            onClick={() => handleDownloadInvestigationReport(report)}
+                                                            size="small"
+                                                            color="primary"
+                                                        >
+                                                            <Download fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            )}
+
                                             {report.returnDocumentPath && (
                                                 <Tooltip title="Download Return Document">
                                                     <IconButton
@@ -877,6 +941,15 @@ const DirectorIntelligence = () => {
                     <Button onClick={closeInfoDialog}>Close</Button>
                 </DialogActions>
             </Dialog>
+
+            <ReportSignatureDialog
+                open={signatureDialogOpen}
+                report={selectedReport}
+                role="DIRECTOR_INTELLIGENCE"
+                title="Director Intelligence Signature"
+                onClose={() => setSignatureDialogOpen(false)}
+                onSigned={handleSignedReport}
+            />
         </Box>
     );
 };

@@ -6,7 +6,8 @@ import {
     Typography, Chip, Tabs, Tab, Divider
 } from "@mui/material";
 import {
-    Search, Description, Check, Close, Undo, Visibility, Refresh, Assignment, Assessment
+    Search, Description, Check, Close, Undo, Visibility, Refresh, Assignment, Assessment,
+    DriveFileRenameOutline, Download
 } from "@mui/icons-material";
 
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +16,7 @@ import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
+import ReportSignatureDialog from './ui/ReportSignatureDialog.jsx';
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
@@ -32,6 +34,7 @@ const AssistantCommissioner = () => {
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
     const [closeReason, setCloseReason] = useState("");
     const [selectedReport, setSelectedReport] = useState(null);
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
 
     const navigate = useNavigate();
     const canApproveAssistantCommissioner = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_ASSISTANT_COMMISSIONER);
@@ -116,6 +119,36 @@ const AssistantCommissioner = () => {
 
     const handleMenuOpen = (e, r) => { setAnchorEl(e.currentTarget); setMenuReport(r); };
     const handleMenuClose = () => setAnchorEl(null);
+
+    const updateReportInState = (updatedReport) => {
+        setReports(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
+        setCasePlans(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
+    };
+
+    const handleOpenSignatureDialog = (report) => {
+        setSelectedReport(report);
+        setSignatureDialogOpen(true);
+    };
+
+    const handleDownloadInvestigationReport = async (report) => {
+        try {
+            setSubmitting(true);
+            const response = await ReportApi.downloadInvestigationReportPdf(report.id);
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `investigation-report-${report.id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || "Failed to download investigation report";
+            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Failed to download investigation report", "error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     const getFilteredData = () => {
         const query = searchQuery.toLowerCase();
@@ -211,6 +244,38 @@ const AssistantCommissioner = () => {
                                                 </Button>
                                             )}
 
+                                            {canApproveAssistantCommissioner && activeTab === 2 && (
+                                                <Button
+                                                    variant={r.acSigned ? "outlined" : "contained"}
+                                                    color="primary"
+                                                    size="small"
+                                                    startIcon={<DriveFileRenameOutline />}
+                                                    onClick={() => handleOpenSignatureDialog(r)}
+                                                    disabled={submitting}
+                                                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                                                >
+                                                    {r.acSigned ? 'Re-sign' : 'Sign'}
+                                                </Button>
+                                            )}
+
+                                            {activeTab === 2 && (
+                                                <Tooltip title={r.finalised ? 'Download final investigation report' : 'Both signatures are required before final PDF download'}>
+                                                    <span>
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="primary"
+                                                            size="small"
+                                                            startIcon={<Download />}
+                                                            onClick={() => handleDownloadInvestigationReport(r)}
+                                                            disabled={submitting || !r.finalised}
+                                                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                                                        >
+                                                            PDF
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            )}
+
                                             {canApproveAssistantCommissioner && (
                                                 <Button
                                                     variant="contained"
@@ -257,6 +322,18 @@ const AssistantCommissioner = () => {
                     <Button onClick={handleRejectFinal} variant="contained" color="error" disabled={submitting}>Confirm Rejection</Button>
                 </DialogActions>
             </Dialog>
+
+            <ReportSignatureDialog
+                open={signatureDialogOpen}
+                report={selectedReport}
+                role="ASSISTANT_COMMISSIONER"
+                title="Assistant Commissioner Signature"
+                onClose={() => setSignatureDialogOpen(false)}
+                onSigned={(updatedReport) => {
+                    updateReportInState(updatedReport);
+                    showSnackbar("Report signed successfully");
+                }}
+            />
 
             <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={() => setSnackbar({ ...snackbar, open: false })} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
                 <Alert severity={snackbar.severity} sx={{ width: '100%', fontWeight: 700 }}>{snackbar.message}</Alert>
