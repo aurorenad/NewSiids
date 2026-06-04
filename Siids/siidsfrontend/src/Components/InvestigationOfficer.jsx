@@ -16,13 +16,12 @@ const InvestigationOfficer = () => {
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
     const [activeTab, setActiveTab] = useState(0);
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
     // Dialog States
     const [casePlanDialog, setCasePlanDialog] = useState({ open: false, report: null, text: "", file: null });
-    const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
+    const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [], evidencePaths: [] });
 
     useEffect(() => { fetchReports(); }, [activeTab]);
 
@@ -42,6 +41,21 @@ const InvestigationOfficer = () => {
             setSnackbar({ open: true, message: "Failed to fetch reports", severity: "error" });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGenerateDraft = async () => {
+        try {
+            const response = await ReportApi.generateFinalDraft(findingsDialog.report.id);
+            setFindingsDialog({
+                ...findingsDialog,
+                text: `### Summary\n${response.data.summary || ''}\n\n### Findings\n${response.data.findings || ''}\n\n### Conclusion\n${response.data.conclusion || ''}`,
+                recs: "Based on the auto-generated findings, we recommend the following actions...",
+                evidencePaths: response.data.evidencePaths || []
+            });
+            setSnackbar({ open: true, message: "Draft auto-generated successfully", severity: "success" });
+        } catch (err) {
+            setSnackbar({ open: true, message: "Failed to generate draft", severity: "error" });
         }
     };
 
@@ -189,7 +203,19 @@ const InvestigationOfficer = () => {
 
             {/* FINDINGS DIALOG */}
             <Dialog open={findingsDialog.open} onClose={() => setFindingsDialog({ ...findingsDialog, open: false })} fullWidth maxWidth="md">
-                <DialogTitle sx={{ backgroundColor: '#2e7d32', color: 'white' }}>Final Investigation Report - {findingsDialog.report?.caseId}</DialogTitle>
+                <DialogTitle sx={{ backgroundColor: '#2e7d32', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6">Final Investigation Report - {findingsDialog.report?.caseId}</Typography>
+                    <Button 
+                        variant="contained" 
+                        color="warning" 
+                        size="small"
+                        startIcon={<Refresh />}
+                        onClick={handleGenerateDraft}
+                        sx={{ fontWeight: 'bold' }}
+                    >
+                        Auto-Generate Draft
+                    </Button>
+                </DialogTitle>
                 <DialogContent sx={{ mt: 2 }}>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 }}>
                         <TextField 
@@ -208,7 +234,7 @@ const InvestigationOfficer = () => {
                         />
                     </Box>
                     <TextField 
-                        fullWidth multiline rows={6} 
+                        fullWidth multiline rows={8} 
                         label="Investigation Findings" 
                         placeholder="Detail what you investigated and found..."
                         value={findingsDialog.text} 
@@ -225,8 +251,26 @@ const InvestigationOfficer = () => {
                     
                     <Box sx={{ mt: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2, bgcolor: '#f9f9f9' }}>
                         <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>Evidence & Attachments</Typography>
+                        
+                        {/* AUTO-GENERATED EVIDENCE FILES */}
+                        {findingsDialog.evidencePaths && findingsDialog.evidencePaths.length > 0 && (
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                                    ✓ Auto-Included Case Evidence:
+                                </Typography>
+                                <List dense>
+                                    {findingsDialog.evidencePaths.map((path, i) => (
+                                        <ListItem key={`ev-${i}`}>
+                                            <ListItemIcon><Description color="info" /></ListItemIcon>
+                                            <ListItemText primary={path.split('/').pop().split('_').pop()} />
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            </Box>
+                        )}
+
                         <Button variant="outlined" component="label" fullWidth startIcon={<AttachFile />} sx={{ mb: 1 }}>
-                            Attach Files
+                            Attach Additional Files
                             <input 
                                 type="file" 
                                 hidden 
