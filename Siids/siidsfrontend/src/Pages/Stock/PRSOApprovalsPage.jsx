@@ -48,7 +48,7 @@ const PRSOApprovalsPage = () => {
 
   const filteredGoods = useMemo(() => {
     let list = activeTab === 0 
-      ? goodsList.filter(i => i.status === 'PENDING_RELEASE' || i.status === 'PENDING_PRSO_RELEASE_APPROVAL')
+      ? goodsList.filter(i => i.status === 'PENDING_PRSO_RELEASE_APPROVAL')
       : goodsList.filter(i => i.status === 'RELEASED' || i.status === 'RELEASED_FROM_MAIN');
 
     if (searchQuery) {
@@ -128,14 +128,30 @@ const PRSOApprovalsPage = () => {
     <Box sx={{ p: 4, bgcolor: 'var(--surface-page)', minHeight: '100vh' }}>
       <Toaster position="top-right" richColors />
       
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" fontWeight={800} color="var(--gray-900)">PRSO Verification Dashboard</Typography>
-        <Typography variant="body1" color="var(--gray-500)">Final authorization and legal verification for confiscated goods disposal</Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Typography variant="h4" fontWeight={800} color="var(--gray-900)">PRSO Verification Dashboard</Typography>
+          <Typography variant="body1" color="var(--gray-500)">Final authorization and legal verification for confiscated goods disposal</Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Paper sx={{ p: 2, bgcolor: 'var(--rra-blue)', color: 'white', borderRadius: 3, minWidth: 150 }}>
+            <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: 600 }}>TOTAL ITEMS RELEASED</Typography>
+            <Typography variant="h5" fontWeight={800}>
+              {goodsList.filter(i => i.status === 'RELEASED' || i.status === 'RELEASED_FROM_MAIN').length}
+            </Typography>
+          </Paper>
+          <Paper sx={{ p: 2, bgcolor: 'var(--green-600)', color: 'white', borderRadius: 3, minWidth: 150 }}>
+            <Typography variant="caption" sx={{ opacity: 0.8, fontWeight: 600 }}>AUCTION REVENUE (RWF)</Typography>
+            <Typography variant="h5" fontWeight={800}>
+              {goodsList.reduce((acc, curr) => acc + (curr.auctionAmount || 0), 0).toLocaleString()}
+            </Typography>
+          </Paper>
+        </Box>
       </Box>
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Tabs value={activeTab} onChange={(e, val) => { setActiveTab(val); setPage(0); }}>
-          <Tab label={`Pending Authorization (${goodsList.filter(i => i.status === 'PENDING_RELEASE' || i.status === 'PENDING_PRSO_RELEASE_APPROVAL').length})`} sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label={`Pending Authorization (${goodsList.filter(i => i.status === 'PENDING_PRSO_RELEASE_APPROVAL').length})`} sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab label="Release History" sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
         
@@ -204,7 +220,7 @@ const PRSOApprovalsPage = () => {
                               <Visibility fontSize="small" />
                             </IconButton>
                           </Tooltip>
-                          {(item.status === 'PENDING_RELEASE' || item.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
+                          {(item.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
                             <>
                               <Tooltip title="Authorize Release">
                                 <IconButton onClick={() => { setSelectedItem(item); setApproveDialog(true); }} sx={{ color: 'var(--green-600)', bgcolor: 'rgba(22, 101, 52, 0.05)' }}>
@@ -245,7 +261,7 @@ const PRSOApprovalsPage = () => {
         onClose={() => setDrawerOpen(false)}
         title={`Legal Audit: ${selectedItem?.pvNumber || selectedItem?.seizureNumber}`}
         footerActions={
-          (selectedItem?.status === 'PENDING_RELEASE' || selectedItem?.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
+          (selectedItem?.status === 'PENDING_PRSO_RELEASE_APPROVAL') && (
             <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
               <Button 
                 fullWidth variant="outlined" color="error" startIcon={<Cancel />} 
@@ -295,7 +311,7 @@ const PRSOApprovalsPage = () => {
               </Box>
             </Box>
 
-            {(selectedItem.status === 'PENDING_RELEASE' || selectedItem.status === 'PENDING_PRSO_RELEASE_APPROVAL' || selectedItem.status === 'RELEASED') && (
+            {(selectedItem.status === 'PENDING_PRSO_RELEASE_APPROVAL' || selectedItem.status === 'RELEASED') && (
               <Box>
                 <Typography variant="subtitle2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'var(--green-600)', mb: 2, textTransform: 'uppercase', fontWeight: 700 }}>
                   <MonetizationOn fontSize="small" /> Disposal & Auction Details

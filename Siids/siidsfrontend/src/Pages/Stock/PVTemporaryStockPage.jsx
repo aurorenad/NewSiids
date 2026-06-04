@@ -19,6 +19,7 @@ const PVTemporaryStockPage = () => {
   const [historyList, setHistoryList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'dateTimeSeized', direction: 'desc' });
   
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -81,12 +82,35 @@ const PVTemporaryStockPage = () => {
     return list;
   }, [activeTab, stockList, historyList, filterStatus]);
 
-  const filteredStock = useMemo(() => {
-    return displayList.filter(item => 
+  const sortedAndFilteredStock = useMemo(() => {
+    let result = displayList.filter(item => 
       item.seizureNumber?.toLowerCase().includes(search.toLowerCase()) ||
       item.taxpayerName?.toLowerCase().includes(search.toLowerCase())
     );
-  }, [displayList, search]);
+
+    if (sortConfig.key) {
+      result.sort((a, b) => {
+        let aValue = a[sortConfig.key];
+        let bValue = b[sortConfig.key];
+
+        if (sortConfig.key === 'month') {
+          aValue = a.dateTimeSeized ? new Date(a.dateTimeSeized).getMonth() : -1;
+          bValue = b.dateTimeSeized ? new Date(b.dateTimeSeized).getMonth() : -1;
+        } else if (sortConfig.key === 'dateTimeSeized') {
+          aValue = aValue ? new Date(aValue).getTime() : 0;
+          bValue = bValue ? new Date(bValue).getTime() : 0;
+        } else {
+          aValue = aValue ? aValue.toString().toLowerCase() : '';
+          bValue = bValue ? bValue.toString().toLowerCase() : '';
+        }
+
+        if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return result;
+  }, [displayList, search, sortConfig]);
 
   useEffect(() => {
     setPage(0);
@@ -104,8 +128,8 @@ const PVTemporaryStockPage = () => {
   };
 
   const paginatedStock = useMemo(() => {
-    return filteredStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [filteredStock, page, rowsPerPage]);
+    return sortedAndFilteredStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  }, [sortedAndFilteredStock, page, rowsPerPage]);
 
   const handleDownloadSeizureNote = async (item) => {
     try {
@@ -146,26 +170,25 @@ const PVTemporaryStockPage = () => {
     return 'PENDING';
   };
 
-  const calculateDaysLeft = (dateSeized) => {
+  const calculateDaysInStock = (dateSeized) => {
     if (!dateSeized) return null;
     const seizedDate = new Date(dateSeized);
-    const dueDate = new Date(seizedDate);
-    dueDate.setDate(dueDate.getDate() + 30);
     const today = new Date();
     
     // Reset hours to compare dates only
     today.setHours(0, 0, 0, 0);
-    dueDate.setHours(0, 0, 0, 0);
+    seizedDate.setHours(0, 0, 0, 0);
     
-    const diffTime = dueDate - today;
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffTime = today.getTime() - seizedDate.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const getDaysLeftStyle = (days) => {
+  const getDaysInStockStyle = (days, goodsTypeStr) => {
+    if (goodsTypeStr && goodsTypeStr.toLowerCase().includes('vehicle')) return { background: '#f5f5f5', color: '#757575' }; // Neutral grey
     if (days === null) return { background: 'var(--gray-100)', color: 'var(--gray-600)' };
-    if (days > 20) return { background: '#DCFCE7', color: '#166534' }; // Green background
-    if (days >= 10) return { background: '#F5F3FF', color: '#7C3AED' }; // Violet background
-    return { background: '#FEE2E2', color: '#991B1B' }; // Red background for < 10
+    if (days >= 7) return { background: '#FEE2E2', color: '#991B1B' }; // Red
+    if (days >= 5) return { background: '#FEF3C7', color: '#D97706' }; // Amber/Violet
+    return { background: '#DCFCE7', color: '#166534' }; // Green
   };
 
   const returnedItems = useMemo(() => {
@@ -177,8 +200,8 @@ const PVTemporaryStockPage = () => {
     if (activeTab !== 'active') return [];
     return stockList.filter(item => {
       if (item.status !== 'IN_TEMPORARY_STOCK' && item.status !== 'RETURNED_FOR_CORRECTION') return false;
-      const daysLeft = calculateDaysLeft(item.dateTimeSeized);
-      return daysLeft !== null && daysLeft <= 5;
+      const daysInStock = calculateDaysInStock(item.dateTimeSeized);
+      return daysInStock !== null && daysInStock >= 5 && item.goodsType !== 'VEHICLE';
     });
   }, [stockList, activeTab]);
 
@@ -260,7 +283,7 @@ const PVTemporaryStockPage = () => {
           ))}
 
           {criticalItems.map(item => {
-            const days = calculateDaysLeft(item.dateTimeSeized);
+            const days = calculateDaysInStock(item.dateTimeSeized);
             return (
               <div 
                 key={item.id} 
@@ -296,7 +319,7 @@ const PVTemporaryStockPage = () => {
                       Justification Deadline Approaching: <span style={{ fontFamily: 'var(--font-mono)' }}>{item.seizureNumber}</span>
                     </span>
                     <span style={{ display: 'block', font: '400 13px var(--font-body)', color: 'rgb(217, 119, 6)', marginTop: 2 }}>
-                      This item must be released or escalated to main stock within <strong>{days} {days === 1 ? 'day' : 'days'}</strong> (30-day limit).
+                      This item has been in stock for <strong>{days} {days === 1 ? 'day' : 'days'}</strong> and must be escalated or released immediately.
                     </span>
                   </div>
                 </div>
@@ -416,11 +439,30 @@ const PVTemporaryStockPage = () => {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
+          <div style={{ position: 'relative' }}>
+            <select 
+              className="form-control" 
+              style={{ paddingRight: 32 }}
+              onChange={(e) => {
+                const [key, direction] = e.target.value.split('|');
+                setSortConfig({ key, direction });
+              }}
+              value={`${sortConfig.key}|${sortConfig.direction}`}
+            >
+              <option value="dateTimeSeized|desc">Sort by Seizure Date (Newest)</option>
+              <option value="dateTimeSeized|asc">Sort by Seizure Date (Oldest)</option>
+              <option value="month|desc">Sort by Month</option>
+              <option value="goodsDescription|asc">Sort by Goods Type</option>
+              <option value="taxpayerAddress|asc">Sort by Location</option>
+              <option value="taxpayerName|asc">Sort by Owner Name</option>
+              <option value="seizureNumber|asc">Sort by Reference Number</option>
+            </select>
+          </div>
         </div>
 
         {isLoading ? (
           <p style={{ textAlign: 'center', padding: 40, color: 'var(--gray-500)' }}>Loading...</p>
-        ) : filteredStock.length === 0 ? (
+        ) : sortedAndFilteredStock.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
             <InboxArrowDownIcon style={{ width: 48, height: 48, color: 'var(--gray-300)', margin: '0 auto 16px' }} />
             <p className="type-body" style={{ color: 'var(--gray-500)' }}>No items found.</p>
@@ -434,14 +476,14 @@ const PVTemporaryStockPage = () => {
                   <th>Taxpayer</th>
                   <th>{activeTab === 'active' ? 'Status' : 'Outcome'}</th>
                   <th>Date Seized</th>
-                  {activeTab === 'active' && <th>Days Left</th>}
+                  {activeTab === 'active' && <th>Days In Stock</th>}
                   {activeTab === 'history' && <th>Date Actioned</th>}
                   <th style={{ textAlign: 'center' }}>Seizure Note</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedStock.map(item => {
-                  const daysLeft = activeTab === 'active' ? calculateDaysLeft(item.dateTimeSeized) : null;
+                  const daysInStock = activeTab === 'active' ? calculateDaysInStock(item.dateTimeSeized) : null;
                   
                   return (
                     <tr key={item.id}>
@@ -469,16 +511,16 @@ const PVTemporaryStockPage = () => {
                             display: 'inline-block',
                             minWidth: '70px',
                             textAlign: 'center',
-                            ...getDaysLeftStyle(daysLeft)
+                            ...getDaysInStockStyle(daysInStock, item.goodsDescription)
                           }}>
-                            {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days` : 'Overdue') : '-'}
+                            {(item.goodsDescription && item.goodsDescription.toLowerCase().includes('vehicle')) ? 'Vehicle - No Limit' : (daysInStock !== null ? `${daysInStock} days` : '-')}
                           </span>
                         </td>
                       )}
                       {activeTab === 'history' && (
-                        <td className="date">
-                          {item.actionedAt ? format(new Date(item.actionedAt), 'dd MMM yyyy') : '-'}
-                        </td>
+                        <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }} className="type-caption">
+                        {item.actionedAt ? format(new Date(item.actionedAt), 'dd MMM yyyy') : '---'}
+                      </td>
                       )}
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
@@ -521,7 +563,7 @@ const PVTemporaryStockPage = () => {
             <TablePagination
               rowsPerPageOptions={[10, 20, 50, 100]}
               component="div"
-              count={filteredStock.length}
+              count={sortedAndFilteredStock.length}
               rowsPerPage={rowsPerPage}
               page={page}
               onPageChange={handleChangePage}
@@ -595,6 +637,7 @@ const PVTemporaryStockPage = () => {
         onClose={() => setReleaseDialog(false)}
         onSuccess={handleModalSuccess}
         seizureId={selectedItem?.id}
+        seizureItem={selectedItem}
       />
 
       <EscalatePVModal
