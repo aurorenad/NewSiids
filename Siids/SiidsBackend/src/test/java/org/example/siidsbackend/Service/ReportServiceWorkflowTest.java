@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -210,6 +211,45 @@ class ReportServiceWorkflowTest {
         assertEquals(true, response.isAcSigned());
         assertEquals(true, response.isDirectorSigned());
         assertEquals(true, response.isFinalised());
+    }
+
+    @Test
+    void toResponseDTO_ShouldCopyAttachmentCollections() {
+        Report report = reportWithStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
+        Employee creator = employee("creator-1");
+        creator.setGivenName("Case");
+        creator.setFamilyName("Creator");
+        report.setCreatedBy(creator);
+        List<String> attachmentPaths = List.of("reports/intel.pdf");
+        List<String> findingsAttachmentPaths = List.of("findings/result.pdf");
+        report.setAttachmentPaths(attachmentPaths);
+        report.setFindingsAttachmentPaths(findingsAttachmentPaths);
+
+        var response = reportService.toResponseDTO(report);
+
+        assertEquals(attachmentPaths, response.getAttachmentPaths());
+        assertEquals(findingsAttachmentPaths, response.getFindingsAttachmentPaths());
+        assertNotSame(attachmentPaths, response.getAttachmentPaths());
+        assertNotSame(findingsAttachmentPaths, response.getFindingsAttachmentPaths());
+    }
+
+    @Test
+    void getReportDtosForDirectorIntelligence_ShouldMapReportsToResponseDtos() {
+        Report report = reportWithStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
+        Employee creator = employee("creator-1");
+        creator.setGivenName("Case");
+        creator.setFamilyName("Creator");
+        report.setCreatedBy(creator);
+        report.setAttachmentPaths(List.of("reports/intel.pdf"));
+        report.setFindingsAttachmentPaths(List.of("findings/result.pdf"));
+
+        when(reportRepo.findReportsSubmittedToDirectorIntelligence()).thenReturn(List.of(report));
+
+        var response = reportService.getReportDtosForDirectorIntelligence("admin-1");
+
+        assertEquals(1, response.size());
+        assertEquals(List.of("reports/intel.pdf"), response.get(0).getAttachmentPaths());
+        assertEquals(List.of("findings/result.pdf"), response.get(0).getFindingsAttachmentPaths());
     }
 
     @Test

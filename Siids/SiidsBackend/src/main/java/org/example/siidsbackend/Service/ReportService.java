@@ -666,7 +666,7 @@ public class ReportService {
         dto.setLegalBasis(report.getLegalBasis());
 
         if (report.getAttachmentPaths() != null && !report.getAttachmentPaths().isEmpty()) {
-            dto.setAttachmentPaths(report.getAttachmentPaths());
+            dto.setAttachmentPaths(new ArrayList<>(report.getAttachmentPaths()));
         } else if (report.getAttachmentPath() != null) {
             dto.setAttachmentPaths(List.of(report.getAttachmentPath()));
         } else {
@@ -686,7 +686,9 @@ public class ReportService {
         dto.setPenaltiesAmount(report.getPenaltiesAmount());
         dto.setFindings(report.getFindings());
         dto.setRecommendations(report.getRecommendations());
-        dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths());
+        dto.setFindingsAttachmentPaths(report.getFindingsAttachmentPaths() != null
+                ? new ArrayList<>(report.getFindingsAttachmentPaths())
+                : new ArrayList<>());
         dto.setCasePlan(report.getCasePlan());
         dto.setCasePlanDescription(report.getCasePlanDescription());
 
@@ -799,18 +801,14 @@ public class ReportService {
     }
 
     public List<Report> getReportsForDirectorIntelligence(String directorId) {
-        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
-        boolean isDirector = directors.stream()
-                .anyMatch(d -> d.getEmployeeId().equals(directorId));
-
-        if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (!rbacService.hasAnyRole(user, "Admin", "DirectorIntelligence")) {
-                throw new RuntimeException("Employee is not a Director of Intelligence");
-            }
-        }
-
         return reportRepo.findReportsSubmittedToDirectorIntelligence();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReportResponseDTO> getReportDtosForDirectorIntelligence(String directorId) {
+        return getReportsForDirectorIntelligence(directorId).stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -1334,18 +1332,14 @@ public class ReportService {
     }
 
     public List<Report> getAllReportsForDirectorIntelligence(String directorId) {
-        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
-        boolean isDirector = directors.stream()
-                .anyMatch(d -> d.getEmployeeId().equals(directorId));
-
-        if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (!rbacService.hasAnyRole(user, "Admin", "DirectorIntelligence")) {
-                throw new RuntimeException("Employee is not a Director of Intelligence");
-            }
-        }
-
         return reportRepo.findReportsHandledByDirectorIntelligence();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ReportResponseDTO> getAllReportDtosForDirectorIntelligence(String directorId) {
+        return getAllReportsForDirectorIntelligence(directorId).stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
     }
 
     public List<Report> getReportsHandledByAssistantCommissioner(String employeeId) {
@@ -1495,18 +1489,6 @@ public class ReportService {
     }
 
     public List<DirectorIntelligenceReportDTO> getDirectorIntelligenceReport(String directorId) {
-        // Verify the employee is a Director of Intelligence
-        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
-        boolean isDirector = directors.stream()
-                .anyMatch(d -> d.getEmployeeId().equals(directorId));
-
-        if (!isDirector) {
-            org.example.siidsbackend.Model.User user = userRepo.findByUsername(directorId).orElse(null);
-            if (!rbacService.hasAnyRole(user, "Admin", "DirectorIntelligence")) {
-                throw new RuntimeException("Employee is not a Director of Intelligence");
-            }
-        }
-
         return reportRepo.findCasesForDirectorIntelligenceReport();
     }
 

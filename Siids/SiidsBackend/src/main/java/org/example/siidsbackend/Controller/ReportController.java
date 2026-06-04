@@ -47,6 +47,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ReportController {
+    private static final String ADMIN_OR_REPORT_APPROVE_INTELLIGENCE =
+            "hasAuthority('REPORT_APPROVE_INTELLIGENCE') or hasRole('ADMIN') or hasAuthority('Admin') or hasAuthority('ADMIN')";
+
     private final ReportService reportService;
 
     private final ReportRepo reportRepo;
@@ -393,7 +396,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-commissioner-intelligence")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<?> sendToAssistantCommissioner(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -408,7 +411,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-director-investigation")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<?> sendToDirectorInvestigation(
             @PathVariable("id") Integer reportId,
             Authentication authentication) {
@@ -448,16 +451,12 @@ public class ReportController {
     }
 
     @GetMapping("/director-intelligence/reports")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<List<ReportResponseDTO>> getReportsForDirectorIntelligence(
             Authentication authentication) {
         String directorId = authentication.getName();
         try {
-            List<Report> reports = reportService.getReportsForDirectorIntelligence(directorId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getReportDtosForDirectorIntelligence(directorId));
         } catch (RuntimeException e) {
             System.err.println("Error getting reports for Director of Intelligence: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -469,7 +468,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<?> approveReport(
             @PathVariable Integer id,
             Authentication authentication) {
@@ -485,7 +484,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<?> rejectReport(
             @PathVariable Integer id,
             @RequestParam(required = false) String rejectionReason,
@@ -913,16 +912,12 @@ public class ReportController {
     }
 
     @GetMapping("/director-intelligence/all-reports")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<List<ReportResponseDTO>> getAllReportsForDirectorIntelligence(
             Authentication authentication) {
         String directorId = authentication.getName();
         try {
-            List<Report> reports = reportService.getAllReportsForDirectorIntelligence(directorId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getAllReportDtosForDirectorIntelligence(directorId));
         } catch (RuntimeException e) {
             log.error("Authorization error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -1042,7 +1037,7 @@ public class ReportController {
     }
 
     @GetMapping("/director-intelligence/case-reports")
-    @PreAuthorize("hasAuthority('REPORT_APPROVE_INTELLIGENCE')")
+    @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<List<DirectorIntelligenceReportDTO>> getDirectorIntelligenceCaseReports(
             Authentication authentication) {
         String directorId = authentication.getName();
