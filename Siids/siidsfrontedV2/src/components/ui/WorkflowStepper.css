@@ -1,0 +1,113 @@
+.siids-stepper-container {
+  width: 100%;
+  padding: var(--spacing-md) 0;
+  overflow-x: auto;
+}
+
+.stepper-track-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 500px;
+  position: relative;
+}
+
+.stepper-step-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+
+.step-node-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--background-main);
+  border: 2px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-secondary);
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.step-label-text {
+  margin-top: var(--spacing-sm);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.step-connector-line {
+  position: absolute;
+  top: 14px;
+  left: calc(50% + 14px);
+  right: calc(-50% + 14px);
+  height: 2px;
+  background-color: var(--text-muted);
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+/* Completed State styles */
+.stepper-step-item.step-completed .step-node-bubble {
+  background-color: var(--success-color);
+  border-color: var(--success-color);
+  color: white;
+}
+
+.stepper-step-item.step-completed .step-label-text {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.stepper-step-item.step-completed .step-connector-line {
+  background-color: var(--success-color);
+}
+
+/* Active State styles */
+.stepper-step-item.step-active .step-node-bubble {
+  background-color: var(--primary-brand);
+  border-color: var(--primary-brand);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(13, 71, 161, 0.15);
+}
+
+.stepper-step-item.step-active .step-label-text {
+  color: var(--primary-brand);
+  font-weight: 700;
+}
+
+.step-check-svg {
+  width: 14px;
+  height: 14px;
+  stroke: white;
+}
+
+/* Special warnings for delay-escalations */
+.siids-stepper-container.step-warning .stepper-step-item.step-active .step-node-bubble {
+  background-color: var(--warning-color);
+  border-color: var(--warning-color);
+  box-shadow: 0 0 0 4px var(--warning-bg);
+}
+
+.siids-stepper-container.step-warning .stepper-step-item.step-active .step-label-text {
+  color: var(--warning-color);
+}
+
+.siids-stepper-container.step-overdue .stepper-step-item.step-active .step-node-bubble {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+  box-shadow: 0 0 0 4px var(--danger-bg);
+}
+
+.siids-stepper-container.step-overdue .stepper-step-item.step-active .step-label-text {
+  color: var(--danger-color);
+}

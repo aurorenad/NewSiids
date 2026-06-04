@@ -1,0 +1,56 @@
+/* CSS Variables for SIIDS FrontendV2 Design System */
+:root {
+  /* Brand Colors */
+  --primary-brand: #003DA5;       /* RRA Royal Blue */
+  --primary-accent: #1A52B8;      /* RRA Light Blue */
+  --primary-gold: #F5A800;        /* RRA Yellow/Gold */
+  --primary-green: #009A44;       /* RRA Green */
+  --primary-orange: #E05C00;      /* RRA Orange */
+  --background-main: #F5F7FA;     /* Neutral light workspace background */
+  --background-sidebar: #002D7A;  /* RRA Deep Royal Blue sidebar */
+  
+  /* Surface Layers (Glassmorphism Tokens) */
+  --background-panel: rgba(255, 255, 255, 0.72);
+  --background-card: rgba(255, 255, 255, 0.85);
+  --background-dropdown: rgba(255, 255, 255, 0.95);
+  --glass-blur: blur(12px) saturate(130%);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --panel-border: 1px solid rgba(226, 232, 240, 0.8);
+  --shadow-subtle: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+  --shadow-glass: 0 8px 32px 0 rgba(13, 71, 161, 0.06);
+
+  /* Typography & Density scale */
+  --text-primary: #1E293B;        /* Slate 800 */
+  --text-secondary: #64748B;      /* Slate 500 */
+  --text-muted: #94A3B8;          /* Slate 400 */
+  
+  /* Status Colors */
+  --success-color: #2E7D32;       /* Forest Green */
+  --success-bg: rgba(46, 125, 50, 0.08);
+  --warning-color: #FFB300;       /* Gold Warning */
+  --warning-bg: rgba(255, 179, 0, 0.08);
+  --danger-color: #D32F2F;        /* Crimson Red */
+  --danger-bg: rgba(211, 47, 47, 0.08);
+  --info-color: #0288D1;          /* Info/Route Blue */
+  --info-bg: rgba(2, 136, 209, 0.08);
+
+  /* Spacing Scale */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+}
+
+/* Dark Theme Variables Override */
+.dark-theme {
+  --background-main: #0F172A;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --background-panel: rgba(30, 41, 59, 0.72);
+  --background-card: rgba(30, 41, 59, 0.85);
+  --background-dropdown: rgba(15, 23, 42, 0.95);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --panel-border: 1px solid rgba(51, 65, 85, 0.8);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
