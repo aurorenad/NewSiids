@@ -23,7 +23,22 @@ const SEIZURE_REASONS = [
   'Prohibited Items',
   'Counterfeit Goods',
   'Expired Permits',
+  'Smuggling',
+  'Transit Violation',
+  'Expired Entry Card',
   'Other (Specify)'
+];
+
+const QUANTITY_TYPES = [
+  'Bags',
+  'Packages',
+  'Cartons',
+  'Boxes',
+  'Kg',
+  'Liters',
+  'Numbers / Units',
+  'Tons',
+  'Other'
 ];
 
 const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, editItem }) => {
@@ -33,6 +48,15 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
   
   const [selectedGoodsType, setSelectedGoodsType] = useState('');
   const [selectedSeizureReason, setSelectedSeizureReason] = useState('');
+
+  const [scanMode, setScanMode] = useState('DIGITAL'); // 'DIGITAL' or 'PHYSICAL'
+  const [scanAttachmentUrl, setScanAttachmentUrl] = useState('');
+  
+  const [otpCode, setOtpCode] = useState('');
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [ownerOtpSkipped, setOwnerOtpSkipped] = useState(false);
+  const [mockOtpMessage, setMockOtpMessage] = useState('');
+  const [generatedMockOtp, setGeneratedMockOtp] = useState('');
 
   const [formData, setFormData] = useState({
     caseRef: initialCaseRef || '',
@@ -46,7 +70,15 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
     representativeName: '',
     representativeContact: '',
     goodsDescription: '',
+    quantity: '',
+    quantityType: '',
+    fullDescription: '',
+    locationOfSeizure: '',
+    conditionOfGoods: '',
+    conveyanceMeans: '',
+    conveyanceRegistration: '',
     seizureReason: '',
+    estimatedValue: '',
     dateTimeSeized: new Date().toISOString().split('T')[0],
     authorizationPassword: '',
   });
@@ -91,7 +123,15 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
           representativeName: editItem.representativeName || '',
           representativeContact: editItem.representativeContact || '',
           goodsDescription: editItem.goodsDescription || '',
+          quantity: editItem.quantity || '',
+          quantityType: editItem.quantityType || '',
+          fullDescription: editItem.fullDescription || '',
+          locationOfSeizure: editItem.locationOfSeizure || '',
+          conditionOfGoods: editItem.conditionOfGoods || '',
+          conveyanceMeans: editItem.conveyanceMeans || '',
+          conveyanceRegistration: editItem.conveyanceRegistration || '',
           seizureReason: editItem.seizureReason || '',
+          estimatedValue: editItem.estimatedValue || '',
           dateTimeSeized: editItem.dateTimeSeized ? editItem.dateTimeSeized.split('T')[0] : new Date().toISOString().split('T')[0],
           authorizationPassword: '',
         });
@@ -136,7 +176,15 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
           representativeName: '',
           representativeContact: '',
           goodsDescription: '',
+          quantity: '',
+          quantityType: '',
+          fullDescription: '',
+          locationOfSeizure: '',
+          conditionOfGoods: '',
+          conveyanceMeans: '',
+          conveyanceRegistration: '',
           seizureReason: '',
+          estimatedValue: '',
           dateTimeSeized: new Date().toISOString().split('T')[0],
           authorizationPassword: '',
         });
@@ -233,7 +281,23 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
         return;
       }
       if (!formData.goodsDescription) {
-        toast.error('Please specify the Goods Description');
+        toast.error('Please specify the Goods Category');
+        return;
+      }
+      if (!formData.quantity || !formData.quantityType) {
+        toast.error('Please specify the Quantity and Unit');
+        return;
+      }
+      if (!formData.fullDescription) {
+        toast.error('Please provide a Full Description of the goods');
+        return;
+      }
+      if (!formData.locationOfSeizure) {
+        toast.error('Please specify the Location of Seizure');
+        return;
+      }
+      if (!formData.conditionOfGoods) {
+        toast.error('Please select the Condition of Goods');
         return;
       }
       if (!formData.seizureReason) {
@@ -251,16 +315,46 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
     else if (step === 2) setStep(1);
   };
 
+  const handleSendOtp = async () => {
+    // Pure frontend mockup
+    const mockCode = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedMockOtp(mockCode);
+    setIsOtpSent(true);
+    setMockOtpMessage(`[MOCK OTP SERVER]: Sent code ${mockCode} to phone ${formData.taxpayerContact || 'UNKNOWN'}`);
+    toast.success('Mock OTP Sent Successfully');
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode === generatedMockOtp) {
+      toast.success('Owner OTP Verified Successfully!');
+      return true;
+    } else {
+      toast.error('Invalid OTP');
+      return false;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!formData.authorizationPassword) {
       toast.error('Please enter your password to authorize');
       return;
+    }
+
+    if (!ownerOtpSkipped && scanMode === 'DIGITAL' && formData.taxpayerContact) {
+      if (!isOtpSent) {
+        toast.error('Please send and verify the Owner OTP first, or skip it.');
+        return;
+      }
+      const isVerified = await handleVerifyOtp();
+      if (!isVerified) return;
     }
     
     try {
       const payload = {
         ...formData,
         dateTimeSeized: `${formData.dateTimeSeized}T00:00:00`,
+        scanAttachmentUrl: scanMode === 'PHYSICAL' ? scanAttachmentUrl : null,
+        ownerOtpSkipped: ownerOtpSkipped
       };
       if (editItem) {
         await stockApi.updateSeizureNote(editItem.id, payload);
@@ -312,6 +406,39 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
             {/* STEP 1: Details Intake Form */}
             {step === 1 && (
               <>
+                <div style={{ display: 'flex', gap: 16, marginBottom: 24, padding: 4, background: 'var(--gray-100)', borderRadius: 10 }}>
+                  <button 
+                    onClick={() => setScanMode('DIGITAL')}
+                    style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 8, fontWeight: 600, background: scanMode === 'DIGITAL' ? '#fff' : 'transparent', color: scanMode === 'DIGITAL' ? 'var(--rra-blue)' : 'var(--gray-500)', boxShadow: scanMode === 'DIGITAL' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                  >
+                    Digital Workflow
+                  </button>
+                  <button 
+                    onClick={() => setScanMode('PHYSICAL')}
+                    style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 8, fontWeight: 600, background: scanMode === 'PHYSICAL' ? '#fff' : 'transparent', color: scanMode === 'PHYSICAL' ? 'var(--rra-blue)' : 'var(--gray-500)', boxShadow: scanMode === 'PHYSICAL' ? '0 2px 8px rgba(0,0,0,0.1)' : 'none', cursor: 'pointer', transition: 'all 0.2s' }}
+                  >
+                    Physical Scan Upload
+                  </button>
+                </div>
+
+                {scanMode === 'PHYSICAL' && (
+                  <div style={{ background: '#f8fafc', padding: 20, borderRadius: 12, border: '2px dashed var(--rra-blue-tint)', marginBottom: 24, textAlign: 'center' }}>
+                    <ClipboardIcon style={{ width: 32, height: 32, color: 'var(--rra-blue)', margin: '0 auto 12px' }} />
+                    <h4 style={{ margin: '0 0 8px 0', color: 'var(--gray-900)' }}>Upload Physical Seizure Note</h4>
+                    <p style={{ margin: '0 0 16px 0', fontSize: 13, color: 'var(--gray-500)' }}>Scan and upload the signed physical document (PDF/JPG)</p>
+                    <input 
+                      type="file" 
+                      accept=".pdf,.jpg,.png"
+                      onChange={(e) => {
+                        // Mock upload for now
+                        setScanAttachmentUrl(URL.createObjectURL(e.target.files[0]));
+                        toast.success('Document attached successfully');
+                      }}
+                      style={{ display: 'block', margin: '0 auto', fontSize: 13 }}
+                    />
+                  </div>
+                )}
+
                 <div style={{ marginBottom: 20 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', background: 'var(--gray-50)', padding: '12px 16px', borderRadius: 8, border: '1px solid var(--gray-200)' }}>
                     <input 
@@ -321,8 +448,8 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
                       onChange={e => setFormData({...formData, taxpayerType: e.target.checked ? 'KNOWN' : 'UNKNOWN'})} 
                     />
                     <div>
-                      <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--gray-900)' }}>Taxpayer is Known</span>
-                      <span style={{ display: 'block', fontSize: 12, color: 'var(--gray-500)' }}>Check this if the taxpayer has a TIN or is registered in our system</span>
+                      <span style={{ display: 'block', fontSize: 14, fontWeight: 600, color: 'var(--gray-900)' }}>Does the Taxpayer (Owner) exist?</span>
+                      <span style={{ display: 'block', fontSize: 12, color: 'var(--gray-500)' }}>Uncheck this if the owner escaped or is completely unknown.</span>
                     </div>
                   </label>
                 </div>
@@ -444,21 +571,12 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
                   </>
                 ) : (
                   <div style={{ background: 'var(--rra-orange-tint)', padding: 16, borderRadius: 12, marginBottom: 20, border: '1px solid var(--rra-orange-dark)', borderWidth: '0 0 0 4px' }}>
-                    <p style={{ fontSize: 13, color: 'var(--rra-orange-dark)', fontWeight: 600, marginBottom: 12 }}>Unknown Person - Identification Details</p>
-                    <div className="form-field">
-                      <label className="form-label">National ID (if partially available)</label>
-                      <input 
-                        className="form-control" 
-                        placeholder="ID number or N/A" 
-                        value={formData.nationalId} 
-                        onChange={e => setFormData({...formData, nationalId: e.target.value})} 
-                      />
-                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--rra-orange-dark)', fontWeight: 600, marginBottom: 12 }}>Owner Escaped / Unknown Details</p>
                     <div className="form-field" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Physical Description <span className="required">*</span></label>
+                      <label className="form-label">Circumstances of Escape / Physical Description <span className="required">*</span></label>
                       <textarea 
                         className="form-control" 
-                        placeholder="e.g. Estimated age, height, clothing, identifying marks..." 
+                        placeholder="e.g. Owner abandoned the goods and escaped into the forest..." 
                         value={formData.physicalDescription} 
                         onChange={e => setFormData({...formData, physicalDescription: e.target.value})} 
                         rows={3}
@@ -468,61 +586,148 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
                 )}
 
                 {/* Goods Type Dropdown */}
-                <div className="form-field">
-                  <label className="form-label">Goods Type <span className="required">*</span></label>
-                  <select 
-                    className="form-control"
-                    value={selectedGoodsType}
-                    onChange={e => handleGoodsTypeChange(e.target.value)}
-                  >
-                    <option value="">-- Select Goods Type --</option>
-                    {GOODS_TYPES.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
-                  {selectedGoodsType === 'Other (Specify)' && (
-                    <div style={{ marginTop: 10 }}>
-                      <textarea 
-                        className="form-control" 
-                        placeholder="Please specify goods details..." 
-                        value={formData.goodsDescription} 
-                        onChange={e => setFormData({...formData, goodsDescription: e.target.value})} 
-                        rows={2} 
-                      />
-                    </div>
-                  )}
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Goods Type / Category <span className="required">*</span></label>
+                    <select 
+                      className="form-control"
+                      value={selectedGoodsType}
+                      onChange={e => handleGoodsTypeChange(e.target.value)}
+                    >
+                      <option value="">-- Select Category --</option>
+                      {GOODS_TYPES.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Seizure Reason <span className="required">*</span></label>
+                    <select 
+                      className="form-control"
+                      value={selectedSeizureReason}
+                      onChange={e => handleSeizureReasonChange(e.target.value)}
+                    >
+                      <option value="">-- Select Reason --</option>
+                      {SEIZURE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    {selectedSeizureReason === 'Other (Specify)' && (
+                      <div style={{ marginTop: 10 }}>
+                        <input 
+                          className="form-control" 
+                          placeholder="Please describe the reason..." 
+                          value={formData.seizureReason} 
+                          onChange={e => setFormData({...formData, seizureReason: e.target.value})} 
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Seizure Reason Dropdown */}
-                <div className="form-field">
-                  <label className="form-label">Seizure Reason <span className="required">*</span></label>
-                  <select 
-                    className="form-control"
-                    value={selectedSeizureReason}
-                    onChange={e => handleSeizureReasonChange(e.target.value)}
-                  >
-                    <option value="">-- Select Reason --</option>
-                    {SEIZURE_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                  {selectedSeizureReason === 'Other (Specify)' && (
-                    <div style={{ marginTop: 10 }}>
-                      <input 
-                        className="form-control" 
-                        placeholder="Please describe the reason..." 
-                        value={formData.seizureReason} 
-                        onChange={e => setFormData({...formData, seizureReason: e.target.value})} 
-                      />
-                    </div>
-                  )}
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Quantity <span className="required">*</span></label>
+                    <input 
+                      type="number"
+                      className="form-control" 
+                      placeholder="e.g. 50" 
+                      value={formData.quantity} 
+                      onChange={e => setFormData({...formData, quantity: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Quantity Type <span className="required">*</span></label>
+                    <select 
+                      className="form-control"
+                      value={formData.quantityType}
+                      onChange={e => setFormData({...formData, quantityType: e.target.value})}
+                    >
+                      <option value="">-- Select Unit --</option>
+                      {QUANTITY_TYPES.map(q => <option key={q} value={q}>{q}</option>)}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-field">
-                  <label className="form-label">Date Seized <span className="required">*</span></label>
-                  <input 
-                    type="date" 
+                  <label className="form-label">Full Description of Goods <span className="required">*</span></label>
+                  <textarea 
                     className="form-control" 
-                    value={formData.dateTimeSeized} 
-                    onChange={e => setFormData({...formData, dateTimeSeized: e.target.value})} 
-                    max={new Date().toISOString().split('T')[0]}
+                    placeholder="Enter detailed description including brands, colors, models..." 
+                    value={formData.fullDescription} 
+                    onChange={e => setFormData({...formData, fullDescription: e.target.value})} 
+                    rows={3} 
                   />
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Location of Seizure <span className="required">*</span></label>
+                    <input 
+                      type="text"
+                      className="form-control" 
+                      placeholder="e.g. Gatuna Border" 
+                      value={formData.locationOfSeizure} 
+                      onChange={e => setFormData({...formData, locationOfSeizure: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Condition of Goods <span className="required">*</span></label>
+                    <select 
+                      className="form-control"
+                      value={formData.conditionOfGoods}
+                      onChange={e => setFormData({...formData, conditionOfGoods: e.target.value})}
+                    >
+                      <option value="">-- Select Condition --</option>
+                      <option value="Good">Good / New</option>
+                      <option value="Damaged">Damaged</option>
+                      <option value="Perishable">Perishable</option>
+                      <option value="Used">Used</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Means of Conveyance</label>
+                    <input 
+                      type="text"
+                      className="form-control" 
+                      placeholder="e.g. Truck, Motorbike, Manual" 
+                      value={formData.conveyanceMeans} 
+                      onChange={e => setFormData({...formData, conveyanceMeans: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Conveyance Registration <span style={{ fontSize: 11, color: 'var(--gray-400)', fontWeight: 'normal' }}>(Optional)</span></label>
+                    <input 
+                      type="text"
+                      className="form-control" 
+                      placeholder="e.g. Plate Number (if known)" 
+                      value={formData.conveyanceRegistration} 
+                      onChange={e => setFormData({...formData, conveyanceRegistration: e.target.value})} 
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Estimated Value (RWF) <span style={{ fontSize: 11, color: 'var(--gray-400)', fontWeight: 'normal' }}>(Optional)</span></label>
+                    <input 
+                      type="number"
+                      className="form-control" 
+                      placeholder="e.g. 500000" 
+                      value={formData.estimatedValue} 
+                      onChange={e => setFormData({...formData, estimatedValue: e.target.value})} 
+                    />
+                  </div>
+
+                  <div className="form-field">
+                    <label className="form-label">Date Seized <span className="required">*</span></label>
+                    <input 
+                      type="date" 
+                      className="form-control" 
+                      value={formData.dateTimeSeized} 
+                      onChange={e => setFormData({...formData, dateTimeSeized: e.target.value})} 
+                      max={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -576,7 +781,9 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
                   <div style={{ fontSize: '13px' }}>
                     <p style={{ margin: '0 0 10px 0' }}>1. Take notice that the following goods / items:</p>
                     <div style={{ background: '#fafafa', border: '1px solid #ddd', padding: '10px 15px', fontWeight: 'bold', fontStyle: 'italic', margin: '10px 0', whiteSpace: 'pre-wrap', borderLeft: '4px solid var(--rra-green)' }}>
-                      {formData.goodsDescription || 'No goods specified.'}
+                      {formData.quantity && formData.quantityType ? `${formData.quantity} ${formData.quantityType} - ` : ''}
+                      {formData.goodsDescription ? `[${formData.goodsDescription}] ` : ''}
+                      {formData.fullDescription || 'No goods specified.'}
                     </div>
                     <p style={{ margin: '10px 0' }}>
                       have been seized and are liable to forfeiture in accordance with the provisions of the East African Community Customs Management Act, on the following grounds:
@@ -609,13 +816,50 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
             {/* STEP 3: Document Authorization (Password confirmation) */}
             {step === 3 && (
               <>
+                {scanMode === 'DIGITAL' && formData.taxpayerContact && (
+                  <div style={{ background: '#fdf8f6', padding: 20, borderRadius: 12, border: '1px solid #fbd5c8', marginBottom: 20 }}>
+                    <h4 style={{ margin: '0 0 8px 0', fontSize: 15, fontWeight: 600, color: '#9a3412' }}>Owner Acknowledgment (OTP)</h4>
+                    <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#c2410c' }}>
+                      Send an OTP to the owner's phone ({formData.taxpayerContact}) for digital signature.
+                    </p>
+                    
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                      <button className="btn-base" style={{ background: '#ea580c', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: 6, fontWeight: 600, cursor: 'pointer' }} onClick={handleSendOtp}>
+                        {isOtpSent ? 'Resend OTP' : 'Send OTP via SMS'}
+                      </button>
+                      {isOtpSent && (
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="Enter 6-digit OTP" 
+                          style={{ width: 160 }}
+                          value={otpCode}
+                          onChange={e => setOtpCode(e.target.value)}
+                        />
+                      )}
+                    </div>
+                    {mockOtpMessage && (
+                      <div style={{ marginTop: 12, padding: 10, background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: 6, color: '#0369a1', fontSize: 13 }}>
+                        <strong>Mock Mode:</strong> {mockOtpMessage}
+                      </div>
+                    )}
+                    
+                    <div style={{ marginTop: 16 }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                        <input type="checkbox" checked={ownerOtpSkipped} onChange={e => setOwnerOtpSkipped(e.target.checked)} />
+                        <span style={{ fontSize: 13, color: '#9a3412' }}>Owner is not present / Skip OTP</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ background: 'var(--rra-blue-tint)', padding: 20, borderRadius: 12, border: '1px solid var(--rra-blue-tint-2)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                     <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <ClipboardIcon style={{ width: 20, color: 'var(--rra-blue)' }} />
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--gray-900)' }}>Document Authorization</h4>
+                      <h4 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--gray-900)' }}>Officer Authorization</h4>
                       <p style={{ margin: 0, fontSize: 12, color: 'var(--gray-500)' }}>Enter your account password to digitally sign this seizure note</p>
                     </div>
                   </div>
