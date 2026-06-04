@@ -352,6 +352,19 @@ export const ReportApi = {
         });
     },
 
+    signReport: (reportId, signatureBase64, role) => {
+        return caseApi.post(`/api/reports/${reportId}/sign`, {
+            signatureBase64,
+            role
+        });
+    },
+
+    downloadInvestigationReportPdf: (reportId) => {
+        return caseApi.get(`/api/reports/${reportId}/investigation-report-pdf`, {
+            responseType: 'blob'
+        });
+    },
+
     returnToAssistantCommissioner: (reportId, returnReason) => {
         return caseApi.post(`/api/reports/${reportId}/return-to-assistant-commissioner`, {
             returnReason

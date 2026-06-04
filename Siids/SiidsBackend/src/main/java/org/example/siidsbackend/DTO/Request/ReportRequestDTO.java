@@ -7,5 +7,6 @@ public class ReportRequestDTO {
     private String description;
 //    private String attachmentPath;
     private String caseNum;
-
+    private String subject;
+    private String legalBasis;
 }

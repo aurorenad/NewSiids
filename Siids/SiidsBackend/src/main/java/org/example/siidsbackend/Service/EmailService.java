@@ -18,7 +18,7 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    @Value("${app.frontend-url:http://localhost:5173}")
+    @Value("${app.frontend-url:http://localhost:5174}")
     private String frontendUrl;
 
     public void sendOtpEmail(String toEmail, String otp) {

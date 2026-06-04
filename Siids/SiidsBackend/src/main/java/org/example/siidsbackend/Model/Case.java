@@ -33,6 +33,18 @@ public class Case {
     @Column(name = "referring_department")
     private String referringDepartment;
 
+    @Column(name = "estimated_evasion_amount")
+    private Double estimatedEvasionAmount;
+
+    @Column(name = "intake_channel")
+    private String intakeChannel;
+
+    @Column(name = "priority_classification")
+    private String priorityClassification;
+
+    @Column(name = "informer_id_type")
+    private String informerIdType;
+
     @Enumerated(EnumType.STRING)
     private WorkflowStatus status;
 

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { ReportApi } from '../api/Axios/caseApi.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 
 export const ClaimForm = () => {
     const [text, setText] = useState('');
+    const [subject, setSubject] = useState('');
+    const [legalBasis, setLegalBasis] = useState('');
     const [attachments, setAttachments] = useState([]); // Changed to array for multiple files
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -77,7 +80,9 @@ export const ClaimForm = () => {
             // Create the report data object with caseNum
             const reportData = {
                 description: text,
-                caseNum: caseNum  // Include caseNum directly in the report data
+                caseNum: caseNum,  // Include caseNum directly in the report data
+                subject: subject.trim() || null,
+                legalBasis: legalBasis.trim() || null
             };
 
             // Append report data as JSON string
@@ -112,6 +117,8 @@ export const ClaimForm = () => {
 
             // Reset form
             setText('');
+            setSubject('');
+            setLegalBasis('');
             setAttachments([]);
             // Reset file input
             const fileInput = document.getElementById('file-input');
@@ -156,6 +163,8 @@ export const ClaimForm = () => {
     const handleCancel = () => {
         // Clear form data before navigating
         setText('');
+        setSubject('');
+        setLegalBasis('');
         setAttachments([]);
         setError('');
         setSuccess('');
@@ -206,6 +215,22 @@ export const ClaimForm = () => {
                         )}
                     </div>
                 )}
+
+                <div className="form-field">
+                    <label className="form-label" htmlFor="report-subject">
+                        Subject <span className="optional-label">(optional)</span>
+                    </label>
+                    <input
+                        id="report-subject"
+                        className="claim-input"
+                        type="text"
+                        placeholder="Example: Tax evasion investigation for taxpayer"
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        disabled={isSubmitting}
+                        maxLength={200}
+                    />
+                </div>
 
                 <div className="textarea-container">
                     <textarea
@@ -285,6 +310,23 @@ export const ClaimForm = () => {
                             ))}
                         </div>
                     )}
+                </div>
+
+                <div className="form-field">
+                    <label className="form-label" htmlFor="report-legal-basis">
+                        Legal Basis <span className="optional-label">(optional)</span>
+                    </label>
+                    <textarea
+                        id="report-legal-basis"
+                        className="claim-textarea claim-textarea-small"
+                        placeholder="Reference applicable laws or regulations..."
+                        value={legalBasis}
+                        onChange={(e) => setLegalBasis(e.target.value)}
+                        disabled={isSubmitting}
+                        maxLength={2000}
+                        rows={3}
+                    />
+                    <div className="helper-text">{legalBasis.length}/2000 characters</div>
                 </div>
 
                 <div className="form-buttons">
@@ -403,6 +445,47 @@ export const ClaimForm = () => {
                     line-height: 1.4;
                 }
 
+                .form-field {
+                    margin-bottom: 24px;
+                }
+
+                .form-label {
+                    display: block;
+                    margin-bottom: 8px;
+                    color: #1c1e21;
+                    font-size: 14px;
+                    font-weight: 700;
+                }
+
+                .optional-label {
+                    color: #8a8d91;
+                    font-size: 12px;
+                    font-weight: 500;
+                }
+
+                .claim-input {
+                    width: 100%;
+                    border: 2px solid #e4e6ea;
+                    border-radius: 12px;
+                    padding: 14px 16px;
+                    font-family: inherit;
+                    font-size: 16px;
+                    box-sizing: border-box;
+                    transition: border-color 0.2s ease;
+                }
+
+                .claim-input:focus {
+                    outline: none;
+                    border-color: #1877f2;
+                    box-shadow: 0 0 0 3px rgba(24, 119, 242, 0.1);
+                }
+
+                .claim-input:disabled {
+                    background-color: #f7f8fa;
+                    color: #8a8d91;
+                    cursor: not-allowed;
+                }
+
                 .textarea-container {
                     margin-bottom: 24px;
                     position: relative;
@@ -444,6 +527,17 @@ export const ClaimForm = () => {
                     padding: 4px 8px;
                     border-radius: 4px;
                     backdrop-filter: blur(4px);
+                }
+
+                .claim-textarea-small {
+                    min-height: 110px;
+                }
+
+                .helper-text {
+                    margin-top: 6px;
+                    color: #8a8d91;
+                    font-size: 13px;
+                    text-align: right;
                 }
 
                 .attachment-section {

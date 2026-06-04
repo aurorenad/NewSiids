@@ -50,6 +50,7 @@ public class CaseService {
         newCase.setCreatedBy(creator);
         newCase.setReportedDate(LocalDateTime.now());
         newCase.setUpdatedAt(LocalDateTime.now());
+        applyCaseIntakeDetails(newCase, dto);
 
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             newCase.setReferringDepartment(dto.getReferringDepartment().trim());
@@ -96,6 +97,7 @@ public class CaseService {
         existingCase.setTaxType(dto.getTaxType());
         existingCase.setTaxPeriod(dto.getTaxPeriod());
         existingCase.setUpdatedAt(LocalDateTime.now());
+        applyCaseIntakeDetails(existingCase, dto);
 
         if (dto.getReferringDepartment() != null && !dto.getReferringDepartment().trim().isEmpty()) {
             existingCase.setReferringDepartment(dto.getReferringDepartment().trim());
@@ -288,6 +290,10 @@ public class CaseService {
         }
 
         responseDTO.setReferringDepartment(caseEntity.getReferringDepartment());
+        responseDTO.setEstimatedEvasionAmount(caseEntity.getEstimatedEvasionAmount());
+        responseDTO.setIntakeChannel(caseEntity.getIntakeChannel());
+        responseDTO.setPriorityClassification(caseEntity.getPriorityClassification());
+        responseDTO.setInformerIdType(caseEntity.getInformerIdType());
 
         if (caseEntity.getCaseNum() != null) {
             reportRepo.findFirstByRelatedCase_CaseNumOrderByCreatedAtDesc(caseEntity.getCaseNum())
@@ -295,6 +301,17 @@ public class CaseService {
         }
 
         return responseDTO;
+    }
+
+    private void applyCaseIntakeDetails(Case caseEntity, CaseRequestDTO dto) {
+        caseEntity.setEstimatedEvasionAmount(dto.getEstimatedEvasionAmount());
+        caseEntity.setIntakeChannel(normalize(dto.getIntakeChannel()));
+        caseEntity.setPriorityClassification(normalize(dto.getPriorityClassification()));
+        caseEntity.setInformerIdType(normalize(dto.getInformerIdType()));
+    }
+
+    private String normalize(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 
     @Transactional

@@ -40,6 +40,17 @@ public class SeizureNote {
     @Column(columnDefinition = "TEXT")
     private String goodsDescription;
 
+    private Double quantity;
+    private String quantityType;
+
+    @Column(columnDefinition = "TEXT")
+    private String fullDescription;
+
+    private String locationOfSeizure;
+    private String conditionOfGoods;
+    private String conveyanceMeans;
+    private String conveyanceRegistration;
+
     private String seizureReason;
     
     private LocalDateTime dateTimeSeized;

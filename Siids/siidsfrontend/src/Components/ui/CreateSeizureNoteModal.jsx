@@ -46,6 +46,13 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
     representativeName: '',
     representativeContact: '',
     goodsDescription: '',
+    quantity: '',
+    quantityType: '',
+    fullDescription: '',
+    locationOfSeizure: '',
+    conditionOfGoods: '',
+    conveyanceMeans: '',
+    conveyanceRegistration: '',
     seizureReason: '',
     dateTimeSeized: new Date().toISOString().split('T')[0],
     authorizationPassword: '',
@@ -91,6 +98,13 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
           representativeName: editItem.representativeName || '',
           representativeContact: editItem.representativeContact || '',
           goodsDescription: editItem.goodsDescription || '',
+          quantity: editItem.quantity || '',
+          quantityType: editItem.quantityType || '',
+          fullDescription: editItem.fullDescription || '',
+          locationOfSeizure: editItem.locationOfSeizure || '',
+          conditionOfGoods: editItem.conditionOfGoods || '',
+          conveyanceMeans: editItem.conveyanceMeans || '',
+          conveyanceRegistration: editItem.conveyanceRegistration || '',
           seizureReason: editItem.seizureReason || '',
           dateTimeSeized: editItem.dateTimeSeized ? editItem.dateTimeSeized.split('T')[0] : new Date().toISOString().split('T')[0],
           authorizationPassword: '',
@@ -136,6 +150,13 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
           representativeName: '',
           representativeContact: '',
           goodsDescription: '',
+          quantity: '',
+          quantityType: '',
+          fullDescription: '',
+          locationOfSeizure: '',
+          conditionOfGoods: '',
+          conveyanceMeans: '',
+          conveyanceRegistration: '',
           seizureReason: '',
           dateTimeSeized: new Date().toISOString().split('T')[0],
           authorizationPassword: '',
@@ -260,6 +281,7 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
     try {
       const payload = {
         ...formData,
+        quantity: formData.quantity === '' ? null : Number(formData.quantity),
         dateTimeSeized: `${formData.dateTimeSeized}T00:00:00`,
       };
       if (editItem) {
@@ -491,6 +513,91 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
                   )}
                 </div>
 
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Quantity</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="form-control"
+                      placeholder="e.g. 12"
+                      value={formData.quantity}
+                      onChange={e => setFormData({...formData, quantity: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Quantity Unit</label>
+                    <select
+                      className="form-control"
+                      value={formData.quantityType}
+                      onChange={e => setFormData({...formData, quantityType: e.target.value})}
+                    >
+                      <option value="">-- Select Unit --</option>
+                      <option value="PIECES">Pieces</option>
+                      <option value="KG">Kilograms</option>
+                      <option value="LITERS">Liters</option>
+                      <option value="BAGS">Bags</option>
+                      <option value="BOXES">Boxes</option>
+                      <option value="TONNES">Tonnes</option>
+                      <option value="OTHER">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label">Detailed Goods Description</label>
+                  <textarea
+                    className="form-control"
+                    placeholder="Describe brands, serial numbers, packaging, condition, marks, or other identifying details..."
+                    value={formData.fullDescription}
+                    onChange={e => setFormData({...formData, fullDescription: e.target.value})}
+                    rows={3}
+                  />
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Location of Seizure</label>
+                    <input
+                      className="form-control"
+                      placeholder="e.g. Gatuna border post"
+                      value={formData.locationOfSeizure}
+                      onChange={e => setFormData({...formData, locationOfSeizure: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Condition of Goods</label>
+                    <input
+                      className="form-control"
+                      placeholder="e.g. New, damaged, expired"
+                      value={formData.conditionOfGoods}
+                      onChange={e => setFormData({...formData, conditionOfGoods: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-grid-2">
+                  <div className="form-field">
+                    <label className="form-label">Conveyance Means</label>
+                    <input
+                      className="form-control"
+                      placeholder="e.g. Truck, bus, hand-carried"
+                      value={formData.conveyanceMeans}
+                      onChange={e => setFormData({...formData, conveyanceMeans: e.target.value})}
+                    />
+                  </div>
+                  <div className="form-field">
+                    <label className="form-label">Conveyance Registration</label>
+                    <input
+                      className="form-control"
+                      placeholder="Plate/chassis/container number"
+                      value={formData.conveyanceRegistration}
+                      onChange={e => setFormData({...formData, conveyanceRegistration: e.target.value})}
+                    />
+                  </div>
+                </div>
+
                 {/* Seizure Reason Dropdown */}
                 <div className="form-field">
                   <label className="form-label">Seizure Reason <span className="required">*</span></label>
@@ -576,7 +683,9 @@ const CreateSeizureNoteModal = ({ isOpen, onClose, onSuccess, initialCaseRef, ed
                   <div style={{ fontSize: '13px' }}>
                     <p style={{ margin: '0 0 10px 0' }}>1. Take notice that the following goods / items:</p>
                     <div style={{ background: '#fafafa', border: '1px solid #ddd', padding: '10px 15px', fontWeight: 'bold', fontStyle: 'italic', margin: '10px 0', whiteSpace: 'pre-wrap', borderLeft: '4px solid var(--rra-green)' }}>
-                      {formData.goodsDescription || 'No goods specified.'}
+                      {formData.quantity && formData.quantityType ? `${formData.quantity} ${formData.quantityType} - ` : ''}
+                      {formData.goodsDescription ? `[${formData.goodsDescription}] ` : ''}
+                      {formData.fullDescription || formData.goodsDescription || 'No goods specified.'}
                     </div>
                     <p style={{ margin: '10px 0' }}>
                       have been seized and are liable to forfeiture in accordance with the provisions of the East African Community Customs Management Act, on the following grounds:

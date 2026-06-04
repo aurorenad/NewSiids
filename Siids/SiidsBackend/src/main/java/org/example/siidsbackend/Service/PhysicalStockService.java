@@ -82,6 +82,7 @@ public class PhysicalStockService {
             goods = stock.getItems().stream().map(i -> i.getQuantity() + "x " + i.getItemName()).reduce((a, b) -> a + ", " + b).orElse("");
         }
         note.setGoodsDescription(goods);
+        note.setFullDescription(goods);
         note.setSeizureReason(stock.getSeizureReason());
         if (stock.getTakenDate() != null) {
             note.setDateTimeSeized(stock.getTakenDate().atStartOfDay());
@@ -118,6 +119,7 @@ public class PhysicalStockService {
         note.setTaxpayerName(stock.getOwnerName() != null ? stock.getOwnerName() : "N/A");
         note.setTaxpayerTin("N/A"); // Legacy stock doesn't have TIN field
         note.setGoodsDescription(goods != null && !goods.isEmpty() ? goods : "N/A");
+        note.setFullDescription(goods != null && !goods.isEmpty() ? goods : "N/A");
         note.setDateTimeSeized(stock.getTakenDate() != null ? stock.getTakenDate().atStartOfDay() : LocalDateTime.now());
         
         pv.setSeizureNote(note);
@@ -319,6 +321,7 @@ public class PhysicalStockService {
         note.setRepresentativeName(dto.getRepresentativeName());
         note.setRepresentativeContact(dto.getRepresentativeContact());
         note.setGoodsDescription(dto.getGoodsDescription());
+        applySeizureDetails(note, dto);
         note.setSeizureReason(dto.getSeizureReason());
         note.setDateTimeSeized(dto.getDateTimeSeized() != null ? dto.getDateTimeSeized() : LocalDateTime.now());
         note.setPvInCharge(currentUser);
@@ -363,6 +366,7 @@ public class PhysicalStockService {
         note.setRepresentativeName(dto.getRepresentativeName());
         note.setRepresentativeContact(dto.getRepresentativeContact());
         note.setGoodsDescription(dto.getGoodsDescription());
+        applySeizureDetails(note, dto);
         note.setSeizureReason(dto.getSeizureReason());
         if (dto.getDateTimeSeized() != null) {
             note.setDateTimeSeized(dto.getDateTimeSeized());
@@ -391,6 +395,20 @@ public class PhysicalStockService {
         }
 
         return saved;
+    }
+
+    private void applySeizureDetails(SeizureNote note, SeizureNoteRequestDTO dto) {
+        note.setQuantity(dto.getQuantity());
+        note.setQuantityType(normalize(dto.getQuantityType()));
+        note.setFullDescription(normalize(dto.getFullDescription()));
+        note.setLocationOfSeizure(normalize(dto.getLocationOfSeizure()));
+        note.setConditionOfGoods(normalize(dto.getConditionOfGoods()));
+        note.setConveyanceMeans(normalize(dto.getConveyanceMeans()));
+        note.setConveyanceRegistration(normalize(dto.getConveyanceRegistration()));
+    }
+
+    private String normalize(String value) {
+        return value == null || value.trim().isEmpty() ? null : value.trim();
     }
 
     @Transactional

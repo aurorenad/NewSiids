@@ -15,6 +15,11 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String description;
+    private String subject;
+
+    @Column(columnDefinition = "TEXT")
+    private String legalBasis;
+
     private String attachmentPath;
 
     @ElementCollection
@@ -101,6 +106,12 @@ public class Report {
     private String investigationReportRejectedBy;
      private String investigationReportRejectionReason;
     private LocalDateTime investigationReportRejectedAt;
+
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReportSignature> signatures = new ArrayList<>();
+
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReportRevision> revisions = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

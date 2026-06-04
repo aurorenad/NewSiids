@@ -8,6 +8,7 @@ import org.example.siidsbackend.DTO.FinesReportDTO;
 import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
+import org.example.siidsbackend.DTO.Request.SignReportRequest;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 
 import org.example.siidsbackend.Model.Employee;
@@ -17,6 +18,7 @@ import org.example.siidsbackend.Repository.CaseRepo;
 
 import org.example.siidsbackend.Repository.ReportRepo;
 import org.example.siidsbackend.Service.FileStorageService;
+import org.example.siidsbackend.Service.PdfService;
 import org.example.siidsbackend.Service.RbacService;
 import org.example.siidsbackend.Service.ReportService;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,6 +55,7 @@ public class ReportController {
     private final org.example.siidsbackend.Repository.UserRepo userRepo;
     private final RbacService rbacService;
     private final FileStorageService fileStorageService;
+    private final PdfService pdfService;
 
     @Value("${file.max-size:10485760}")
     private String maxFileSize;
@@ -275,6 +278,43 @@ public class ReportController {
             System.err.println("Error getting report: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @PostMapping("/{id}/sign")
+    @PreAuthorize("hasAnyAuthority('REPORT_APPROVE_INTELLIGENCE', 'REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
+    public ResponseEntity<?> signReport(
+            @PathVariable Integer id,
+            @RequestBody SignReportRequest request,
+            Authentication authentication) {
+        try {
+            Report report = reportService.signReport(id, request, authentication.getName());
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}/investigation-report-pdf")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
+    public ResponseEntity<?> downloadInvestigationReportPdf(@PathVariable Integer id) {
+        try {
+            Report report = reportRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Report not found with ID: " + id));
+            byte[] pdf = pdfService.generateInvestigationReport(report);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"InvestigationReport-" + id + ".pdf\"")
+                    .body(pdf);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error generating investigation report PDF for report {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("message", "Failed to generate report PDF"));
         }
     }
 

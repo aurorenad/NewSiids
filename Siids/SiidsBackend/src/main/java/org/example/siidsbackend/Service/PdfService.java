@@ -146,4 +146,28 @@ public class PdfService {
         String html = templateEngine.process(templateName, context);
         return renderHtmlToPdf(html);
     }
+
+    public byte[] generateInvestigationReport(org.example.siidsbackend.Model.Report report) throws IOException {
+        Context context = new Context();
+        context.setVariable("report", report);
+        addCommonImages(context);
+
+        if (report.getSignatures() != null) {
+            for (org.example.siidsbackend.Model.ReportSignature signature : report.getSignatures()) {
+                if (signature.getSignaturePath() == null) {
+                    continue;
+                }
+                if ("DIRECTOR_INTELLIGENCE".equals(signature.getSignatureRole())) {
+                    context.setVariable("doiSignatureBase64", signature.getSignaturePath());
+                    context.setVariable("doiSignedAt", signature.getSignedAt());
+                } else if ("ASSISTANT_COMMISSIONER".equals(signature.getSignatureRole())) {
+                    context.setVariable("acSignatureBase64", signature.getSignaturePath());
+                    context.setVariable("acSignedAt", signature.getSignedAt());
+                }
+            }
+        }
+
+        String html = templateEngine.process("investigation-report", context);
+        return renderHtmlToPdf(html);
+    }
 }

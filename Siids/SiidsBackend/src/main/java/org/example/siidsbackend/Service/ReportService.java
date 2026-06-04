@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.*;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
+import org.example.siidsbackend.DTO.Request.SignReportRequest;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.*;
@@ -69,6 +70,8 @@ public class ReportService {
 
         Report report = new Report();
         report.setDescription(dto.getDescription());
+        report.setSubject(dto.getSubject());
+        report.setLegalBasis(dto.getLegalBasis());
         report.setAttachmentPaths(attachmentPaths != null ? attachmentPaths : new ArrayList<>());
         report.setCreatedBy(creator);
         report.setRelatedCase(relatedCase);
@@ -91,6 +94,61 @@ public class ReportService {
                         (attachmentPaths != null ? attachmentPaths.size() : 0) + " attachments",
                 creator);
 
+        return savedReport;
+    }
+
+    @Transactional
+    public Report signReport(Integer reportId, SignReportRequest request, String signerId) {
+        if (request == null || request.getRole() == null || request.getRole().isBlank()) {
+            throw new IllegalArgumentException("Signature role is required");
+        }
+        if (request.getSignatureBase64() == null || request.getSignatureBase64().isBlank()) {
+            throw new IllegalArgumentException("Signature data is required");
+        }
+
+        String signatureRole = request.getRole().trim().toUpperCase(Locale.ROOT);
+        if (!"DIRECTOR_INTELLIGENCE".equals(signatureRole) && !"ASSISTANT_COMMISSIONER".equals(signatureRole)) {
+            throw new IllegalArgumentException("Unsupported signature role: " + request.getRole());
+        }
+
+        User user = userRepo.findByUsername(signerId)
+                .orElseThrow(() -> new RuntimeException("User not found with username: " + signerId));
+        boolean isAdmin = rbacService.isAdmin(user);
+        boolean canSignAsDirector = "DIRECTOR_INTELLIGENCE".equals(signatureRole)
+                && (isAdmin || rbacService.hasRole(user, "DirectorIntelligence"));
+        boolean canSignAsAssistantCommissioner = "ASSISTANT_COMMISSIONER".equals(signatureRole)
+                && (isAdmin || rbacService.hasRole(user, "AssistantCommissioner"));
+
+        if (!canSignAsDirector && !canSignAsAssistantCommissioner) {
+            throw new SecurityException("You are not allowed to sign as " + signatureRole);
+        }
+
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+        Employee signer = employeeRepo.findByEmployeeId(signerId)
+                .orElseThrow(() -> new RuntimeException("Signer employee not found with ID: " + signerId));
+
+        ReportSignature signature = report.getSignatures().stream()
+                .filter(existing -> signatureRole.equals(existing.getSignatureRole()))
+                .findFirst()
+                .orElseGet(() -> {
+                    ReportSignature newSignature = new ReportSignature();
+                    newSignature.setReport(report);
+                    report.getSignatures().add(newSignature);
+                    return newSignature;
+                });
+
+        signature.setSignedBy(signer);
+        signature.setSignatureRole(signatureRole);
+        signature.setSignaturePath(request.getSignatureBase64());
+        signature.setSignedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                savedReport.getRelatedCase() != null ? savedReport.getRelatedCase().getStatus() : WorkflowStatus.REPORT_SUBMITTED,
+                "Report " + savedReport.getId() + " signed as " + signatureRole + " by " + signerId,
+                signer);
         return savedReport;
     }
 
@@ -604,6 +662,8 @@ public class ReportService {
         ReportResponseDTO dto = new ReportResponseDTO();
         dto.setId(report.getId());
         dto.setDescription(report.getDescription());
+        dto.setSubject(report.getSubject());
+        dto.setLegalBasis(report.getLegalBasis());
 
         if (report.getAttachmentPaths() != null && !report.getAttachmentPaths().isEmpty()) {
             dto.setAttachmentPaths(report.getAttachmentPaths());
@@ -650,6 +710,7 @@ public class ReportService {
         dto.setCanSubmitFindings(canSubmitFindings(report));
         dto.setCanSubmitCasePlan(canSubmitCasePlan(report));
         dto.setCanContinueWorking(canContinueWorking(report));
+        mapSignatureState(report, dto);
         if (report.getInvestigationOfficer() != null) {
             ReportResponseDTO.OfficerDTO officer = new ReportResponseDTO.OfficerDTO();
             officer.setEmployeeId(report.getInvestigationOfficer().getEmployeeId());
@@ -659,6 +720,33 @@ public class ReportService {
         }
         
         return dto;
+    }
+
+    private void mapSignatureState(Report report, ReportResponseDTO dto) {
+        List<ReportSignature> signatures = report.getSignatures() != null
+                ? report.getSignatures()
+                : new ArrayList<>();
+
+        List<ReportResponseDTO.SignatureDTO> signatureDTOs = signatures.stream()
+                .map(signature -> {
+                    ReportResponseDTO.SignatureDTO signatureDTO = new ReportResponseDTO.SignatureDTO();
+                    signatureDTO.setRole(signature.getSignatureRole());
+                    signatureDTO.setSignatureBase64(signature.getSignaturePath());
+                    signatureDTO.setSignedAt(signature.getSignedAt());
+                    if (signature.getSignedBy() != null) {
+                        signatureDTO.setEmployeeId(signature.getSignedBy().getEmployeeId());
+                        signatureDTO.setName((signature.getSignedBy().getGivenName() != null ? signature.getSignedBy().getGivenName() : "")
+                                + " "
+                                + (signature.getSignedBy().getFamilyName() != null ? signature.getSignedBy().getFamilyName() : ""));
+                    }
+                    return signatureDTO;
+                })
+                .collect(Collectors.toList());
+
+        dto.setSignatures(signatureDTOs);
+        dto.setAcSigned(signatures.stream().anyMatch(signature -> "ASSISTANT_COMMISSIONER".equals(signature.getSignatureRole())));
+        dto.setDirectorSigned(signatures.stream().anyMatch(signature -> "DIRECTOR_INTELLIGENCE".equals(signature.getSignatureRole())));
+        dto.setFinalised(dto.isAcSigned() && dto.isDirectorSigned());
     }
 
     private InformerDTO convertToInformerDTO(Informer informer) {
@@ -1303,6 +1391,12 @@ public class ReportService {
         if (reportData.getDescription() != null) {
             report.setDescription(reportData.getDescription());
         }
+        if (reportData.getSubject() != null) {
+            report.setSubject(reportData.getSubject());
+        }
+        if (reportData.getLegalBasis() != null) {
+            report.setLegalBasis(reportData.getLegalBasis());
+        }
 
         WorkflowStatus newStatus;
         switch (report.getRelatedCase().getStatus()) {
@@ -1677,6 +1771,12 @@ public class ReportService {
 
         // Update basic report information
         report.setDescription(reportData.getDescription());
+        if (reportData.getSubject() != null) {
+            report.setSubject(reportData.getSubject());
+        }
+        if (reportData.getLegalBasis() != null) {
+            report.setLegalBasis(reportData.getLegalBasis());
+        }
         report.setUpdatedAt(LocalDateTime.now());
 
         // Handle attachments: keep existing ones and add new ones

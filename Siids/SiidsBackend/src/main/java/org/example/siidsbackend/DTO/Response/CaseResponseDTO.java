@@ -29,6 +29,10 @@ public class CaseResponseDTO {
     private LocalDateTime updatedAt;
 
     private String referringDepartment;
+    private Double estimatedEvasionAmount;
+    private String intakeChannel;
+    private String priorityClassification;
+    private String informerIdType;
 
     private Integer reportId;
 }

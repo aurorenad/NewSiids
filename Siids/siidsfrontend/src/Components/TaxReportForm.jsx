@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import caseApi from '../api/Axios/caseApi.jsx';
 import { hasPermission } from '../utils/authorization.js';
 import { PERMISSIONS } from '../constants/permissions';
+import { ROUTES } from '../constants/routes';
 import '../Styles/TaxReportForm.css';
 
 const TaxReportForm = () => {
@@ -24,6 +25,10 @@ const TaxReportForm = () => {
         informerName: '',
         referringDepartment: '',
         nationalId: '',
+        estimatedEvasionAmount: '',
+        intakeChannel: '',
+        priorityClassification: 'NORMAL',
+        informerIdType: '',
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,6 +113,10 @@ const TaxReportForm = () => {
                 informerId: caseData.informerId ? caseData.informerId.toString() : '',
                 informerName: caseData.informerName || '',
                 referringDepartment: caseData.referringDepartment || '',
+                estimatedEvasionAmount: caseData.estimatedEvasionAmount || '',
+                intakeChannel: caseData.intakeChannel || '',
+                priorityClassification: caseData.priorityClassification || 'NORMAL',
+                informerIdType: caseData.informerIdType || '',
             });
         }
     }, [location.state, authState.userId]);
@@ -277,6 +286,10 @@ const TaxReportForm = () => {
                 informerAddress: formData.caseSource === 'identified' ? '' : null,
                 informerEmail: formData.caseSource === 'identified' ? '' : null,
                 referringDepartment: formData.caseSource === 'referred' ? formData.referringDepartment : null,
+                estimatedEvasionAmount: formData.estimatedEvasionAmount === '' ? null : Number(formData.estimatedEvasionAmount),
+                intakeChannel: formData.intakeChannel || null,
+                priorityClassification: formData.priorityClassification || null,
+                informerIdType: formData.caseSource === 'identified' ? formData.informerIdType || null : null,
             };
 
             console.log('Submitting case data:', caseData);
@@ -406,6 +419,53 @@ const TaxReportForm = () => {
                             />
                         </div>
 
+                        <div className="form-group">
+                            <label className="tax-report-form-label">Estimated Evasion Amount</label>
+                            <input
+                                type="number"
+                                name="estimatedEvasionAmount"
+                                value={formData.estimatedEvasionAmount}
+                                onChange={handleChange}
+                                className="tax-report-form-input"
+                                placeholder="Amount in RWF"
+                                min="0"
+                                step="1"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="tax-report-form-label">Intake Channel</label>
+                            <select
+                                name="intakeChannel"
+                                value={formData.intakeChannel}
+                                onChange={handleChange}
+                                className="tax-report-form-input"
+                            >
+                                <option value="">Select channel</option>
+                                <option value="WALK_IN">Walk-in</option>
+                                <option value="PHONE">Phone</option>
+                                <option value="EMAIL">Email</option>
+                                <option value="INTERNAL_REFERRAL">Internal referral</option>
+                                <option value="FIELD_INTELLIGENCE">Field intelligence</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="tax-report-form-label">Priority</label>
+                            <select
+                                name="priorityClassification"
+                                value={formData.priorityClassification}
+                                onChange={handleChange}
+                                className="tax-report-form-input"
+                            >
+                                <option value="LOW">Low</option>
+                                <option value="NORMAL">Normal</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
+                        </div>
+
                         {/* Case Source Dropdown */}
                         <div className="form-group">
                             <label className="tax-report-form-label">Case Source*</label>
@@ -463,6 +523,22 @@ const TaxReportForm = () => {
                                             Informer not found. {canManageInformer && <a href="#" onClick={() => setShowInformerRegistration(true)}>Register now</a>}
                                         </div>
                                     )}
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="tax-report-form-label">Informer ID Type</label>
+                                    <select
+                                        name="informerIdType"
+                                        value={formData.informerIdType}
+                                        onChange={handleChange}
+                                        className="tax-report-form-input"
+                                    >
+                                        <option value="">Select ID type</option>
+                                        <option value="NATIONAL_ID">National ID</option>
+                                        <option value="PASSPORT">Passport</option>
+                                        <option value="FOREIGN_ID">Foreign ID</option>
+                                        <option value="UNKNOWN">Unknown</option>
+                                    </select>
                                 </div>
 
                                 <div className="form-group">

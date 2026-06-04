@@ -22,6 +22,13 @@ public class StockResponseDTO {
     private List<String> documentPaths;
     private String seizureReason;
     private String seizureReasonCategory;
+    private Double quantity;
+    private String quantityType;
+    private String fullDescription;
+    private String locationOfSeizure;
+    private String conditionOfGoods;
+    private String conveyanceMeans;
+    private String conveyanceRegistration;
 
     private LocalDate dateReleased;
     private String releasedItem;

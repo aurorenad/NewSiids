@@ -12,6 +12,8 @@ import java.util.List;
 public class ReportResponseDTO {
     private Integer id;
     private String description;
+    private String subject;
+    private String legalBasis;
     private List<String> attachmentPaths;
     private WorkflowStatus status;
     private String createdBy;
@@ -53,4 +55,18 @@ public class ReportResponseDTO {
     private boolean canSubmitFindings;
     private boolean canSubmitCasePlan;
     private boolean canContinueWorking;
+
+    @Data
+    public static class SignatureDTO {
+        private String employeeId;
+        private String role;
+        private String name;
+        private String signatureBase64;
+        private LocalDateTime signedAt;
+    }
+
+    private List<SignatureDTO> signatures;
+    private boolean acSigned;
+    private boolean directorSigned;
+    private boolean finalised;
 }

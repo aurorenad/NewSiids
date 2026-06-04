@@ -1,5 +1,6 @@
 package org.example.siidsbackend.Service;
 
+import org.example.siidsbackend.DTO.Request.SeizureNoteRequestDTO;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.SeizureNote;
 import org.example.siidsbackend.Model.User;
@@ -20,8 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -161,5 +164,47 @@ class PhysicalStockServiceTest {
 
         assertSame(pdf, result);
         verify(pdfService).generateSeizureNote(note);
+    }
+
+    @Test
+    void createSeizureNote_ShouldPersistDetailedGoodsFields() {
+        Employee officer = new Employee();
+        officer.setEmployeeId("officer-1");
+        officer.setGivenName("Test");
+        officer.setFamilyName("Officer");
+
+        User user = new User();
+        user.setUsername("officer-1");
+        user.setPassword("encoded-password");
+
+        SeizureNoteRequestDTO request = new SeizureNoteRequestDTO();
+        request.setTaxpayerType("KNOWN");
+        request.setTaxpayerTin("123456789");
+        request.setTaxpayerName("Test Taxpayer");
+        request.setGoodsDescription("Electronics");
+        request.setQuantity(12.0);
+        request.setQuantityType("BOXES");
+        request.setFullDescription("12 boxes of mobile phones");
+        request.setLocationOfSeizure("Gatuna border post");
+        request.setConditionOfGoods("New");
+        request.setConveyanceMeans("Truck");
+        request.setConveyanceRegistration("RAC123A");
+        request.setSeizureReason("Undeclared Goods");
+        request.setAuthorizationPassword("secret");
+
+        when(userRepo.findByUsername("officer-1")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "encoded-password")).thenReturn(true);
+        when(seizureNoteRepository.findFirstBySeizureNumberStartingWithOrderByIdDesc(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(Optional.empty());
+        when(seizureNoteRepository.save(any(SeizureNote.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        SeizureNote saved = physicalStockService.createSeizureNote(request, officer);
+
+        assertEquals(12.0, saved.getQuantity());
+        assertEquals("BOXES", saved.getQuantityType());
+        assertEquals("12 boxes of mobile phones", saved.getFullDescription());
+        assertEquals("Gatuna border post", saved.getLocationOfSeizure());
+        assertEquals("New", saved.getConditionOfGoods());
+        assertEquals("Truck", saved.getConveyanceMeans());
+        assertEquals("RAC123A", saved.getConveyanceRegistration());
     }
 }
