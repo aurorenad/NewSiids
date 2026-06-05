@@ -77,7 +77,6 @@ const AssistantCommissioner = () => {
         return map[status] || status?.replace(/_/g, ' ') || 'Unknown';
     };
 
-<<<<<<< HEAD
     const handleApproveClick = (report) => {
         if (activeTab === 0) {
             setReportToRoute(report);
@@ -86,36 +85,15 @@ const AssistantCommissioner = () => {
             setRoutingNotes("");
             setRouteDialogOpen(true);
         } else {
-            handleApproveAction(report);
+            triggerApprove(report);
         }
     };
 
     const handleRouteAndApprove = async () => {
-        try {
-            setSubmitting(true);
-            const finalDepartment = routeDestination === "Other Departments" ? customDepartment : routeDestination;
-            
-            // Route case first
-            if (reportToRoute.relatedCase?.id) {
-                await ReportApi.routeCase(reportToRoute.relatedCase.id, finalDepartment, routingNotes);
-            }
-            
-            // Then approve the report
-            await ReportApi.approveReport(reportToRoute.id);
-            
-            showSnackbar(`Case approved and routed to ${finalDepartment}`);
-            setRouteDialogOpen(false);
-            await fetchAllData();
-        } catch (err) {
-            const errorMsg = err.response?.data?.message || err.response?.data || "Routing failed";
-            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Routing failed", "error");
-        } finally {
-            setSubmitting(false);
-        }
+        setRouteDialogOpen(false);
+        triggerApprove(reportToRoute);
     };
 
-    const handleApproveAction = async (report) => {
-=======
     const isPending = (status) => {
         return status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' ||
                status === 'CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER' ||
@@ -138,23 +116,39 @@ const AssistantCommissioner = () => {
         setSignatureDialogOpen(false);
         const report = reportToApprove;
 
->>>>>>> origin/dev
         try {
             setSubmitting(true);
             const payload = { signatureBase64: signatureBase64 };
+
+            // Apply routing first if this originated from the Case Intake tab
+            if (activeTab === 0 && reportToRoute && reportToRoute.id === report.id) {
+                const finalDepartment = routeDestination === "Other Departments" ? customDepartment : routeDestination;
+                if (reportToRoute.relatedCase?.id) {
+                    await ReportApi.routeCase(reportToRoute.relatedCase.id, finalDepartment, routingNotes);
+                }
+            }
+
             if (activeTab === 1) {
                 await ReportApi.approveCasePlanByAssistantCommissioner(report.id, '', payload);
             } else {
                 await ReportApi.approveReport(report.id, payload);
             }
-            showSnackbar("Operational approval granted");
+            
+            if (activeTab === 0 && reportToRoute && reportToRoute.id === report.id) {
+                const finalDepartment = routeDestination === "Other Departments" ? customDepartment : routeDestination;
+                showSnackbar(`Case approved and routed to ${finalDepartment}`);
+            } else {
+                showSnackbar("Operational approval granted");
+            }
+
             await fetchAllData();
         } catch (err) { 
-            const errorMsg = err.response?.data || "Approval failed";
+            const errorMsg = err.response?.data?.message || err.response?.data || "Approval failed";
             showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Approval failed", "error"); 
         } finally {
             setSubmitting(false);
             setReportToApprove(null);
+            setReportToRoute(null);
         }
     };
     
@@ -276,13 +270,8 @@ const AssistantCommissioner = () => {
                                                 color="success"
                                                 size="small"
                                                 startIcon={<Check />}
-<<<<<<< HEAD
                                                 onClick={() => handleApproveClick(r)}
-                                                disabled={submitting}
-=======
-                                                onClick={() => triggerApprove(r)}
                                                 disabled={submitting || !isPending(r.status)}
->>>>>>> origin/dev
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Approve
