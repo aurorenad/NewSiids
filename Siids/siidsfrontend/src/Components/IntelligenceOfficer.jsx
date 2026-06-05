@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-    IconButton, Paper, Snackbar, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, TablePagination, TextField, Typography, Alert,
+    IconButton, Paper, Snackbar, TextField, Typography, Alert,
     Tooltip, Grid, Card, CardContent, CardHeader, FormControl, InputLabel,
     Select, MenuItem, Divider, Chip, Stack, LinearProgress, Tab, Tabs,
     Avatar, Badge
 } from '@mui/material';
 import {
-    Add as AddIcon, Description as DescriptionIcon, Search as SearchIcon,
+    Add as AddIcon, Description as DescriptionIcon,
     FilterList as FilterListIcon, PictureAsPdf, Edit as EditIcon,
     ArrowUpward, ArrowDownward, Clear as ClearIcon, DateRange as DateRangeIcon,
     TableChart as ExcelIcon, Folder as FolderIcon, Pending as PendingIcon,
@@ -27,10 +26,14 @@ import { CaseService, ReportApi } from '../api/Axios/caseApi';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
 
 const IntelligenceOfficer = () => {
     const [cases, setCases] = useState([]);
-    const [filteredCases, setFilteredCases] = useState([]);
+    const [tableCases, setTableCases] = useState([]);
+    const [totalTableCases, setTotalTableCases] = useState(0);
     const [loading, setLoading] = useState({ cases: true });
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -42,7 +45,6 @@ const IntelligenceOfficer = () => {
     const [showOnlyWithReports, setShowOnlyWithReports] = useState(false);
     const [reportLoading, setReportLoading] = useState(false);
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
     const [sortOrder, setSortOrder] = useState('desc');
     const [activeTab, setActiveTab] = useState('all');
 
@@ -83,17 +85,41 @@ const IntelligenceOfficer = () => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        fetchTableData();
+    }, [page, searchTerm, showOnlyWithReports, sortOrder, activeTab]);
+
     const fetchData = async () => {
         try {
             setLoading(prev => ({ ...prev, cases: true }));
             const casesResponse = await CaseService.getMyCases();
             const allCases = casesResponse.data;
             setCases(allCases);
-            setFilteredCases(allCases);
             categorizeCases(allCases);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to load data');
             showSnackbar('Failed to load data', 'error');
+        } finally {
+            setLoading(prev => ({ ...prev, cases: false }));
+        }
+    };
+
+    const fetchTableData = async () => {
+        try {
+            setLoading(prev => ({ ...prev, cases: true }));
+            const response = await CaseService.getMyCases({
+                page,
+                size: ROWS_PER_PAGE,
+                search: searchTerm,
+                category: activeTab,
+                withReports: showOnlyWithReports,
+                sort: sortOrder
+            });
+            setTableCases(response.data?.content || []);
+            setTotalTableCases(response.data?.totalElements || 0);
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to load data');
+            showSnackbar('Failed to load cases table', 'error');
         } finally {
             setLoading(prev => ({ ...prev, cases: false }));
         }
@@ -164,79 +190,6 @@ const IntelligenceOfficer = () => {
 
         setReturnedCasesCount(returnedCases.length);
     };
-
-    useEffect(() => {
-        let results = [...cases];
-
-        if (searchTerm) {
-            results = results.filter(caseItem =>
-                Object.values(caseItem).some(
-                    value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-                )
-            );
-        }
-
-        if (showOnlyWithReports) {
-            results = results.filter(caseItem => caseItem.reportId);
-        }
-
-        // Filter by active tab
-        switch (activeTab) {
-            case 'created':
-                results = results.filter(c =>
-                    c.status === 'CASE_CREATED' ||
-                    c.status === 'REPORT_SUBMITTED'
-                );
-                break;
-            case 'pending':
-                results = results.filter(c =>
-                    c.status === 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE'
-                );
-                break;
-            case 'returned':
-                results = results.filter(c =>
-                    c.status === 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER' ||
-                    c.status === 'REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION' ||
-                    c.status === 'REPORT_RETURNED_ASSISTANT_COMMISSIONER' ||
-                    c.status === 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE'
-                );
-                break;
-            case 'approved':
-                results = results.filter(c =>
-                    c.status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' ||
-                    c.status === 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER' ||
-                    c.status === 'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION'
-                );
-                break;
-            case 'closed':
-                results = results.filter(c =>
-                    c.status === 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE' ||
-                    c.status === 'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER' ||
-                    c.status === 'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION'
-                );
-                break;
-            case 'withReports':
-                results = results.filter(caseItem => caseItem.reportId);
-                break;
-            default:
-                // 'all' tab - show all cases
-                break;
-        }
-
-        results.sort((a, b) => {
-            const dateA = new Date(a.createdAt);
-            const dateB = new Date(b.createdAt);
-
-            if (sortOrder === 'desc') {
-                return dateB - dateA;
-            } else {
-                return dateA - dateB;
-            }
-        });
-
-        setFilteredCases(results);
-        setPage(0);
-    }, [searchTerm, cases, showOnlyWithReports, sortOrder, activeTab]);
 
     // NEW: Check if a report has return document
     const hasReturnDocument = (caseItem) => {
@@ -675,10 +628,17 @@ const IntelligenceOfficer = () => {
     const handleSortByDate = () => {
         const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
         setSortOrder(newSortOrder);
+        setPage(0);
     };
 
     const handleTabChange = (event, newValue) => {
         setActiveTab(newValue);
+        setPage(0);
+    };
+
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setPage(0);
     };
 
     const getStatusColor = (status) => {
@@ -747,8 +707,183 @@ const IntelligenceOfficer = () => {
         }
     };
 
+    const tableColumns = [
+        {
+            key: 'caseNum',
+            label: 'Case ID',
+            render: (caseItem) => {
+                const isReturned = isReturnedStatus(caseItem.status);
+                return (
+                    <Box display="flex" alignItems="center" gap={1}>
+                        {caseItem.caseNum}
+                        {isReturned && (
+                            <Tooltip title="Report has been returned for edits">
+                                <WarningIcon color="warning" fontSize="small" />
+                            </Tooltip>
+                        )}
+                    </Box>
+                );
+            }
+        },
+        {
+            key: 'reportId',
+            label: 'Report ID',
+            render: (caseItem) => caseItem.reportId ? (
+                <Chip label={caseItem.reportId} size="small" color="primary" variant="outlined" />
+            ) : '-'
+        },
+        {
+            key: 'taxpayer',
+            label: 'Taxpayer',
+            render: (caseItem) => caseItem.taxPayer?.name || '-'
+        },
+        {
+            key: 'tin',
+            label: 'TIN',
+            render: (caseItem) => caseItem.taxPayer?.tin || '-'
+        },
+        {
+            key: 'taxType',
+            label: 'Tax Type',
+            render: (caseItem) => caseItem.taxType || '-'
+        },
+        {
+            key: 'taxPeriod',
+            label: 'Tax Period',
+            render: (caseItem) => caseItem.taxPeriod || '-'
+        },
+        {
+            key: 'createdAt',
+            label: (
+                <Box display="flex" alignItems="center" gap={1}>
+                    Created Date
+                    {sortOrder === 'desc' ? <ArrowDownward fontSize="small" /> : <ArrowUpward fontSize="small" />}
+                </Box>
+            ),
+            headerStyle: { cursor: 'pointer' },
+            render: (caseItem) => formatDate(caseItem.createdAt)
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (caseItem) => {
+                const isReturned = isReturnedStatus(caseItem.status);
+                return (
+                    <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
+                        {getStatusIcon(caseItem.status)}
+                        <Chip
+                            label={caseItem.status}
+                            size="small"
+                            sx={{
+                                backgroundColor: getStatusColor(caseItem.status),
+                                color: 'white',
+                                fontWeight: 'medium'
+                            }}
+                        />
+                        {isReturned && (
+                            <Tooltip title="View return details">
+                                <IconButton
+                                    size="small"
+                                    onClick={() => handleViewReturnDetails(caseItem)}
+                                    color="warning"
+                                >
+                                    <InfoIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+                    </Box>
+                );
+            }
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            render: (caseItem) => {
+                const isReturned = isReturnedStatus(caseItem.status);
+                const hasReturnDoc = hasReturnDocument(caseItem);
+
+                return (
+                    <Box display="flex" flexDirection="column" gap={1}>
+                        {caseItem.reportId ? (
+                            <>
+                                <Box display="flex" gap={1} flexWrap="wrap">
+                                    {isReturned && (
+                                        <Button
+                                            variant="contained"
+                                            color="warning"
+                                            startIcon={<EditIcon />}
+                                            onClick={() => handleEditReturnedReport(caseItem)}
+                                            disabled={reportLoading}
+                                            size="small"
+                                        >
+                                            Edit Report
+                                        </Button>
+                                    )}
+
+                                    <Button
+                                        variant="outlined"
+                                        color="info"
+                                        startIcon={<VisibilityIcon />}
+                                        onClick={() => navigate(routeTo.reportDetails(caseItem.reportId))}
+                                        size="small"
+                                    >
+                                        View
+                                    </Button>
+                                </Box>
+
+                                <Box display="flex" gap={1} flexWrap="wrap">
+                                    {hasReturnDoc && (
+                                        <Button
+                                            variant="text"
+                                            size="small"
+                                            startIcon={
+                                                returnDocumentLoading.has(caseItem.reportId) ?
+                                                    <CircularProgress size={14} /> :
+                                                    <GetAppIcon />
+                                            }
+                                            onClick={() => handleDownloadReturnDocument(caseItem.reportId)}
+                                            disabled={returnDocumentLoading.has(caseItem.reportId)}
+                                        >
+                                            Return Doc
+                                        </Button>
+                                    )}
+
+                                    {caseItem.attachmentPaths && caseItem.attachmentPaths.length > 0 && (
+                                        <Button
+                                            variant="text"
+                                            size="small"
+                                            startIcon={<DownloadIcon />}
+                                            onClick={() => {
+                                                if (caseItem.attachmentPaths[0]) {
+                                                    handleDownloadAttachment(caseItem.reportId, caseItem.attachmentPaths[0]);
+                                                }
+                                            }}
+                                        >
+                                            Download PDF
+                                        </Button>
+                                    )}
+                                </Box>
+                            </>
+                        ) : (
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                startIcon={<AddIcon />}
+                                onClick={() => navigate(routeTo.intelligenceOfficerClaimForm(caseItem.caseNum))}
+                                size="small"
+                            >
+                                Create Report
+                            </Button>
+                        )}
+                    </Box>
+                );
+            }
+        }
+    ];
+
     const refreshData = () => {
         fetchData();
+        fetchTableData();
         showSnackbar('Data refreshed successfully', 'success');
     };
 
@@ -974,32 +1109,8 @@ const IntelligenceOfficer = () => {
                 </Box>
 
                 {/* Search and Filter Bar */}
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2}>
-                    <Box display="flex" alignItems="center" width="50%" gap={2}>
-                        <TextField
-                            fullWidth
-                            size="small"
-                            placeholder={`Search ${activeTab === 'all' ? 'all cases' : activeTab + ' cases'}...`}
-                            variant="outlined"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            InputProps={{
-                                startAdornment: (
-                                    <IconButton edge="start">
-                                        <SearchIcon />
-                                    </IconButton>
-                                ),
-                                endAdornment: searchTerm && (
-                                    <IconButton
-                                        size="small"
-                                        onClick={() => setSearchTerm('')}
-                                    >
-                                        <ClearIcon />
-                                    </IconButton>
-                                )
-                            }}
-                        />
-
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} gap={2} flexWrap="wrap">
+                    <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
                         <Tooltip title={`Sort by creation date (${sortOrder === 'desc' ? 'newest first' : 'oldest first'})`}>
                             <Button
                                 variant="outlined"
@@ -1013,7 +1124,10 @@ const IntelligenceOfficer = () => {
                         <Tooltip title={showOnlyWithReports ? "Show all cases" : "Show only cases with reports"}>
                             <Button
                                 variant={showOnlyWithReports ? "contained" : "outlined"}
-                                onClick={() => setShowOnlyWithReports(!showOnlyWithReports)}
+                                onClick={() => {
+                                    setShowOnlyWithReports(!showOnlyWithReports);
+                                    setPage(0);
+                                }}
                                 startIcon={<FilterListIcon />}
                                 color={showOnlyWithReports ? "primary" : "inherit"}
                             >
@@ -1046,7 +1160,7 @@ const IntelligenceOfficer = () => {
                 <Box mb={2}>
                     <Alert severity="info" variant="outlined">
                         <Typography variant="body2">
-                            Showing <strong>{filteredCases.length}</strong> cases in <strong>
+                            Showing <strong>{totalTableCases}</strong> cases in <strong>
                                 {activeTab === 'all' ? 'All Cases' :
                                     activeTab === 'created' ? 'Created Cases' :
                                         activeTab === 'pending' ? 'Pending Review' :
@@ -1059,218 +1173,21 @@ const IntelligenceOfficer = () => {
                 </Box>
 
                 {/* Cases Table */}
-                <TableContainer component={Paper} elevation={3}>
-                    <Table>
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Report ID</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Taxpayer</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
-                                <TableCell
-                                    sx={{
-                                        fontWeight: 'bold',
-                                        cursor: 'pointer',
-                                        '&:hover': { backgroundColor: 'grey.200' }
-                                    }}
-                                    onClick={handleSortByDate}
-                                >
-                                    <Box display="flex" alignItems="center" gap={1}>
-                                        Created Date
-                                        {sortOrder === 'desc' ? <ArrowDownward fontSize="small" /> : <ArrowUpward fontSize="small" />}
-                                    </Box>
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredCases.length > 0 ? (
-                                filteredCases
-                                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                    .map((caseItem) => {
-                                        const isReturned = isReturnedStatus(caseItem.status);
-                                        const hasReturnDoc = hasReturnDocument(caseItem);
-
-                                        return (
-                                            <TableRow
-                                                key={caseItem.caseNum}
-                                                hover
-                                                sx={{
-                                                    backgroundColor: isReturned ? '#fff3e0' : (caseItem.reportId ? '#f0f9ff' : 'inherit'),
-                                                    '&:hover': {
-                                                        backgroundColor: isReturned ? '#ffe0b2' : (caseItem.reportId ? '#e3f2fd' : 'rgba(0, 0, 0, 0.04)')
-                                                    }
-                                                }}
-                                            >
-                                                <TableCell>
-                                                    <Box display="flex" alignItems="center" gap={1}>
-                                                        {caseItem.caseNum}
-                                                        {isReturned && (
-                                                            <Tooltip title="Report has been returned for edits">
-                                                                <WarningIcon color="warning" fontSize="small" />
-                                                            </Tooltip>
-                                                        )}
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {caseItem.reportId ? (
-                                                        <Chip
-                                                            label={caseItem.reportId}
-                                                            size="small"
-                                                            color="primary"
-                                                            variant="outlined"
-                                                        />
-                                                    ) : '-'}
-                                                </TableCell>
-                                                <TableCell>{caseItem.taxPayer?.name || '-'}</TableCell>
-                                                <TableCell>{caseItem.taxPayer?.tin || '-'}</TableCell>
-                                                <TableCell>{caseItem.taxType || '-'}</TableCell>
-                                                <TableCell>{caseItem.taxPeriod || '-'}</TableCell>
-                                                <TableCell>
-                                                    {formatDate(caseItem.createdAt)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box display="flex" alignItems="center" gap={1}>
-                                                        {getStatusIcon(caseItem.status)}
-                                                        <Chip
-                                                            label={caseItem.status}
-                                                            size="small"
-                                                            sx={{
-                                                                backgroundColor: getStatusColor(caseItem.status),
-                                                                color: 'white',
-                                                                fontWeight: 'medium'
-                                                            }}
-                                                        />
-                                                        {isReturned && (
-                                                            <Tooltip title="View return details">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => handleViewReturnDetails(caseItem)}
-                                                                    color="warning"
-                                                                >
-                                                                    <InfoIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        )}
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Box display="flex" flexDirection="column" gap={1}>
-                                                        {caseItem.reportId ? (
-                                                            <>
-                                                                <Box display="flex" gap={1}>
-                                                                    {/* Edit button for returned reports */}
-                                                                    {isReturned && (
-                                                                        <Button
-                                                                            variant="contained"
-                                                                            color="warning"
-                                                                            startIcon={<EditIcon />}
-                                                                            onClick={() => handleEditReturnedReport(caseItem)}
-                                                                            disabled={reportLoading}
-                                                                            size="small"
-                                                                            fullWidth
-                                                                        >
-                                                                            Edit Report
-                                                                        </Button>
-                                                                    )}
-
-                                                                    {/* View Report button */}
-                                                                    <Button
-                                                                        variant="outlined"
-                                                                        color="info"
-                                                                        startIcon={<VisibilityIcon />}
-                                                                        onClick={() => navigate(routeTo.reportDetails(caseItem.reportId))}
-                                                                        size="small"
-                                                                        fullWidth
-                                                                    >
-                                                                        View
-                                                                    </Button>
-                                                                </Box>
-
-                                                                {/* Additional actions */}
-                                                                <Box display="flex" gap={1}>
-                                                                    {hasReturnDoc && (
-                                                                        <Button
-                                                                            variant="text"
-                                                                            size="small"
-                                                                            startIcon={
-                                                                                returnDocumentLoading.has(caseItem.reportId) ?
-                                                                                    <CircularProgress size={14} /> :
-                                                                                    <GetAppIcon />
-                                                                            }
-                                                                            onClick={() => handleDownloadReturnDocument(caseItem.reportId)}
-                                                                            disabled={returnDocumentLoading.has(caseItem.reportId)}
-                                                                            sx={{ flex: 1 }}
-                                                                        >
-                                                                            Return Doc
-                                                                        </Button>
-                                                                    )}
-
-                                                                    {caseItem.attachmentPaths && caseItem.attachmentPaths.length > 0 && (
-                                                                        <Button
-                                                                            variant="text"
-                                                                            size="small"
-                                                                            startIcon={<DownloadIcon />}
-                                                                            onClick={() => {
-                                                                                if (caseItem.attachmentPaths[0]) {
-                                                                                    handleDownloadAttachment(caseItem.reportId, caseItem.attachmentPaths[0]);
-                                                                                }
-                                                                            }}
-                                                                            sx={{ flex: 1 }}
-                                                                        >
-                                                                            Download PDF
-                                                                        </Button>
-                                                                    )}
-                                                                </Box>
-                                                            </>
-                                                        ) : (
-                                                            <Button
-                                                                variant="contained"
-                                                                color="primary"
-                                                                startIcon={<AddIcon />}
-                                                                onClick={() => navigate(routeTo.intelligenceOfficerClaimForm(caseItem.caseNum))}
-                                                                size="small"
-                                                                fullWidth
-                                                            >
-                                                                Create Report
-                                                            </Button>
-                                                        )}
-                                                    </Box>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={9} align="center">
-                                        <Box py={4}>
-                                            <DescriptionIcon sx={{ fontSize: 48, color: 'grey.400', mb: 2 }} />
-                                            <Typography variant="body1" color="textSecondary">
-                                                No cases found in this category
-                                            </Typography>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-
-                    <TablePagination
-                        component="div"
-                        count={filteredCases.length}
-                        page={page}
-                        onPageChange={(event, newPage) => setPage(newPage)}
-                        rowsPerPage={rowsPerPage}
-                        onRowsPerPageChange={(event) => {
-                            setRowsPerPage(parseInt(event.target.value, 10));
-                            setPage(0);
-                        }}
-                        rowsPerPageOptions={[5, 10, 25, 50]}
-                    />
-                </TableContainer>
+                <AppTable
+                    columns={tableColumns}
+                    rows={tableCases}
+                    rowKey="caseNum"
+                    loading={loading.cases}
+                    emptyMessage="No cases found in this category"
+                    searchValue={searchTerm}
+                    searchPlaceholder={`Search ${activeTab === 'all' ? 'all cases' : activeTab + ' cases'}...`}
+                    onSearchChange={handleSearchChange}
+                    page={page}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    totalRows={totalTableCases}
+                    onPageChange={(event, nextPage) => setPage(nextPage)}
+                    minWidth={1250}
+                />
 
                 {/* Return Details Dialog */}
                 <Dialog

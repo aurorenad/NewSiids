@@ -2,12 +2,6 @@ import React, { useContext, useState, useEffect } from 'react';
 import {
     IconButton,
     Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -38,7 +32,6 @@ import {
     Check,
     Close,
     Description,
-    Search,
     Visibility,
     Download,
     Assignment,
@@ -54,11 +47,17 @@ import { ReportApi, InvestigationApi } from './../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
+const TAB_VIEWS = ['ALL', 'PENDING', 'INVESTIGATION_REPORT', 'CASE_PLAN'];
 
 const DirectorInvestigation = () => {
     const { authState } = useContext(AuthContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [cases, setCases] = useState([]);
+    const [totalCases, setTotalCases] = useState(0);
+    const [page, setPage] = useState(0);
     const [officers, setOfficers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [officersLoading, setOfficersLoading] = useState(false);
@@ -94,75 +93,92 @@ const DirectorInvestigation = () => {
     const canApproveInvestigation = hasPermission(authState, PERMISSIONS.REPORT_APPROVE_INVESTIGATION);
     const canAssignInvestigation = hasPermission(authState, PERMISSIONS.REPORT_ASSIGN_INVESTIGATION);
 
+    const mapReportToCase = (report) => ({
+        id: report.relatedCase?.caseNum || `CS${report.id}`,
+        delegate: report.investigationOfficer?.employeeId || '',
+        delegateName: report.investigationOfficer ?
+            `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : '',
+        reportedDate: report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'N/A',
+        status: report.status || 'Approved by Assistant Commissioner',
+        reason: report.rejectionReason || '',
+        reportId: report.id,
+        caseId: report.relatedCase?._id,
+        isAssigned: !!report.investigationOfficer,
+        hasFindings: report.findings || report.recommendations ||
+            (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0) ||
+            report.status?.includes('INVESTIGATION_REPORT') ||
+            report.status?.includes('FINDINGS'),
+        hasCasePlan: report.casePlan ||
+            report.status?.includes('CASE_PLAN'),
+        assignmentNotes: report.assignmentNotes || '',
+        investigationOfficer: report.investigationOfficer,
+        currentRecipient: report.currentRecipient,
+        casePlan: report.casePlan,
+        casePlanStatus: getCasePlanStatus(report.status),
+        casePlanSentToCommissioner: report.status?.includes('CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER') ||
+            report.status?.includes('CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER') ||
+            report.status?.includes('CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER'),
+        investigationReportStatus: getInvestigationReportStatus(report.status),
+        findings: report.findings,
+        recommendations: report.recommendations,
+        findingsAttachments: report.findingsAttachmentPaths || [],
+        createdAt: report.createdAt,
+        updatedAt: report.updatedAt,
+        category: getCaseCategory(report)
+    });
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const params = {
+                page,
+                size: ROWS_PER_PAGE,
+                search: searchQuery,
+                view: TAB_VIEWS[activeTab]
+            };
+            const reportsResponse = await ReportApi.getReportsForDirectorInvestigation(params);
+            const pageData = reportsResponse.data || {};
+            setCases((pageData.content || []).map(mapReportToCase));
+            setTotalCases(pageData.totalElements || 0);
+        } catch (err) {
+            console.error('Error:', err);
+            const message = (err.response && err.response.status === 403)
+                ? 'You do not have permission to access these investigations.'
+                : (err.response?.data?.message || 'Failed to load data');
+            setSnackbar({
+                open: true,
+                message: message,
+                severity: 'error'
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
+        fetchData();
+    }, [activeTab, page, searchQuery]);
+
+    useEffect(() => {
+        const fetchOfficers = async () => {
             try {
-                setLoading(true);
-                const [reportsResponse, officersResponse] = await Promise.all([
-                    ReportApi.getReportsForDirectorInvestigation(),
-                    InvestigationApi.getAvailableOfficers()
-                ]);
-
-                const mappedCases = reportsResponse.data.map(report => ({
-                    id: report.relatedCase?.caseNum || `CS${report.id}`,
-                    delegate: report.investigationOfficer?.employeeId || '',
-                    delegateName: report.investigationOfficer ?
-                        `${report.investigationOfficer.givenName} ${report.investigationOfficer.familyName}` : '',
-                    reportedDate: new Date(report.createdAt).toLocaleDateString(),
-                    status: report.status || 'Approved by Assistant Commissioner',
-                    reason: report.rejectionReason || '',
-                    reportId: report.id,
-                    caseId: report.relatedCase?._id,
-                    isAssigned: !!report.investigationOfficer,
-                    hasFindings: report.findings || report.recommendations ||
-                        (report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0) ||
-                        report.status?.includes('INVESTIGATION_REPORT') ||
-                        report.status?.includes('FINDINGS'),
-                    hasCasePlan: report.casePlan ||
-                        report.status?.includes('CASE_PLAN'),
-                    assignmentNotes: report.assignmentNotes || '',
-                    investigationOfficer: report.investigationOfficer,
-                    currentRecipient: report.currentRecipient,
-                    casePlan: report.casePlan,
-                    casePlanStatus: getCasePlanStatus(report.status),
-                    casePlanSentToCommissioner: report.status?.includes('CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER') ||
-                        report.status?.includes('CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER') ||
-                        report.status?.includes('CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER'),
-                    investigationReportStatus: getInvestigationReportStatus(report.status),
-                    findings: report.findings,
-                    recommendations: report.recommendations,
-                    findingsAttachments: report.findingsAttachmentPaths || [],
-                    createdAt: report.createdAt,
-                    updatedAt: report.updatedAt,
-                    category: getCaseCategory(report)
-                }));
-
+                const officersResponse = await InvestigationApi.getAvailableOfficers();
                 const mappedOfficers = officersResponse.data.map(officer => ({
                     _id: officer.employeeId,
                     name: `${officer.givenName} ${officer.familyName}`,
                     email: officer.workEmail || officer.personalEmail || officer.email || '',
                     ...officer
                 }));
-
-                setCases(mappedCases);
                 setOfficers(mappedOfficers);
             } catch (err) {
-                console.error('Error:', err);
-                const message = (err.response && err.response.status === 403)
-                    ? 'You do not have permission to access these investigations.'
-                    : (err.response?.data?.message || 'Failed to load data');
-                setSnackbar({
-                    open: true,
-                    message: message,
-                    severity: 'error'
-                });
-            } finally {
-                setLoading(false);
+                console.error('Error loading officers:', err);
             }
         };
 
-        fetchData();
-    }, []);
+        if (canAssignInvestigation) {
+            fetchOfficers();
+        }
+    }, [canAssignInvestigation]);
 
     const getCasePlanStatus = (status) => {
         if (!status) return 'none';
@@ -778,43 +794,227 @@ const DirectorInvestigation = () => {
             caseItem.status?.includes('INVESTIGATION_REPORT_SUBMITTED');
     };
 
-    const getFilteredCases = () => {
-        let filtered = cases.filter(caseItem =>
-            caseItem.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            caseItem.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            caseItem.delegateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (caseItem.assignmentNotes && caseItem.assignmentNotes.toLowerCase().includes(searchQuery.toLowerCase()))
-        );
-
-        switch (activeTab) {
-            case 1: // Pending Review
-                // Cases not assigned OR assigned but have no investigation report and no case plan
-                filtered = filtered.filter(c =>
-                    !c.status.includes('COMPLETED') &&
-                    (!c.isAssigned || (c.isAssigned && !c.hasFindings && !c.hasCasePlan && c.investigationReportStatus === 'none' && c.casePlanStatus === 'none'))
-                );
-                break;
-            case 2: // Investigation Reports
-                // Cases that have an investigation report
-                filtered = filtered.filter(c =>
-                    c.hasFindings || c.investigationReportStatus !== 'none' || c.category === 'investigation_report'
-                );
-                break;
-            case 3: // Case Plans
-                // Cases that have a case plan
-                filtered = filtered.filter(c =>
-                    c.hasCasePlan || c.casePlanStatus !== 'none' || c.category === 'case_plan'
-                );
-                break;
-            default:
-                // All cases
-                break;
-        }
-
-        return filtered;
+    const handleTabChange = (event, nextTab) => {
+        setActiveTab(nextTab);
+        setPage(0);
     };
 
-    const filteredCases = getFilteredCases();
+    const handleSearchChange = (value) => {
+        setSearchQuery(value);
+        setPage(0);
+    };
+
+    const columns = [
+        {
+            key: 'id',
+            label: 'Case ID'
+        },
+        {
+            key: 'currentOfficer',
+            label: 'Current Officer',
+            render: (caseItem) => caseItem.isAssigned ? (
+                <Typography color="success.main" fontWeight="bold">
+                    {caseItem.delegateName}
+                </Typography>
+            ) : (
+                <Typography color="text.secondary">Not assigned</Typography>
+            )
+        },
+        {
+            key: 'reportedDate',
+            label: 'Reported Date'
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (caseItem) => (
+                <Box>
+                    <Typography
+                        sx={{
+                            color: caseItem.status.includes("Approved") ? "green" :
+                                caseItem.status.includes("Rejected") ? "red" :
+                                    caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" :
+                                        caseItem.status.includes("Assigned") ? "orange" :
+                                            caseItem.status.includes("CASE_PLAN") ? "#9c27b0" :
+                                                caseItem.status.includes("SENT_TO_ASSISTANT_COMMISSIONER") ? "#ff9800" :
+                                                    caseItem.status.includes("COMMISSIONER") ? "#673ab7" :
+                                                        caseItem.status.includes("FINDINGS") ? "#2196f3" :
+                                                            caseItem.status.includes("INVESTIGATION_REPORT") ? "#3f51b5" : "inherit",
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        {caseItem.status}
+                    </Typography>
+                    {caseItem.reason && (
+                        <Typography variant="caption" color="error">
+                            Reason: {caseItem.reason}
+                        </Typography>
+                    )}
+                </Box>
+            )
+        },
+        {
+            key: 'casePlan',
+            label: 'Case Plan',
+            render: (caseItem) => (
+                <>
+                    {caseItem.casePlanStatus === 'submitted' && (
+                        <Chip icon={<TaskAlt />} label="Submitted" color="primary" variant="outlined" size="small" />
+                    )}
+                    {caseItem.casePlanStatus === 'approved' && (
+                        <Chip icon={<Check />} label="Approved" color="success" size="small" />
+                    )}
+                    {caseItem.casePlanStatus === 'rejected' && (
+                        <Chip icon={<Close />} label="Rejected" color="error" size="small" />
+                    )}
+                    {caseItem.casePlanStatus === 'none' && (
+                        <Typography variant="body2" color="text.secondary">
+                            Not submitted
+                        </Typography>
+                    )}
+                </>
+            )
+        },
+        {
+            key: 'assignmentNotes',
+            label: 'Assignment Notes',
+            render: (caseItem) => caseItem.assignmentNotes ? (
+                <Tooltip title={caseItem.assignmentNotes}>
+                    <Typography
+                        variant="body2"
+                        sx={{
+                            maxWidth: 200,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        {caseItem.assignmentNotes}
+                    </Typography>
+                </Tooltip>
+            ) : (
+                <Typography variant="body2" color="text.secondary">
+                    No instructions
+                </Typography>
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            render: (caseItem) => (
+                <Box display="flex" gap={1} flexWrap="wrap">
+                    <Tooltip title="View Report">
+                        <IconButton color="primary" size="small" onClick={() => handleViewReport(caseItem)}>
+                            <Description />
+                        </IconButton>
+                    </Tooltip>
+
+                    {caseItem.hasFindings && (
+                        <Tooltip title="View Findings">
+                            <IconButton color="info" size="small" onClick={() => handleViewFindings(caseItem)}>
+                                <Visibility />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {shouldShowInvestigationReportActions(caseItem) && (
+                        <Tooltip title="Review Investigation Report">
+                            <IconButton color="warning" size="small" onClick={() => handleViewInvestigationReport(caseItem)}>
+                                <Assignment />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {caseItem.hasCasePlan && caseItem.casePlanStatus === 'submitted' && (
+                        <Tooltip title="View Case Plan">
+                            <IconButton color="secondary" size="small" onClick={() => handleViewCasePlan(caseItem)}>
+                                <TaskAlt />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {canApproveInvestigation && (
+                        <Tooltip title="Approve Report">
+                            <IconButton
+                                color="success"
+                                size="small"
+                                onClick={() => {
+                                    if (caseItem.reportId) {
+                                        handleApprove(caseItem.reportId);
+                                    } else {
+                                        console.error('Report ID is undefined for case:', caseItem);
+                                        setSnackbar({
+                                            open: true,
+                                            message: 'Cannot approve: Report ID is missing',
+                                            severity: 'error'
+                                        });
+                                    }
+                                }}
+                                disabled={caseItem.status.includes("Approved") ||
+                                    caseItem.status.includes("Rejected") ||
+                                    caseItem.casePlanSentToCommissioner ||
+                                    caseItem.investigationReportStatus === 'approved' ||
+                                    caseItem.casePlanStatus === 'approved' ||
+                                    !(
+                                        caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                                        caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                                        caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
+                                        caseItem.investigationReportStatus === 'submitted' ||
+                                        caseItem.casePlanStatus === 'submitted'
+                                    )}
+                            >
+                                <Check />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {canAssignInvestigation && (
+                        <Tooltip title="Assign Officer">
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleOpenAssignDialog(caseItem)}
+                                disabled={caseItem.isAssigned && !caseItem.status.includes("REJECTED")}
+                            >
+                                Assign
+                            </Button>
+                        </Tooltip>
+                    )}
+
+                    {canApproveInvestigation && (
+                        <Tooltip title="Reject Report">
+                            <IconButton
+                                color="error"
+                                size="small"
+                                onClick={() => {
+                                    setSelectedCase(caseItem);
+                                    setRejectDialogOpen(true);
+                                }}
+                                disabled={
+                                    caseItem.status.includes("Approved") ||
+                                    caseItem.status.includes("Rejected") ||
+                                    caseItem.casePlanSentToCommissioner ||
+                                    caseItem.investigationReportStatus === 'approved' ||
+                                    caseItem.investigationReportStatus === 'rejected' ||
+                                    caseItem.casePlanStatus === 'approved' ||
+                                    caseItem.casePlanStatus === 'rejected' ||
+                                    !(
+                                        caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                                        caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                                        caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
+                                        caseItem.investigationReportStatus === 'submitted' ||
+                                        caseItem.casePlanStatus === 'submitted'
+                                    )
+                                }
+                            >
+                                <Close />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
+            )
+        }
+    ];
 
     if (loading && !viewFindingsDialogOpen && !viewReportDialogOpen && !viewCasePlanDialogOpen && !investigationReportDialogOpen) {
         return (
@@ -832,7 +1032,7 @@ const DirectorInvestigation = () => {
 
             {/* Tabs for filtering */}
             <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+                <Tabs value={activeTab} onChange={handleTabChange}>
                     <Tab label="All Operations" />
                     <Tab label="Pending Assignment" />
                     <Tab label="Investigation Reports Review" />
@@ -840,279 +1040,30 @@ const DirectorInvestigation = () => {
                 </Tabs>
             </Box>
 
-
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <TextField
-                    label="Search cases, officers, or instructions"
+            {activeTab === 1 && (
+                <Chip
+                    label={`${totalCases} Pending Review`}
+                    color="warning"
                     variant="outlined"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    InputProps={{
-                        startAdornment: <Search />,
-                    }}
-                    sx={{ minWidth: 300 }}
+                    sx={{ mb: 2 }}
                 />
-                <Typography variant="body2" color="text.secondary">
-                    Showing: {filteredCases.length} of {cases.length} cases
-                </Typography>
-                {activeTab === 1 && (
-                    <Chip
-                        label={`${filteredCases.length} Pending Review`}
-                        color="warning"
-                        variant="outlined"
-                    />
-                )}
-            </Box>
+            )}
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow style={{ backgroundColor: "#f8fafc" }}>
-                            <TableCell><strong>Case ID</strong></TableCell>
-                            <TableCell><strong>Current Officer</strong></TableCell>
-                            <TableCell><strong>Reported Date</strong></TableCell>
-                            <TableCell><strong>Status</strong></TableCell>
-                            <TableCell><strong>Case Plan</strong></TableCell>
-                            <TableCell><strong>Assignment Notes</strong></TableCell>
-                            <TableCell><strong>Actions</strong></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredCases.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={7} align="center">
-                                    <Typography variant="body1" color="text.secondary" sx={{ py: 4 }}>
-                                        No cases found
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredCases.map((caseItem) => (
-                                <TableRow key={caseItem.id}>
-                                    <TableCell>{caseItem.id}</TableCell>
-                                    <TableCell>
-                                        {caseItem.isAssigned ? (
-                                            <Typography color="success.main" fontWeight="bold">
-                                                {caseItem.delegateName}
-                                            </Typography>
-                                        ) : (
-                                            <Typography color="text.secondary">Not assigned</Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{caseItem.reportedDate}</TableCell>
-                                    <TableCell>
-                                        <Typography
-                                            sx={{
-                                                color: caseItem.status.includes("Approved") ? "green" :
-                                                    caseItem.status.includes("Rejected") ? "red" :
-                                                        caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" :
-                                                            caseItem.status.includes("Assigned") ? "orange" :
-                                                                caseItem.status.includes("CASE_PLAN") ? "#9c27b0" :
-                                                                    caseItem.status.includes("SENT_TO_ASSISTANT_COMMISSIONER") ? "#ff9800" :
-                                                                        caseItem.status.includes("COMMISSIONER") ? "#673ab7" :
-                                                                            caseItem.status.includes("FINDINGS") ? "#2196f3" :
-                                                                                caseItem.status.includes("INVESTIGATION_REPORT") ? "#3f51b5" : "inherit",
-                                                fontWeight: 'bold'
-                                            }}
-                                        >
-                                            {caseItem.status}
-                                        </Typography>
-                                        {caseItem.reason && (
-                                            <Typography variant="caption" color="error">
-                                                Reason: {caseItem.reason}
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {caseItem.casePlanStatus === 'submitted' && (
-                                            <Chip
-                                                icon={<TaskAlt />}
-                                                label="Submitted"
-                                                color="primary"
-                                                variant="outlined"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.casePlanStatus === 'approved' && (
-                                            <Chip
-                                                icon={<Check />}
-                                                label="Approved"
-                                                color="success"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.casePlanStatus === 'rejected' && (
-                                            <Chip
-                                                icon={<Close />}
-                                                label="Rejected"
-                                                color="error"
-                                                size="small"
-                                            />
-                                        )}
-                                        {caseItem.casePlanStatus === 'none' && (
-                                            <Typography variant="body2" color="text.secondary">
-                                                Not submitted
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {caseItem.assignmentNotes ? (
-                                            <Tooltip title={caseItem.assignmentNotes}>
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        maxWidth: 200,
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap'
-                                                    }}
-                                                >
-                                                    {caseItem.assignmentNotes}
-                                                </Typography>
-                                            </Tooltip>
-                                        ) : (
-                                            <Typography variant="body2" color="text.secondary">
-                                                No instructions
-                                            </Typography>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box display="flex" gap={1} flexWrap="wrap">
-                                            <Tooltip title="View Report">
-                                                <IconButton
-                                                    color="primary"
-                                                    size="small"
-                                                    onClick={() => handleViewReport(caseItem)}
-                                                >
-                                                    <Description />
-                                                </IconButton>
-                                            </Tooltip>
-
-                                            {caseItem.hasFindings && (
-                                                <Tooltip title="View Findings">
-                                                    <IconButton
-                                                        color="info"
-                                                        size="small"
-                                                        onClick={() => handleViewFindings(caseItem)}
-                                                    >
-                                                        <Visibility />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            {shouldShowInvestigationReportActions(caseItem) && (
-                                                <Tooltip title="Review Investigation Report">
-                                                    <IconButton
-                                                        color="warning"
-                                                        size="small"
-                                                        onClick={() => handleViewInvestigationReport(caseItem)}
-                                                    >
-                                                        <Assignment />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            {caseItem.hasCasePlan && caseItem.casePlanStatus === 'submitted' && (
-                                                <Tooltip title="View Case Plan">
-                                                    <IconButton
-                                                        color="secondary"
-                                                        size="small"
-                                                        onClick={() => handleViewCasePlan(caseItem)}
-                                                    >
-                                                        <TaskAlt />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            {canApproveInvestigation && (
-                                                <Tooltip title="Approve Report">
-                                                    <IconButton
-                                                        color="success"
-                                                        size="small"
-                                                        onClick={() => {
-                                                            if (caseItem.reportId) {
-                                                                handleApprove(caseItem.reportId);
-                                                            } else {
-                                                                console.error('Report ID is undefined for case:', caseItem);
-                                                                setSnackbar({
-                                                                    open: true,
-                                                                    message: 'Cannot approve: Report ID is missing',
-                                                                    severity: 'error'
-                                                                });
-                                                            }
-                                                        }}
-                                                        disabled={caseItem.status.includes("Approved") ||
-                                                            caseItem.status.includes("Approved") ||
-                                                            caseItem.status.includes("Rejected") ||
-                                                            caseItem.casePlanSentToCommissioner ||
-                                                            caseItem.investigationReportStatus === 'approved' ||
-                                                            caseItem.casePlanStatus === 'approved' ||
-                                                            !(
-                                                                caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                                                caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                                                caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                                                caseItem.investigationReportStatus === 'submitted' ||
-                                                                caseItem.casePlanStatus === 'submitted'
-                                                            )}
-                                                    >
-                                                        <Check />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-
-                                            {canAssignInvestigation && (
-                                                <Tooltip title="Assign Officer">
-                                                    <Button
-                                                        variant="outlined"
-                                                        size="small"
-                                                        onClick={() => handleOpenAssignDialog(caseItem)}
-                                                        disabled={
-                                                            caseItem.isAssigned && !caseItem.status.includes("REJECTED")
-                                                        }
-                                                    >
-                                                        Assign
-                                                    </Button>
-                                                </Tooltip>
-                                            )}
-
-                                            {canApproveInvestigation && (
-                                                <Tooltip title="Reject Report">
-                                                    <IconButton
-                                                        color="error"
-                                                        size="small"
-                                                        onClick={() => {
-                                                            setSelectedCase(caseItem);
-                                                            setRejectDialogOpen(true);
-                                                        }}
-                                                        disabled={
-                                                            caseItem.status.includes("Approved") ||
-                                                            caseItem.status.includes("Rejected") ||
-                                                            caseItem.casePlanSentToCommissioner ||
-                                                            caseItem.investigationReportStatus === 'approved' ||
-                                                            caseItem.investigationReportStatus === 'rejected' ||
-                                                            caseItem.casePlanStatus === 'approved' ||
-                                                            caseItem.casePlanStatus === 'rejected' ||
-                                                            !(
-                                                                caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                                                caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                                                caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                                                caseItem.investigationReportStatus === 'submitted' ||
-                                                                caseItem.casePlanStatus === 'submitted'
-                                                            )
-                                                        }
-                                                    >
-                                                        <Close />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <AppTable
+                columns={columns}
+                rows={cases}
+                rowKey={(caseItem) => caseItem.reportId || caseItem.id}
+                loading={loading}
+                emptyMessage="No cases found"
+                searchValue={searchQuery}
+                searchPlaceholder="Search cases, officers, or instructions"
+                onSearchChange={handleSearchChange}
+                page={page}
+                rowsPerPage={ROWS_PER_PAGE}
+                totalRows={totalCases}
+                onPageChange={(event, nextPage) => setPage(nextPage)}
+                minWidth={1180}
+            />
 
             {/* Investigation Report Dialog */}
             <Dialog

@@ -1,16 +1,15 @@
 import React, { useContext, useState, useEffect, useMemo } from 'react';
 import {
-    Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, Paper, IconButton,
+    IconButton,
     Dialog, DialogTitle, DialogContent, DialogActions,
     Button, TextField, CircularProgress, Alert, Box,
     Tooltip, MenuItem, Select, FormControl, InputLabel,
     Typography, Chip,
-    TablePagination, LinearProgress
+    LinearProgress
 } from "@mui/material";
 import {
-    Description, Check, Close, Search, Reply,
-    Person, Assignment, Info, ListAlt,
+    Description, Check, Close, Reply,
+    ListAlt,
     ArrowUpward, ArrowDownward, CloudUpload,
     Download, Delete, DriveFileRenameOutline
 } from "@mui/icons-material";
@@ -21,11 +20,13 @@ import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
 import ReportSignatureDialog from './ui/ReportSignatureDialog.jsx';
+import AppTable from './ui/AppTable.jsx';
 
 const DirectorIntelligence = () => {
     const { authState } = useContext(AuthContext);
     const [searchQuery, setSearchQuery] = useState('');
     const [reports, setReports] = useState([]);
+    const [totalReports, setTotalReports] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [actionLoadingReports, setActionLoadingReports] = useState(new Set());
@@ -50,7 +51,7 @@ const DirectorIntelligence = () => {
 
     // Pagination state
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
+    const rowsPerPage = 10;
 
     // Sorting state
     const [sortOrder, setSortOrder] = useState('desc');
@@ -61,18 +62,25 @@ const DirectorIntelligence = () => {
 
     useEffect(() => {
         fetchReports();
-    }, []);
+    }, [page, searchQuery, sortOrder]);
 
     const fetchReports = async () => {
         try {
             setLoading(true);
-            const response = await ReportApi.getReportsForDirectorIntelligence();
+            const response = await ReportApi.getReportsForDirectorIntelligence({
+                page,
+                size: rowsPerPage,
+                search: searchQuery,
+                sort: sortOrder
+            });
 
-            const reportsWithDate = response.data.map(report => ({
+            const pageData = response.data || {};
+            const reportsWithDate = (pageData.content || []).map(report => ({
                 ...report,
                 createdAt: report.createdAt || report.createdDate || report.dateCreated || new Date().toISOString()
             }));
             setReports(reportsWithDate);
+            setTotalReports(pageData.totalElements || 0);
         } catch (err) {
             if (err.response && err.response.status === 403) {
                 setError('You do not have permission to access these reports. Please contact your administrator if you believe this is a mistake.');
@@ -99,15 +107,11 @@ const DirectorIntelligence = () => {
     const handleSortByDate = () => {
         const newSortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
         setSortOrder(newSortOrder);
+        setPage(0);
     };
 
     const handleChangePage = (event, newPage) => {
         setPage(newPage);
-    };
-
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
     };
 
     const handleApprove = async (report) => {
@@ -404,48 +408,6 @@ const DirectorIntelligence = () => {
         return actionLoadingReports.has(reportId);
     };
 
-    const filteredAndSortedReports = useMemo(() => {
-        let results = reports;
-
-        // Apply search filter
-        if (searchQuery) {
-            const searchString = searchQuery.toLowerCase();
-            results = results.filter((report) => {
-                const id = report.id?.toString().toLowerCase() || '';
-                const caseNum = report.relatedCase?.caseNum?.toLowerCase() || '';
-                const createdBy = report.createdBy?.toLowerCase() || '';
-                const createdByEmployeeId = report.createdByEmployeeId?.toLowerCase() || '';
-                const status = getStatusText(report.status).toLowerCase();
-
-                return id.includes(searchString) ||
-                    caseNum.includes(searchString) ||
-                    createdBy.includes(searchString) ||
-                    createdByEmployeeId.includes(searchString) ||
-                    status.includes(searchString);
-            });
-        }
-
-        // Apply sorting by date
-        results.sort((a, b) => {
-            const dateA = new Date(a.createdAt);
-            const dateB = new Date(b.createdAt);
-
-            if (sortOrder === 'desc') {
-                return dateB - dateA;
-            } else {
-                return dateA - dateB;
-            }
-        });
-
-        return results;
-    }, [reports, searchQuery, sortOrder]);
-
-    const currentPageReports = useMemo(() => {
-        const startIndex = page * rowsPerPage;
-        const endIndex = startIndex + rowsPerPage;
-        return filteredAndSortedReports.slice(startIndex, endIndex);
-    }, [filteredAndSortedReports, page, rowsPerPage]);
-
     const formatDate = (dateString) => {
         if (!dateString) return '-';
         try {
@@ -461,6 +423,133 @@ const DirectorIntelligence = () => {
             return '-';
         }
     };
+
+    const tableColumns = useMemo(() => [
+        { key: 'id', label: 'Report ID', render: (report) => report.id },
+        { key: 'caseNumber', label: 'Case Number', render: (report) => report.relatedCase?.caseNum || '-' },
+        { key: 'createdBy', label: 'Created By', render: (report) => report.createdBy || '-' },
+        {
+            key: 'createdAt',
+            label: 'Created Date',
+            render: (report) => formatDate(report.createdAt)
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (report) => (
+                <>
+                    <Chip
+                        label={getStatusText(report.status)}
+                        color={getStatusColor(report.status)}
+                        size="small"
+                    />
+                    {report.hasReturnDocument && (
+                        <Tooltip title="Has return document">
+                            <Description fontSize="small" sx={{ ml: 1, color: 'action.active' }} />
+                        </Tooltip>
+                    )}
+                </>
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            headerStyle: { textAlign: 'center' },
+            cellStyle: { textAlign: 'center' },
+            render: (report) => (
+                <Box display="flex" gap={0.5} justifyContent="center">
+                    <Tooltip title="View Details">
+                        <IconButton onClick={() => navigate(routeTo.reportDetails(report.id))} size="small">
+                            <Description fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+
+                    {canApproveIntelligence && (
+                        <Tooltip title="Approve">
+                            <span>
+                                <IconButton
+                                    disabled={isActionDisabled(report)}
+                                    onClick={() => handleApprove(report)}
+                                    size="small"
+                                    color="success"
+                                >
+                                    {isReportLoading(report.id) ? <CircularProgress size={16} /> : <Check fontSize="small" />}
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {canApproveIntelligence && (
+                        <Tooltip title="Close">
+                            <span>
+                                <IconButton
+                                    disabled={isActionDisabled(report)}
+                                    onClick={() => handleOpenRejectDialog(report)}
+                                    size="small"
+                                    color="error"
+                                >
+                                    <Close fontSize="small" />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {canReturnReport && (
+                        <Tooltip title="Return">
+                            <span>
+                                <IconButton
+                                    disabled={isActionDisabled(report)}
+                                    onClick={() => handleOpenReturnDialog(report)}
+                                    size="small"
+                                    color="warning"
+                                >
+                                    <Reply fontSize="small" />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {canApproveIntelligence && (
+                        <Tooltip title={report.directorSigned ? 'Update director signature' : 'Sign as Director Intelligence'}>
+                            <span>
+                                <IconButton
+                                    disabled={isReportLoading(report.id)}
+                                    onClick={() => handleOpenSignatureDialog(report)}
+                                    size="small"
+                                    color="primary"
+                                >
+                                    <DriveFileRenameOutline fontSize="small" />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {report.finalised && (
+                        <Tooltip title="Download final investigation report">
+                            <span>
+                                <IconButton
+                                    disabled={isReportLoading(report.id)}
+                                    onClick={() => handleDownloadInvestigationReport(report)}
+                                    size="small"
+                                    color="primary"
+                                >
+                                    <Download fontSize="small" />
+                                </IconButton>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {report.returnDocumentPath && (
+                        <Tooltip title="Download Return Document">
+                            <IconButton onClick={() => handleDownloadReturnDocument(report.id)} size="small" color="primary">
+                                <Download fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
+            )
+        }
+    ], [reports, actionLoadingReports, canApproveIntelligence, canReturnReport, sortOrder]);
 
     if (loading) {
         return (
@@ -486,18 +575,6 @@ const DirectorIntelligence = () => {
 
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 <Box display="flex" gap={1} alignItems="center">
-                    <TextField
-                        size="small"
-                        variant="outlined"
-                        placeholder="Search by ID, Case Number, Creator, or Status"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        InputProps={{
-                            startAdornment: <Search fontSize="small" style={{ marginRight: 8 }} />
-                        }}
-                        sx={{ minWidth: 300 }}
-                    />
-
                     <Tooltip title={`Sort by creation date (${sortOrder === 'desc' ? 'newest first' : 'oldest first'})`}>
                         <Button
                             variant="outlined"
@@ -519,182 +596,27 @@ const DirectorIntelligence = () => {
                     </Button>
                 </Box>
                 <Typography variant="body2" color="text.secondary">
-                    {filteredAndSortedReports.length} report{filteredAndSortedReports.length !== 1 ? 's' : ''} found
+                    {totalReports} report{totalReports !== 1 ? 's' : ''} found
                 </Typography>
             </Box>
 
-            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Report ID</TableCell>
-                            <TableCell>Case Number</TableCell>
-                            <TableCell>Created By</TableCell>
-                            <TableCell
-                                sx={{
-                                    cursor: 'pointer',
-                                    fontWeight: 'bold'
-                                }}
-                                onClick={handleSortByDate}
-                            >
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    Created Date
-                                    {sortOrder === 'desc' ? <ArrowDownward fontSize="small" /> : <ArrowUpward fontSize="small" />}
-                                </Box>
-                            </TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell align="center">Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {currentPageReports.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center">
-                                    <Typography variant="body2" color="text.secondary">
-                                        No reports found
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            currentPageReports.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>{report.id}</TableCell>
-                                    <TableCell>{report.relatedCase?.caseNum || '-'}</TableCell>
-                                    <TableCell>{report.createdBy || '-'}</TableCell>
-                                    <TableCell>
-                                        {formatDate(report.createdAt)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={getStatusText(report.status)}
-                                            color={getStatusColor(report.status)}
-                                            size="small"
-                                        />
-                                        {report.hasReturnDocument && (
-                                            <Tooltip title="Has return document">
-                                                <Description fontSize="small" sx={{ ml: 1, color: 'action.active' }} />
-                                            </Tooltip>
-                                        )}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Box display="flex" gap={0.5} justifyContent="center">
-                                            <Tooltip title="View Details">
-                                                <IconButton
-                                                    onClick={() => navigate(routeTo.reportDetails(report.id))}
-                                                    size="small"
-                                                >
-                                                    <Description fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-
-                                            {canApproveIntelligence && (
-                                                <Tooltip title="Approve">
-                                                    <span>
-                                                        <IconButton
-                                                            disabled={isActionDisabled(report)}
-                                                            onClick={() => handleApprove(report)}
-                                                            size="small"
-                                                            color="success"
-                                                        >
-                                                            {isReportLoading(report.id) ? (
-                                                                <CircularProgress size={16} />
-                                                            ) : (
-                                                                <Check fontSize="small" />
-                                                            )}
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-
-                                            {canApproveIntelligence && (
-                                                <Tooltip title="Close">
-                                                    <span>
-                                                        <IconButton
-                                                            disabled={isActionDisabled(report)}
-                                                            onClick={() => handleOpenRejectDialog(report)}
-                                                            size="small"
-                                                            color="error"
-                                                        >
-                                                            <Close fontSize="small" />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-
-                                            {canReturnReport && (
-                                                <Tooltip title="Return">
-                                                    <span>
-                                                        <IconButton
-                                                            disabled={isActionDisabled(report)}
-                                                            onClick={() => handleOpenReturnDialog(report)}
-                                                            size="small"
-                                                            color="warning"
-                                                        >
-                                                            <Reply fontSize="small" />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-
-                                            {canApproveIntelligence && (
-                                                <Tooltip title={report.directorSigned ? 'Update director signature' : 'Sign as Director Intelligence'}>
-                                                    <span>
-                                                        <IconButton
-                                                            disabled={isReportLoading(report.id)}
-                                                            onClick={() => handleOpenSignatureDialog(report)}
-                                                            size="small"
-                                                            color="primary"
-                                                        >
-                                                            <DriveFileRenameOutline fontSize="small" />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-
-                                            {report.finalised && (
-                                                <Tooltip title="Download final investigation report">
-                                                    <span>
-                                                        <IconButton
-                                                            disabled={isReportLoading(report.id)}
-                                                            onClick={() => handleDownloadInvestigationReport(report)}
-                                                            size="small"
-                                                            color="primary"
-                                                        >
-                                                            <Download fontSize="small" />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-
-                                            {report.returnDocumentPath && (
-                                                <Tooltip title="Download Return Document">
-                                                    <IconButton
-                                                        onClick={() => handleDownloadReturnDocument(report.id)}
-                                                        size="small"
-                                                        color="primary"
-                                                    >
-                                                        <Download fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-
-                <TablePagination
-                    component="div"
-                    count={filteredAndSortedReports.length}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    rowsPerPage={rowsPerPage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    rowsPerPageOptions={[5, 10, 25, 50]}
-                />
-            </TableContainer>
+            <AppTable
+                columns={tableColumns}
+                rows={reports}
+                loading={loading}
+                emptyMessage="No reports found"
+                searchValue={searchQuery}
+                searchPlaceholder="Search by ID, Case Number, Creator, or Status"
+                onSearchChange={(value) => {
+                    setSearchQuery(value);
+                    setPage(0);
+                }}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                totalRows={totalReports}
+                onPageChange={handleChangePage}
+                minWidth={980}
+            />
 
             {/* Reject Dialog */}
             <Dialog open={rejectDialogOpen} onClose={closeRejectDialog} maxWidth="sm" fullWidth>

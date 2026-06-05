@@ -5,6 +5,7 @@ import org.example.siidsbackend.DTO.Request.EditRequestDTO;
 import org.example.siidsbackend.DTO.Request.EscalateRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReleaseNoteRequestDTO;
 import org.example.siidsbackend.DTO.Request.SeizureNoteRequestDTO;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.PVDocumentRepository;
@@ -18,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Comparator;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.ArrayList;
 
@@ -143,6 +146,10 @@ public class PhysicalStockService {
         return notes;
     }
 
+    public PageResponseDTO<SeizureNote> getTemporaryStockPage(int page, int size, String search) {
+        return toPageResponse(filterStockRows(getTemporaryStock(), search, "ALL"), page, size);
+    }
+
     public List<SeizureNote> getSeizureHistory(Employee officer) {
         return seizureNoteRepository.findByPvInChargeOrderByCreatedAtDesc(officer);
     }
@@ -152,6 +159,59 @@ public class PhysicalStockService {
             return seizureNoteRepository.findAllByOrderByCreatedAtDesc();
         }
         return getSeizureHistory(getEmployeeByUsername(username));
+    }
+
+    public PageResponseDTO<SeizureNote> getSeizureHistoryPage(String username, int page, int size, String search, String status) {
+        return toPageResponse(filterStockRows(getSeizureHistory(username), search, status), page, size);
+    }
+
+    private List<SeizureNote> filterStockRows(List<SeizureNote> rows, String search, String status) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedStatus = status == null || status.isBlank() ? "ALL" : status.trim().toUpperCase(Locale.ROOT);
+
+        return rows.stream()
+                .filter(row -> normalizedSearch.isBlank()
+                        || safeContains(row.getSeizureNumber(), normalizedSearch)
+                        || safeContains(row.getTaxpayerName(), normalizedSearch))
+                .filter(row -> matchesStockStatusFilter(row, normalizedStatus))
+                .sorted(Comparator.comparing(
+                        SeizureNote::getCreatedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+    }
+
+    private boolean matchesStockStatusFilter(SeizureNote row, String filter) {
+        if ("ALL".equals(filter)) {
+            return true;
+        }
+        String status = row.getStatus() == null ? "" : row.getStatus().name();
+        if ("ESCALATED".equals(filter)) {
+            return status.equals("ESCALATED")
+                    || status.equals("IN_MAIN_STOCK")
+                    || status.equals("PENDING_REVIEW")
+                    || status.equals("IN_STOCK");
+        }
+        if ("RETURNED".equals(filter)) {
+            return status.equals("RETURNED_FOR_CORRECTION") || status.equals("RETURNED");
+        }
+        if ("RELEASED".equals(filter)) {
+            return status.contains("RELEASED");
+        }
+        return true;
+    }
+
+    private boolean safeContains(String value, String search) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(search);
+    }
+
+    private PageResponseDTO<SeizureNote> toPageResponse(List<SeizureNote> rows, int requestedPage, int requestedSize) {
+        int size = requestedSize > 0 ? Math.min(requestedSize, 100) : 10;
+        int page = Math.max(requestedPage, 0);
+        int totalElements = rows.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        return new PageResponseDTO<>(rows.subList(fromIndex, toIndex), page, size, totalElements, totalPages);
     }
 
     private boolean isAdminUsername(String username) {
@@ -699,6 +759,60 @@ public class PhysicalStockService {
                     return dateB.compareTo(dateA);
                 })
                 .toList();
+    }
+
+    public PageResponseDTO<SeizureNote> getMainStockPage(int page, int size, String search, String view, String sort) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedView = view == null || view.isBlank() ? "ALL" : view.trim().toUpperCase(Locale.ROOT);
+        boolean ascending = "date_asc".equalsIgnoreCase(sort);
+
+        List<SeizureNote> rows = getAllGoodsForManager().stream()
+                .filter(row -> matchesMainStockView(row, normalizedView))
+                .filter(row -> normalizedSearch.isBlank()
+                        || safeContains(row.getSeizureNumber(), normalizedSearch)
+                        || safeContains(row.getPvNumber(), normalizedSearch)
+                        || safeContains(row.getTaxpayerName(), normalizedSearch)
+                        || safeContains(row.getTaxpayerTin(), normalizedSearch)
+                        || safeContains(row.getGoodsDescription(), normalizedSearch))
+                .sorted((left, right) -> {
+                    LocalDateTime leftDate = left.getCreatedAt() != null ? left.getCreatedAt() : left.getDateTimeSeized();
+                    LocalDateTime rightDate = right.getCreatedAt() != null ? right.getCreatedAt() : right.getDateTimeSeized();
+                    int comparison = Comparator.nullsLast(LocalDateTime::compareTo).compare(leftDate, rightDate);
+                    return ascending ? comparison : -comparison;
+                })
+                .toList();
+
+        return toPageResponse(rows, page, size);
+    }
+
+    private boolean matchesMainStockView(SeizureNote row, String view) {
+        String status = row.getStatus() == null ? "" : row.getStatus().name();
+        return switch (view) {
+            case "PENDING_REVIEW" -> status.equals("PENDING_REVIEW")
+                    || status.equals("RETURNED")
+                    || status.equals("ESCALATED")
+                    || status.equals("RETURNED_FOR_CORRECTION")
+                    || status.equals("IN_TEMPORARY_STOCK")
+                    || status.equals("PENDING_JUSTIFICATION");
+            case "IN_WAREHOUSE" -> status.equals("IN_STOCK")
+                    || status.equals("IN_MAIN_STOCK")
+                    || (!List.of(
+                    "PENDING_REVIEW",
+                    "RETURNED",
+                    "ESCALATED",
+                    "RETURNED_FOR_CORRECTION",
+                    "PENDING_RELEASE",
+                    "PENDING_PRSO_RELEASE_APPROVAL",
+                    "RELEASED",
+                    "RELEASED_FROM_MAIN",
+                    "IN_TEMPORARY_STOCK",
+                    "PENDING_JUSTIFICATION").contains(status));
+            case "PENDING_RELEASE" -> status.equals("PENDING_RELEASE")
+                    || status.equals("PENDING_PRSO_RELEASE_APPROVAL")
+                    || status.equals("PENDING_PRSO_EDIT_APPROVAL");
+            case "RELEASED" -> status.equals("RELEASED") || status.equals("RELEASED_FROM_MAIN");
+            default -> true;
+        };
     }
 
     public List<ReleaseNote> getPendingApprovals() {

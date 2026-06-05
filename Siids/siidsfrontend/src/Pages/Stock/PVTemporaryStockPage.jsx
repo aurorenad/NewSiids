@@ -1,11 +1,11 @@
 import React, { useContext, useState, useEffect, useMemo } from 'react';
-import { TablePagination } from '@mui/material';
-import { PlusIcon, MagnifyingGlassIcon, InboxArrowDownIcon } from '@heroicons/react/24/outline';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { stockApi } from '../../api/stockApi';
 import CreateSeizureNoteModal from '../../Components/ui/CreateSeizureNoteModal';
 import RightDrawer from '../../Components/ui/RightDrawer';
 import ReleaseGoodsModal from '../../Components/ui/ReleaseGoodsModal';
 import EscalatePVModal from '../../Components/ui/EscalatePVModal';
+import AppTable from '../../Components/ui/AppTable';
 import { toast, Toaster } from 'sonner';
 import { format } from 'date-fns';
 
@@ -19,8 +19,7 @@ const PVTemporaryStockPage = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
   const [filterStatus, setFilterStatus] = useState('ALL'); // 'ALL', 'ESCALATED', 'RETURNED'
-  const [stockList, setStockList] = useState([]);
-  const [historyList, setHistoryList] = useState([]);
+  const [stockPage, setStockPage] = useState({ content: [], page: 0, size: 10, totalElements: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   
@@ -35,19 +34,20 @@ const PVTemporaryStockPage = () => {
   
   // Pagination state
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const rowsPerPage = 10;
   const canCreateSurveillance = hasPermission(authState, PERMISSIONS.SURVEILLANCE_CREATE);
   const canManageTempStock = hasPermission(authState, PERMISSIONS.TEMP_STOCK_MANAGE);
 
   const fetchData = async () => {
     try {
       setIsLoading(true);
+      const params = { page, size: rowsPerPage, search };
       if (activeTab === 'active') {
-        const res = await stockApi.getTemporaryStock();
-        setStockList(res.data || []);
+        const res = await stockApi.getTemporaryStock(params);
+        setStockPage(res.data || { content: [], page, size: rowsPerPage, totalElements: 0, totalPages: 0 });
       } else {
-        const res = await stockApi.getSeizureHistory();
-        setHistoryList(res.data || []);
+        const res = await stockApi.getSeizureHistory({ ...params, status: filterStatus });
+        setStockPage(res.data || { content: [], page, size: rowsPerPage, totalElements: 0, totalPages: 0 });
       }
     } catch (err) {
       toast.error('Failed to load stock data');
@@ -61,7 +61,7 @@ const PVTemporaryStockPage = () => {
     if (location.state?.caseRef) {
       setCreateModalOpen(true);
     }
-  }, [location.state, activeTab]);
+  }, [location.state, activeTab, page, search, filterStatus]);
 
   // Handled directly by modals now
   const handleModalSuccess = () => {
@@ -71,47 +71,15 @@ const PVTemporaryStockPage = () => {
     fetchData();
   };
 
-  const displayList = useMemo(() => {
-    let list = activeTab === 'active' ? stockList : historyList;
-    
-    // Apply filtering ONLY to Operation History as requested
-    if (activeTab === 'history' && filterStatus !== 'ALL') {
-      if (filterStatus === 'ESCALATED') {
-        list = list.filter(item => item.status === 'ESCALATED' || item.status === 'IN_MAIN_STOCK' || item.status === 'PENDING_REVIEW' || item.status === 'IN_STOCK');
-      } else if (filterStatus === 'RETURNED') {
-        list = list.filter(item => item.status === 'RETURNED_FOR_CORRECTION' || item.status === 'RETURNED');
-      } else if (filterStatus === 'RELEASED') {
-        list = list.filter(item => item.status.includes('RELEASED'));
-      }
-    }
-    return list;
-  }, [activeTab, stockList, historyList, filterStatus]);
-
-  const filteredStock = useMemo(() => {
-    return displayList.filter(item => 
-      item.seizureNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      item.taxpayerName?.toLowerCase().includes(search.toLowerCase())
-    );
-  }, [displayList, search]);
+  const stockRows = stockPage.content || [];
 
   useEffect(() => {
     setPage(0);
-    // Reset filter status when switching tabs if needed, or keep it.
-    // User wants it on history, so let's keep it separate.
-  }, [search, activeTab]);
+  }, [search, activeTab, filterStatus]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const paginatedStock = useMemo(() => {
-    return filteredStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [filteredStock, page, rowsPerPage]);
 
   const handleDownloadSeizureNote = async (item) => {
     try {
@@ -176,17 +144,127 @@ const PVTemporaryStockPage = () => {
 
   const returnedItems = useMemo(() => {
     if (activeTab !== 'active') return [];
-    return stockList.filter(item => item.status === 'RETURNED_FOR_CORRECTION');
-  }, [stockList, activeTab]);
+    return stockRows.filter(item => item.status === 'RETURNED_FOR_CORRECTION');
+  }, [stockRows, activeTab]);
 
   const criticalItems = useMemo(() => {
     if (activeTab !== 'active') return [];
-    return stockList.filter(item => {
+    return stockRows.filter(item => {
       if (item.status !== 'IN_TEMPORARY_STOCK' && item.status !== 'RETURNED_FOR_CORRECTION') return false;
       const daysLeft = calculateDaysLeft(item.dateTimeSeized);
       return daysLeft !== null && daysLeft <= 5;
     });
-  }, [stockList, activeTab]);
+  }, [stockRows, activeTab]);
+
+  const historyFilters = [
+    { value: 'ALL', label: 'All' },
+    { value: 'ESCALATED', label: 'Escalated' },
+    { value: 'RETURNED', label: 'Returned' },
+    { value: 'RELEASED', label: 'Released' }
+  ];
+
+  const tableColumns = [
+    {
+      key: 'seizureNumber',
+      label: 'Seizure Ref',
+      render: (item) => (
+        <span className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
+          {item.seizureNumber}
+        </span>
+      )
+    },
+    {
+      key: 'taxpayerName',
+      label: 'Taxpayer',
+      render: (item) => item.taxpayerName || 'Unknown'
+    },
+    {
+      key: 'status',
+      label: activeTab === 'active' ? 'Status' : 'Outcome',
+      render: (item) => (
+        <span style={{
+          padding: '4px 8px',
+          borderRadius: 4,
+          ...getStatusStyle(item.status),
+          font: '600 11px var(--font-display)',
+          textTransform: 'uppercase'
+        }}>
+          {activeTab === 'active' ? item.status.replace(/_/g, ' ') : getOutcome(item.status)}
+        </span>
+      )
+    },
+    {
+      key: 'dateTimeSeized',
+      label: 'Date Seized',
+      cellStyle: { fontFamily: 'var(--font-mono)', color: 'var(--gray-600)' },
+      render: (item) => item.dateTimeSeized ? format(new Date(item.dateTimeSeized), 'dd MMM yyyy') : '-'
+    },
+    ...(activeTab === 'active' ? [{
+      key: 'daysLeft',
+      label: 'Days Left',
+      render: (item) => {
+        const daysLeft = calculateDaysLeft(item.dateTimeSeized);
+        return (
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '12px',
+            fontWeight: '600',
+            display: 'inline-block',
+            minWidth: '70px',
+            textAlign: 'center',
+            ...getDaysLeftStyle(daysLeft)
+          }}>
+            {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days` : 'Overdue') : '-'}
+          </span>
+        );
+      }
+    }] : [{
+      key: 'actionedAt',
+      label: 'Date Actioned',
+      cellStyle: { fontFamily: 'var(--font-mono)', color: 'var(--gray-600)' },
+      render: (item) => item.actionedAt ? format(new Date(item.actionedAt), 'dd MMM yyyy') : '-'
+    }]),
+    {
+      key: 'actions',
+      label: 'Seizure Note',
+      headerStyle: { textAlign: 'center' },
+      cellStyle: { textAlign: 'center' },
+      render: (item) => (
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+          {canCreateSurveillance && item.status === 'RETURNED_FOR_CORRECTION' && (
+            <button
+              className="btn-base"
+              style={{
+                padding: '6px 12px',
+                fontSize: '12px',
+                color: 'rgb(220, 38, 38)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                background: 'rgba(239, 68, 68, 0.05)',
+                fontWeight: 600
+              }}
+              onClick={() => setEditItem(item)}
+            >
+              Correct
+            </button>
+          )}
+          <button
+            className="btn-base"
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              color: 'var(--rra-blue)',
+              border: '1px solid var(--rra-blue-tint)',
+              background: 'var(--rra-blue-tint-light)'
+            }}
+            onClick={() => handleDownloadSeizureNote(item)}
+          >
+            Download PDF
+          </button>
+        </div>
+      )
+    }
+  ];
 
   return (
     <div style={{ padding: '32px 40px', background: 'var(--surface-page)', minHeight: '100vh' }}>
@@ -359,196 +437,25 @@ const PVTemporaryStockPage = () => {
           </button>
         </div>
 
-        {activeTab === 'history' && (
-          <div style={{ display: 'flex', gap: 8, background: 'var(--gray-50)', padding: 4, borderRadius: 8, border: '1px solid var(--gray-200)' }}>
-            <button 
-              onClick={() => setFilterStatus('ALL')}
-              style={{ 
-                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
-                background: filterStatus === 'ALL' ? 'white' : 'transparent',
-                color: filterStatus === 'ALL' ? 'var(--rra-blue)' : 'var(--gray-500)',
-                boxShadow: filterStatus === 'ALL' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              All
-            </button>
-            <button 
-              onClick={() => setFilterStatus('ESCALATED')}
-              style={{ 
-                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
-                background: filterStatus === 'ESCALATED' ? 'white' : 'transparent',
-                color: filterStatus === 'ESCALATED' ? 'var(--rra-blue)' : 'var(--gray-500)',
-                boxShadow: filterStatus === 'ESCALATED' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Escalated
-            </button>
-            <button 
-              onClick={() => setFilterStatus('RETURNED')}
-              style={{ 
-                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
-                background: filterStatus === 'RETURNED' ? 'white' : 'transparent',
-                color: filterStatus === 'RETURNED' ? 'var(--rra-blue)' : 'var(--gray-500)',
-                boxShadow: filterStatus === 'RETURNED' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Returned
-            </button>
-            <button 
-              onClick={() => setFilterStatus('RELEASED')}
-              style={{ 
-                padding: '6px 12px', border: 'none', borderRadius: 6, fontSize: 13, fontWeight: 600,
-                background: filterStatus === 'RELEASED' ? 'white' : 'transparent',
-                color: filterStatus === 'RELEASED' ? 'var(--rra-blue)' : 'var(--gray-500)',
-                boxShadow: filterStatus === 'RELEASED' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              Released
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="card" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
-          <div style={{ position: 'relative', width: 320 }}>
-            <MagnifyingGlassIcon style={{ position: 'absolute', left: 12, top: 10, width: 18, color: 'var(--gray-400)' }} />
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="Search reference or taxpayer..." 
-              style={{ paddingLeft: 38 }}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {isLoading ? (
-          <p style={{ textAlign: 'center', padding: 40, color: 'var(--gray-500)' }}>Loading...</p>
-        ) : filteredStock.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <InboxArrowDownIcon style={{ width: 48, height: 48, color: 'var(--gray-300)', margin: '0 auto 16px' }} />
-            <p className="type-body" style={{ color: 'var(--gray-500)' }}>No items found.</p>
-          </div>
-        ) : (
-          <div className="stock-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Seizure Ref</th>
-                  <th>Taxpayer</th>
-                  <th>{activeTab === 'active' ? 'Status' : 'Outcome'}</th>
-                  <th>Date Seized</th>
-                  {activeTab === 'active' && <th>Days Left</th>}
-                  {activeTab === 'history' && <th>Date Actioned</th>}
-                  <th style={{ textAlign: 'center' }}>Seizure Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedStock.map(item => {
-                  const daysLeft = activeTab === 'active' ? calculateDaysLeft(item.dateTimeSeized) : null;
-                  
-                  return (
-                    <tr key={item.id}>
-                      <td className="ref" onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}>
-                        {item.seizureNumber}
-                      </td>
-                      <td>{item.taxpayerName || 'Unknown'}</td>
-                      <td>
-                        <span style={{
-                          padding: '4px 8px', borderRadius: 4, 
-                          ...getStatusStyle(item.status),
-                          font: '600 11px var(--font-display)', textTransform: 'uppercase'
-                        }}>
-                          {activeTab === 'active' ? item.status.replace(/_/g, ' ') : getOutcome(item.status)}
-                        </span>
-                      </td>
-                      <td className="date">{item.dateTimeSeized ? format(new Date(item.dateTimeSeized), 'dd MMM yyyy') : '-'}</td>
-                      {activeTab === 'active' && (
-                        <td>
-                          <span style={{ 
-                            padding: '4px 10px', 
-                            borderRadius: '12px',
-                            fontSize: '12px',
-                            fontWeight: '600',
-                            display: 'inline-block',
-                            minWidth: '70px',
-                            textAlign: 'center',
-                            ...getDaysLeftStyle(daysLeft)
-                          }}>
-                            {daysLeft !== null ? (daysLeft > 0 ? `${daysLeft} days` : 'Overdue') : '-'}
-                          </span>
-                        </td>
-                      )}
-                      {activeTab === 'history' && (
-                        <td className="date">
-                          {item.actionedAt ? format(new Date(item.actionedAt), 'dd MMM yyyy') : '-'}
-                        </td>
-                      )}
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
-                          {canCreateSurveillance && item.status === 'RETURNED_FOR_CORRECTION' && (
-                            <button 
-                              className="btn-base" 
-                              style={{ 
-                                padding: '6px 12px', 
-                                fontSize: '12px', 
-                                color: 'rgb(220, 38, 38)', 
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                background: 'rgba(239, 68, 68, 0.05)',
-                                fontWeight: 600
-                              }}
-                              onClick={() => setEditItem(item)}
-                            >
-                              Correct
-                            </button>
-                          )}
-                          <button 
-                            className="btn-base" 
-                            style={{ 
-                              padding: '6px 12px', 
-                              fontSize: '12px', 
-                              color: 'var(--rra-blue)', 
-                              border: '1px solid var(--rra-blue-tint)',
-                              background: 'var(--rra-blue-tint-light)'
-                            }}
-                            onClick={() => handleDownloadSeizureNote(item)}
-                          >
-                            Download PDF
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            <TablePagination
-              rowsPerPageOptions={[10, 20, 50, 100]}
-              component="div"
-              count={filteredStock.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{
-                borderTop: '1px solid var(--gray-200)',
-                fontFamily: 'var(--font-body)',
-                '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 500,
-                  fontSize: '13px'
-                }
-              }}
-            />
-          </div>
-        )}
-      </div>
+      <AppTable
+        columns={tableColumns}
+        rows={stockRows}
+        loading={isLoading}
+        emptyMessage="No items found."
+        searchValue={search}
+        searchPlaceholder="Search reference or taxpayer..."
+        onSearchChange={setSearch}
+        filters={activeTab === 'history' ? historyFilters : undefined}
+        activeFilter={filterStatus}
+        onFilterChange={setFilterStatus}
+        page={page}
+        rowsPerPage={rowsPerPage}
+        totalRows={stockPage.totalElements || 0}
+        onPageChange={handleChangePage}
+        minWidth={activeTab === 'active' ? 980 : 900}
+      />
 
       <CreateSeizureNoteModal 
         isOpen={canCreateSurveillance && (isCreateModalOpen || !!editItem)} 

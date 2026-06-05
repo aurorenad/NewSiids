@@ -9,6 +9,7 @@ import org.example.siidsbackend.DTO.OfficerReportsDTO;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Request.SignReportRequest;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 
 import org.example.siidsbackend.Model.Employee;
@@ -275,8 +276,7 @@ public class ReportController {
             @PathVariable Integer id,
             Authentication authentication) {
         try {
-            Report report = reportService.getReport(id);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.getReportResponse(id));
         } catch (Exception e) {
             System.err.println("Error getting report: " + e.getMessage());
             e.printStackTrace();
@@ -291,8 +291,7 @@ public class ReportController {
             @RequestBody SignReportRequest request,
             Authentication authentication) {
         try {
-            Report report = reportService.signReport(id, request, authentication.getName());
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.signReportAndMapResponse(id, request, authentication.getName()));
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -402,8 +401,7 @@ public class ReportController {
             Authentication authentication) {
         try {
 
-            Report report = reportService.sendToAssistantCommissioner(id);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.sendToAssistantCommissionerResponse(id));
         } catch (Exception e) {
             log.error("Error sending to Assistant Commissioner: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -417,8 +415,7 @@ public class ReportController {
             Authentication authentication) {
         try {
 
-            Report report = reportService.sendToDirectorInvestigation(reportId);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.sendToDirectorInvestigationResponse(reportId));
         } catch (Exception e) {
             log.error("Error sending to Director of Investigation: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -439,8 +436,7 @@ public class ReportController {
                 return ResponseEntity.badRequest().body(null);
             }
 
-            Report report = reportService.returnReport(id, returnReason, returnToEmployeeId, employeeId);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.returnReportResponse(id, returnReason, returnToEmployeeId, employeeId));
         } catch (RuntimeException e) {
             log.error("Error returning report: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -452,11 +448,15 @@ public class ReportController {
 
     @GetMapping("/director-intelligence/reports")
     @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
-    public ResponseEntity<List<ReportResponseDTO>> getReportsForDirectorIntelligence(
+    public ResponseEntity<?> getReportsForDirectorIntelligence(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "desc") String sort,
             Authentication authentication) {
         String directorId = authentication.getName();
         try {
-            return ResponseEntity.ok(reportService.getReportDtosForDirectorIntelligence(directorId));
+            return ResponseEntity.ok(reportService.getReportPageForDirectorIntelligence(directorId, page, size, search, sort));
         } catch (RuntimeException e) {
             System.err.println("Error getting reports for Director of Intelligence: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -475,8 +475,7 @@ public class ReportController {
         String employeeId = authentication.getName();
         try {
 
-            Report report = reportService.approveReport(id, employeeId);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.approveReportResponse(id, employeeId));
         } catch (Exception e) {
             log.error("Error approving report: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -492,8 +491,7 @@ public class ReportController {
         String employeeId = authentication.getName();
         try {
 
-            Report report = reportService.rejectReport(id, rejectionReason, employeeId);
-            return ResponseEntity.ok(reportService.toResponseDTO(report));
+            return ResponseEntity.ok(reportService.rejectReportResponse(id, rejectionReason, employeeId));
         } catch (Exception e) {
             log.error("Error rejecting report: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -502,18 +500,23 @@ public class ReportController {
 
     @GetMapping("/assistant-commissioner/approved-reports")
     @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
-    public ResponseEntity<?> getApprovedReportsForAssistantCommissioner(
+    public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getApprovedReportsForAssistantCommissioner(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "INTAKE") String view,
             Authentication authentication) {
         try {
             String employeeId = authentication.getName();
-            List<Report> reports = reportService.getApprovedReportsForAssistantCommissioner(employeeId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getApprovedReportPageForAssistantCommissioner(
+                    employeeId,
+                    page,
+                    size,
+                    search,
+                    view));
         } catch (RuntimeException e) {
             log.error("Authorization error fetching AC reports: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         } catch (Exception e) {
             System.err.println("Error getting reports: " + e.getMessage());
             e.printStackTrace();
@@ -523,16 +526,20 @@ public class ReportController {
 
     @GetMapping("/director-investigation/approved-reports")
     @PreAuthorize("hasAuthority('REPORT_APPROVE_INVESTIGATION')")
-    public ResponseEntity<List<ReportResponseDTO>> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(
+    public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "ALL") String view,
             Authentication authentication) {
         String directorId = authentication.getName();
         try {
-            List<Report> reports = reportService
-                    .getReportsApprovedByAssistantCommissionerForDirectorInvestigation(directorId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getReportPageForDirectorInvestigation(
+                    directorId,
+                    page,
+                    size,
+                    search,
+                    view));
         } catch (RuntimeException e) {
             System.err.println("Authorization error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -1082,15 +1089,14 @@ public class ReportController {
 
     @GetMapping("/investigation-officer/active-reports")
     @PreAuthorize("hasAuthority('REPORT_VIEW')")
-    public ResponseEntity<List<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
+    public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getActiveReportsForInvestigationOfficer(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
             Authentication authentication) {
         String officerId = authentication.getName();
         try {
-            List<Report> reports = reportService.fetchDashboardDataForIO(officerId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getInvestigationOfficerReportPage(officerId, true, page, size, search));
         } catch (RuntimeException e) {
             log.error("Error getting active reports: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -1102,15 +1108,14 @@ public class ReportController {
 
     @GetMapping("/investigation-officer/all-reports")
     @PreAuthorize("hasAuthority('REPORT_VIEW')")
-    public ResponseEntity<List<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
+    public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getAllReportsForInvestigationOfficer(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
             Authentication authentication) {
         String officerId = authentication.getName();
         try {
-            List<Report> reports = reportService.getHistoricalReportsForInvestigationOfficer(officerId); 
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getInvestigationOfficerReportPage(officerId, false, page, size, search));
         } catch (RuntimeException e) {
             log.error("Error getting all reports: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -1183,15 +1188,14 @@ public class ReportController {
 
     @GetMapping("/legal-advisor/my-reports")
     @PreAuthorize("hasAuthority('LEGAL_REVIEW')")
-    public ResponseEntity<List<ReportResponseDTO>> getReportsForLegalAdvisor(
+    public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getReportsForLegalAdvisor(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
             Authentication authentication) {
         String legalAdvisorId = authentication.getName();
         try {
-            List<Report> reports = reportService.getReportsForLegalAdvisor(legalAdvisorId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getLegalAdvisorReportPage(legalAdvisorId, page, size, search));
         } catch (RuntimeException e) {
             log.error("Authorization error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
@@ -1693,15 +1697,18 @@ public class ReportController {
     }
     @GetMapping("/assistant-commissioner/case-plans")
     @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
-    public ResponseEntity<?> getCasePlansForAssistantCommissioner(
+    public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getCasePlansForAssistantCommissioner(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String search,
             Authentication authentication) {
         try {
             String employeeId = authentication.getName();
-            List<Report> reports = reportService.getCasePlansForAssistantCommissioner(employeeId);
-            List<ReportResponseDTO> responseList = reports.stream()
-                    .map(reportService::toResponseDTO)
-                    .collect(Collectors.toList());
-            return ResponseEntity.ok(responseList);
+            return ResponseEntity.ok(reportService.getCasePlanPageForAssistantCommissioner(
+                    employeeId,
+                    page,
+                    size,
+                    search));
         } catch (RuntimeException e) {
             log.error("Authorization error: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();

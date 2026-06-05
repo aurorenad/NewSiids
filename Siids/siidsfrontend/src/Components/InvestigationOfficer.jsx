@@ -1,12 +1,11 @@
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext, useState, useEffect, useMemo } from "react";
 import {
-    Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
     TextField, IconButton, Button, Typography, Box, CircularProgress,
     Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions,
     MenuItem, Tooltip, Chip, Tabs, Tab, List, ListItem, ListItemIcon, ListItemText
 } from "@mui/material";
 import {
-    Search, Description, Send, Check, AttachFile, Delete, NoteAdd,
+    Description, Send, Check, AttachFile, Delete, NoteAdd,
     Visibility, Download, Edit, History, Refresh, Assignment, Assessment, InfoOutlined
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
@@ -15,13 +14,18 @@ import { AuthContext } from "../context/AuthContext";
 import { hasPermission } from "../utils/authorization";
 import { PERMISSIONS } from "../constants/permissions";
 import { routeTo } from "../constants/routes";
+import AppTable from "./ui/AppTable.jsx";
+
+const ROWS_PER_PAGE = 10;
 
 const InvestigationOfficer = () => {
     const { authState } = useContext(AuthContext);
     const navigate = useNavigate();
     const [reports, setReports] = useState([]);
+    const [totalReports, setTotalReports] = useState(0);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
+    const [page, setPage] = useState(0);
     const [activeTab, setActiveTab] = useState(0);
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
@@ -30,26 +34,111 @@ const InvestigationOfficer = () => {
     const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
     const canCreateReport = hasPermission(authState, PERMISSIONS.REPORT_CREATE);
 
-    useEffect(() => { fetchReports(); }, [activeTab]);
+    useEffect(() => { fetchReports(); }, [activeTab, page, searchQuery]);
 
     const fetchReports = async () => {
         try {
             setLoading(true);
-            const response = activeTab === 0 
-                ? await ReportApi.getActiveReportsForInvestigationOfficer()
-                : await ReportApi.getAllReportsForInvestigationOfficer();
+            const params = { page, size: ROWS_PER_PAGE, search: searchQuery };
+            const response = activeTab === 0
+                ? await ReportApi.getActiveReportsForInvestigationOfficer(params)
+                : await ReportApi.getAllReportsForInvestigationOfficer(params);
+            const pageData = response.data || {};
             
-            setReports(response.data.map(r => ({
+            setReports((pageData.content || []).map(r => ({
                 ...r,
                 caseId: r.relatedCase?.caseNum || 'N/A',
                 status: r.relatedCase?.status || 'PENDING'
             })));
+            setTotalReports(pageData.totalElements || 0);
         } catch (err) {
             setSnackbar({ open: true, message: "Failed to fetch reports", severity: "error" });
+            setReports([]);
+            setTotalReports(0);
         } finally {
             setLoading(false);
         }
     };
+
+    const handleTabChange = (event, nextTab) => {
+        setActiveTab(nextTab);
+        setPage(0);
+    };
+
+    const handleSearchChange = (value) => {
+        setSearchQuery(value);
+        setPage(0);
+    };
+
+    const formatDate = (value) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+    };
+
+    const tableColumns = useMemo(() => [
+        {
+            key: 'caseId',
+            label: 'Case ID',
+            render: (report) => <strong>{report.caseId}</strong>
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (report) => (
+                <Chip
+                    label={(report.status || 'PENDING').replace(/_/g, ' ')}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                />
+            )
+        },
+        {
+            key: 'createdAt',
+            label: 'Date Assigned',
+            render: (report) => formatDate(report.createdAt)
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            headerStyle: { textAlign: 'center' },
+            cellStyle: { textAlign: 'center', minWidth: 320 },
+            render: (report) => (
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <Tooltip title="View Details">
+                        <IconButton color="info" onClick={() => navigate(routeTo.reportDetails(report.id))}>
+                            <Visibility />
+                        </IconButton>
+                    </Tooltip>
+
+                    {canCreateReport && (
+                        <Tooltip title="Create/Edit Plan">
+                            <IconButton
+                                color="primary"
+                                onClick={() => setCasePlanDialog({ open: true, report, text: report.casePlanDescription || "", file: null })}
+                            >
+                                <NoteAdd />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {canCreateReport && (
+                        <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<Assessment />}
+                            onClick={() => setFindingsDialog({ open: true, report, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] })}
+                            sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
+                        >
+                            Create Final Report
+                        </Button>
+                    )}
+                </Box>
+            )
+        }
+    ], [canCreateReport, navigate]);
 
     const handleCasePlanSubmit = async () => {
         try {
@@ -93,66 +182,34 @@ const InvestigationOfficer = () => {
             </Typography>
 
             <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between' }}>
-                <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}>
+                <Tabs value={activeTab} onChange={handleTabChange}>
                     <Tab label="Active Cases" />
                     <Tab label="History" />
                 </Tabs>
                 <Button startIcon={<Refresh />} onClick={fetchReports}>Refresh</Button>
             </Box>
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead>
-                        <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-                            <TableCell>Case ID</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Date Assigned</TableCell>
-                            <TableCell align="center">Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow><TableCell colSpan={4} align="center"><CircularProgress /></TableCell></TableRow>
-                        ) : reports.length === 0 ? (
-                            <TableRow><TableCell colSpan={4} align="center">No cases found</TableCell></TableRow>
-                        ) : reports.map((r) => (
-                            <TableRow key={r.id}>
-                                <TableCell sx={{ fontWeight: 'bold' }}>{r.caseId}</TableCell>
-                                <TableCell>
-                                    <Chip label={r.status.replace(/_/g, ' ')} size="small" color="primary" variant="outlined" />
-                                </TableCell>
-                                <TableCell>{new Date(r.createdAt).toLocaleDateString()}</TableCell>
-                                <TableCell align="center">
-                                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                                        <Tooltip title="View Details">
-                                            <IconButton color="info" onClick={() => navigate(routeTo.reportDetails(r.id))}><Visibility /></IconButton>
-                                        </Tooltip>
-                                        
-                                        {canCreateReport && (
-                                            <Tooltip title="Create/Edit Plan">
-                                                <IconButton color="primary" onClick={() => setCasePlanDialog({ open: true, report: r, text: r.casePlanDescription || "", file: null })}><NoteAdd /></IconButton>
-                                            </Tooltip>
-                                        )}
+            <Box sx={{ mb: 2 }}>
+                <TextField
+                    size="small"
+                    placeholder="Search case ID, status, or description..."
+                    value={searchQuery}
+                    onChange={(event) => handleSearchChange(event.target.value)}
+                    sx={{ width: { xs: '100%', sm: 360 } }}
+                />
+            </Box>
 
-                                        {canCreateReport && (
-                                            <Button
-                                                variant="contained"
-                                                color="success"
-                                                size="small"
-                                                startIcon={<Assessment />}
-                                                onClick={() => setFindingsDialog({ open: true, report: r, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] })}
-                                                sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
-                                            >
-                                                Create Final Report
-                                            </Button>
-                                        )}
-                                    </Box>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <AppTable
+                columns={tableColumns}
+                rows={reports}
+                loading={loading}
+                emptyMessage="No cases found"
+                page={page}
+                rowsPerPage={ROWS_PER_PAGE}
+                totalRows={totalReports}
+                onPageChange={(event, nextPage) => setPage(nextPage)}
+                minWidth={900}
+            />
 
             <Dialog open={casePlanDialog.open} onClose={() => setCasePlanDialog({ ...casePlanDialog, open: false })} fullWidth>
                 <DialogTitle sx={{ bgcolor: '#1976d2', color: '#fff' }}>Case Plan - {casePlanDialog.report?.caseId}</DialogTitle>

@@ -5,12 +5,6 @@ import {
     CircularProgress,
     Paper,
     Snackbar,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     TextField,
     Typography,
     Alert,
@@ -19,8 +13,7 @@ import {
     Chip,
     Grid,
     Card,
-    CardContent,
-    TablePagination
+    CardContent
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -33,12 +26,15 @@ import {
     Gavel as GavelIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ROUTES } from '../../constants/routes';
+import { ROUTES, routeTo } from '../../constants/routes';
 import { CaseService } from '../../api/Axios/caseApi.jsx';
 import { stockApi } from '../../api/stockApi';
 import { AuthContext } from '../../context/AuthContext.jsx';
 import { hasPermission } from '../../utils/authorization.js';
 import { PERMISSIONS } from '../../constants/permissions';
+import AppTable from '../ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
 
 const SurveillanceOfficer = () => {
     const { authState } = useContext(AuthContext);
@@ -53,7 +49,6 @@ const SurveillanceOfficer = () => {
     
     // Pagination state
     const [page, setPage] = useState(0);
-    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -66,11 +61,11 @@ const SurveillanceOfficer = () => {
             try {
                 const [casesRes, tempStockRes] = await Promise.all([
                     CaseService.getMyCases(),
-                    stockApi.getTemporaryStock()
+                    stockApi.getTemporaryStock({ page: 0, size: 100 })
                 ]);
                 setCases(casesRes.data || []);
                 setFilteredCases(casesRes.data || []);
-                setTempStock(tempStockRes.data || []);
+                setTempStock(tempStockRes.data?.content || tempStockRes.data || []);
             } catch (err) {
                 console.error('Failed to load data:', err);
                 setError(err.response?.data?.message || 'Failed to load data');
@@ -107,18 +102,9 @@ const SurveillanceOfficer = () => {
         setPage(0); // Reset to page 1 when filter changes
     }, [searchTerm, cases, showOnlyCreated]);
 
-    const handleChangePage = (event, newPage) => {
-        setPage(newPage);
-    };
-
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
-    };
-
     const paginatedCases = useMemo(() => {
-        return filteredCases.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-    }, [filteredCases, page, rowsPerPage]);
+        return filteredCases.slice(page * ROWS_PER_PAGE, page * ROWS_PER_PAGE + ROWS_PER_PAGE);
+    }, [filteredCases, page]);
 
     const showSnackbar = (message, severity) => {
         setSnackbar({ open: true, message, severity });
@@ -169,6 +155,79 @@ const SurveillanceOfficer = () => {
         });
         return { returned, critical };
     }, [tempStock]);
+
+    const tableColumns = useMemo(() => [
+        { key: 'caseNum', label: 'Case Ref', render: (caseItem) => <strong>{caseItem.caseNum}</strong> },
+        { key: 'tin', label: 'TIN', render: (caseItem) => caseItem.taxPayer?.tin || '-' },
+        { key: 'taxpayerName', label: 'Taxpayer Name', render: (caseItem) => caseItem.taxPayer?.name || '-' },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (caseItem) => {
+                const statusStyle = getStatusColor(caseItem.status);
+                return (
+                    <Chip
+                        label={(caseItem.status || '').replace(/_/g, ' ')}
+                        size="small"
+                        sx={{
+                            backgroundColor: statusStyle.bg,
+                            color: statusStyle.color,
+                            fontWeight: 600,
+                            fontSize: '0.75rem'
+                        }}
+                    />
+                );
+            }
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            headerStyle: { textAlign: 'right' },
+            cellStyle: { textAlign: 'right', minWidth: 260 },
+            render: (caseItem) => (
+                <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1} flexWrap="wrap">
+                    {canUpdateCase && (caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
+                        <Tooltip title="Edit Case">
+                            <IconButton
+                                onClick={() => navigate(ROUTES.SURVEILLANCE_EDIT_CASE, { state: { caseData: caseItem } })}
+                                size="small"
+                                sx={{ color: 'var(--rra-blue)', backgroundColor: 'rgba(0, 61, 165, 0.05)' }}
+                            >
+                                <AssignmentIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                    {canCreateSurveillance && canViewStock && (
+                        <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<InventoryIcon fontSize="small" />}
+                            onClick={() => navigate(ROUTES.TEMPORARY_STOCK, { state: { caseRef: caseItem.caseNum } })}
+                            sx={{
+                                backgroundColor: '#F5A800',
+                                color: '#fff',
+                                '&:hover': { backgroundColor: '#d99400' },
+                                textTransform: 'none',
+                                boxShadow: 'none',
+                                borderRadius: 1.5
+                            }}
+                        >
+                            Seize
+                        </Button>
+                    )}
+                    <Tooltip title="View Case">
+                        <IconButton
+                            onClick={() => navigate(routeTo.surveillanceViewCase(caseItem.caseNum))}
+                            size="small"
+                            sx={{ color: '#003DA5', backgroundColor: 'rgba(0, 61, 165, 0.1)' }}
+                        >
+                            <DescriptionIcon fontSize="small" />
+                        </IconButton>
+                    </Tooltip>
+                </Box>
+            )
+        }
+    ], [canCreateSurveillance, canUpdateCase, canViewStock, navigate]);
 
     if (loading) {
         return (
@@ -372,110 +431,16 @@ const SurveillanceOfficer = () => {
                     </Box>
                 </Box>
 
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow sx={{ backgroundColor: '#fafafa' }}>
-                                <TableCell sx={{ fontWeight: 600, color: '#555' }}>Case Ref</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#555' }}>TIN</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#555' }}>Taxpayer Name</TableCell>
-                                <TableCell sx={{ fontWeight: 600, color: '#555' }}>Status</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 600, color: '#555' }}>Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {paginatedCases.length > 0 ? (
-                                paginatedCases.map((caseItem) => {
-                                    const statusStyle = getStatusColor(caseItem.status);
-                                    return (
-                                        <TableRow key={caseItem.caseNum} hover>
-                                            <TableCell sx={{ fontWeight: 500 }}>{caseItem.caseNum}</TableCell>
-                                            <TableCell>{caseItem.taxPayer?.tin || '-'}</TableCell>
-                                            <TableCell>{caseItem.taxPayer?.name || '-'}</TableCell>
-                                            <TableCell>
-                                                <Chip 
-                                                    label={caseItem.status.replace(/_/g, ' ')} 
-                                                    size="small" 
-                                                    sx={{ 
-                                                        backgroundColor: statusStyle.bg, 
-                                                        color: statusStyle.color,
-                                                        fontWeight: 600,
-                                                        fontSize: '0.75rem'
-                                                    }} 
-                                                />
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
-                                                    {canUpdateCase && (caseItem.status === 'CASE_CREATED' || caseItem.status === 'REPORT_SUBMITTED') && (
-                                                        <Tooltip title="Edit Case">
-                                                            <IconButton
-                                                                onClick={() => navigate(ROUTES.SURVEILLANCE_EDIT_CASE, { state: { caseData: caseItem } })}
-                                                                size="small"
-                                                                sx={{ color: 'var(--rra-blue)', backgroundColor: 'rgba(0, 61, 165, 0.05)' }}
-                                                            >
-                                                                <AssignmentIcon fontSize="small" />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    )}
-                                                    {canCreateSurveillance && canViewStock && (
-                                                        <Button
-                                                            variant="contained"
-                                                            size="small"
-                                                            startIcon={<InventoryIcon fontSize="small" />}
-                                                            onClick={() => navigate(ROUTES.TEMPORARY_STOCK, { state: { caseRef: caseItem.caseNum } })}
-                                                            sx={{ 
-                                                                backgroundColor: '#F5A800', 
-                                                                color: '#fff',
-                                                                '&:hover': { backgroundColor: '#d99400' },
-                                                                textTransform: 'none',
-                                                                boxShadow: 'none',
-                                                                borderRadius: 1.5
-                                                            }}
-                                                        >
-                                                            Seize
-                                                        </Button>
-                                                    )}
-                                                    <Tooltip title="View Case">
-                                                        <IconButton
-                                                            onClick={() => navigate(routeTo.surveillanceViewCase(caseItem.caseNum))}
-                                                            size="small"
-                                                            sx={{ color: '#003DA5', backgroundColor: 'rgba(0, 61, 165, 0.1)' }}
-                                                        >
-                                                            <DescriptionIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Box>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                                        <Typography variant="body1" color="text.secondary">
-                                            {cases.length === 0 ? 'No active surveillance cases found.' : 'No matching cases found.'}
-                                        </Typography>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-                <TablePagination
-                    rowsPerPageOptions={[10, 20, 50, 100]}
-                    component="div"
-                    count={filteredCases.length}
-                    rowsPerPage={rowsPerPage}
+                <AppTable
+                    columns={tableColumns}
+                    rows={paginatedCases}
+                    loading={loading}
+                    emptyMessage={cases.length === 0 ? 'No active surveillance cases found.' : 'No matching cases found.'}
                     page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                    sx={{
-                        borderTop: '1px solid #eee',
-                        '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows': {
-                            fontFamily: "'Outfit', sans-serif",
-                            fontWeight: 500
-                        }
-                    }}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    totalRows={filteredCases.length}
+                    onPageChange={(event, nextPage) => setPage(nextPage)}
+                    minWidth={900}
                 />
             </Paper>
 

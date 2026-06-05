@@ -1,12 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
     Typography,
     Box,
     CircularProgress,
@@ -22,6 +15,9 @@ import { ReportApi } from "./../api/Axios/caseApi";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
 
 const T3OfficersReports = () => {
     const [reports, setReports] = useState([]);
@@ -33,6 +29,7 @@ const T3OfficersReports = () => {
         severity: "success"
     });
     const [searchQuery, setSearchQuery] = useState("");
+    const [page, setPage] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -60,7 +57,7 @@ const T3OfficersReports = () => {
         fetchReports();
     }, []);
 
-    const filteredReports = reports.filter(report => {
+    const filteredReports = useMemo(() => reports.filter(report => {
         const searchTerm = searchQuery.toLowerCase();
         return (
             report.investigationOfficer?.givenName?.toLowerCase().includes(searchTerm) ||
@@ -68,7 +65,12 @@ const T3OfficersReports = () => {
             report.relatedCase?.caseNum?.toLowerCase().includes(searchTerm) ||
             report.status?.toLowerCase().includes(searchTerm)
         );
-    });
+    }), [reports, searchQuery]);
+
+    const pagedReports = useMemo(() => {
+        const start = page * ROWS_PER_PAGE;
+        return filteredReports.slice(start, start + ROWS_PER_PAGE);
+    }, [filteredReports, page]);
 
     const formatDate = (dateString) => {
         return dateString ? new Date(dateString).toLocaleDateString() : 'N/A';
@@ -120,6 +122,55 @@ const T3OfficersReports = () => {
         const fileData = new Blob([excelBuffer], { type: "application/octet-stream" });
         saveAs(fileData, `T3_Officer_Reports_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
+
+    const tableColumns = useMemo(() => [
+        {
+            key: 'caseId',
+            label: 'Case ID',
+            render: (report) => (
+                <Tooltip title={report.relatedCase?.caseNum || 'N/A'}>
+                    <span>{report.relatedCase?.caseNum || 'N/A'}</span>
+                </Tooltip>
+            )
+        },
+        { key: 'createdAt', label: 'Report Date', render: (report) => formatDate(report.createdAt) },
+        {
+            key: 'taxType',
+            label: 'Tax Type',
+            render: (report) => (
+                <Tooltip title={report.relatedCase?.taxType || '_'}>
+                    <span>{report.relatedCase?.taxType || '-'}</span>
+                </Tooltip>
+            )
+        },
+        {
+            key: 'taxPeriod',
+            label: 'Tax Period',
+            render: (report) => (
+                <Tooltip title={report.relatedCase?.taxPeriod || '_'}>
+                    <span>{report.relatedCase?.taxPeriod || '-'}</span>
+                </Tooltip>
+            )
+        },
+        { key: 'principleAmount', label: 'Principle (FRW)', render: (report) => formatCurrency(report.principleAmount) },
+        { key: 'penaltiesAmount', label: 'Penalties (FRW)', render: (report) => formatCurrency(report.penaltiesAmount) },
+        {
+            key: 'total',
+            label: 'Total (FRW)',
+            render: (report) => formatCurrency((report.principleAmount || 0) + (report.penaltiesAmount || 0))
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (report) => (
+                <Chip
+                    label={formatStatus(report.status)}
+                    color={getStatusColor(report.status)}
+                    size="small"
+                />
+            )
+        }
+    ], []);
 
     if (loading) {
         return (
@@ -182,7 +233,10 @@ const T3OfficersReports = () => {
                         variant="outlined"
                         size="small"
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setPage(0);
+                        }}
                         InputProps={{
                             startAdornment: <Search fontSize="small" />,
                         }}
@@ -201,66 +255,17 @@ const T3OfficersReports = () => {
                 </Alert>
             )}
 
-            <TableContainer component={Paper} elevation={3}>
-                <Table>
-                    <TableHead>
-                        <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Case ID</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Report Date</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Principle( FRW )</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Penalties( FRW )</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Total( FRW )</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredReports.length > 0 ? (
-                            filteredReports.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>
-                                        <Tooltip title={report.relatedCase?.caseNum || 'N/A'}>
-                                            <span>{report.relatedCase?.caseNum || 'N/A'}</span>
-                                        </Tooltip>
-                                    </TableCell>
-                                    <TableCell>{formatDate(report.createdAt)}</TableCell>
-                                    <TableCell>
-                                        <Tooltip title={report.relatedCase?.taxType || '_'}>
-                                            <span>{report.relatedCase?.taxType}</span>
-                                        </Tooltip>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Tooltip title={report.relatedCase?.taxPeriod || '_'}>
-                                            <span>{report.relatedCase?.taxPeriod}</span>
-                                        </Tooltip>
-                                    </TableCell>
-                                    <TableCell>{formatCurrency(report.principleAmount)}</TableCell>
-                                    <TableCell>{formatCurrency(report.penaltiesAmount)}</TableCell>
-                                    <TableCell>
-                                        {formatCurrency(
-                                            (report.principleAmount || 0) + (report.penaltiesAmount || 0)
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={formatStatus(report.status)}
-                                            color={getStatusColor(report.status)}
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center">
-                                    No reports found
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <AppTable
+                columns={tableColumns}
+                rows={pagedReports}
+                loading={loading}
+                emptyMessage="No reports found"
+                page={page}
+                rowsPerPage={ROWS_PER_PAGE}
+                totalRows={filteredReports.length}
+                onPageChange={(event, nextPage) => setPage(nextPage)}
+                minWidth={1100}
+            />
 
             <Snackbar
                 open={snackbar.open}

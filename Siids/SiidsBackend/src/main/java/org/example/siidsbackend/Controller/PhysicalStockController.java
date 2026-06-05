@@ -29,15 +29,22 @@ public class PhysicalStockController {
 
     @GetMapping("/temporary")
     @PreAuthorize("hasAuthority('STOCK_VIEW')")
-    public ResponseEntity<?> getTemporaryStock() {
-        return ResponseEntity.ok(physicalStockService.getTemporaryStock());
+    public ResponseEntity<?> getTemporaryStock(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search) {
+        return ResponseEntity.ok(physicalStockService.getTemporaryStockPage(page, size, search));
     }
 
     @GetMapping("/temporary/history")
     @PreAuthorize("hasAuthority('STOCK_VIEW')")
-    public ResponseEntity<?> getSeizureHistory() {
+    public ResponseEntity<?> getSeizureHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "ALL") String status) {
         String username = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
-        return ResponseEntity.ok(physicalStockService.getSeizureHistory(username));
+        return ResponseEntity.ok(physicalStockService.getSeizureHistoryPage(username, page, size, search, status));
     }
 
     @GetMapping("/temporary/next-reference")
@@ -151,7 +158,15 @@ public class PhysicalStockController {
 
     @GetMapping("/main")
     @PreAuthorize("hasAuthority('STOCK_VIEW')")
-    public ResponseEntity<?> getMainStock() {
+    public ResponseEntity<?> getMainStock(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "ALL") String view,
+            @RequestParam(defaultValue = "date_desc") String sort) {
+        if (page != null) {
+            return ResponseEntity.ok(physicalStockService.getMainStockPage(page, size, search, view, sort));
+        }
         return ResponseEntity.ok(physicalStockService.getAllGoodsForManager());
     }
 

@@ -1,39 +1,82 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, Paper, Typography,
-    Box, CircularProgress, Alert, TextField,
-    Chip, Select, MenuItem, FormControl, InputLabel,
-    Button, IconButton, Tooltip
+    Alert,
+    Box,
+    Chip,
+    CircularProgress,
+    FormControl,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    Select,
+    TextField,
+    Tooltip,
+    Typography
 } from '@mui/material';
-import { Search, Description } from '@mui/icons-material';
-import { ReportApi } from '../api/Axios/caseApi';
+import { Description, Search } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { ReportApi } from '../api/Axios/caseApi';
 import { routeTo } from '../constants/routes';
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
+
+const STATUS_OPTIONS = [
+    { value: 'all', label: 'All Statuses' },
+    { value: 'INVESTIGATION_COMPLETED', label: 'Investigation Completed' },
+    { value: 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', label: 'Approved' },
+    { value: 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE', label: 'Rejected' },
+    { value: 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER', label: 'Returned' },
+    { value: 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE', label: 'Submitted' },
+    { value: 'REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER', label: 'Assigned to Investigation Officer' }
+];
 
 const DirectorIntelligenceCaseReports = () => {
     const [reports, setReports] = useState([]);
+    const [totalReports, setTotalReports] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const taxTypeFilter = 'all';
+    const [page, setPage] = useState(0);
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchCaseReports();
-    }, []);
+    }, [page, searchQuery]);
 
     const fetchCaseReports = async () => {
         try {
             setLoading(true);
-            const response = await ReportApi.getReportsForDirectorIntelligence();
-            setReports(response.data || []);
+            const response = await ReportApi.getReportsForDirectorIntelligence({
+                page,
+                size: ROWS_PER_PAGE,
+                search: searchQuery,
+                sort: 'desc'
+            });
+
+            const pageData = response.data || {};
+            const rows = Array.isArray(pageData) ? pageData : pageData.content || [];
+            setReports(rows);
+            setTotalReports(Array.isArray(pageData) ? pageData.length : pageData.totalElements || rows.length);
+            setError(null);
         } catch (err) {
+            setReports([]);
+            setTotalReports(0);
             setError(err.response?.data?.message || 'Failed to fetch case reports');
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSearchChange = (value) => {
+        setSearchQuery(value);
+        setPage(0);
+    };
+
+    const handleStatusChange = (event) => {
+        setStatusFilter(event.target.value);
+        setPage(0);
     };
 
     const getStatusColor = (status) => {
@@ -43,54 +86,89 @@ const DirectorIntelligenceCaseReports = () => {
             case 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE': return 'success';
             case 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': return 'error';
             case 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': return 'warning';
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': return 'info';
             default: return 'default';
         }
     };
 
     const getStatusText = (status) => {
         const statusMap = {
-            'CASE_CREATED': 'Case Created',
-            'INVESTIGATION_COMPLETED': 'Investigation Completed',
-            'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE': 'Approved',
-            'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': 'Rejected',
-            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned',
-            'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted'
+            CASE_CREATED: 'Case Created',
+            INVESTIGATION_COMPLETED: 'Investigation Completed',
+            REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE: 'Approved',
+            REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE: 'Rejected',
+            REPORT_RETURNED_TO_INTELLIGENCE_OFFICER: 'Returned',
+            REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE: 'Submitted',
+            REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER: 'Assigned to Investigation Officer'
         };
         return statusMap[status] || status?.replace(/_/g, ' ') || 'Unknown Status';
     };
 
-    const filteredReports = reports.filter(report => {
-        if (!report) return false;
+    const formatDate = (dateString) => {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+    };
 
-        // Safely access properties
-        const caseNum = report.relatedCase?.caseNum?.toLowerCase() || '';
-        const taxType = report.relatedCase?.taxType?.toLowerCase() || '';
-        const description = report.description?.toLowerCase() || '';
-        const status = report.status || '';
-        const currentTaxType = report.relatedCase?.taxType || '';
+    const visibleReports = useMemo(() => {
+        if (statusFilter === 'all') return reports;
+        return reports.filter((report) => report?.status === statusFilter);
+    }, [reports, statusFilter]);
 
-        // Search filter
-        const matchesSearch = searchQuery === '' ||
-            caseNum.includes(searchQuery.toLowerCase()) ||
-            taxType.includes(searchQuery.toLowerCase()) ||
-            description.includes(searchQuery.toLowerCase());
-
-        // Status filter
-        const matchesStatus = statusFilter === 'all' || status === statusFilter;
-
-        // Tax type filter
-        const matchesTaxType = taxTypeFilter === 'all' || currentTaxType === taxTypeFilter;
-
-        return matchesSearch && matchesStatus && matchesTaxType;
-    });
-
-    if (loading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px">
-                <CircularProgress size={50} />
-            </Box>
-        );
-    }
+    const tableColumns = useMemo(() => [
+        {
+            key: 'caseNumber',
+            label: 'Case Number',
+            render: (report) => report.relatedCase?.caseNum || '-'
+        },
+        {
+            key: 'taxPeriod',
+            label: 'Tax Period',
+            render: (report) => report.relatedCase?.taxPeriod || '-'
+        },
+        {
+            key: 'description',
+            label: 'Description',
+            render: (report) => report.description || '-'
+        },
+        {
+            key: 'createdBy',
+            label: 'Created By',
+            render: (report) => report.createdBy || '-'
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (report) => (
+                <Chip
+                    label={getStatusText(report.status)}
+                    color={getStatusColor(report.status)}
+                    size="small"
+                />
+            )
+        },
+        {
+            key: 'createdAt',
+            label: 'Created Date',
+            render: (report) => formatDate(report.createdAt || report.createdDate || report.dateCreated)
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            headerStyle: { textAlign: 'center' },
+            cellStyle: { textAlign: 'center' },
+            render: (report) => (
+                <Tooltip title="View Details">
+                    <IconButton
+                        onClick={() => navigate(routeTo.reportDetails(report.id))}
+                        size="small"
+                    >
+                        <Description fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            )
+        }
+    ], [navigate]);
 
     return (
         <Box padding={2}>
@@ -106,124 +184,58 @@ const DirectorIntelligenceCaseReports = () => {
                 </Box>
             )}
 
-            <Box display="flex" gap={2} mb={3} flexWrap="wrap">
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} mb={2} flexWrap="wrap">
                 <TextField
                     size="small"
                     variant="outlined"
                     placeholder="Search by Case Number, Tax Type, or Description"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(event) => handleSearchChange(event.target.value)}
                     InputProps={{
                         startAdornment: <Search fontSize="small" style={{ marginRight: 8 }} />
                     }}
-                    sx={{ minWidth: 300 }}
+                    sx={{ minWidth: { xs: '100%', sm: 320 } }}
                 />
 
-                <FormControl size="small" sx={{ minWidth: 200 }}>
+                <FormControl size="small" sx={{ minWidth: 240 }}>
                     <InputLabel>Status</InputLabel>
                     <Select
                         value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
+                        onChange={handleStatusChange}
                         label="Status"
                         MenuProps={{
                             PaperProps: {
-                                sx: {
-                                    zIndex: 5000 // Higher than sidebar (3000)
-                                }
+                                sx: { zIndex: 5000 }
                             }
                         }}
                     >
-                        <MenuItem value="all">All Statuses</MenuItem>
-                        <MenuItem value="INVESTIGATION_COMPLETED">Investigation Completed</MenuItem>
-                        <MenuItem value="REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE">Approved</MenuItem>
-                        <MenuItem value="REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE">Rejected</MenuItem>
-                        <MenuItem value="REPORT_RETURNED_TO_INTELLIGENCE_OFFICER">Returned</MenuItem>
-                        <MenuItem value="REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE">Submitted</MenuItem>
-                        <MenuItem value="REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER">REPORT ASSIGNED TO INVESTIGATION OFFICER</MenuItem>
+                        {STATUS_OPTIONS.map((option) => (
+                            <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                            </MenuItem>
+                        ))}
                     </Select>
                 </FormControl>
 
-                {/*<FormControl size="small" sx={{ minWidth: 200 }}>*/}
-                {/*    <InputLabel>Tax Type</InputLabel>*/}
-                {/*    <Select*/}
-                {/*        value={taxTypeFilter}*/}
-                {/*        onChange={(e) => setTaxTypeFilter(e.target.value)}*/}
-                {/*        label="Tax Type"*/}
-                {/*    >*/}
-                {/*        <MenuItem value="all">All Tax Types</MenuItem>*/}
-                {/*        {uniqueTaxTypes.map(type => (*/}
-                {/*            <MenuItem key={type} value={type}>{type}</MenuItem>*/}
-                {/*        ))}*/}
-                {/*    </Select>*/}
-                {/*</FormControl>*/}
+                {loading && (
+                    <Box display="flex" alignItems="center" gap={1} color="text.secondary">
+                        <CircularProgress size={18} />
+                        <Typography variant="body2">Loading reports...</Typography>
+                    </Box>
+                )}
             </Box>
 
-            <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Case Number</TableCell>
-                            <TableCell>Tax Period</TableCell>
-                            <TableCell>Description</TableCell>
-                            <TableCell>Created By</TableCell>
-                            <TableCell>Status</TableCell>
-                            <TableCell>Created Date</TableCell>
-                            <TableCell>Actions</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filteredReports.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={7} align="center">
-                                    <Typography variant="body2" color="text.secondary">
-                                        No case reports found
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredReports.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>{report.relatedCase?.caseNum || '-'}</TableCell>
-                                    <TableCell>{report.relatedCase?.taxPeriod
-                                        || '-'}</TableCell>
-                                    <TableCell>{report.description || '-'}</TableCell>
-                                    <TableCell>{report.createdBy || '-'}</TableCell>
-                                    <TableCell>
-                                        <Chip
-                                            label={getStatusText(report.status)}
-                                            color={getStatusColor(report.status)}
-                                            size="small"
-                                        />
-                                    </TableCell>
-                                    <TableCell>
-                                        {report.createdAt ? new Date(report.createdAt).toLocaleDateString() : '-'}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box display="flex" gap={1}>
-                                            <Tooltip title="View Details">
-                                                <IconButton
-                                                    onClick={() => navigate(routeTo.reportDetails(report.id))}
-                                                    size="small"
-                                                >
-                                                    <Description fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                            {/*<Tooltip title="More Info">*/}
-                                            {/*    <IconButton*/}
-                                            {/*        onClick={() => navigate(routeTo.reportView(report.id))}*/}
-                                            {/*        size="small"*/}
-                                            {/*    >*/}
-                                            {/*        <Info fontSize="small" />*/}
-                                            {/*    </IconButton>*/}
-                                            {/*</Tooltip>*/}
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <AppTable
+                columns={tableColumns}
+                rows={visibleReports}
+                loading={loading}
+                emptyMessage="No case reports found"
+                page={page}
+                rowsPerPage={ROWS_PER_PAGE}
+                totalRows={statusFilter === 'all' ? totalReports : visibleReports.length}
+                onPageChange={(event, nextPage) => setPage(nextPage)}
+                minWidth={1100}
+            />
         </Box>
     );
 };

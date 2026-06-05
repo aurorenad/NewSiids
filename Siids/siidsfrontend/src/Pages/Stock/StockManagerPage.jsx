@@ -1,27 +1,32 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { stockApi } from '../../api/stockApi';
 import RightDrawer from '../../Components/ui/RightDrawer';
 import ConfirmDialog from '../../Components/ui/ConfirmDialog';
 import RequestReleaseModal from '../../Components/ui/RequestReleaseModal';
 import { toast, Toaster } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { 
-  Box, Typography, Paper, Grid, TextField, MenuItem, Button, 
-  IconButton, InputAdornment, Chip, CircularProgress, Tooltip,
-  Tabs, Tab, Divider, TablePagination
+import {
+  Box, Typography, Paper, Grid, MenuItem, Button,
+  IconButton, Chip, Tooltip,
+  Tabs, Tab, Divider
 } from '@mui/material';
 import { 
-  Search, Description, KeyboardReturn, Share, Inventory, 
+  Description, KeyboardReturn, Share,
   Download, Gavel, Info, CheckCircle, HourglassEmpty, 
   LocalShipping, Warning
 } from '@mui/icons-material';
 import { AuthContext } from '../../context/AuthContext';
 import { hasPermission } from '../../utils/authorization';
 import { PERMISSIONS } from '../../constants/permissions';
+import AppTable from '../../Components/ui/AppTable';
+
+const ROWS_PER_PAGE = 10;
+const TAB_VIEWS = ['PENDING_REVIEW', 'IN_WAREHOUSE', 'PENDING_RELEASE', 'RELEASED'];
 
 const StockManagerPage = () => {
   const { authState } = useContext(AuthContext);
   const [stockList, setStockList] = useState([]);
+  const [totalStock, setTotalStock] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0); 
   
@@ -35,14 +40,20 @@ const StockManagerPage = () => {
   const [sortBy, setSortBy] = useState('date_desc');
 
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
   const canManageStock = hasPermission(authState, PERMISSIONS.STOCK_MANAGE);
 
   const fetchStock = async () => {
     try {
       setIsLoading(true);
-      const res = await stockApi.getMainStock();
-      setStockList(res.data || []);
+      const res = await stockApi.getMainStock({
+        page,
+        size: ROWS_PER_PAGE,
+        search: searchQuery,
+        view: TAB_VIEWS[activeTab],
+        sort: sortBy
+      });
+      setStockList(res.data?.content || []);
+      setTotalStock(res.data?.totalElements || 0);
     } catch (err) {
       toast.error('Failed to load main stock inventory');
     } finally {
@@ -50,69 +61,9 @@ const StockManagerPage = () => {
     }
   };
 
-  useEffect(() => { 
-    fetchStock(); 
-  }, []);
-
-  const filteredByStatus = useMemo(() => {
-    switch(activeTab) {
-      case 0: 
-        return stockList.filter(i => 
-          i.status === 'PENDING_REVIEW' || 
-          i.status === 'RETURNED' || 
-          i.status === 'ESCALATED' || 
-          i.status === 'RETURNED_FOR_CORRECTION' ||
-          i.status === 'IN_TEMPORARY_STOCK' ||
-          i.status === 'PENDING_JUSTIFICATION'
-        );
-      case 1: 
-        return stockList.filter(i => 
-          i.status === 'IN_STOCK' || 
-          i.status === 'IN_MAIN_STOCK' ||
-          (!['PENDING_REVIEW', 'RETURNED', 'ESCALATED', 'RETURNED_FOR_CORRECTION', 'PENDING_RELEASE', 'PENDING_PRSO_RELEASE_APPROVAL', 'RELEASED', 'RELEASED_FROM_MAIN', 'IN_TEMPORARY_STOCK', 'PENDING_JUSTIFICATION'].includes(i.status))
-        );
-      case 2: 
-        return stockList.filter(i => 
-          i.status === 'PENDING_RELEASE' || 
-          i.status === 'PENDING_PRSO_RELEASE_APPROVAL' ||
-          i.status === 'PENDING_PRSO_EDIT_APPROVAL'
-        );
-      case 3: 
-        return stockList.filter(i => 
-          i.status === 'RELEASED' || 
-          i.status === 'RELEASED_FROM_MAIN'
-        );
-      default: return stockList;
-    }
-  }, [stockList, activeTab]);
-
-  const processedStock = useMemo(() => {
-    let list = [...filteredByStatus];
-
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      list = list.filter(item => 
-        item.seizureNumber?.toLowerCase().includes(q) ||
-        item.taxpayerName?.toLowerCase().includes(q) ||
-        item.goodsDescription?.toLowerCase().includes(q) ||
-        item.pvNumber?.toLowerCase().includes(q)
-      );
-    }
-
-    list.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.dateTimeSeized || 0);
-      const dateB = new Date(b.createdAt || b.dateTimeSeized || 0);
-      if (sortBy === 'date_desc') return dateB - dateA;
-      if (sortBy === 'date_asc') return dateA - dateB;
-      return 0;
-    });
-
-    return list;
-  }, [filteredByStatus, searchQuery, sortBy]);
-
-  const paginatedStock = useMemo(() => {
-    return processedStock.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [processedStock, page, rowsPerPage]);
+  useEffect(() => {
+    fetchStock();
+  }, [activeTab, page, searchQuery, sortBy]);
 
   const handleActionSuccess = () => {
     setReleaseModalOpen(false);
@@ -157,6 +108,112 @@ const StockManagerPage = () => {
     }
   };
 
+  const columns = [
+    {
+      key: 'references',
+      label: 'References',
+      render: (item) => (
+        <Box>
+          <Typography
+            onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}
+            sx={{ cursor: 'pointer', color: 'var(--rra-blue)', fontWeight: 700, '&:hover': { textDecoration: 'underline' } }}
+          >
+            {item.pvNumber || 'PENDING PV'}
+          </Typography>
+          <Typography variant="caption" color="var(--gray-400)">SN: {item.seizureNumber}</Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'taxpayer',
+      label: 'Taxpayer',
+      render: (item) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600}>{item.taxpayerName}</Typography>
+          <Typography variant="caption" color="var(--gray-500)">TIN: {item.taxpayerTin}</Typography>
+        </Box>
+      )
+    },
+    {
+      key: 'goodsDescription',
+      label: 'Goods Description',
+      render: (item) => (
+        <Box sx={{ maxWidth: 320 }}>
+          <Typography variant="body2" noWrap sx={{ color: 'var(--gray-700)' }}>{item.goodsDescription}</Typography>
+          {getStatusBadge(item.status)}
+        </Box>
+      )
+    },
+    ...(activeTab === 2 ? [{
+      key: 'requestedAt',
+      label: 'Requested At',
+      render: (item) => (
+        <Box>
+          <Typography variant="body2">
+            {item.releaseRequestedAt ? format(new Date(item.releaseRequestedAt), 'dd MMM yyyy HH:mm') : (item.updatedAt ? format(new Date(item.updatedAt), 'dd MMM yyyy HH:mm') : '---')}
+          </Typography>
+          <Typography variant="caption" color="var(--rra-red)">
+            Waiting: {item.releaseRequestedAt ? formatDistanceToNow(new Date(item.releaseRequestedAt)) : (item.updatedAt ? formatDistanceToNow(new Date(item.updatedAt)) : 'N/A')}
+          </Typography>
+        </Box>
+      )
+    }] : []),
+    ...(activeTab === 3 ? [{
+      key: 'auctionInfo',
+      label: 'Auction Info',
+      render: (item) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600}>{item.auctionWinner || 'N/A'}</Typography>
+          <Typography variant="caption" color="var(--green-600)" fontWeight={700}>RWF {item.auctionAmount?.toLocaleString() || '0'}</Typography>
+        </Box>
+      )
+    }] : []),
+    {
+      key: 'actions',
+      label: 'Action',
+      cellStyle: { textAlign: 'center' },
+      render: (item) => (
+        <Box display="flex" gap={1} justifyContent="center" alignItems="center" flexWrap="wrap">
+          {canManageStock && activeTab === 0 && (item.status !== 'RETURNED' && item.status !== 'RETURNED_FOR_CORRECTION') && (
+            <>
+              <Button size="small" variant="contained" color="success" onClick={() => { setSelectedItem(item); setApproveDialog(true); }}>Approve</Button>
+              <Button size="small" variant="outlined" color="error" onClick={() => { setSelectedItem(item); setReturnDialog(true); }}>Return</Button>
+            </>
+          )}
+          {canManageStock && activeTab === 1 && (
+            <Button
+              size="small"
+              variant="contained"
+              startIcon={<Share />}
+              onClick={() => {
+                setSelectedItem(item);
+                setReleaseModalOpen(true);
+              }}
+            >
+              Request Release
+            </Button>
+          )}
+          {activeTab === 2 && <Chip label="In Review" size="small" variant="outlined" color="info" />}
+
+          {item.pvNumber && (
+            <Tooltip title="Download Statement of Offence (PV)">
+              <IconButton
+                onClick={() => handleDownloadPV(item)}
+                sx={{
+                  color: 'var(--rra-blue)',
+                  bgcolor: 'rgba(0, 61, 165, 0.05)',
+                  '&:hover': { bgcolor: 'rgba(0, 61, 165, 0.12)' }
+                }}
+              >
+                <Download fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      )
+    }
+  ];
+
   return (
     <Box sx={{ p: 4, bgcolor: 'var(--surface-page)', minHeight: '100vh' }}>
       <Toaster position="top-right" richColors />
@@ -165,156 +222,34 @@ const StockManagerPage = () => {
         <Box>
           <Typography variant="h4" fontWeight={800} color="var(--gray-900)">Warehouse Operations</Typography>
           <Typography variant="body1" color="var(--gray-500)">
-            Total Inventory: <strong>{stockList.length}</strong> items tracked
+            Total Inventory: <strong>{totalStock}</strong> items tracked
           </Typography>
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Search TIN, PV, or goods..."
-            value={searchQuery}
-            onChange={e => { setSearchQuery(e.target.value); setPage(0); }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search fontSize="small" sx={{ color: 'var(--gray-400)' }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ width: 320, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'white' } }}
-          />
         </Box>
       </Box>
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
         <Tabs value={activeTab} onChange={(e, val) => { setActiveTab(val); setPage(0); }} aria-label="stock tabs">
-          <Tab label={`Pending Review (${stockList.filter(i => i.status === 'PENDING_REVIEW' || i.status === 'RETURNED' || i.status === 'ESCALATED' || i.status === 'RETURNED_FOR_CORRECTION' || i.status === 'IN_TEMPORARY_STOCK' || i.status === 'PENDING_JUSTIFICATION').length})`} sx={{ textTransform: 'none', fontWeight: 600 }} />
+          <Tab label="Pending Review" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab label="In Warehouse" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab label="Pending Release" sx={{ textTransform: 'none', fontWeight: 600 }} />
           <Tab label="Released" sx={{ textTransform: 'none', fontWeight: 600 }} />
         </Tabs>
       </Box>
 
-      <Paper sx={{ 
-        borderRadius: 4, overflow: 'hidden', background: 'rgba(255, 255, 255, 0.7)', 
-        backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.3)',
-        boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.08)'
-      }}>
-        {isLoading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress sx={{ color: 'var(--rra-blue)' }} /></Box>
-        ) : processedStock.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 10 }}>
-            <Inventory sx={{ fontSize: 64, color: 'var(--gray-200)', mb: 2 }} />
-            <Typography variant="h6" color="var(--gray-400)">{searchQuery ? 'No matching items found' : 'No items in this section'}</Typography>
-          </Box>
-        ) : (
-          <>
-            <Box sx={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(0, 61, 165, 0.03)' }}>
-                    <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">References</th>
-                    <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">Taxpayer</th>
-                    <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">Goods Description</th>
-                    {activeTab === 2 && <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">Requested At</th>}
-                    {activeTab === 3 && <th style={{ padding: '16px 24px', textAlign: 'left' }} className="type-caption uppercase bold gray-500">Auction Info</th>}
-                    <th style={{ padding: '16px 24px', textAlign: 'center' }} className="type-caption uppercase bold gray-500">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedStock.map(item => (
-                    <tr key={item.id} style={{ borderTop: '1px solid rgba(0,0,0,0.05)', transition: 'background 0.2s' }}>
-                      <td style={{ padding: '16px 24px' }}>
-                        <Typography 
-                          onClick={() => { setSelectedItem(item); setDrawerOpen(true); }}
-                          sx={{ cursor: 'pointer', color: 'var(--rra-blue)', fontWeight: 700, '&:hover': { textDecoration: 'underline' } }}
-                        >
-                          {item.pvNumber || 'PENDING PV'}
-                        </Typography>
-                        <Typography variant="caption" color="var(--gray-400)">SN: {item.seizureNumber}</Typography>
-                      </td>
-                      <td style={{ padding: '16px 24px' }}>
-                        <Typography variant="body2" fontWeight={600}>{item.taxpayerName}</Typography>
-                        <Typography variant="caption" color="var(--gray-500)">TIN: {item.taxpayerTin}</Typography>
-                      </td>
-                      <td style={{ padding: '16px 24px', maxWidth: 300 }}>
-                        <Typography variant="body2" noWrap sx={{ color: 'var(--gray-700)' }}>{item.goodsDescription}</Typography>
-                        {getStatusBadge(item.status)}
-                      </td>
-                      {activeTab === 2 && (
-                        <td style={{ padding: '16px 24px' }}>
-                          <Typography variant="body2">
-                            {item.releaseRequestedAt ? format(new Date(item.releaseRequestedAt), 'dd MMM yyyy HH:mm') : (item.updatedAt ? format(new Date(item.updatedAt), 'dd MMM yyyy HH:mm') : '---')}
-                          </Typography>
-                          <Typography variant="caption" color="var(--rra-red)">
-                            Waiting: {item.releaseRequestedAt ? formatDistanceToNow(new Date(item.releaseRequestedAt)) : (item.updatedAt ? formatDistanceToNow(new Date(item.updatedAt)) : 'N/A')}
-                          </Typography>
-                        </td>
-                      )}
-                      {activeTab === 3 && (
-                        <td style={{ padding: '16px 24px' }}>
-                          <Typography variant="body2" fontWeight={600}>{item.auctionWinner || 'N/A'}</Typography>
-                          <Typography variant="caption" color="var(--green-600)" fontWeight={700}>RWF {item.auctionAmount?.toLocaleString() || '0'}</Typography>
-                        </td>
-                      )}
-                      <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                        <Box display="flex" gap={1} justifyContent="center" alignItems="center">
-                          {canManageStock && activeTab === 0 && (item.status !== 'RETURNED' && item.status !== 'RETURNED_FOR_CORRECTION') && (
-                            <>
-                              <Button size="small" variant="contained" color="success" onClick={() => { setSelectedItem(item); setApproveDialog(true); }}>Approve</Button>
-                              <Button size="small" variant="outlined" color="error" onClick={() => { setSelectedItem(item); setReturnDialog(true); }}>Return</Button>
-                            </>
-                          )}
-                          {canManageStock && activeTab === 1 && (
-                            <Button 
-                              size="small" 
-                              variant="contained" 
-                              startIcon={<Share />} 
-                              onClick={() => { 
-                                setSelectedItem(item); 
-                                setReleaseModalOpen(true); 
-                              }}
-                            >
-                              Request Release
-                            </Button>
-                          )}
-                          {activeTab === 2 && <Chip label="In Review" size="small" variant="outlined" color="info" />}
-
-                          {item.pvNumber && (
-                            <Tooltip title="Download Statement of Offence (PV)">
-                              <IconButton 
-                                onClick={() => handleDownloadPV(item)} 
-                                sx={{ 
-                                  color: 'var(--rra-blue)', 
-                                  bgcolor: 'rgba(0, 61, 165, 0.05)',
-                                  '&:hover': { bgcolor: 'rgba(0, 61, 165, 0.12)' }
-                                }}
-                              >
-                                <Download fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Box>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={processedStock.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={(e, p) => setPage(p)}
-              onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
-              sx={{ borderTop: '1px solid rgba(0,0,0,0.05)' }}
-            />
-          </>
-        )}
-      </Paper>
+      <AppTable
+        columns={columns}
+        rows={stockList}
+        loading={isLoading}
+        emptyMessage={searchQuery ? 'No matching items found' : 'No items in this section'}
+        searchValue={searchQuery}
+        searchPlaceholder="Search TIN, PV, or goods..."
+        onSearchChange={(value) => { setSearchQuery(value); setPage(0); }}
+        page={page}
+        rowsPerPage={ROWS_PER_PAGE}
+        totalRows={totalStock}
+        onPageChange={(event, nextPage) => setPage(nextPage)}
+        minWidth={1100}
+      />
 
       {/* Item Drawer */}
       <RightDrawer

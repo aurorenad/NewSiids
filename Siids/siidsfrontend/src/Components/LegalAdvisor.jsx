@@ -1,9 +1,8 @@
 // LEGAL ADVISOR DASHBOARD - UPDATED WITH RETURN TO INVESTIGATION OFFICER FUNCTIONALITY
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import {
     Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
-    IconButton, Paper, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead,
-    TableRow, TextField, Typography, Alert, Tooltip, Chip
+    IconButton, Snackbar, TextField, Typography, Alert, Tooltip, Chip
 } from '@mui/material';
 
 import {
@@ -16,14 +15,18 @@ import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
 
 const LegalAdvisorDashboard = () => {
     const { authState } = useContext(AuthContext);
     const [reports, setReports] = useState([]);
-    const [filteredReports, setFilteredReports] = useState([]);
+    const [totalReports, setTotalReports] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [page, setPage] = useState(0);
     const [pdfLoading, setPdfLoading] = useState({});
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -38,7 +41,7 @@ const LegalAdvisorDashboard = () => {
     const canLegalReview = hasPermission(authState, PERMISSIONS.LEGAL_REVIEW);
     useEffect(() => {
         fetchLegalAdvisorReports();
-    }, []);
+    }, [page, searchTerm]);
 
     const fetchLegalAdvisorReports = async () => {
         try {
@@ -47,21 +50,28 @@ const LegalAdvisorDashboard = () => {
 
             console.log('Fetching legal advisor reports...');
 
-            const response = await ReportApi.getReportsForLegalAdvisor();
+            const response = await ReportApi.getReportsForLegalAdvisor({
+                page,
+                size: ROWS_PER_PAGE,
+                search: searchTerm,
+            });
 
             console.log('API Response:', response);
             console.log('Response data:', response.data);
 
-            if (!response.data || !Array.isArray(response.data)) {
+            const pageData = response.data || {};
+            const content = pageData.content || [];
+
+            if (!Array.isArray(content)) {
                 console.error('Invalid response data:', response.data);
                 setError('Invalid data received from server');
                 setReports([]);
-                setFilteredReports([]);
+                setTotalReports(0);
                 return;
             }
 
             // Map reports with proper data extraction
-            const mapped = response.data.map(r => {
+            const mapped = content.map(r => {
                 console.log(`Processing report ${r.id}:`, {
                     findingsAttachmentPaths: r.findingsAttachmentPaths,
                     attachments: r.attachmentPaths,
@@ -108,7 +118,7 @@ const LegalAdvisorDashboard = () => {
             console.log('Mapped reports:', mapped);
 
             setReports(mapped);
-            setFilteredReports(mapped);
+            setTotalReports(pageData.totalElements || 0);
 
             // Show summary
             const reportsWithFindings = mapped.filter(r => r.hasFindings).length;
@@ -122,33 +132,16 @@ const LegalAdvisorDashboard = () => {
             console.error('Error fetching reports:', err);
             setError(err.response?.data?.message || err.message || 'Failed to load reports');
             setReports([]);
-            setFilteredReports([]);
+            setTotalReports(0);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        let results = reports;
-
-        if (searchTerm.trim()) {
-            const term = searchTerm.toLowerCase();
-            results = results.filter(report => {
-                const searchableText = [
-                    report.id?.toString(),
-                    report.caseNum,
-                    report.createdBy,
-                    report.status,
-                    report.findings,
-                    report.recommendations
-                ].filter(Boolean).join(' ').toLowerCase();
-
-                return searchableText.includes(term);
-            });
-        }
-
-        setFilteredReports(results);
-    }, [searchTerm, reports]);
+    const handleSearchChange = (value) => {
+        setSearchTerm(value);
+        setPage(0);
+    };
 
     const handleViewPdf = async (reportId, filename) => {
         try {
@@ -283,6 +276,115 @@ const LegalAdvisorDashboard = () => {
             report.status === 'INVESTIGATION_COMPLETED';
     };
 
+    const formatDate = (value) => {
+        if (!value) return 'N/A';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const tableColumns = useMemo(() => [
+        {
+            key: 'id',
+            label: 'Report ID',
+            render: (report) => <Typography fontWeight="bold">#{report.id}</Typography>
+        },
+        {
+            key: 'caseNum',
+            label: 'Case Number',
+            render: (report) => report.caseNum || '-'
+        },
+        {
+            key: 'createdBy',
+            label: 'Submitted By',
+            render: (report) => report.createdBy || '-'
+        },
+        {
+            key: 'createdAt',
+            label: 'Date Submitted',
+            render: (report) => formatDate(report.createdAt)
+        },
+        {
+            key: 'status',
+            label: 'Status',
+            render: (report) => (
+                <Chip
+                    label={getStatusText(report.status)}
+                    size="small"
+                    sx={{
+                        backgroundColor: getStatusColor(report.status),
+                        color: 'white',
+                        fontWeight: 'bold',
+                        minWidth: 150
+                    }}
+                />
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            headerStyle: { textAlign: 'center' },
+            cellStyle: { textAlign: 'center', minWidth: 220 },
+            render: (report) => {
+                const hasPDFs = report.findingsAttachmentPaths && report.findingsAttachmentPaths.length > 0;
+                const isLoading = pdfLoading[report.id];
+                const canReturn = canReturnReport(report);
+
+                return (
+                    <Box display="flex" gap={1} alignItems="center" justifyContent="center" flexWrap="wrap">
+                        <Tooltip title="View Full Findings Details">
+                            <IconButton
+                                color="primary"
+                                component={Link}
+                                to={routeTo.reportFindings(report.id)}
+                                size="small"
+                            >
+                                <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+
+                        {canLegalReview && canReturn && (
+                            <Tooltip title="Return to Assistant Commissioner">
+                                <IconButton
+                                    color="warning"
+                                    onClick={() => handleReturnClick(report)}
+                                    size="small"
+                                >
+                                    <ReturnIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        )}
+
+                        {hasPDFs && report.findingsAttachmentPaths.map((filename, index) => (
+                            <Tooltip key={filename || index} title={`Download PDF ${index + 1}`}>
+                                <IconButton
+                                    color="secondary"
+                                    onClick={() => handleViewPdf(report.id, filename)}
+                                    size="small"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? <CircularProgress size={20} /> : <PictureAsPdf fontSize="small" />}
+                                </IconButton>
+                            </Tooltip>
+                        ))}
+
+                        {hasPDFs && (
+                            <Typography variant="caption" color="textSecondary" sx={{ width: '100%' }}>
+                                {report.findingsAttachmentPaths.length} PDF file(s)
+                            </Typography>
+                        )}
+                    </Box>
+                );
+            }
+        }
+    ], [pdfLoading, canLegalReview]);
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
@@ -326,174 +428,34 @@ const LegalAdvisorDashboard = () => {
                     Refresh All
                 </Button>
             </Box>
-            <Box display="flex" gap={2} alignItems="center" mb={2}>
+
+            <Box display="flex" gap={2} alignItems="center" mb={2} flexWrap="wrap">
                 <TextField
                     size="small"
                     placeholder="Search reports by ID, case number, status..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(event) => handleSearchChange(event.target.value)}
                     InputProps={{
                         startAdornment: <SearchIcon sx={{ mr: 1, color: 'action.active' }} />
                     }}
-                    sx={{ width: 400 }}
+                    sx={{ width: { xs: '100%', sm: 400 } }}
                 />
                 <Typography variant="body2" color="textSecondary">
-                    Showing {filteredReports.length} of {reports.length} reports
+                    Showing {reports.length} of {totalReports} reports
                 </Typography>
             </Box>
 
-            {/* Reports Table */}
-            <TableContainer component={Paper} sx={{ maxHeight: 600, overflow: 'auto' }}>
-                <Table stickyHeader>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell><strong>Report ID</strong></TableCell>
-                            <TableCell><strong>Case Number</strong></TableCell>
-                            <TableCell><strong>Submitted By</strong></TableCell>
-                            <TableCell><strong>Date Submitted</strong></TableCell>
-                            <TableCell><strong>Status</strong></TableCell>
-                            <TableCell><strong>Actions</strong></TableCell>
-                        </TableRow>
-                    </TableHead>
-
-                    <TableBody>
-                        {filteredReports.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                                    <Typography color="textSecondary">
-                                        {reports.length === 0
-                                            ? 'No reports assigned to you yet'
-                                            : 'No reports match your search'}
-                                    </Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            filteredReports.map((report) => {
-                                const hasPDFs = report.findingsAttachmentPaths &&
-                                    report.findingsAttachmentPaths.length > 0;
-                                const isLoading = pdfLoading[report.id];
-                                const canReturn = canReturnReport(report);
-
-                                return (
-                                    <TableRow
-                                        key={report.id}
-                                        hover
-                                        sx={{
-                                            backgroundColor: report.hasFindings ? '#f9f9f9' : 'inherit',
-                                            '&:hover': {
-                                                backgroundColor: '#f0f0f0'
-                                            }
-                                        }}
-                                    >
-                                        <TableCell>
-                                            <Typography fontWeight="bold">
-                                                #{report.id}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Typography variant="body2">
-                                                {report.caseNum}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Typography variant="body2">
-                                                {report.createdBy}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Typography variant="body2">
-                                                {report.createdAt
-                                                    ? new Date(report.createdAt).toLocaleDateString('en-US', {
-                                                        year: 'numeric',
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })
-                                                    : 'N/A'}
-                                            </Typography>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Chip
-                                                label={getStatusText(report.status)}
-                                                size="small"
-                                                sx={{
-                                                    backgroundColor: getStatusColor(report.status),
-                                                    color: 'white',
-                                                    fontWeight: 'bold',
-                                                    minWidth: 150
-                                                }}
-                                            />
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Box display="flex" gap={1} alignItems="center">
-                                                {/* View Findings Button */}
-                                                <Tooltip title="View Full Findings Details">
-                                                    <IconButton
-                                                        color="primary"
-                                                        component={Link}
-                                                        to={routeTo.reportFindings(report.id)}
-                                                        size="small"
-                                                    >
-                                                        <VisibilityIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-
-                                                {/* Return Button */}
-                                                {canLegalReview && canReturn && (
-                                                    <Tooltip title="Return to Assistant Commissioner">
-                                                        <IconButton
-                                                            color="warning"
-                                                            onClick={() => handleReturnClick(report)}
-                                                            size="small"
-                                                        >
-                                                            <ReturnIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-
-                                                {/* PDF Download Buttons */}
-                                                {hasPDFs && (
-                                                    <Box display="flex" gap={0.5}>
-                                                        {report.findingsAttachmentPaths.map((filename, index) => (
-                                                            <Tooltip key={index} title={`Download PDF ${index + 1}`}>
-                                                                <IconButton
-                                                                    color="secondary"
-                                                                    onClick={() => handleViewPdf(report.id, filename, index)}
-                                                                    size="small"
-                                                                    disabled={isLoading}
-                                                                >
-                                                                    {isLoading ? (
-                                                                        <CircularProgress size={20} />
-                                                                    ) : (
-                                                                        <PictureAsPdf fontSize="small" />
-                                                                    )}
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        ))}
-                                                    </Box>
-                                                )}
-                                            </Box>
-
-                                            {/* Display number of PDFs if available */}
-                                            {hasPDFs && (
-                                                <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
-                                                    {report.findingsAttachmentPaths.length} PDF file(s) available
-                                                </Typography>
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <AppTable
+                columns={tableColumns}
+                rows={reports}
+                loading={loading}
+                emptyMessage={reports.length === 0 ? 'No reports assigned to you yet' : 'No reports match your search'}
+                page={page}
+                rowsPerPage={ROWS_PER_PAGE}
+                totalRows={totalReports}
+                onPageChange={(event, nextPage) => setPage(nextPage)}
+                minWidth={1100}
+            />
 
             {/* Return Report Dialog */}
             <Dialog

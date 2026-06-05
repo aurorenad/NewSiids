@@ -1,7 +1,7 @@
 import axios from './axios';
 
 export const adminApi = {
-    getUsers: () => axios.get('/users'),
+    getUsers: (params = {}) => axios.get('/users', { params }),
     registerUser: (data) => axios.post('/admin/register-user', data),
     deactivateUser: (id) => axios.put(`/users/${id}/deactivate`, {}),
     updateUserRole: (id, data) => axios.put(`/users/${id}/role`, data),

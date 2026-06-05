@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
 import org.example.siidsbackend.DTO.Request.InformerRegistrationDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Service.*;
 import org.springframework.http.HttpStatus;
@@ -179,9 +180,27 @@ public class CaseController {
 
     @GetMapping
     @PreAuthorize("hasAuthority('CASE_VIEW')")
-    public ResponseEntity<List<CaseResponseDTO>> getMyCases() {
+    public ResponseEntity<?> getMyCases(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "all") String category,
+            @RequestParam(defaultValue = "false") boolean withReports,
+            @RequestParam(defaultValue = "desc") String sort) {
         String employeeId = getCurrentUser();
         try {
+            if (page != null) {
+                PageResponseDTO<CaseResponseDTO> response = caseService.getCasePageByCreator(
+                        employeeId.trim(),
+                        page,
+                        size,
+                        search,
+                        category,
+                        withReports,
+                        sort);
+                return ResponseEntity.ok(response);
+            }
+
             List<CaseResponseDTO> response = caseService.getCasesByCreator(employeeId.trim());
             return ResponseEntity.ok(response);
         } catch (Exception e) {

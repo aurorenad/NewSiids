@@ -2,6 +2,7 @@ package org.example.siidsbackend.Controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Service.UserService;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
@@ -181,8 +183,11 @@ public class UserController {
 
     @GetMapping("/users")
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public List<User> getAllUsers() {
-        return service.getAllUsers();
+    public PageResponseDTO<User> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "") String search) {
+        return service.getUserPage(page, size, search);
     }
 
     @GetMapping("/users/{username}/role-history")

@@ -1,13 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from './../api/Axios/caseApi';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
     Card,
     CircularProgress,
     Typography,
@@ -19,10 +13,15 @@ import {
     Alert
 } from '@mui/material';
 import { Refresh as RefreshIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
 
 const FinesReport = () => {
     const [reportData, setReportData] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [withFinesPage, setWithFinesPage] = useState(0);
+    const [withoutFinesPage, setWithoutFinesPage] = useState(0);
     const navigate = useNavigate();
     const [snackbar, setSnackbar] = useState({
         open: false,
@@ -56,6 +55,38 @@ const FinesReport = () => {
             setLoading(false);
         }
     };
+
+    const formatCurrency = (amount) => `${(amount || 0).toFixed(2)}`;
+
+    const formatDate = (value) => {
+        if (!value) return '-';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+    };
+
+    const reportColumns = useMemo(() => [
+        { key: 'id', label: 'Report ID', render: (report) => report.id },
+        { key: 'caseNum', label: 'Case Number', render: (report) => report.relatedCase?.caseNum || 'N/A' },
+        { key: 'principleAmount', label: 'Principle Amount (FRW)', render: (report) => formatCurrency(report.principleAmount) },
+        { key: 'penaltiesAmount', label: 'Penalties Amount (FRW)', render: (report) => formatCurrency(report.penaltiesAmount) },
+        {
+            key: 'total',
+            label: 'Total (FRW)',
+            render: (report) => formatCurrency((report.principleAmount || 0) + (report.penaltiesAmount || 0))
+        },
+        { key: 'createdAt', label: 'Created At', render: (report) => formatDate(report.createdAt) }
+    ], []);
+
+    const reportsWithFines = reportData?.reportsWithFines || [];
+    const reportsWithoutFines = reportData?.reportsWithoutFines || [];
+    const pagedReportsWithFines = reportsWithFines.slice(
+        withFinesPage * ROWS_PER_PAGE,
+        withFinesPage * ROWS_PER_PAGE + ROWS_PER_PAGE
+    );
+    const pagedReportsWithoutFines = reportsWithoutFines.slice(
+        withoutFinesPage * ROWS_PER_PAGE,
+        withoutFinesPage * ROWS_PER_PAGE + ROWS_PER_PAGE
+    );
 
     if (loading) {
         return (
@@ -153,36 +184,17 @@ const FinesReport = () => {
                 <Typography variant="h6" gutterBottom>
                     Reports with Fines
                 </Typography>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Report ID</TableCell>
-                                <TableCell>Case Number</TableCell>
-                                <TableCell>Principle Amount(FRW)</TableCell>
-                                <TableCell>Penalties Amount(FRW)</TableCell>
-                                <TableCell>Total(FRW)</TableCell>
-                                <TableCell>Created At</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {reportData?.reportsWithFines?.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>{report.id}</TableCell>
-                                    <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
-                                    <TableCell>${report.principleAmount?.toFixed(2) || '0.00'}</TableCell>
-                                    <TableCell>${report.penaltiesAmount?.toFixed(2) || '0.00'}</TableCell>
-                                    <TableCell>
-                                        ${((report.principleAmount || 0) + (report.penaltiesAmount || 0)).toFixed(2)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {new Date(report.createdAt).toLocaleDateString()}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <AppTable
+                    columns={reportColumns}
+                    rows={pagedReportsWithFines}
+                    loading={loading}
+                    emptyMessage="No reports with fines found"
+                    page={withFinesPage}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    totalRows={reportsWithFines.length}
+                    onPageChange={(event, nextPage) => setWithFinesPage(nextPage)}
+                    minWidth={900}
+                />
             </Card>
 
             {/* Reports without Fines Table */}
@@ -190,36 +202,17 @@ const FinesReport = () => {
                 <Typography variant="h6" gutterBottom>
                     Reports without Fines
                 </Typography>
-                <TableContainer component={Paper}>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Report ID</TableCell>
-                                <TableCell>Case Number</TableCell>
-                                <TableCell>Principle Amount</TableCell>
-                                <TableCell>Penalties Amount</TableCell>
-                                <TableCell>Total</TableCell>
-                                <TableCell>Created At</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {reportData?.reportsWithoutFines?.map((report) => (
-                                <TableRow key={report.id}>
-                                    <TableCell>{report.id}</TableCell>
-                                    <TableCell>{report.relatedCase?.caseNum || 'N/A'}</TableCell>
-                                    <TableCell>${report.principleAmount?.toFixed(2) || '0.00'}</TableCell>
-                                    <TableCell>${report.penaltiesAmount?.toFixed(2) || '0.00'}</TableCell>
-                                    <TableCell>
-                                        ${((report.principleAmount || 0) + (report.penaltiesAmount || 0)).toFixed(2)}
-                                    </TableCell>
-                                    <TableCell>
-                                        {new Date(report.createdAt).toLocaleDateString()}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <AppTable
+                    columns={reportColumns}
+                    rows={pagedReportsWithoutFines}
+                    loading={loading}
+                    emptyMessage="No reports without fines found"
+                    page={withoutFinesPage}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    totalRows={reportsWithoutFines.length}
+                    onPageChange={(event, nextPage) => setWithoutFinesPage(nextPage)}
+                    minWidth={900}
+                />
             </Card>
         </Box>
     );

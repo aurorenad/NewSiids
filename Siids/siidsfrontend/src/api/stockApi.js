@@ -2,8 +2,8 @@ import axios from './axios';
 
 export const stockApi = {
     // TEMPORARY STOCK
-    getTemporaryStock: () => axios.get('/api/stock/goods/temporary'),
-    getSeizureHistory: () => axios.get('/api/stock/goods/temporary/history'),
+    getTemporaryStock: (params = {}) => axios.get('/api/stock/goods/temporary', { params }),
+    getSeizureHistory: (params = {}) => axios.get('/api/stock/goods/temporary/history', { params }),
     getNextReference: () => axios.get('/api/stock/goods/temporary/next-reference'),
     createSeizureNote: (data) => axios.post('/api/stock/goods/temporary/seizure-notes', data),
     updateSeizureNote: (id, data) => axios.put(`/api/stock/goods/temporary/seizure-notes/${id}`, data),
@@ -19,7 +19,7 @@ export const stockApi = {
     rejectReleaseMachine: (id, reason) => axios.patch(`/api/stock/goods/${id}/reject-release`, { reason }),
 
     // MAIN STOCK
-    getMainStock: () => axios.get('/api/stock/goods/main'),
+    getMainStock: (params = {}) => axios.get('/api/stock/goods/main', { params }),
     downloadPVPdf: (id) => axios.get(`/api/stock/goods/${id}/pv-pdf`, { responseType: 'blob' }),
 
     // PRSO APPROVALS

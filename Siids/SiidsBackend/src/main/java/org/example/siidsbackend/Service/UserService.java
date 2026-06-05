@@ -1,6 +1,7 @@
 package org.example.siidsbackend.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.Model.AccountAuditLog;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
@@ -10,6 +11,9 @@ import org.example.siidsbackend.Repository.EmployeeRepo;
 import org.example.siidsbackend.Repository.UserRepo;
 import org.example.siidsbackend.Repository.UserRoleHistoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -349,6 +353,21 @@ public class UserService {
 
     public java.util.List<User> getAllUsers() {
         return repo.findAll();
+    }
+
+    public PageResponseDTO<User> getUserPage(int page, int size, String search) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(size, 1);
+        Page<User> users = repo.searchUsers(
+                search == null ? "" : search.trim().toLowerCase(),
+                PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "id")));
+
+        return new PageResponseDTO<>(
+                users.getContent(),
+                users.getNumber(),
+                users.getSize(),
+                users.getTotalElements(),
+                users.getTotalPages());
     }
 
     public Optional<Employee> getEmployeeById(String employeeId) {

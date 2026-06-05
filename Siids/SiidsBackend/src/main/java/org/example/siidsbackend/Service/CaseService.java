@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Request.CaseRequestDTO;
 import org.example.siidsbackend.DTO.Response.CaseResponseDTO;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.DTO.InformerDTO;
 import org.example.siidsbackend.DTO.TaxPayerDTO;
 import org.example.siidsbackend.Model.*;
@@ -14,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -133,6 +136,83 @@ public class CaseService {
         return caseRepo.findByCreatedBy_EmployeeId(employeeId).stream()
                 .map(this::mapToCaseResponseDTO)
                 .collect(Collectors.toList());
+    }
+
+    public PageResponseDTO<CaseResponseDTO> getCasePageByCreator(
+            String employeeId,
+            int requestedPage,
+            int requestedSize,
+            String search,
+            String category,
+            boolean withReports,
+            String sortDirection) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedCategory = category == null ? "all" : category.trim();
+        boolean ascending = "asc".equalsIgnoreCase(sortDirection);
+
+        List<CaseResponseDTO> rows = getCasesByCreator(employeeId).stream()
+                .filter(caseItem -> matchesCaseCategory(caseItem, normalizedCategory))
+                .filter(caseItem -> !withReports || caseItem.getReportId() != null)
+                .filter(caseItem -> matchesCaseSearch(caseItem, normalizedSearch))
+                .sorted((left, right) -> {
+                    int comparison = Comparator.nullsLast(LocalDateTime::compareTo)
+                            .compare(left.getCreatedAt(), right.getCreatedAt());
+                    return ascending ? comparison : -comparison;
+                })
+                .toList();
+
+        return toPageResponse(rows, requestedPage, requestedSize);
+    }
+
+    private boolean matchesCaseCategory(CaseResponseDTO caseItem, String category) {
+        String status = caseItem.getStatus();
+        return switch (category) {
+            case "created" -> "CASE_CREATED".equals(status) || "REPORT_SUBMITTED".equals(status);
+            case "pending" -> "REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE".equals(status);
+            case "returned" -> isReturnedStatus(status);
+            case "approved" -> "REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE".equals(status)
+                    || "REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER".equals(status)
+                    || "REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION".equals(status);
+            case "closed" -> "REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE".equals(status)
+                    || "REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER".equals(status)
+                    || "REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION".equals(status);
+            case "withReports" -> caseItem.getReportId() != null;
+            default -> true;
+        };
+    }
+
+    private boolean isReturnedStatus(String status) {
+        return "REPORT_RETURNED_TO_INTELLIGENCE_OFFICER".equals(status)
+                || "REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION".equals(status)
+                || "REPORT_RETURNED_ASSISTANT_COMMISSIONER".equals(status)
+                || "REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE".equals(status);
+    }
+
+    private boolean matchesCaseSearch(CaseResponseDTO caseItem, String normalizedSearch) {
+        return normalizedSearch.isBlank()
+                || containsIgnoreCase(caseItem.getCaseNum(), normalizedSearch)
+                || containsIgnoreCase(caseItem.getStatus(), normalizedSearch)
+                || containsIgnoreCase(caseItem.getTaxType(), normalizedSearch)
+                || containsIgnoreCase(caseItem.getTaxPeriod(), normalizedSearch)
+                || containsIgnoreCase(caseItem.getCreatedByName(), normalizedSearch)
+                || (caseItem.getReportId() != null && String.valueOf(caseItem.getReportId()).contains(normalizedSearch))
+                || (caseItem.getTaxPayer() != null
+                && (containsIgnoreCase(caseItem.getTaxPayer().getName(), normalizedSearch)
+                || containsIgnoreCase(caseItem.getTaxPayer().getTin(), normalizedSearch)));
+    }
+
+    private boolean containsIgnoreCase(String value, String search) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(search);
+    }
+
+    private <T> PageResponseDTO<T> toPageResponse(List<T> rows, int requestedPage, int requestedSize) {
+        int size = requestedSize > 0 ? Math.min(requestedSize, 100) : 10;
+        int page = Math.max(requestedPage, 0);
+        int totalElements = rows.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        return new PageResponseDTO<>(rows.subList(fromIndex, toIndex), page, size, totalElements, totalPages);
     }
 
     public Optional<CaseResponseDTO> getCaseIfCreator(Integer caseId, String employeeId) {

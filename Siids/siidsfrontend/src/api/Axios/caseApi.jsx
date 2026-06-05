@@ -82,8 +82,8 @@ export const CaseService = {
         });
     },
 
-    getMyCases: () => {
-        return caseApi.get('/api/cases');
+    getMyCases: (params = {}) => {
+        return caseApi.get('/api/cases', { params });
     },
 
     getCase: (identifier) => {
@@ -176,13 +176,13 @@ export const ReportApi = {
     },
 
     // New method - gets all active reports
-    getActiveReportsForInvestigationOfficer: () => {
-        return caseApi.get('/api/reports/investigation-officer/active-reports');
+    getActiveReportsForInvestigationOfficer: (params = {}) => {
+        return caseApi.get('/api/reports/investigation-officer/active-reports', { params });
     },
 
     // New method - gets all historical reports
-    getAllReportsForInvestigationOfficer: () => {
-        return caseApi.get('/api/reports/investigation-officer/all-reports');
+    getAllReportsForInvestigationOfficer: (params = {}) => {
+        return caseApi.get('/api/reports/investigation-officer/all-reports', { params });
     },
     submitCasePlan: async (reportId, formData) => {
         try {
@@ -330,16 +330,16 @@ export const ReportApi = {
         });
     },
 
-    getReportsForDirectorIntelligence: () => {
-        return caseApi.get('/api/reports/director-intelligence/reports');
+    getReportsForDirectorIntelligence: (params = {}) => {
+        return caseApi.get('/api/reports/director-intelligence/reports', { params });
     },
 
-    getReportsForDirectorInvestigation: () => {
-        return caseApi.get('/api/reports/director-investigation/approved-reports');
+    getReportsForDirectorInvestigation: (params = {}) => {
+        return caseApi.get('/api/reports/director-investigation/approved-reports', { params });
     },
 
-    getReportsForAssistantCommissioner: () => {
-        return caseApi.get('/api/reports/assistant-commissioner/approved-reports');
+    getReportsForAssistantCommissioner: (params = {}) => {
+        return caseApi.get('/api/reports/assistant-commissioner/approved-reports', { params });
     },
 
     approveReport: (reportId) => {
@@ -377,8 +377,8 @@ export const ReportApi = {
             assignmentNotes: assignmentNotes
         });
     },
-    getCasePlansForAssistantCommissioner: () => {
-        return caseApi.get('/api/reports/assistant-commissioner/case-plans');
+    getCasePlansForAssistantCommissioner: (params = {}) => {
+        return caseApi.get('/api/reports/assistant-commissioner/case-plans', { params });
     },
 
     getCasePlanDetails: (reportId) => {
@@ -454,9 +454,9 @@ export const ReportApi = {
             throw err;
         });
     },
-    getReportsForLegalAdvisor: () => {
+    getReportsForLegalAdvisor: (params = {}) => {
         const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
-        return caseApi.get('/api/reports/legal-advisor/my-reports');
+        return caseApi.get('/api/reports/legal-advisor/my-reports', { params });
     },
     getAllReportsWithLegalAdvisors: () => {
         return caseApi.get('/api/reports/legal-advisor/all-reports');
@@ -472,8 +472,11 @@ export const InvestigationApi = {
     },
 };
 export const AuditApi = {
-    getAuditLogs: () => {
-        return caseApi.get('/api/audit/audit-logs');
+    getAuditLogs: (params = {}) => {
+        return caseApi.get('/api/audit/audit-logs', { params });
+    },
+    getAuditActions: () => {
+        return caseApi.get('/api/audit/audit-actions');
     }
 };
 

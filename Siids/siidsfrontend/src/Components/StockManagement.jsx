@@ -8,13 +8,14 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import '../Styles/StockManagement.css';
 import {
-    Box, Typography, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, TextField, MenuItem, Select,
+    Box, Typography, Paper, TextField, MenuItem, Select, Button,
     FormControl, IconButton, Chip, Tooltip, CircularProgress,
     InputAdornment,
 } from '@mui/material';
 import { FilterListOff, FileDownloadOutlined } from '@mui/icons-material';
+import AppTable from './ui/AppTable.jsx';
 
+const ROWS_PER_PAGE = 10;
 
 const StockManagement = () => {
     const { authState } = useContext(AuthContext);
@@ -27,6 +28,7 @@ const StockManagement = () => {
     const [searchItemName, setSearchItemName] = useState('');
     const [searchTakenDate, setSearchTakenDate] = useState('');
     const [releaseFilter, setReleaseFilter] = useState('all');
+    const [page, setPage] = useState(0);
 
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005';
     const API_URL = `${BASE_URL}/api/stock`;
@@ -261,6 +263,11 @@ const StockManagement = () => {
         }).filter(Boolean);
     }, [stocks, searchOwner, searchItemName, searchTakenDate, releaseFilter]);
 
+    const pagedStocks = useMemo(() => {
+        const start = page * ROWS_PER_PAGE;
+        return filteredStocks.slice(start, start + ROWS_PER_PAGE);
+    }, [filteredStocks, page]);
+
     // --- Excel download ---
     const downloadExcel = () => {
         const excelData = filteredStocks.map(stock => {
@@ -325,6 +332,7 @@ const StockManagement = () => {
         setSearchItemName('');
         setSearchTakenDate('');
         setReleaseFilter('all');
+        setPage(0);
     };
 
     const generateStockPdf = (stock) => {
@@ -381,6 +389,132 @@ const StockManagement = () => {
         return unit.charAt(0) + unit.slice(1).toLowerCase();
     };
 
+    const stockColumns = useMemo(() => [
+        { key: 'ownerName', label: 'Owner', render: (stock) => stock.ownerName || '-' },
+        {
+            key: 'items',
+            label: 'Items',
+            render: (stock) => (
+                <Tooltip title={((stock.displayItems || stock.items) || []).map(i => `${i.itemName} (${i.item})`).join(', ')}>
+                    <span>{formatItemsDisplay(stock.displayItems || stock.items)}</span>
+                </Tooltip>
+            )
+        },
+        { key: 'remainingQuantity', label: 'Rem. Qty', render: (stock) => getRemainingQuantity(stock) },
+        { key: 'takenDate', label: 'Taken Date', render: (stock) => stock.takenDate || '-' },
+        {
+            key: 'releasedDate',
+            label: 'Released Date',
+            render: (stock) => (
+                stock.releases && stock.releases.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {stock.releases.map((r, i) => (
+                            <Box key={i}>
+                                <Chip label={r.dateReleased} size="small" color="success" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                                {r.status === 'REJECTED' && <Typography variant="caption" color="error" display="block">REJECTED: {r.rejectionReason}</Typography>}
+                                {(!r.status || r.status === 'PENDING') && <Typography variant="caption" color="warning.main" display="block">PENDING</Typography>}
+                                {r.status === 'APPROVED' && <Typography variant="caption" color="success.main" display="block">APPROVED</Typography>}
+                            </Box>
+                        ))}
+                    </Box>
+                ) : stock.dateReleased ? (
+                    <Box>
+                        <Chip label={stock.dateReleased} size="small" color="success" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
+                        {stock.status === 'REJECTED' && <Typography variant="caption" color="error" display="block">REJECTED</Typography>}
+                    </Box>
+                ) : (
+                    <Chip label="Not Released" size="small" color="warning" variant="filled" sx={{ fontSize: '0.7rem', height: 22 }} />
+                )
+            )
+        },
+        {
+            key: 'quantityReleased',
+            label: 'Qty Released',
+            render: (stock) => (
+                stock.releases && stock.releases.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {stock.releases.map((r, i) => <Typography key={i} variant="body2">{r.quantityReleased}</Typography>)}
+                    </Box>
+                ) : stock.quantityReleased || '-'
+            )
+        },
+        {
+            key: 'soldAmount',
+            label: 'Sold Amount',
+            render: (stock) => (
+                stock.releases && stock.releases.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        {stock.releases.map((r, i) => <Typography key={i} variant="body2">{r.soldAmount ? `${r.soldAmount} RWF` : '-'}</Typography>)}
+                    </Box>
+                ) : stock.soldAmount ? `${stock.soldAmount} RWF` : '-'
+            )
+        },
+        {
+            key: 'documents',
+            label: 'Documents',
+            render: (stock) => (
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                    {stock.documentPaths && stock.documentPaths.map((path, idx) => (
+                        <Chip
+                            key={idx}
+                            label={`Doc ${idx + 1}`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            onClick={() => downloadDocument(stock.id, idx)}
+                            sx={{ cursor: 'pointer', fontSize: '0.7rem', height: 24 }}
+                        />
+                    ))}
+                </Box>
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Actions',
+            cellStyle: { minWidth: 120 },
+            render: (stock) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {canManageStock && (
+                        <Tooltip title="Delete">
+                            <IconButton size="small" color="error" onClick={() => handleDelete(stock.id)}>
+                                <Trash2 size={16} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                    {stock.releases && stock.releases.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            {stock.releases.map((r, i) => (
+                                r.status === 'APPROVED' ? (
+                                    <Tooltip key={i} title={`Download Release ${i + 1}`}>
+                                        <IconButton size="small" color="primary" onClick={() => downloadGeneratedReleaseDoc(stock.id, i)}>
+                                            <Download size={14} />
+                                        </IconButton>
+                                    </Tooltip>
+                                ) : (
+                                    <Typography key={i} variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
+                                        {r.status || 'PENDING'}
+                                    </Typography>
+                                )
+                            ))}
+                        </Box>
+                    ) : stock.dateReleased ? (
+                        <Tooltip title="Download Release Note">
+                            <IconButton size="small" color="primary" onClick={() => downloadGeneratedReleaseDoc(stock.id)}>
+                                <Download size={16} />
+                            </IconButton>
+                        </Tooltip>
+                    ) : (
+                        <Tooltip title="Download Stock Info">
+                            <IconButton size="small" color="primary" onClick={() => generateStockPdf(stock)}>
+                                <Download size={16} />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Box>
+            )
+        }
+    ], [canManageStock, filteredStocks]);
+
     return (
         <Box>
             {/* Header */}
@@ -394,7 +528,10 @@ const StockManagement = () => {
                     size="small"
                     placeholder="Search by Owner..."
                     value={searchOwner}
-                    onChange={(e) => setSearchOwner(e.target.value)}
+                    onChange={(e) => {
+                        setSearchOwner(e.target.value);
+                        setPage(0);
+                    }}
                     fullWidth={false}
                     sx={{ flex: 1, minWidth: 200, maxWidth: 300 }}
                     InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> }}
@@ -403,7 +540,10 @@ const StockManagement = () => {
                     size="small"
                     placeholder="Search by Item Name..."
                     value={searchItemName}
-                    onChange={(e) => setSearchItemName(e.target.value)}
+                    onChange={(e) => {
+                        setSearchItemName(e.target.value);
+                        setPage(0);
+                    }}
                     fullWidth={false}
                     sx={{ flex: 1, minWidth: 200, maxWidth: 300 }}
                     InputProps={{ startAdornment: <InputAdornment position="start"><Search size={16} /></InputAdornment> }}
@@ -413,14 +553,20 @@ const StockManagement = () => {
                     type="date"
                     title="Search by Taken Date"
                     value={searchTakenDate}
-                    onChange={(e) => setSearchTakenDate(e.target.value)}
+                    onChange={(e) => {
+                        setSearchTakenDate(e.target.value);
+                        setPage(0);
+                    }}
                     fullWidth={false}
                     sx={{ flex: 1, minWidth: 160, maxWidth: 200 }}
                 />
                 <FormControl size="small" sx={{ flex: 1, minWidth: 160, maxWidth: 200 }}>
                     <Select
                         value={releaseFilter}
-                        onChange={(e) => setReleaseFilter(e.target.value)}
+                        onChange={(e) => {
+                            setReleaseFilter(e.target.value);
+                            setPage(0);
+                        }}
                         displayEmpty
                         sx={{ borderRadius: '10px' }}
                     >
@@ -452,135 +598,17 @@ const StockManagement = () => {
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
             ) : (
-                <TableContainer component={Paper}>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Owner</TableCell>
-                                <TableCell>Items</TableCell>
-                                <TableCell>Rem. Qty</TableCell>
-                                <TableCell>Taken Date</TableCell>
-                                <TableCell>Released Date</TableCell>
-                                <TableCell>Qty Released</TableCell>
-                                <TableCell>Sold Amount</TableCell>
-                                <TableCell>Documents</TableCell>
-                                <TableCell>Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {filteredStocks.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
-                                        No stock items found matching your criteria.
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                filteredStocks.map(stock => (
-                                    <TableRow key={stock.id}>
-                                        <TableCell>{stock.ownerName}</TableCell>
-                                        <TableCell>
-                                            <Tooltip title={((stock.displayItems || stock.items) || []).map(i => `${i.itemName} (${i.item})`).join(', ')}>
-                                                <span>{formatItemsDisplay(stock.displayItems || stock.items)}</span>
-                                            </Tooltip>
-                                        </TableCell>
-                                        <TableCell>{getRemainingQuantity(stock)}</TableCell>
-                                        <TableCell>{stock.takenDate}</TableCell>
-                                        <TableCell>
-                                            {stock.releases && stock.releases.length > 0 ? (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                    {stock.releases.map((r, i) => (
-                                                        <Box key={i}>
-                                                            <Chip label={r.dateReleased} size="small" color="success" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
-                                                            {r.status === 'REJECTED' && <Typography variant="caption" color="error" display="block">REJECTED: {r.rejectionReason}</Typography>}
-                                                            {(!r.status || r.status === 'PENDING') && <Typography variant="caption" color="warning.main" display="block">PENDING</Typography>}
-                                                            {r.status === 'APPROVED' && <Typography variant="caption" color="success.main" display="block">APPROVED</Typography>}
-                                                        </Box>
-                                                    ))}
-                                                </Box>
-                                            ) : stock.dateReleased ? (
-                                                <Box>
-                                                    <Chip label={stock.dateReleased} size="small" color="success" variant="outlined" sx={{ fontSize: '0.7rem', height: 22 }} />
-                                                    {stock.status === 'REJECTED' && <Typography variant="caption" color="error" display="block">REJECTED</Typography>}
-                                                </Box>
-                                            ) : (
-                                                <Chip label="Not Released" size="small" color="warning" variant="filled" sx={{ fontSize: '0.7rem', height: 22 }} />
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {stock.releases && stock.releases.length > 0 ? (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                    {stock.releases.map((r, i) => <Typography key={i} variant="body2">{r.quantityReleased}</Typography>)}
-                                                </Box>
-                                            ) : stock.quantityReleased || '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {stock.releases && stock.releases.length > 0 ? (
-                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                                    {stock.releases.map((r, i) => <Typography key={i} variant="body2">{r.soldAmount ? `${r.soldAmount} RWF` : '-'}</Typography>)}
-                                                </Box>
-                                            ) : stock.soldAmount ? `${stock.soldAmount} RWF` : '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                                {stock.documentPaths && stock.documentPaths.map((path, idx) => (
-                                                    <Chip
-                                                        key={idx}
-                                                        label={`Doc ${idx + 1}`}
-                                                        size="small"
-                                                        color="primary"
-                                                        variant="outlined"
-                                                        onClick={() => downloadDocument(stock.id, idx)}
-                                                        sx={{ cursor: 'pointer', fontSize: '0.7rem', height: 24 }}
-                                                    />
-                                                ))}
-                                            </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                {canManageStock && (
-                                                    <Tooltip title="Delete">
-                                                        <IconButton size="small" color="error" onClick={() => handleDelete(stock.id)}>
-                                                            <Trash2 size={16} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                                {stock.releases && stock.releases.length > 0 ? (
-                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-                                                        {stock.releases.map((r, i) => (
-                                                            r.status === 'APPROVED' ? (
-                                                                <Tooltip key={i} title={`Download Release ${i + 1}`}>
-                                                                    <IconButton size="small" color="primary" onClick={() => downloadGeneratedReleaseDoc(stock.id, i)}>
-                                                                        <Download size={14} />
-                                                                    </IconButton>
-                                                                </Tooltip>
-                                                            ) : (
-                                                                <Typography key={i} variant="caption" color="text.disabled" sx={{ fontSize: '0.6rem' }}>
-                                                                    {r.status || 'PENDING'}
-                                                                </Typography>
-                                                            )
-                                                        ))}
-                                                    </Box>
-                                                ) : stock.dateReleased ? (
-                                                    <Tooltip title="Download Release Note">
-                                                        <IconButton size="small" color="primary" onClick={() => downloadGeneratedReleaseDoc(stock.id)}>
-                                                            <Download size={16} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                ) : (
-                                                    <Tooltip title="Download Stock Info">
-                                                        <IconButton size="small" color="primary" onClick={() => generateStockPdf(stock)}>
-                                                            <Download size={16} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                )}
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                <AppTable
+                    columns={stockColumns}
+                    rows={pagedStocks}
+                    loading={loading}
+                    emptyMessage="No stock items found matching your criteria."
+                    page={page}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    totalRows={filteredStocks.length}
+                    onPageChange={(event, nextPage) => setPage(nextPage)}
+                    minWidth={1200}
+                />
             )}
 
 

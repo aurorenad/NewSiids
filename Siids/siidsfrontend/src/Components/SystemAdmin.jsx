@@ -1,13 +1,7 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useMemo } from 'react';
 import {
   Typography,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   TextField,
   Button,
   Dialog,
@@ -21,6 +15,7 @@ import {
   Divider,
 } from '@mui/material';
 import { History, PersonAdd } from '@mui/icons-material';
+import AppTable from './ui/AppTable.jsx';
 import UserOnboardingForm from './admin/UserOnboardingForm.jsx';
 import RoleSelectField from './admin/RoleSelectField.jsx';
 import { AuthContext } from '../context/AuthContext.jsx';
@@ -28,11 +23,16 @@ import { hasPermission } from '../utils/authorization.js';
 import { PERMISSIONS } from '../constants/permissions';
 import { adminApi } from '../api/adminApi.js';
 
+const ROWS_PER_PAGE = 10;
+
 const SystemAdmin = () => {
   const { authState } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(0);
   const [openRegister, setOpenRegister] = useState(false);
   const [openRole, setOpenRole] = useState(false);
   const [openHistory, setOpenHistory] = useState(false);
@@ -58,12 +58,19 @@ const SystemAdmin = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, searchQuery]);
 
   const fetchUsers = async () => {
     try {
-      const response = await adminApi.getUsers();
-      setUsers(response.data);
+      setLoading(true);
+      const response = await adminApi.getUsers({
+        page,
+        size: ROWS_PER_PAGE,
+        search: searchQuery,
+      });
+      const pageData = response.data || {};
+      setUsers(pageData.content || []);
+      setTotalUsers(pageData.totalElements || 0);
     } catch (err) {
       console.error('Error fetching users:', err);
       setError('Failed to fetch users.');
@@ -160,6 +167,88 @@ const SystemAdmin = () => {
     return new Date(value).toLocaleString();
   };
 
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setPage(0);
+  };
+
+  const userColumns = useMemo(() => {
+    const columns = [
+      { key: 'id', label: 'ID', render: (user) => user.id },
+      { key: 'username', label: 'Employee ID', render: (user) => user.username || '-' },
+      { key: 'role', label: 'Role', render: (user) => user.role || '-' },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (user) => (
+          <Chip
+            label={user.active !== false ? 'Active' : 'Deactivated'}
+            color={user.active !== false ? 'success' : 'error'}
+            size="small"
+          />
+        )
+      }
+    ];
+
+    if (hasActions) {
+      columns.push({
+        key: 'actions',
+        label: 'Actions',
+        cellStyle: { minWidth: 280 },
+        render: (user) => (
+          <Box display="flex" gap={1} flexWrap="wrap">
+            {canUpdateRole && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleRoleUpdateOpen(user)}
+              >
+                Edit Role
+              </Button>
+            )}
+            {canUpdateStatus && (
+              <Button
+                variant="contained"
+                color={user.active !== false ? 'error' : 'success'}
+                size="small"
+                onClick={() => toggleStatus(user.id)}
+              >
+                {user.active !== false ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
+            {canViewUserHistory && (
+              <Button
+                variant="text"
+                size="small"
+                startIcon={<History />}
+                onClick={() => handleHistoryOpen(user)}
+              >
+                History
+              </Button>
+            )}
+          </Box>
+        )
+      });
+    }
+
+    return columns;
+  }, [hasActions, canUpdateRole, canUpdateStatus, canViewUserHistory]);
+
+  const roleHistoryColumns = useMemo(() => [
+    { key: 'changedAt', label: 'Changed At', render: (entry) => formatDateTime(entry.changedAt) },
+    { key: 'previousRole', label: 'Previous Role', render: (entry) => entry.previousRole || '-' },
+    { key: 'newRole', label: 'New Role', render: (entry) => entry.newRole || '-' },
+    { key: 'changedBy', label: 'Changed By', render: (entry) => entry.changedBy || '-' },
+    { key: 'reason', label: 'Reason', render: (entry) => entry.reason || '-' },
+  ], []);
+
+  const accountAuditColumns = useMemo(() => [
+    { key: 'performedAt', label: 'Performed At', render: (entry) => formatDateTime(entry.performedAt) },
+    { key: 'action', label: 'Action', render: (entry) => entry.action || '-' },
+    { key: 'performedBy', label: 'Performed By', render: (entry) => entry.performedBy || '-' },
+    { key: 'details', label: 'Details', render: (entry) => entry.details || '-' },
+  ], []);
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={6}>
@@ -187,69 +276,27 @@ const SystemAdmin = () => {
         </Alert>
       )}
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>ID</TableCell>
-              <TableCell>Employee ID</TableCell>
-              <TableCell>Role</TableCell>
-              <TableCell>Status</TableCell>
-              {hasActions && <TableCell>Actions</TableCell>}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.id}</TableCell>
-                <TableCell>{user.username}</TableCell>
-                <TableCell>{user.role}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={user.active !== false ? 'Active' : 'Deactivated'}
-                    color={user.active !== false ? 'success' : 'error'}
-                    size="small"
-                  />
-                </TableCell>
-                {hasActions && (
-                  <TableCell>
-                    {canUpdateRole && (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        sx={{ mr: 1 }}
-                        onClick={() => handleRoleUpdateOpen(user)}
-                      >
-                        Edit Role
-                      </Button>
-                    )}
-                    {canUpdateStatus && (
-                      <Button
-                        variant="contained"
-                        color={user.active !== false ? 'error' : 'success'}
-                        size="small"
-                        onClick={() => toggleStatus(user.id)}
-                      >
-                        {user.active !== false ? 'Deactivate' : 'Activate'}
-                      </Button>
-                    )}
-                    {canViewUserHistory && (
-                      <Button
-                        variant="text"
-                        size="small"
-                        startIcon={<History />}
-                        onClick={() => handleHistoryOpen(user)}
-                      >
-                        History
-                      </Button>
-                    )}
-                  </TableCell>
-                )}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <Box mb={2}>
+        <TextField
+          size="small"
+          placeholder="Search employee ID, role, or status..."
+          value={searchQuery}
+          onChange={(event) => handleSearchChange(event.target.value)}
+          sx={{ width: { xs: '100%', sm: 360 } }}
+        />
+      </Box>
+
+      <AppTable
+        columns={userColumns}
+        rows={users}
+        loading={loading}
+        emptyMessage="No users found"
+        page={page}
+        rowsPerPage={ROWS_PER_PAGE}
+        totalRows={totalUsers}
+        onPageChange={(event, nextPage) => setPage(nextPage)}
+        minWidth={900}
+      />
 
       {/* Register Dialog */}
       <Dialog
@@ -350,70 +397,32 @@ const SystemAdmin = () => {
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
                 Role Changes
               </Typography>
-              <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Changed At</TableCell>
-                      <TableCell>Previous Role</TableCell>
-                      <TableCell>New Role</TableCell>
-                      <TableCell>Changed By</TableCell>
-                      <TableCell>Reason</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {roleHistory.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={5}>No role history found.</TableCell>
-                      </TableRow>
-                    ) : (
-                      roleHistory.map((entry) => (
-                        <TableRow key={entry.id}>
-                          <TableCell>{formatDateTime(entry.changedAt)}</TableCell>
-                          <TableCell>{entry.previousRole || '-'}</TableCell>
-                          <TableCell>{entry.newRole}</TableCell>
-                          <TableCell>{entry.changedBy || '-'}</TableCell>
-                          <TableCell>{entry.reason || '-'}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <Paper variant="outlined" sx={{ mb: 3, overflow: 'hidden' }}>
+                <AppTable
+                  columns={roleHistoryColumns}
+                  rows={roleHistory}
+                  emptyMessage="No role history found."
+                  totalRows={roleHistory.length}
+                  minWidth={760}
+                  showPagination={false}
+                />
+              </Paper>
 
               <Divider sx={{ mb: 2 }} />
 
               <Typography variant="subtitle1" fontWeight={700} gutterBottom>
                 Account Audit
               </Typography>
-              <TableContainer component={Paper} variant="outlined">
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Performed At</TableCell>
-                      <TableCell>Action</TableCell>
-                      <TableCell>Performed By</TableCell>
-                      <TableCell>Details</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {accountAudit.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={4}>No account audit logs found.</TableCell>
-                      </TableRow>
-                    ) : (
-                      accountAudit.map((entry) => (
-                        <TableRow key={entry.id}>
-                          <TableCell>{formatDateTime(entry.performedAt)}</TableCell>
-                          <TableCell>{entry.action}</TableCell>
-                          <TableCell>{entry.performedBy || '-'}</TableCell>
-                          <TableCell>{entry.details || '-'}</TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <Paper variant="outlined" sx={{ overflow: 'hidden' }}>
+                <AppTable
+                  columns={accountAuditColumns}
+                  rows={accountAudit}
+                  emptyMessage="No account audit logs found."
+                  totalRows={accountAudit.length}
+                  minWidth={720}
+                  showPagination={false}
+                />
+              </Paper>
             </>
           )}
         </DialogContent>

@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
-    Button, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead,
-    TableRow, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
-    Box, CircularProgress, Alert, Snackbar, Tooltip, Menu, MenuItem,
-    Typography, Chip, Tabs, Tab, Divider
+    Button, Paper, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
+    Box, Alert, Snackbar, Tooltip, Typography, Chip, Tabs, Tab
 } from "@mui/material";
 import {
-    Search, Description, Check, Close, Undo, Visibility, Refresh, Assignment, Assessment,
+    Description, Check, Undo, Refresh, Assignment, Assessment,
     DriveFileRenameOutline, Download
 } from "@mui/icons-material";
 
@@ -17,11 +15,16 @@ import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
 import ReportSignatureDialog from './ui/ReportSignatureDialog.jsx';
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
+const TAB_VIEWS = ['INTAKE', 'CASE_PLAN', 'INVESTIGATION'];
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
-    const [reports, setReports] = useState([]);
-    const [casePlans, setCasePlans] = useState([]);
+    const [rows, setRows] = useState([]);
+    const [totalRows, setTotalRows] = useState(0);
+    const [page, setPage] = useState(0);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -29,8 +32,6 @@ const AssistantCommissioner = () => {
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
     
     // Action States
-    const [anchorEl, setAnchorEl] = useState(null);
-    const [menuReport, setMenuReport] = useState(null);
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
     const [closeReason, setCloseReason] = useState("");
     const [selectedReport, setSelectedReport] = useState(null);
@@ -42,12 +43,16 @@ const AssistantCommissioner = () => {
     const fetchAllData = async () => {
         try {
             setLoading(true);
-            const [reportsRes, plansRes] = await Promise.all([
-                ReportApi.getReportsForAssistantCommissioner(),
-                ReportApi.getCasePlansForAssistantCommissioner()
-            ]);
-            setReports(reportsRes.data);
-            setCasePlans(plansRes.data);
+            const params = { page, size: ROWS_PER_PAGE, search: searchQuery };
+            const response = activeTab === 1
+                ? await ReportApi.getCasePlansForAssistantCommissioner(params)
+                : await ReportApi.getReportsForAssistantCommissioner({
+                    ...params,
+                    view: TAB_VIEWS[activeTab]
+                });
+            const pageData = response.data;
+            setRows(pageData?.content || []);
+            setTotalRows(pageData?.totalElements || 0);
         } catch (err) {
             setSnackbar({ open: true, message: "Failed to synchronize with central command", severity: "error" });
         } finally {
@@ -55,7 +60,7 @@ const AssistantCommissioner = () => {
         }
     };
 
-    useEffect(() => { fetchAllData(); }, []);
+    useEffect(() => { fetchAllData(); }, [activeTab, page, searchQuery]);
 
     const showSnackbar = (message, severity = "success") => {
         setSnackbar({ open: true, message, severity });
@@ -117,12 +122,8 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const handleMenuOpen = (e, r) => { setAnchorEl(e.currentTarget); setMenuReport(r); };
-    const handleMenuClose = () => setAnchorEl(null);
-
     const updateReportInState = (updatedReport) => {
-        setReports(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
-        setCasePlans(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
+        setRows(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
     };
 
     const handleOpenSignatureDialog = (report) => {
@@ -150,15 +151,137 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const getFilteredData = () => {
-        const query = searchQuery.toLowerCase();
-        if (activeTab === 1) return casePlans.filter(p => p.relatedCase?.caseNum?.toLowerCase().includes(query));
-        
-        return reports.filter(r => {
-            if (activeTab === 0) return !r.status.includes('INVESTIGATION') && !r.status.includes('CASE_PLAN');
-            return r.status.includes('INVESTIGATION');
-        }).filter(r => r.relatedCase?.caseNum?.toLowerCase().includes(query) || r.id.toString().includes(query));
+    const handleTabChange = (event, nextTab) => {
+        setActiveTab(nextTab);
+        setPage(0);
     };
+
+    const handleSearchChange = (value) => {
+        setSearchQuery(value);
+        setPage(0);
+    };
+
+    const columns = [
+        {
+            key: 'operationalId',
+            label: 'Operational ID',
+            render: (r) => (
+                <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{r.relatedCase?.caseNum || r.id}</Typography>
+                    <Typography variant="caption" color="text.secondary">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</Typography>
+                </Box>
+            )
+        },
+        {
+            key: 'leadPersonnel',
+            label: 'Lead Personnel',
+            render: (r) => r.investigationOfficer?.givenName || r.createdBy || 'N/A'
+        },
+        {
+            key: 'workflowState',
+            label: 'Workflow State',
+            render: (r) => (
+                <Chip
+                    label={formatStatus(r.status)}
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                    color={r.status?.includes('APPROVED') ? 'success' : 'primary'}
+                />
+            )
+        },
+        {
+            key: 'summary',
+            label: 'Intelligence Summary',
+            render: (r) => (
+                <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>
+                    {r.description || r.casePlanDescription || 'N/A'}
+                </Typography>
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Critical Actions',
+            cellStyle: { textAlign: 'center' },
+            render: (r) => (
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                        startIcon={<Description />}
+                        onClick={() => navigate(routeTo.reportDetails(r.id))}
+                        sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                        View
+                    </Button>
+
+                    {canApproveAssistantCommissioner && (
+                        <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<Check />}
+                            onClick={() => handleApproveAction(r)}
+                            disabled={submitting}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Approve
+                        </Button>
+                    )}
+
+                    {canApproveAssistantCommissioner && activeTab === 2 && (
+                        <Button
+                            variant={r.acSigned ? "outlined" : "contained"}
+                            color="primary"
+                            size="small"
+                            startIcon={<DriveFileRenameOutline />}
+                            onClick={() => handleOpenSignatureDialog(r)}
+                            disabled={submitting}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            {r.acSigned ? 'Re-sign' : 'Sign'}
+                        </Button>
+                    )}
+
+                    {activeTab === 2 && (
+                        <Tooltip title={r.finalised ? 'Download final investigation report' : 'Both signatures are required before final PDF download'}>
+                            <span>
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    size="small"
+                                    startIcon={<Download />}
+                                    onClick={() => handleDownloadInvestigationReport(r)}
+                                    disabled={submitting || !r.finalised}
+                                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                                >
+                                    PDF
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {canApproveAssistantCommissioner && (
+                        <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
+                            startIcon={<Undo />}
+                            onClick={() => {
+                                setSelectedReport(r);
+                                setCloseReason("");
+                                setCloseDialogOpen(true);
+                            }}
+                            disabled={submitting}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Reject
+                        </Button>
+                    )}
+                </Box>
+            )
+        }
+    ];
 
     return (
         <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
@@ -171,145 +294,29 @@ const AssistantCommissioner = () => {
             </Box>
 
             <Paper sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ px: 2, pt: 1, backgroundColor: '#fff' }}>
+                <Tabs value={activeTab} onChange={handleTabChange} sx={{ px: 2, pt: 1, backgroundColor: '#fff' }}>
                     <Tab icon={<Description />} label="Case Intake" iconPosition="start" sx={{ fontWeight: 700 }} />
                     <Tab icon={<Assignment />} label="Strategic Plans" iconPosition="start" sx={{ fontWeight: 700 }} />
                     <Tab icon={<Assessment />} label="Investigation Results" iconPosition="start" sx={{ fontWeight: 700 }} />
                 </Tabs>
 
-                <Box sx={{ p: 3, display: 'flex', gap: 2 }}>
-                    <TextField 
-                        size="small" 
-                        placeholder="Search operational IDs..." 
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        InputProps={{ startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} /> }}
-                        sx={{ width: 400 }}
+                <Box sx={{ p: 3 }}>
+                    <AppTable
+                        columns={columns}
+                        rows={rows}
+                        loading={loading}
+                        emptyMessage="No records pending in this sector"
+                        searchValue={searchQuery}
+                        searchPlaceholder="Search operational IDs..."
+                        onSearchChange={handleSearchChange}
+                        page={page}
+                        rowsPerPage={ROWS_PER_PAGE}
+                        totalRows={totalRows}
+                        onPageChange={(event, nextPage) => setPage(nextPage)}
+                        minWidth={1100}
                     />
                 </Box>
-
-                <TableContainer>
-                    <Table>
-                        <TableHead sx={{ backgroundColor: '#f1f5f9' }}>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 700 }}>Operational ID</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Lead Personnel</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Workflow State</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Intelligence Summary</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }} align="center">Critical Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 8 }}><CircularProgress /></TableCell></TableRow>
-                            ) : getFilteredData().length === 0 ? (
-                                <TableRow><TableCell colSpan={5} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No records pending in this sector</Typography></TableCell></TableRow>
-                            ) : getFilteredData().map((r) => (
-                                <TableRow key={r.id} hover>
-                                    <TableCell>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{r.relatedCase?.caseNum || r.id}</Typography>
-                                        <Typography variant="caption" color="text.secondary">{new Date(r.createdAt).toLocaleDateString()}</Typography>
-                                    </TableCell>
-                                    <TableCell>{r.investigationOfficer?.givenName || r.createdBy || 'N/A'}</TableCell>
-                                    <TableCell>
-                                        <Chip label={formatStatus(r.status)} size="small" sx={{ fontWeight: 700 }} color={r.status.includes('APPROVED') ? 'success' : 'primary'} />
-                                    </TableCell>
-                                    <TableCell>
-                                        <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>{r.description || r.casePlanDescription || 'N/A'}</Typography>
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                            <Button
-                                                variant="outlined"
-                                                color="primary"
-                                                size="small"
-                                                startIcon={<Description />}
-                                                onClick={() => navigate(routeTo.reportDetails(r.id))}
-                                                sx={{ textTransform: 'none', fontWeight: 700 }}
-                                            >
-                                                View
-                                            </Button>
-
-                                            {canApproveAssistantCommissioner && (
-                                                <Button
-                                                    variant="contained"
-                                                    color="success"
-                                                    size="small"
-                                                    startIcon={<Check />}
-                                                    onClick={() => handleApproveAction(r)}
-                                                    disabled={submitting}
-                                                    sx={{ textTransform: 'none', fontWeight: 700 }}
-                                                >
-                                                    Approve
-                                                </Button>
-                                            )}
-
-                                            {canApproveAssistantCommissioner && activeTab === 2 && (
-                                                <Button
-                                                    variant={r.acSigned ? "outlined" : "contained"}
-                                                    color="primary"
-                                                    size="small"
-                                                    startIcon={<DriveFileRenameOutline />}
-                                                    onClick={() => handleOpenSignatureDialog(r)}
-                                                    disabled={submitting}
-                                                    sx={{ textTransform: 'none', fontWeight: 700 }}
-                                                >
-                                                    {r.acSigned ? 'Re-sign' : 'Sign'}
-                                                </Button>
-                                            )}
-
-                                            {activeTab === 2 && (
-                                                <Tooltip title={r.finalised ? 'Download final investigation report' : 'Both signatures are required before final PDF download'}>
-                                                    <span>
-                                                        <Button
-                                                            variant="outlined"
-                                                            color="primary"
-                                                            size="small"
-                                                            startIcon={<Download />}
-                                                            onClick={() => handleDownloadInvestigationReport(r)}
-                                                            disabled={submitting || !r.finalised}
-                                                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                                                        >
-                                                            PDF
-                                                        </Button>
-                                                    </span>
-                                                </Tooltip>
-                                            )}
-
-                                            {canApproveAssistantCommissioner && (
-                                                <Button
-                                                    variant="contained"
-                                                    color="error"
-                                                    size="small"
-                                                    startIcon={<Undo />}
-                                                    onClick={() => {
-                                                        setSelectedReport(r);
-                                                        setCloseReason("");
-                                                        setCloseDialogOpen(true);
-                                                    }}
-                                                    disabled={submitting}
-                                                    sx={{ textTransform: 'none', fontWeight: 700 }}
-                                                >
-                                                    Reject
-                                                </Button>
-                                            )}
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
             </Paper>
-
-            {/* Decision Menus */}
-            <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-                <MenuItem onClick={handleApproveAction}>Finalize Approval</MenuItem>
-                <Divider />
-                <MenuItem onClick={() => handleSendToDept('Investigation')}>Approve & Assign Investigation</MenuItem>
-                <MenuItem onClick={() => handleSendToDept('Legal')}>Refer to Legal Counsel</MenuItem>
-                <MenuItem onClick={() => handleSendToDept('Finance')}>Refer to Finance Unit</MenuItem>
-            </Menu>
 
             {/* Rejection Portal */}
             <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} fullWidth>

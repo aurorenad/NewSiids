@@ -11,15 +11,12 @@ import {
     Box,
     CircularProgress,
     Alert,
-    Table,
-    TableBody,
-    TableCell,
-    TableRow
 } from '@mui/material';
 import { ArrowBack, Edit, Send, PictureAsPdf } from '@mui/icons-material';
 import { CaseService } from '../api/Axios/caseApi.jsx';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import AppTable from './ui/AppTable.jsx';
 
 const STATUS_MAP = {
     case_created: { label: 'Case Created', color: 'primary' },
@@ -47,6 +44,34 @@ const formatDate = (dateString) => {
         return dateString;
     }
 };
+
+const detailColumns = [
+    {
+        key: 'label',
+        label: 'Field',
+        cellStyle: { fontWeight: 'bold', width: '30%', background: 'var(--gray-50)' },
+    },
+    {
+        key: 'value',
+        label: 'Value',
+        render: (row) => row.value,
+    },
+];
+
+const DetailTable = ({ rows, minWidth = 520 }) => (
+    <Box sx={{ mb: 3 }}>
+        <AppTable
+            columns={detailColumns}
+            rows={rows}
+            rowKey={(row) => row.label}
+            totalRows={rows.length}
+            minWidth={minWidth}
+            showHeader={false}
+            showPagination={false}
+            emptyMessage="No details available"
+        />
+    </Box>
+);
 
 const TaxReportView = () => {
     const navigate = useNavigate();
@@ -212,37 +237,25 @@ const TaxReportView = () => {
                     Tax Case Report
                 </Typography>
 
-                <Table sx={{ mb: 3 }}>
-                    <TableBody>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Case Status</TableCell>
-                            <TableCell><Chip label={statusLabel} color={statusColor} size="small" /></TableCell>
-                        </TableRow>
-                        <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Intelligence Officer</TableCell>
-                            <TableCell>{caseData.intelligenceOfficer}</TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
+                <DetailTable rows={[
+                    { label: 'Case Status', value: <Chip label={statusLabel} color={statusColor} size="small" /> },
+                    { label: 'Intelligence Officer', value: caseData.intelligenceOfficer },
+                ]} />
 
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Taxpayer Information</Typography>
-                <Table sx={{ mb: 3 }}>
-                    <TableBody>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Taxpayer Name</TableCell><TableCell>{caseData.taxPayerName}</TableCell></TableRow>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell><TableCell>{caseData.taxPayerTIN}</TableCell></TableRow>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell><TableCell>{caseData.taxType}</TableCell></TableRow>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell><TableCell>{caseData.taxPayerAddress}</TableCell></TableRow>
-                    </TableBody>
-                </Table>
+                <DetailTable rows={[
+                    { label: 'Taxpayer Name', value: caseData.taxPayerName },
+                    { label: 'TIN', value: caseData.taxPayerTIN },
+                    { label: 'Tax Type', value: caseData.taxType },
+                    { label: 'Address', value: caseData.taxPayerAddress },
+                ]} />
 
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Informer Information</Typography>
-                <Table sx={{ mb: 3 }}>
-                    <TableBody>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Informer Name</TableCell><TableCell>{caseData.informerName}</TableCell></TableRow>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>Informer ID</TableCell><TableCell>{caseData.informerId}</TableCell></TableRow>
-                        <TableRow><TableCell sx={{ fontWeight: 'bold' }}>National ID</TableCell><TableCell>{caseData.informerNationalId}</TableCell></TableRow>
-                    </TableBody>
-                </Table>
+                <DetailTable rows={[
+                    { label: 'Informer Name', value: caseData.informerName },
+                    { label: 'Informer ID', value: caseData.informerId },
+                    { label: 'National ID', value: caseData.informerNationalId },
+                ]} />
 
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Case Summary</Typography>
                 <Paper elevation={0} sx={{ p: 2, backgroundColor: 'grey.50', border: '1px solid', borderColor: 'grey.200', mb: 3 }}>

@@ -6,6 +6,7 @@ import org.example.siidsbackend.DTO.*;
 import org.example.siidsbackend.DTO.Request.FindingsRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Request.SignReportRequest;
+import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.*;
@@ -150,6 +151,16 @@ public class ReportService {
                 "Report " + savedReport.getId() + " signed as " + signatureRole + " by " + signerId,
                 signer);
         return savedReport;
+    }
+
+    @Transactional
+    public ReportResponseDTO signReportAndMapResponse(Integer reportId, SignReportRequest request, String signerId) {
+        return toResponseDTO(signReport(reportId, request, signerId));
+    }
+
+    @Transactional(readOnly = true)
+    public ReportResponseDTO getReportResponse(Integer reportId) {
+        return toResponseDTO(getReport(reportId));
     }
 
     private void validateAttachment(String attachmentPath) {
@@ -449,6 +460,12 @@ public class ReportService {
     }
 
     @Transactional
+    public ReportResponseDTO sendToDirectorInvestigationResponse(Integer reportId) {
+        Report report = sendToDirectorInvestigation(reportId);
+        return toResponseDTO(report);
+    }
+
+    @Transactional
     public Report sendToAssistantCommissioner(Integer reportId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
@@ -484,9 +501,22 @@ public class ReportService {
     }
 
     @Transactional
+    public ReportResponseDTO sendToAssistantCommissionerResponse(Integer reportId) {
+        Report report = sendToAssistantCommissioner(reportId);
+        return toResponseDTO(report);
+    }
+
+    @Transactional
     public Report returnReport(Integer reportId, String returnReason, String returnToEmployeeId, String returnerId)
             throws IOException {
         return returnReport(reportId, returnReason, returnToEmployeeId, returnerId, null);
+    }
+
+    @Transactional
+    public ReportResponseDTO returnReportResponse(Integer reportId, String returnReason, String returnToEmployeeId,
+                                                  String returnerId) throws IOException {
+        Report report = returnReport(reportId, returnReason, returnToEmployeeId, returnerId);
+        return toResponseDTO(report);
     }
 
     @Transactional
@@ -811,6 +841,50 @@ public class ReportService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public PageResponseDTO<ReportResponseDTO> getReportPageForDirectorIntelligence(
+            String directorId,
+            int requestedPage,
+            int requestedSize,
+            String search,
+            String sortDirection) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        boolean ascending = "asc".equalsIgnoreCase(sortDirection);
+
+        List<ReportResponseDTO> rows = getReportsForDirectorIntelligence(directorId).stream()
+                .map(this::toResponseDTO)
+                .filter(report -> normalizedSearch.isBlank()
+                        || String.valueOf(report.getId()).contains(normalizedSearch)
+                        || containsIgnoreCase(report.getCreatedBy(), normalizedSearch)
+                        || containsIgnoreCase(report.getCreatedByEmployeeId(), normalizedSearch)
+                        || (report.getRelatedCase() != null
+                        && containsIgnoreCase(report.getRelatedCase().getCaseNum(), normalizedSearch))
+                        || containsIgnoreCase(report.getStatus() != null ? report.getStatus().name() : "", normalizedSearch))
+                .sorted((left, right) -> {
+                    LocalDateTime leftDate = left.getCreatedAt();
+                    LocalDateTime rightDate = right.getCreatedAt();
+                    int comparison = Comparator.nullsLast(LocalDateTime::compareTo).compare(leftDate, rightDate);
+                    return ascending ? comparison : -comparison;
+                })
+                .toList();
+
+        return toPageResponse(rows, requestedPage, requestedSize);
+    }
+
+    private boolean containsIgnoreCase(String value, String search) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(search);
+    }
+
+    private <T> PageResponseDTO<T> toPageResponse(List<T> rows, int requestedPage, int requestedSize) {
+        int size = requestedSize > 0 ? Math.min(requestedSize, 100) : 10;
+        int page = Math.max(requestedPage, 0);
+        int totalElements = rows.size();
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / size);
+        int fromIndex = Math.min(page * size, totalElements);
+        int toIndex = Math.min(fromIndex + size, totalElements);
+        return new PageResponseDTO<>(rows.subList(fromIndex, toIndex), page, size, totalElements, totalPages);
+    }
+
     @Transactional
     public Report approveReport(Integer reportId, String approverId) {
         Report report = reportRepo.findById(reportId)
@@ -928,6 +1002,12 @@ public class ReportService {
     }
 
     @Transactional
+    public ReportResponseDTO approveReportResponse(Integer reportId, String approverId) {
+        Report report = approveReport(reportId, approverId);
+        return toResponseDTO(report);
+    }
+
+    @Transactional
     public Report rejectReport(Integer reportId, String rejectionReason, String rejectorId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
@@ -1005,10 +1085,63 @@ public class ReportService {
         return savedReport;
     }
 
+    @Transactional
+    public ReportResponseDTO rejectReportResponse(Integer reportId, String rejectionReason, String rejectorId) {
+        Report report = rejectReport(reportId, rejectionReason, rejectorId);
+        return toResponseDTO(report);
+    }
+
     public List<Report> getApprovedReportsForAssistantCommissioner(String employeeId) {
         validateAssistantCommissioner(employeeId);
         // Broadened to include all handled and relevant cases for AC
         return reportRepo.findReportsHandledAssistantCommissioner();
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDTO<ReportResponseDTO> getApprovedReportPageForAssistantCommissioner(
+            String employeeId,
+            int requestedPage,
+            int requestedSize,
+            String search,
+            String view) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedView = view == null ? "INTAKE" : view.trim().toUpperCase(Locale.ROOT);
+
+        List<ReportResponseDTO> rows = getApprovedReportsForAssistantCommissioner(employeeId).stream()
+                .map(this::toResponseDTO)
+                .filter(report -> matchesAssistantCommissionerView(report, normalizedView))
+                .filter(report -> matchesReportSearch(report, normalizedSearch))
+                .sorted((left, right) -> Comparator.nullsLast(LocalDateTime::compareTo)
+                        .compare(right.getCreatedAt(), left.getCreatedAt()))
+                .toList();
+
+        return toPageResponse(rows, requestedPage, requestedSize);
+    }
+
+    private boolean matchesAssistantCommissionerView(ReportResponseDTO report, String view) {
+        String status = report.getStatus() == null ? "" : report.getStatus().name();
+        boolean investigation = status.contains("INVESTIGATION");
+        boolean casePlan = status.contains("CASE_PLAN");
+
+        if ("INVESTIGATION".equals(view)) {
+            return investigation;
+        }
+
+        if ("ALL".equals(view)) {
+            return true;
+        }
+
+        return !investigation && !casePlan;
+    }
+
+    private boolean matchesReportSearch(ReportResponseDTO report, String normalizedSearch) {
+        return normalizedSearch.isBlank()
+                || String.valueOf(report.getId()).contains(normalizedSearch)
+                || containsIgnoreCase(report.getCreatedBy(), normalizedSearch)
+                || containsIgnoreCase(report.getCreatedByEmployeeId(), normalizedSearch)
+                || (report.getRelatedCase() != null
+                && containsIgnoreCase(report.getRelatedCase().getCaseNum(), normalizedSearch))
+                || containsIgnoreCase(report.getStatus() != null ? report.getStatus().name() : "", normalizedSearch);
     }
 
     private void validateAssistantCommissioner(String employeeId) {
@@ -1049,6 +1182,107 @@ public class ReportService {
         }
 
         return reportRepo.findReportsHandledByDirectorInvestigation(directorId);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDTO<ReportResponseDTO> getReportPageForDirectorInvestigation(
+            String directorId,
+            int requestedPage,
+            int requestedSize,
+            String search,
+            String view) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedView = view == null ? "ALL" : view.trim().toUpperCase(Locale.ROOT);
+
+        List<ReportResponseDTO> rows = getReportsApprovedByAssistantCommissionerForDirectorInvestigation(directorId).stream()
+                .map(this::toResponseDTO)
+                .filter(report -> matchesDirectorInvestigationView(report, normalizedView))
+                .filter(report -> matchesDirectorInvestigationSearch(report, normalizedSearch))
+                .sorted((left, right) -> Comparator.nullsLast(LocalDateTime::compareTo)
+                        .compare(right.getUpdatedAt(), left.getUpdatedAt()))
+                .toList();
+
+        return toPageResponse(rows, requestedPage, requestedSize);
+    }
+
+    private boolean matchesDirectorInvestigationView(ReportResponseDTO report, String view) {
+        String status = report.getStatus() == null ? "" : report.getStatus().name();
+        boolean hasFindings = StringUtils.hasText(report.getFindings())
+                || StringUtils.hasText(report.getRecommendations())
+                || (report.getFindingsAttachmentPaths() != null && !report.getFindingsAttachmentPaths().isEmpty())
+                || status.contains("INVESTIGATION_REPORT")
+                || status.contains("FINDINGS")
+                || "INVESTIGATION_COMPLETED".equals(status);
+        boolean hasCasePlan = StringUtils.hasText(report.getCasePlan()) || status.contains("CASE_PLAN");
+        boolean assigned = report.getInvestigationOfficer() != null;
+        String investigationReportStatus = getInvestigationReportBucket(status);
+        String casePlanStatus = getCasePlanBucket(status);
+
+        return switch (view) {
+            case "PENDING" -> !status.contains("COMPLETED")
+                    && (!assigned || (assigned && !hasFindings && !hasCasePlan
+                    && "none".equals(investigationReportStatus) && "none".equals(casePlanStatus)));
+            case "INVESTIGATION_REPORT" -> hasFindings || !"none".equals(investigationReportStatus);
+            case "CASE_PLAN" -> hasCasePlan || !"none".equals(casePlanStatus);
+            default -> true;
+        };
+    }
+
+    private boolean matchesDirectorInvestigationSearch(ReportResponseDTO report, String normalizedSearch) {
+        if (normalizedSearch.isBlank()) {
+            return true;
+        }
+
+        String officerName = report.getInvestigationOfficer() == null ? "" :
+                (Objects.toString(report.getInvestigationOfficer().getGivenName(), "") + " "
+                        + Objects.toString(report.getInvestigationOfficer().getFamilyName(), ""));
+
+        return String.valueOf(report.getId()).contains(normalizedSearch)
+                || (report.getRelatedCase() != null
+                && containsIgnoreCase(report.getRelatedCase().getCaseNum(), normalizedSearch))
+                || containsIgnoreCase(report.getStatus() != null ? report.getStatus().name() : "", normalizedSearch)
+                || containsIgnoreCase(officerName, normalizedSearch)
+                || containsIgnoreCase(report.getAssignmentNotes(), normalizedSearch);
+    }
+
+    private String getCasePlanBucket(String status) {
+        if (status == null) {
+            return "none";
+        }
+        if (status.contains("CASE_PLAN_APPROVED")) {
+            return "approved";
+        }
+        if (status.contains("CASE_PLAN_REJECTED")) {
+            return "rejected";
+        }
+        if (status.contains("CASE_PLAN_SUBMITTED") || status.contains("CASE_PLAN_SENT")) {
+            return "submitted";
+        }
+        return "none";
+    }
+
+    private String getInvestigationReportBucket(String status) {
+        if (status == null) {
+            return "none";
+        }
+        if (status.contains("INVESTIGATION_REPORT_APPROVED")) {
+            return "approved";
+        }
+        if (status.contains("INVESTIGATION_REPORT_REJECTED")) {
+            return "rejected";
+        }
+        if (status.contains("INVESTIGATION_REPORT_RETURNED")) {
+            return "returned";
+        }
+        if (status.contains("FINDINGS_SUBMITTED")
+                || status.contains("INVESTIGATION_REPORT_SUBMITTED")
+                || "INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION".equals(status)) {
+            return "submitted";
+        }
+        if (status.contains("INVESTIGATION_COMPLETED")) {
+            return "completed";
+        }
+        return "none";
     }
 
     @Transactional
@@ -1547,6 +1781,35 @@ public class ReportService {
 
     public List<Report> getAllReportsForInvestigationOfficer(String officerId) {
         return reportRepo.findReportsByInvestigationOfficer(officerId.trim());
+    }
+
+    public PageResponseDTO<ReportResponseDTO> getInvestigationOfficerReportPage(
+            String officerId,
+            boolean activeOnly,
+            int page,
+            int size,
+            String search) {
+        String normalizedSearch = normalizeSearch(search);
+        List<ReportResponseDTO> rows = (activeOnly
+                ? fetchDashboardDataForIO(officerId)
+                : getHistoricalReportsForInvestigationOfficer(officerId)).stream()
+                .map(this::toResponseDTO)
+                .filter(report -> matchesReportSearch(report, normalizedSearch))
+                .toList();
+        return toPageResponse(rows, page, size);
+    }
+
+    public PageResponseDTO<ReportResponseDTO> getLegalAdvisorReportPage(
+            String legalAdvisorId,
+            int page,
+            int size,
+            String search) {
+        String normalizedSearch = normalizeSearch(search);
+        List<ReportResponseDTO> rows = getReportsForLegalAdvisor(legalAdvisorId).stream()
+                .map(this::toResponseDTO)
+                .filter(report -> matchesReportSearch(report, normalizedSearch))
+                .toList();
+        return toPageResponse(rows, page, size);
     }
 
     @Transactional
@@ -2536,5 +2799,23 @@ public class ReportService {
                 WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER,
                 employeeId
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponseDTO<ReportResponseDTO> getCasePlanPageForAssistantCommissioner(
+            String employeeId,
+            int requestedPage,
+            int requestedSize,
+            String search) {
+        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+
+        List<ReportResponseDTO> rows = getCasePlansForAssistantCommissioner(employeeId).stream()
+                .map(this::toResponseDTO)
+                .filter(report -> matchesReportSearch(report, normalizedSearch))
+                .sorted((left, right) -> Comparator.nullsLast(LocalDateTime::compareTo)
+                        .compare(right.getCreatedAt(), left.getCreatedAt()))
+                .toList();
+
+        return toPageResponse(rows, requestedPage, requestedSize);
     }
 }

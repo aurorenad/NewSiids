@@ -2,6 +2,7 @@ package org.example.siidsbackend.Service;
 
 import org.example.siidsbackend.DTO.Request.ReportRequestDTO;
 import org.example.siidsbackend.DTO.Request.SignReportRequest;
+import org.example.siidsbackend.DTO.NotificationDTO;
 import org.example.siidsbackend.Model.Case;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.Report;
@@ -275,6 +276,66 @@ class ReportServiceWorkflowTest {
         assertEquals(1, signed.getSignatures().size());
         assertEquals("DIRECTOR_INTELLIGENCE", signed.getSignatures().get(0).getSignatureRole());
         assertEquals("director-signature", signed.getSignatures().get(0).getSignaturePath());
+    }
+
+    @Test
+    void signReportAndMapResponse_ShouldReturnDtoWithCopiedAttachments() {
+        User directorUser = new User();
+        directorUser.setUsername("director-1");
+        directorUser.setRole("DirectorIntelligence");
+        Employee director = employee("director-1");
+        director.setGivenName("Director");
+        director.setFamilyName("Intelligence");
+        Report report = reportWithStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
+        Employee creator = employee("creator-1");
+        creator.setGivenName("Case");
+        creator.setFamilyName("Creator");
+        report.setCreatedBy(creator);
+        report.setAttachmentPaths(List.of("reports/intel.pdf"));
+        report.setFindingsAttachmentPaths(List.of("findings/result.pdf"));
+
+        SignReportRequest request = new SignReportRequest();
+        request.setRole("DIRECTOR_INTELLIGENCE");
+        request.setSignatureBase64("director-signature");
+
+        when(userRepo.findByUsername("director-1")).thenReturn(Optional.of(directorUser));
+        when(rbacService.hasRole(directorUser, "DirectorIntelligence")).thenReturn(true);
+        when(reportRepo.findById(1)).thenReturn(Optional.of(report));
+        when(employeeRepo.findByEmployeeId("director-1")).thenReturn(Optional.of(director));
+        when(reportRepo.save(any(Report.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = reportService.signReportAndMapResponse(1, request, "director-1");
+
+        assertEquals(true, response.isDirectorSigned());
+        assertEquals(List.of("reports/intel.pdf"), response.getAttachmentPaths());
+        assertEquals(List.of("findings/result.pdf"), response.getFindingsAttachmentPaths());
+    }
+
+    @Test
+    void approveReportResponse_ShouldReturnDtoWithCopiedAttachments() {
+        Employee director = employee("director-1");
+        director.setGivenName("Director");
+        director.setFamilyName("Intelligence");
+        Report report = reportWithStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE);
+        Employee creator = employee("creator-1");
+        creator.setGivenName("Case");
+        creator.setFamilyName("Creator");
+        report.setCreatedBy(creator);
+        report.setAttachmentPaths(List.of("reports/intel.pdf"));
+        report.setFindingsAttachmentPaths(List.of("findings/result.pdf"));
+
+        when(reportRepo.findById(1)).thenReturn(Optional.of(report));
+        when(employeeRepo.findByEmployeeId("director-1")).thenReturn(Optional.of(director));
+        when(reportRepo.assistantCommissioner()).thenReturn(List.of(employee("ac-1")));
+        when(reportRepo.save(any(Report.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(webSocketNotificationService.createNotificationDTO(any(Report.class), any(), any(Employee.class)))
+                .thenReturn(new NotificationDTO());
+
+        var response = reportService.approveReportResponse(1, "director-1");
+
+        assertEquals(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE, response.getStatus());
+        assertEquals(List.of("reports/intel.pdf"), response.getAttachmentPaths());
+        assertEquals(List.of("findings/result.pdf"), response.getFindingsAttachmentPaths());
     }
 
     @Test

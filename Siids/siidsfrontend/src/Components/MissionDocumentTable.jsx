@@ -1,6 +1,30 @@
 import React, { useState } from 'react';
 import { Button, ListGroup, Spinner } from 'react-bootstrap';
 import html2pdf from "html2pdf.js";
+import AppTable from './ui/AppTable.jsx';
+
+const detailColumns = [
+    {
+        key: 'label',
+        label: 'Field',
+        cellStyle: {
+            width: '30%',
+            fontWeight: 'bold',
+            verticalAlign: 'top',
+            background: 'var(--gray-50)',
+        },
+    },
+    {
+        key: 'value',
+        label: 'Value',
+        cellStyle: { verticalAlign: 'top' },
+        render: (row) => (
+            <span style={{ whiteSpace: row.isTextArea ? 'pre-line' : 'normal' }}>
+                {row.value}
+            </span>
+        ),
+    },
+];
 
 const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloading }) => {
 
@@ -117,28 +141,16 @@ const MissionDocumentTable = ({ data, attachments, onDownloadAttachment, downloa
                             {section.title}
                         </h5>
 
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <tbody>
-                                {section.rows.map((row, rowIndex) => (
-                                    <tr key={rowIndex} style={{ borderBottom: '1px solid #eee' }}>
-                                        <td style={{
-                                            width: '30%',
-                                            padding: '10px',
-                                            fontWeight: 'bold',
-                                            verticalAlign: 'top'
-                                        }}>
-                                            {row.label}
-                                        </td>
-                                        <td style={{
-                                            padding: '10px',
-                                            whiteSpace: row.isTextArea ? 'pre-line' : 'normal'
-                                        }}>
-                                            {row.value}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <AppTable
+                            columns={detailColumns}
+                            rows={section.rows}
+                            rowKey={(row, rowIndex) => `${sectionIndex}-${row.label}-${rowIndex}`}
+                            totalRows={section.rows.length}
+                            minWidth={520}
+                            showHeader={false}
+                            showPagination={false}
+                            emptyMessage="No section details available"
+                        />
                     </div>
                 ))}
 

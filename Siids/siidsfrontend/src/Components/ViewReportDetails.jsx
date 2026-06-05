@@ -2,12 +2,41 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, Button, CircularProgress,
-    Alert, Chip, Divider, Table, TableBody, TableCell, TableRow
+    Alert, Chip, Divider
 } from '@mui/material';
 import { Description, ArrowBack, PictureAsPdf } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import AppTable from './ui/AppTable.jsx';
+
+const detailColumns = [
+    {
+        key: 'label',
+        label: 'Field',
+        cellStyle: { fontWeight: 'bold', width: '30%', background: 'var(--gray-50)' },
+    },
+    {
+        key: 'value',
+        label: 'Value',
+        render: (row) => row.value,
+    },
+];
+
+const DetailTable = ({ rows }) => (
+    <Box sx={{ mb: 4 }}>
+        <AppTable
+            columns={detailColumns}
+            rows={rows}
+            rowKey={(row) => row.label}
+            totalRows={rows.length}
+            minWidth={560}
+            showHeader={false}
+            showPagination={false}
+            emptyMessage="No details available"
+        />
+    </Box>
+);
 
 const ViewReportDetails = () => {
     const { id } = useParams();
@@ -265,38 +294,15 @@ const ViewReportDetails = () => {
                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
                         Report Information
                     </Typography>
-                    <Table sx={{ mb: 4 }}>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Report ID</TableCell>
-                                <TableCell>{report.id}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Case Number</TableCell>
-                                <TableCell>{report.relatedCase?.caseNum || '-'}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Created By</TableCell>
-                                <TableCell>{report.createdBy || '-'}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Employee ID</TableCell>
-                                <TableCell>{report.createdByEmployeeId || '-'}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Created Date</TableCell>
-                                <TableCell>{formatDate(report.createdAt)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Last Updated</TableCell>
-                                <TableCell>{formatDate(report.updatedAt)}</TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Current Recipient</TableCell>
-                                <TableCell>{report.currentRecipient || '-'}</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
+                    <DetailTable rows={[
+                        { label: 'Report ID', value: report.id },
+                        { label: 'Case Number', value: report.relatedCase?.caseNum || '-' },
+                        { label: 'Created By', value: report.createdBy || '-' },
+                        { label: 'Employee ID', value: report.createdByEmployeeId || '-' },
+                        { label: 'Created Date', value: formatDate(report.createdAt) },
+                        { label: 'Last Updated', value: formatDate(report.updatedAt) },
+                        { label: 'Current Recipient', value: report.currentRecipient || '-' },
+                    ]} />
 
                     {/* Tax Payer Information (if exists) */}
                     {hasTaxPayerInfo() && (
@@ -304,34 +310,14 @@ const ViewReportDetails = () => {
                             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
                                 Tax Payer Information
                             </Typography>
-                            <Table sx={{ mb: 4 }}>
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Tax Payer Name</TableCell>
-                                        <TableCell>{report.relatedCase?.tin?.taxPayerName || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>TIN</TableCell>
-                                        <TableCell>{report.relatedCase?.tin?.taxPayerTIN || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
-                                        <TableCell>{report.relatedCase?.tin?.taxPayerAddress || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
-                                        <TableCell>{report.relatedCase?.tin?.taxPayerContact || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Tax Type</TableCell>
-                                        <TableCell>{report.relatedCase?.taxType || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Tax Period</TableCell>
-                                        <TableCell>{report.relatedCase?.taxPeriod || '-'}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+                            <DetailTable rows={[
+                                { label: 'Tax Payer Name', value: report.relatedCase?.tin?.taxPayerName || '-' },
+                                { label: 'TIN', value: report.relatedCase?.tin?.taxPayerTIN || '-' },
+                                { label: 'Address', value: report.relatedCase?.tin?.taxPayerAddress || '-' },
+                                { label: 'Contact', value: report.relatedCase?.tin?.taxPayerContact || '-' },
+                                { label: 'Tax Type', value: report.relatedCase?.taxType || '-' },
+                                { label: 'Tax Period', value: report.relatedCase?.taxPeriod || '-' },
+                            ]} />
                         </>
                     )}
                     {hasInformerInfo() && (
@@ -339,34 +325,14 @@ const ViewReportDetails = () => {
                             <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
                                 Informer Information
                             </Typography>
-                            <Table sx={{ mb: 4 }}>
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold', width: '30%' }}>Informer Name</TableCell>
-                                        <TableCell>{report.relatedCase?.informerId?.informerName || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Informer ID</TableCell>
-                                        <TableCell>{report.relatedCase?.informerId?.informerId || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Phone Number</TableCell>
-                                        <TableCell>{report.relatedCase?.informerId?.informerPhoneNum || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
-                                        <TableCell>{report.relatedCase?.informerId?.informerEmail || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Address</TableCell>
-                                        <TableCell>{report.relatedCase?.informerId?.informerAddress || '-'}</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>National ID</TableCell>
-                                        <TableCell>{report.relatedCase?.informerId?.nationalId || '-'}</TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+                            <DetailTable rows={[
+                                { label: 'Informer Name', value: report.relatedCase?.informerId?.informerName || '-' },
+                                { label: 'Informer ID', value: report.relatedCase?.informerId?.informerId || '-' },
+                                { label: 'Phone Number', value: report.relatedCase?.informerId?.informerPhoneNum || '-' },
+                                { label: 'Email', value: report.relatedCase?.informerId?.informerEmail || '-' },
+                                { label: 'Address', value: report.relatedCase?.informerId?.informerAddress || '-' },
+                                { label: 'National ID', value: report.relatedCase?.informerId?.nationalId || '-' },
+                            ]} />
                         </>
                     )}
 

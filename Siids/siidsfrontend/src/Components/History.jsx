@@ -1,16 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './../Styles/History.css';
 import { AuditApi } from "../api/Axios/caseApi.jsx";
 import {
     Box,
     Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
     CircularProgress,
     Alert,
     MenuItem,
@@ -18,7 +11,6 @@ import {
     InputLabel,
     Select,
     Button,
-    Pagination,
     Chip,
     Card,
     CardContent,
@@ -32,37 +24,57 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 import html2canvas from "html2canvas";
+import AppTable from './ui/AppTable.jsx';
+
+const ROWS_PER_PAGE = 10;
 
 const History = () => {
     const [auditLogs, setAuditLogs] = useState([]);
+    const [totalLogs, setTotalLogs] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(10);
+    const [page, setPage] = useState(0);
     const [filterAction, setFilterAction] = useState('');
     const [availableActions, setAvailableActions] = useState([]);
 
     useEffect(() => {
-        const fetchAuditLogs = async () => {
-            try {
-                const response = await AuditApi.getAuditLogs();
-                // Sort by timestamp descending (newest first)
-                const sortedLogs = response.data.sort((a, b) =>
-                    new Date(b.timestamp) - new Date(a.timestamp)
-                );
-                setAuditLogs(sortedLogs);
-                const actions = [...new Set(sortedLogs.map(log => log.action))].sort();
-                setAvailableActions(actions);
-                setLoading(false);
-            } catch (err) {
-                console.error('Failed to fetch audit logs:', err);
-                setError(err.response?.data?.message || 'Failed to fetch audit logs');
-                setLoading(false);
-            }
-        };
-
-        fetchAuditLogs();
+        fetchAuditActions();
     }, []);
+
+    useEffect(() => {
+        fetchAuditLogs();
+    }, [page, filterAction]);
+
+    const fetchAuditActions = async () => {
+        try {
+            const response = await AuditApi.getAuditActions();
+            setAvailableActions(response.data || []);
+        } catch (err) {
+            console.error('Failed to fetch audit actions:', err);
+        }
+    };
+
+    const fetchAuditLogs = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await AuditApi.getAuditLogs({
+                page,
+                size: ROWS_PER_PAGE,
+                action: filterAction || undefined,
+            });
+            const pageData = response.data || {};
+            setAuditLogs(pageData.content || []);
+            setTotalLogs(pageData.totalElements || 0);
+        } catch (err) {
+            console.error('Failed to fetch audit logs:', err);
+            setError(err.response?.data?.message || 'Failed to fetch audit logs');
+            setAuditLogs([]);
+            setTotalLogs(0);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatDateTime = (dateTimeString) => {
         const options = {
@@ -76,26 +88,14 @@ const History = () => {
         return new Date(dateTimeString).toLocaleDateString(undefined, options);
     };
 
-    const filteredLogs = filterAction
-        ? auditLogs.filter(log => log.action === filterAction)
-        : auditLogs;
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = filteredLogs.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-
-    const handlePageChange = (event, value) => {
-        setCurrentPage(value);
-    };
     const handleFilterChange = (event) => {
         setFilterAction(event.target.value);
-        setCurrentPage(1);
+        setPage(0);
     };
 
     const clearFilters = () => {
         setFilterAction('');
-        setCurrentPage(1);
+        setPage(0);
     };
 
     const exportStyledPDF = () => {
@@ -112,6 +112,48 @@ const History = () => {
             pdf.save("audit_logs.pdf");
         });
     };
+
+    const tableColumns = useMemo(() => [
+        {
+            key: 'timestamp',
+            label: 'Timestamp',
+            render: (log) => (
+                <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+                    {formatDateTime(log.timestamp)}
+                </Typography>
+            )
+        },
+        {
+            key: 'action',
+            label: 'Action',
+            render: (log) => (
+                <Chip
+                    label={log.action}
+                    variant="filled"
+                    size="small"
+                />
+            )
+        },
+        {
+            key: 'description',
+            label: 'Description',
+            render: (log) => log.description || '-'
+        },
+        {
+            key: 'performedBy',
+            label: 'Performed By',
+            render: (log) => (
+                <Typography variant="body2">
+                    {log.performedBy?.firstName} {log.performedBy?.lastName}
+                    {log.performedBy?.employeeId && (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                            ({log.performedBy.employeeId})
+                        </Typography>
+                    )}
+                </Typography>
+            )
+        }
+    ], []);
 
     if (loading) {
         return (
@@ -186,106 +228,31 @@ const History = () => {
                 </CardContent>
             </Card>
 
-            {/* Results Count */}
-            <Box sx={{ mb: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                    Showing {currentItems.length} of {filteredLogs.length} audit logs
-                    {filterAction && (
-                        <Chip
-                            label={`Filtered by: ${filterAction}`}
-                            color="primary"
-                            variant="outlined"
-                            size="small"
-                            sx={{ ml: 1 }}
-                            onDelete={clearFilters}
-                        />
-                    )}
-                </Typography>
-            </Box>
-            {currentItems.length === 0 ? (
-                <Alert severity="info" sx={{ mt: 3 }}>
-                    {filterAction
-                        ? `No audit logs found for action "${filterAction}"`
-                        : 'No audit logs found.'
-                    }
-                </Alert>
-            ) : (
-                <>
-                    <TableContainer component={Paper} id="auditTable" sx={{ mb: 3 }}>
-                        <Table sx={{ minWidth: 650 }} aria-label="audit logs table">
-                            <TableHead sx={{ backgroundColor: 'primary.main' }}>
-                                <TableRow>
-                                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Timestamp</TableCell>
-                                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Action</TableCell>
-                                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Description</TableCell>
-                                    <TableCell sx={{ color: 'black', fontWeight: 'bold' }}>Performed By</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {currentItems.map((log) => (
-                                    <TableRow
-                                        key={log.id}
-                                        sx={{
-                                            '&:nth-of-type(odd)': { backgroundColor: 'action.hover' },
-                                            '&:last-child td, &:last-child th': { border: 0 }
-                                        }}
-                                    >
-                                        <TableCell>
-                                            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-                                                {formatDateTime(log.timestamp)}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                label={log.action}
-                                                variant="filled"
-                                                size="small"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2">
-                                                {log.description}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2">
-                                                {log.performedBy?.firstName} {log.performedBy?.lastName}
-                                                {log.performedBy?.employeeId && (
-                                                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                                                        ({log.performedBy.employeeId})
-                                                    </Typography>
-                                                )}
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-
-                    {/* Pagination Controls */}
-                    {totalPages > 1 && (
-                        <Box display="flex" justifyContent="center" sx={{ mt: 3 }}>
-                            <Pagination
-                                count={totalPages}
-                                page={currentPage}
-                                onChange={handlePageChange}
-                                color="primary"
-                                size="large"
-                                showFirstButton
-                                showLastButton
-                                sx={{
-                                    '& .MuiPaginationItem-root': {
-                                        fontSize: '1.1rem',
-                                        minWidth: '40px',
-                                        height: '40px'
-                                    }
-                                }}
-                            />
-                        </Box>
-                    )}
-                </>
+            {filterAction && (
+                <Box sx={{ mb: 2 }}>
+                    <Chip
+                        label={`Filtered by: ${filterAction}`}
+                        color="primary"
+                        variant="outlined"
+                        size="small"
+                        onDelete={clearFilters}
+                    />
+                </Box>
             )}
+
+            <Box id="auditTable">
+                <AppTable
+                    columns={tableColumns}
+                    rows={auditLogs}
+                    loading={loading}
+                    emptyMessage={filterAction ? `No audit logs found for action "${filterAction}"` : 'No audit logs found.'}
+                    page={page}
+                    rowsPerPage={ROWS_PER_PAGE}
+                    totalRows={totalLogs}
+                    onPageChange={(event, nextPage) => setPage(nextPage)}
+                    minWidth={900}
+                />
+            </Box>
         </Box>
     );
 };
