@@ -2807,7 +2807,7 @@ public class ReportService {
             int requestedPage,
             int requestedSize,
             String search) {
-        String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
+        String normalizedSearch = normalizeSearch(search);
 
         List<ReportResponseDTO> rows = getCasePlansForAssistantCommissioner(employeeId).stream()
                 .map(this::toResponseDTO)
@@ -2817,5 +2817,9 @@ public class ReportService {
                 .toList();
 
         return toPageResponse(rows, requestedPage, requestedSize);
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
     }
 }
