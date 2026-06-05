@@ -134,6 +134,13 @@ export const ReportApi = {
         );
     },
 
+    signReport: (reportId, role, signatureBase64) => {
+        return caseApi.post(`/api/reports/${reportId}/sign`, {
+            role,
+            signatureBase64
+        });
+    },
+
     returnInvestigationReport: (reportId, returnReason) => {
         return caseApi.post(`/api/reports/${reportId}/return-investigation-report`,
             { returnReason }
@@ -278,6 +285,10 @@ export const ReportApi = {
 
     generateFinalReport: (reportId) => {
         return caseApi.post(`/api/reports/${reportId}/generate`, {}, { responseType: 'blob' });
+    },
+
+    generateFinalDraft: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/generate-draft`);
     },
 
     downloadReportPdf: (reportId) => {

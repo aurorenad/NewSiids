@@ -1,38 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, Button, CircularProgress,
     Alert, Chip, Divider, Table, TableBody, TableCell, TableRow,
+    Dialog, DialogTitle, DialogContent, DialogActions,
     Card, CardContent, Stack
 } from '@mui/material';
-import { Description, ArrowBack, PictureAsPdf, CheckCircle, HourglassEmpty, Lock } from '@mui/icons-material';
+import { Description, ArrowBack, PictureAsPdf, Draw, Check, CheckCircle, HourglassEmpty, Lock } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { AuthContext } from '../context/AuthContext';
+import SignatureCanvas from 'react-signature-canvas';
 
 const ViewReportDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { authState, currentUser } = useContext(AuthContext);
+    const role = authState?.role || currentUser?.role;
+
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const reportRef = useRef();
+
+    // Signature states
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+    const [signing, setSigning] = useState(false);
+    const sigCanvas = useRef({});
 
     useEffect(() => {
         const fetchReportDetails = async () => {
             try {
                 setLoading(true);
                 const response = await ReportApi.getReport(id);
-                console.log('Report data received:', {
-                    id: response.data.id,
-                    attachmentPaths: response.data.attachmentPaths,
-                    hasAttachmentPath: response.data.attachmentPath,
-                    allData: response.data
-                });
                 setReport(response.data);
                 setError(null);
             } catch (err) {
-                console.error('Error fetching report:', err);
                 setError(err.response?.data?.message || 'Failed to fetch report details');
             } finally {
                 setLoading(false);
@@ -41,6 +45,39 @@ const ViewReportDetails = () => {
 
         fetchReportDetails();
     }, [id]);
+
+    const handleSignSubmit = async () => {
+        if (sigCanvas.current.isEmpty()) {
+            setError("Please provide a signature first.");
+            return;
+        }
+
+        const signatureBase64 = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+        setSigning(true);
+
+        try {
+            await ReportApi.signReport(id, 'ASSISTANT_COMMISSIONER', signatureBase64);
+            setSignatureDialogOpen(false);
+            fetchReportDetails();
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to sign report');
+        } finally {
+            setSigning(false);
+        }
+    };
+
+    const hasACAlreadySigned = () => {
+        return report?.signatures?.some(s => s.signatureRole === 'ASSISTANT_COMMISSIONER');
+    };
+
+    const isFinalized = () => {
+        const finalizedStatuses = [
+            'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER',
+            'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER',
+            'PENDING_DIRECTOR_SIGNATURE'
+        ];
+        return finalizedStatuses.includes(report?.status);
+    };
 
     const getStatusColor = (status) => {
         switch (status) {
@@ -185,7 +222,30 @@ const ViewReportDetails = () => {
                 </Button>
 
                 <Box display="flex" gap={2}>
-
+                    {role === 'ASSISTANT_COMMISSIONER' && !hasACAlreadySigned() && !isFinalized() && (
+                        <Button
+                            variant="contained"
+                            startIcon={signing ? <CircularProgress size={20} color="inherit" /> : <Draw />}
+                            onClick={() => {
+                                setSignatureDialogOpen(true);
+                                setTimeout(() => {
+                                    if (sigCanvas.current) sigCanvas.current.clear();
+                                }, 100);
+                            }}
+                            disabled={signing}
+                            color="success"
+                        >
+                            Sign Report
+                        </Button>
+                    )}
+                    {role === 'ASSISTANT_COMMISSIONER' && hasACAlreadySigned() && (
+                        <Chip 
+                            label="Signed by AC" 
+                            color="success" 
+                            icon={<Check />} 
+                            sx={{ fontWeight: 'bold' }} 
+                        />
+                    )}
 
                     <Button
                         variant="contained"
@@ -197,6 +257,32 @@ const ViewReportDetails = () => {
                     </Button>
                 </Box>
             </Box>
+
+            {/* Signature Dialog */}
+            <Dialog open={signatureDialogOpen} onClose={() => setSignatureDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Provide Signature</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        Please draw your signature below to authorize and finalize your decision on this report.
+                    </Typography>
+                    <Box sx={{ border: '2px dashed #ccc', borderRadius: 2, mb: 2 }}>
+                        <SignatureCanvas
+                            ref={sigCanvas}
+                            penColor="black"
+                            canvasProps={{ width: 500, height: 200, className: 'sigCanvas' }}
+                        />
+                    </Box>
+                    <Button variant="outlined" size="small" onClick={() => sigCanvas.current.clear()}>
+                        Clear Signature
+                    </Button>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setSignatureDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={handleSignSubmit} variant="contained" color="primary" disabled={signing}>
+                        {signing ? <CircularProgress size={24} /> : 'Submit Signature'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {error && (
                 <Box mb={2}>

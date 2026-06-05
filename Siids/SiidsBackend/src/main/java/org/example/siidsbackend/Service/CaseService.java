@@ -340,7 +340,15 @@ public class CaseService {
         Employee employee = employeeRepo.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
-        c.setRoutedTo(org.example.siidsbackend.Model.RoutedTo.valueOf(departmentName.toUpperCase()));
+        org.example.siidsbackend.Model.RoutedTo routedToEnum;
+        try {
+            String enumName = departmentName.toUpperCase().replace(" ", "_");
+            routedToEnum = org.example.siidsbackend.Model.RoutedTo.valueOf(enumName);
+        } catch (IllegalArgumentException e) {
+            routedToEnum = org.example.siidsbackend.Model.RoutedTo.OTHER;
+        }
+
+        c.setRoutedTo(routedToEnum);
         c.setDepartmentName(departmentName);
         c.setUpdatedAt(java.time.LocalDateTime.now());
         
