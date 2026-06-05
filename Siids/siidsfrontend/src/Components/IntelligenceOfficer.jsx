@@ -21,7 +21,7 @@ import {
 } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { format, subDays } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { CaseService, ReportApi } from '../api/Axios/caseApi';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -29,6 +29,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { SplitWorkspaceLayout } from './ui/SplitWorkspaceLayout';
 
 const IntelligenceOfficer = () => {
+    const location = useLocation();
     const [cases, setCases] = useState([]);
     const [filteredCases, setFilteredCases] = useState([]);
     const [loading, setLoading] = useState({ cases: true });
@@ -82,7 +83,7 @@ const IntelligenceOfficer = () => {
 
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [location.key]);
 
     const fetchData = async () => {
         try {

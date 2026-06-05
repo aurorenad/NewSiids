@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     Box, Typography, Paper, Button, CircularProgress,
     Alert, Chip, Divider, Table, TableBody, TableCell, TableRow,
-    Dialog, DialogTitle, DialogContent, DialogActions
+    Dialog, DialogTitle, DialogContent, DialogActions,
+    Card, CardContent, Stack
 } from '@mui/material';
-import { Description, ArrowBack, PictureAsPdf, Draw, Check } from '@mui/icons-material';
+import { Description, ArrowBack, PictureAsPdf, Draw, Check, CheckCircle, HourglassEmpty, Lock } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -497,34 +498,68 @@ const ViewReportDetails = () => {
                         )}
                     </Box>
 
-                    {report.signatures && report.signatures.length > 0 && (
-                        <Box sx={{ mt: 4, mb: 2 }}>
-                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
-                                Signatures ({report.signatures.length})
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                {report.signatures.map((sig, idx) => (
-                                    <Box key={idx} sx={{ border: '1px solid #ccc', borderRadius: 2, p: 2, minWidth: '250px' }}>
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                                            {sig.name} ({sig.role.replace(/_/g, ' ')})
-                                        </Typography>
-                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
-                                            Signed At: {formatDate(sig.signedAt)}
-                                        </Typography>
-                                        <Box sx={{ height: '100px', backgroundColor: '#f9f9f9', border: '1px dashed #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            {sig.signatureBase64 && sig.signatureBase64.startsWith('data:image') ? (
-                                                <img src={sig.signatureBase64} alt="Signature" style={{ maxHeight: '100%', maxWidth: '100%' }} />
-                                            ) : (
-                                                <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', p: 1 }}>
-                                                    {sig.signatureBase64}
-                                                </Typography>
-                                            )}
-                                        </Box>
+                    {/* Signature Status Panel */}
+                    <Box sx={{ mt: 4, mb: 2 }}>
+                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                            Signature Status
+                            {report.isFinalised && (
+                                <Chip icon={<Lock fontSize="small" />} label="Finalised" color="success" size="small" sx={{ ml: 1 }} />
+                            )}
+                        </Typography>
+
+                        {report.status === 'REPORT_FINALISED' && (
+                            <Alert severity="success" sx={{ mb: 2 }}>
+                                This report has been signed by both the Assistant Commissioner and the Director of Intelligence. It is now finalised and locked.
+                            </Alert>
+                        )}
+                        {report.status === 'PENDING_DIRECTOR_SIGNATURE' && (
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                                Signed by the Assistant Commissioner. Awaiting signature from the Director of Intelligence.
+                            </Alert>
+                        )}
+
+                        <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
+                            <Card variant="outlined" sx={{ minWidth: 260, borderColor: report.acSigned ? '#4caf50' : '#ff9800', borderWidth: 2 }}>
+                                <CardContent>
+                                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                        {report.acSigned ? <CheckCircle color="success" /> : <HourglassEmpty color="warning" />}
+                                        <Typography variant="subtitle2" fontWeight="bold">Assistant Commissioner</Typography>
                                     </Box>
-                                ))}
-                            </Box>
-                        </Box>
-                    )}
+                                    {report.acSigned ? (() => {
+                                        const sig = report.signatures?.find(s => s.role === 'ASSISTANT_COMMISSIONER');
+                                        return sig ? (
+                                            <>
+                                                <Typography variant="body2">{sig.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary">Signed: {formatDate(sig.signedAt)}</Typography>
+                                            </>
+                                        ) : null;
+                                    })() : (
+                                        <Typography variant="body2" color="text.secondary" fontStyle="italic">Pending signature</Typography>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            <Card variant="outlined" sx={{ minWidth: 260, borderColor: report.directorSigned ? '#4caf50' : '#ff9800', borderWidth: 2 }}>
+                                <CardContent>
+                                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                        {report.directorSigned ? <CheckCircle color="success" /> : <HourglassEmpty color="warning" />}
+                                        <Typography variant="subtitle2" fontWeight="bold">Director of Intelligence</Typography>
+                                    </Box>
+                                    {report.directorSigned ? (() => {
+                                        const sig = report.signatures?.find(s => s.role === 'DIRECTOR_INTELLIGENCE');
+                                        return sig ? (
+                                            <>
+                                                <Typography variant="body2">{sig.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary">Signed: {formatDate(sig.signedAt)}</Typography>
+                                            </>
+                                        ) : null;
+                                    })() : (
+                                        <Typography variant="body2" color="text.secondary" fontStyle="italic">Pending signature</Typography>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </Stack>
+                    </Box>
 
                     <Divider sx={{ my: 3 }} />
                     <Box sx={{ textAlign: 'center', mt: 4 }}>

@@ -1,0 +1,24 @@
+/* Generic loading layout screens */
+.siids-app-loading-screen {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-brand);
+  background-color: var(--background-main);
+  letter-spacing: 0.05em;
+}
+
+.unauthorized-role-banner {
+  padding: var(--spacing-lg);
+  color: var(--danger-color);
+  background-color: var(--danger-bg);
+  border: 1px solid rgba(211, 47, 47, 0.2);
+  border-radius: 8px;
+  margin: var(--spacing-lg);
+  font-weight: 600;
+  text-align: center;
+}

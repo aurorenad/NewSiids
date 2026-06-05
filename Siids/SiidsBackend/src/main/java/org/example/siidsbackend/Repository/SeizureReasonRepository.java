@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface SeizureReasonRepository extends JpaRepository<SeizureReason, Integer> {
     Optional<SeizureReason> findByReason(String reason);
+    boolean existsByReason(String reason);
 }

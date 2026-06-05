@@ -284,11 +284,19 @@ public class PhysicalStockService {
                 note.setTaxpayerType(dto.getTaxpayerType());
             }
         } else {
-            note.setTaxpayerTin(dto.getTaxpayerTin());
-            note.setTaxpayerName(dto.getTaxpayerName());
-            note.setTaxpayerAddress(dto.getTaxpayerAddress());
-            note.setTaxpayerContact(dto.getTaxpayerContact());
-            note.setTaxpayerType(dto.getTaxpayerType());
+            if ("UNKNOWN".equalsIgnoreCase(dto.getTaxpayerType())) {
+                note.setTaxpayerTin(null);
+                note.setTaxpayerName(null);
+                note.setTaxpayerAddress(null);
+                note.setTaxpayerContact(null);
+                note.setTaxpayerType("UNKNOWN");
+            } else {
+                note.setTaxpayerTin(dto.getTaxpayerTin());
+                note.setTaxpayerName(dto.getTaxpayerName());
+                note.setTaxpayerAddress(dto.getTaxpayerAddress());
+                note.setTaxpayerContact(dto.getTaxpayerContact());
+                note.setTaxpayerType(dto.getTaxpayerType());
+            }
         }
 
         note.setNationalId(dto.getNationalId());
@@ -296,6 +304,14 @@ public class PhysicalStockService {
         note.setRepresentativeName(dto.getRepresentativeName());
         note.setRepresentativeContact(dto.getRepresentativeContact());
         note.setGoodsDescription(dto.getGoodsDescription());
+        note.setQuantity(dto.getQuantity());
+        note.setQuantityType(dto.getQuantityType());
+        note.setFullDescription(dto.getFullDescription());
+        note.setLocationOfSeizure(dto.getLocationOfSeizure());
+        note.setConditionOfGoods(dto.getConditionOfGoods());
+        note.setConveyanceMeans(dto.getConveyanceMeans());
+        note.setConveyanceRegistration(dto.getConveyanceRegistration());
+        
         note.setSeizureReason(dto.getSeizureReason());
         note.setDateTimeSeized(dto.getDateTimeSeized() != null ? dto.getDateTimeSeized() : LocalDateTime.now());
         note.setPvInCharge(currentUser);
@@ -330,16 +346,34 @@ public class PhysicalStockService {
             throw new IllegalStateException("Cannot edit seizure note in status: " + note.getStatus());
         }
 
-        note.setTaxpayerTin(dto.getTaxpayerTin());
-        note.setTaxpayerName(dto.getTaxpayerName());
-        note.setTaxpayerAddress(dto.getTaxpayerAddress());
-        note.setTaxpayerContact(dto.getTaxpayerContact());
-        note.setTaxpayerType(dto.getTaxpayerType());
+        if ("UNKNOWN".equalsIgnoreCase(dto.getTaxpayerType())) {
+            note.setTaxpayerTin(null);
+            note.setTaxpayerName(null);
+            note.setTaxpayerAddress(null);
+            note.setTaxpayerContact(null);
+            note.setTaxpayerType("UNKNOWN");
+        } else {
+            note.setTaxpayerTin(dto.getTaxpayerTin());
+            note.setTaxpayerName(dto.getTaxpayerName());
+            note.setTaxpayerAddress(dto.getTaxpayerAddress());
+            note.setTaxpayerContact(dto.getTaxpayerContact());
+            note.setTaxpayerType(dto.getTaxpayerType());
+        }
+        
         note.setNationalId(dto.getNationalId());
         note.setPhysicalDescription(dto.getPhysicalDescription());
         note.setRepresentativeName(dto.getRepresentativeName());
         note.setRepresentativeContact(dto.getRepresentativeContact());
         note.setGoodsDescription(dto.getGoodsDescription());
+        
+        note.setQuantity(dto.getQuantity());
+        note.setQuantityType(dto.getQuantityType());
+        note.setFullDescription(dto.getFullDescription());
+        note.setLocationOfSeizure(dto.getLocationOfSeizure());
+        note.setConditionOfGoods(dto.getConditionOfGoods());
+        note.setConveyanceMeans(dto.getConveyanceMeans());
+        note.setConveyanceRegistration(dto.getConveyanceRegistration());
+        
         note.setSeizureReason(dto.getSeizureReason());
         if (dto.getDateTimeSeized() != null) {
             note.setDateTimeSeized(dto.getDateTimeSeized());
@@ -401,7 +435,6 @@ public class PhysicalStockService {
         note.setStatus(PhysicalStockStatus.IN_MAIN_STOCK);
         note.setApprovedBy(stockManager);
         note.setApprovedAt(LocalDateTime.now());
-        note.setActionedAt(LocalDateTime.now());
 
         // Ensure a PV Document exists
         if (note.getPvNumber() == null || note.getPvNumber().isEmpty()) {
@@ -483,7 +516,7 @@ public class PhysicalStockService {
             throw new IllegalStateException("Only goods currently IN_STOCK can be released. Current status: " + note.getStatus());
         }
 
-        note.setStatus(PhysicalStockStatus.PENDING_PRSO_RELEASE_APPROVAL);
+        note.setStatus(PhysicalStockStatus.PENDING_RELEASE);
         note.setReleaseRequestedBy(stockManager);
         note.setReleaseRequestedAt(LocalDateTime.now());
         seizureNoteRepository.save(note);
@@ -524,6 +557,36 @@ public class PhysicalStockService {
         }
 
         return note;
+    }
+
+    @Transactional
+    public void verifyRelease(Integer id, Employee deputyPrsoUser) {
+        SeizureNote note = seizureNoteRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Goods not found"));
+
+        if (note.getStatus() != PhysicalStockStatus.PENDING_RELEASE) {
+            throw new IllegalStateException("Goods must be in PENDING_RELEASE state for verification. Current: " + note.getStatus());
+        }
+
+        note.setStatus(PhysicalStockStatus.PENDING_PRSO_RELEASE_APPROVAL);
+        seizureNoteRepository.save(note);
+
+        auditService.logAction(note.getSeizureNumber(), "RELEASE_VERIFIED", "Deputy PRSO verified Release Request. Escalated to PRSO.", deputyPrsoUser);
+        
+        // Notify All PRSOs
+        List<User> prsos = userRepo.findByRole("PRSO");
+        String deputyName = deputyPrsoUser.getGivenName() + " " + deputyPrsoUser.getFamilyName();
+        for (User p : prsos) {
+            employeeRepo.findByEmployeeId(p.getUsername()).ifPresent(e -> {
+                notificationService.createAndSendStockNotification(
+                    "Authorization Required: Release request for PV " + note.getPvNumber() + " verified by " + deputyName, 
+                    e, 
+                    "RELEASE_VERIFIED",
+                    note.getPvNumber(),
+                    deputyName
+                );
+            });
+        }
     }
 
     @Transactional

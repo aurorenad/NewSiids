@@ -44,6 +44,7 @@ public class ReportService {
     private final AuditService auditService;
     private final UserRepo userRepo;
     private final PdfService pdfService;
+    private final org.example.siidsbackend.Repository.ReportAttachmentRepo reportAttachmentRepo;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -68,6 +69,8 @@ public class ReportService {
 
         Report report = new Report();
         report.setDescription(dto.getDescription());
+        report.setSubject(dto.getSubject());
+        report.setLegalBasis(dto.getLegalBasis());
         report.setAttachmentPaths(attachmentPaths != null ? attachmentPaths : new ArrayList<>());
         report.setCreatedBy(creator);
         report.setRelatedCase(relatedCase);
@@ -236,6 +239,10 @@ public class ReportService {
         return draft;
     }
 
+    public byte[] generateReportPdf(Report report) throws Exception {
+        return pdfService.generateInvestigationReport(report);
+    }
+
     public Report generateFinalReport(Integer reportId) throws Exception {
         Report report = getReport(reportId);
         
@@ -274,37 +281,45 @@ public class ReportService {
         Employee signer = employeeRepo.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Signer not found"));
 
+        if (report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_FINALISED) {
+            throw new RuntimeException("This report is already finalised and cannot be signed again.");
+        }
+
+        boolean alreadySigned = report.getSignatures() != null && report.getSignatures().stream()
+                .anyMatch(sig -> role.equals(sig.getSignatureRole()));
+        if (alreadySigned) {
+            throw new RuntimeException("This report has already been signed with role: " + role);
+        }
+
         ReportSignature signature = new ReportSignature();
         signature.setReport(report);
         signature.setSignedBy(signer);
         signature.setSignatureRole(role);
-        signature.setSignaturePath(signatureBase64); // Storing base64 directly for now
+        signature.setSignaturePath(signatureBase64);
 
         if (report.getSignatures() == null) {
             report.setSignatures(new ArrayList<>());
         }
         report.getSignatures().add(signature);
-        
-        // Status updates based on who signed
-        if ("DIRECTOR_INTELLIGENCE".equals(role)) {
-            boolean isAcSigned = report.getSignatures().stream().anyMatch(s -> "ASSISTANT_COMMISSIONER".equals(s.getSignatureRole()));
-            if (isAcSigned) {
-                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
-            } else {
-                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE);
-            }
+
+        boolean acSigned = report.getSignatures().stream()
+                .anyMatch(sig -> "ASSISTANT_COMMISSIONER".equals(sig.getSignatureRole()));
+        boolean directorSigned = report.getSignatures().stream()
+                .anyMatch(sig -> "DIRECTOR_INTELLIGENCE".equals(sig.getSignatureRole()));
+
+        WorkflowStatus newStatus;
+        if (acSigned && directorSigned) {
+            newStatus = WorkflowStatus.REPORT_FINALISED;
         } else if ("ASSISTANT_COMMISSIONER".equals(role)) {
-            boolean isDiSigned = report.getSignatures().stream().anyMatch(s -> "DIRECTOR_INTELLIGENCE".equals(s.getSignatureRole()));
-            if (isDiSigned) {
-                report.getRelatedCase().setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
-            } else {
-                report.getRelatedCase().setStatus(WorkflowStatus.PENDING_DIRECTOR_SIGNATURE);
-            }
+            newStatus = WorkflowStatus.PENDING_DIRECTOR_SIGNATURE;
+        } else {
+            newStatus = WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE;
         }
 
+        report.getRelatedCase().setStatus(newStatus);
         report.setUpdatedAt(LocalDateTime.now());
-        auditService.logAction(report.getStatus(), "Report signed by " + role, signer);
-        
+        auditService.logAction(newStatus, "Report signed by " + role + " — status: " + newStatus, signer);
+
         return reportRepo.save(report);
     }
 
@@ -314,6 +329,10 @@ public class ReportService {
         Employee reviser = employeeRepo.findByEmployeeId(employeeId)
                 .orElseThrow(() -> new RuntimeException("Reviser not found"));
                 
+        if (report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_FINALISED) {
+            throw new RuntimeException("Report is finalised and cannot be edited. Both signatures have been recorded.");
+        }
+
         boolean isDirectorSigned = report.getSignatures() != null && report.getSignatures().stream()
                 .anyMatch(sig -> "DIRECTOR_INTELLIGENCE".equals(sig.getSignatureRole()));
         if (isDirectorSigned) {
@@ -881,8 +900,21 @@ public class ReportService {
                 return s;
             }).collect(Collectors.toList());
             dto.setSignatures(sigDtos);
+
+            boolean acSigned = report.getSignatures().stream()
+                    .anyMatch(sig -> "ASSISTANT_COMMISSIONER".equals(sig.getSignatureRole()));
+            boolean directorSigned = report.getSignatures().stream()
+                    .anyMatch(sig -> "DIRECTOR_INTELLIGENCE".equals(sig.getSignatureRole()));
+            dto.setAcSigned(acSigned);
+            dto.setDirectorSigned(directorSigned);
+            dto.setFinalised(report.getRelatedCase() != null &&
+                    report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_FINALISED);
         }
-        
+
+        dto.setGenerationType(report.getGenerationType());
+        dto.setSubject(report.getSubject());
+        dto.setLegalBasis(report.getLegalBasis());
+
         return dto;
     }
 
@@ -1325,15 +1357,16 @@ public class ReportService {
                 contentType = "application/pdf";
             }
 
-            String originalFilename = filename;
-            if (filename.contains("_")) {
-                originalFilename = filename.substring(filename.indexOf("_") + 1);
-            }
+            String displayFilename = reportAttachmentRepo.findByStoredPath(filename)
+                    .map(org.example.siidsbackend.Model.ReportAttachment::getOriginalFilename)
+                    .orElseGet(() -> filename.contains("_")
+                            ? filename.substring(filename.indexOf("_") + 1)
+                            : filename);
 
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + originalFilename + "\"")
+                            "attachment; filename=\"" + displayFilename + "\"")
                     .body(resource);
 
         } catch (Exception e) {

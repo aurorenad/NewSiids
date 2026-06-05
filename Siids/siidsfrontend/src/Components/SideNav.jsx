@@ -34,7 +34,7 @@ const Sidebar = () => {
     const [openMenus, setOpenMenus] = useState({});
     const location = useLocation();
     const role = (authState?.role || '').toUpperCase().replace('ROLE_', '');
-    const isOpsRole = !['STOCKMANAGER', 'STOCK_MANAGER', 'LEGALADVISOR', 'ADMIN', 'PRSO'].includes(role);
+    const isOpsRole = !['STOCKMANAGER', 'STOCK_MANAGER', 'LEGALADVISOR', 'ADMIN', 'PRSO', 'DEPUTY_PRSO'].includes(role);
 
     const toggle = (key) => setOpenMenus((prev) => ({ ...prev, [key]: !prev[key] }));
     const isActive = (path) => location.pathname.startsWith(path);
@@ -75,6 +75,7 @@ const Sidebar = () => {
                 (role === 'USER' || role === 'INTELLIGENCEOFFICER') && { to: '/intelligence-officer', label: 'Intelligence Officer' },
                 (role === 'SURVEILLANCE' || role === 'SURVEILLANCE_OFFICER') && { to: '/surveillence-officer', label: 'Surveillance Officer(Incharge)' },
                 (role === 'SURVEILLANCE' || role === 'SURVEILLANCE_OFFICER') && { to: '/pv/temporary-stock', label: 'Temporary Stock' },
+                (role === 'SURVEILLANCE' || role === 'SURVEILLANCE_OFFICER') && { to: '/pv/reports', label: 'Surveillance Reports' },
             ].filter(Boolean),
         },
         {
@@ -92,7 +93,8 @@ const Sidebar = () => {
         role === 'ROLE_AUDITOR' && { to: '/history', label: 'Audit Logs', icon: <History /> },
         role.includes('ADMIN') && { to: '/system-admin', label: 'System Admin', icon: <AdminPanelSettings /> },
         (role.includes('STOCKMANAGER') || role.includes('STOCK_MANAGER')) && { to: '/stock/inventory', label: 'Main Stock Inventory', icon: <Inventory /> },
-        role.includes('PRSO') && { to: '/prso/approvals', label: 'PRSO Approvals', icon: <Visibility /> },
+        role.includes('PRSO') && !role.includes('DEPUTY') && { to: '/prso/approvals', label: 'PRSO Approvals', icon: <Visibility /> },
+        role.includes('DEPUTY_PRSO') && { to: '/prso/deputy-approvals', label: 'Deputy PRSO Verification', icon: <Visibility /> },
     ].filter(Boolean);
 
     return (

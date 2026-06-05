@@ -1,0 +1,156 @@
+.stock-manager-left-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  height: 100%;
+}
+
+.main-stock-table-card {
+  flex: 1;
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+}
+
+/* Category chart section styling */
+.stock-analytics-panel {
+  background-color: white;
+  border-radius: 12px;
+  padding: var(--spacing-md);
+}
+
+.stock-analytics-panel h3 {
+  font-size: 13px;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.donut-chart-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.donut-canvas-container {
+  width: 50%;
+  height: 160px;
+}
+
+.donut-legend-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 50%;
+}
+
+.legend-item-pill {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.legend-indicator-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-lbl-name {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Release Details summaries */
+.release-details-summary-panel {
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border: var(--panel-border);
+}
+
+.release-details-summary-panel h4 {
+  font-size: 12px;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Form readonly preview values styling */
+.input-disabled-preview {
+  padding: 8px 10px;
+  background-color: #F1F5F9 !important;
+  border: 1px solid #CBD5E1 !important;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  cursor: not-allowed;
+}
+
+/* Button variants */
+.btn-action-initiate-release {
+  background-color: var(--primary-brand);
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+}
+
+.btn-action-initiate-release:hover {
+  background-color: var(--primary-accent);
+}
+
+.btn-action-handover {
+  background-color: var(--success-color);
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+}
+
+.btn-action-handover:hover {
+  background-color: #236127;
+}
+
+/* Success handover alert panel */
+.handover-success-panel {
+  background-color: var(--success-bg);
+  color: var(--success-color);
+  border: 1px solid rgba(46, 125, 50, 0.2);
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.handover-success-panel .success-icon {
+  flex-shrink: 0;
+}
+
+.handover-success-panel strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.handover-success-panel p {
+  font-size: 11px;
+  margin-top: 2px;
+}

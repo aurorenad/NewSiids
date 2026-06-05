@@ -92,6 +92,10 @@ public class Report {
     @Column(name = "generation_type")
     private String generationType = "MANUAL";
 
+    private String subject;
+
+    @Column(columnDefinition = "TEXT")
+    private String legalBasis;
 
     @Column(name="CasePlan")
     private String casePlan;

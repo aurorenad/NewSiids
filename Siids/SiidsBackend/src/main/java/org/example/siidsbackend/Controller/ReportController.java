@@ -46,11 +46,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ReportController {
     private final ReportService reportService;
-
     private final ReportRepo reportRepo;
     private final CaseRepo caseRepo;
     private final ObjectMapper objectMapper;
     private final org.example.siidsbackend.Repository.UserRepo userRepo;
+    private final org.example.siidsbackend.Repository.ReportAttachmentRepo reportAttachmentRepo;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -75,24 +75,39 @@ public class ReportController {
             }
 
             List<String> attachmentPaths = new ArrayList<>();
+            List<String[]> attachmentMeta = new ArrayList<>();
             if (attachments != null && attachments.length > 0) {
                 for (MultipartFile attachment : attachments) {
                     if (!attachment.isEmpty()) {
                         validatePdfFile(attachment);
-                        String attachmentPath = storePdfAttachment(attachment);
-                        attachmentPaths.add(attachmentPath);
+                        String originalName = StringUtils.cleanPath(
+                                Objects.requireNonNull(attachment.getOriginalFilename()));
+                        String storedPath = storePdfAttachment(attachment);
+                        attachmentPaths.add(storedPath);
+                        attachmentMeta.add(new String[]{storedPath, originalName});
                     }
                 }
             }
 
-            Report report = reportService.createReport(reportData, attachmentPaths, employeeId); // Pass list
+            Report report = reportService.createReport(reportData, attachmentPaths, employeeId);
+
+            for (String[] meta : attachmentMeta) {
+                org.example.siidsbackend.Model.ReportAttachment ra =
+                        new org.example.siidsbackend.Model.ReportAttachment();
+                ra.setReport(report);
+                ra.setStoredPath(meta[0]);
+                ra.setOriginalFilename(meta[1]);
+                ra.setAttachmentType("GENERAL");
+                reportAttachmentRepo.save(ra);
+            }
+
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Validation error creating report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error creating report: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -218,10 +233,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error submitting findings: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("System error submitting findings: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -282,7 +297,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ReportResponseDTO> getReport(
+    public ResponseEntity<?> getReport(
             @PathVariable Integer id,
             Authentication authentication) {
         try {
@@ -363,7 +378,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error sending to Director of Intelligence: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -377,7 +392,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error sending to Assistant Commissioner: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -391,7 +406,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error sending to Director of Investigation: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -405,17 +420,17 @@ public class ReportController {
         try {
 
             if (returnReason == null || returnReason.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(null);
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
             }
 
             Report report = reportService.returnReport(id, returnReason, returnToEmployeeId, employeeId);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error returning report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("System error returning report: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -458,7 +473,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error approving report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -474,7 +489,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error rejecting report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -490,7 +505,7 @@ public class ReportController {
             return ResponseEntity.ok(responseList);
         } catch (RuntimeException e) {
             log.error("Authorization error fetching AC reports: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             System.err.println("Error getting reports: " + e.getMessage());
             e.printStackTrace();
@@ -532,7 +547,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(updatedReport));
         } catch (Exception e) {
             log.error("Error updating investigation status: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -551,7 +566,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error assigning report to investigation officer: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         }
     }
 
@@ -600,7 +615,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/generate")
-    @PreAuthorize("hasAnyRole('Admin', 'IntelligenceOfficer', 'DirectorIntelligence', 'AssistantCommissioner')")
+    @PreAuthorize("hasAnyAuthority('Admin', 'IntelligenceOfficer', 'DirectorIntelligence', 'AssistantCommissioner')")
     public ResponseEntity<?> generateFinalReport(@PathVariable Integer id) {
         try {
             Report generatedReport = reportService.generateFinalReport(id);
@@ -608,6 +623,23 @@ public class ReportController {
         } catch (Exception e) {
             log.error("Error generating final report: ", e);
             return ResponseEntity.badRequest().body(new ApiResponse(false, "Failed to generate report: " + e.getMessage(), null));
+        }
+    }
+
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<?> downloadReportPdf(@PathVariable Integer id, Authentication authentication) {
+        try {
+            Report report = reportService.getReport(id);
+            byte[] pdfBytes = reportService.generateReportPdf(report);
+            String filename = "Intelligence_Report_" + report.getRelatedCase().getCaseNum() + ".pdf";
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .body(pdfBytes);
+        } catch (Exception e) {
+            log.error("Error generating report PDF: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ApiResponse(false, "Failed to generate PDF: " + e.getMessage(), null));
         }
     }
 
@@ -634,7 +666,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/findings")
-    public ResponseEntity<ReportResponseDTO> getFindings(
+    public ResponseEntity<?> getFindings(
             @PathVariable Integer id,
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -778,10 +810,11 @@ public class ReportController {
             }
         }
 
-        // Generate secure filename
         String originalFilename = StringUtils.cleanPath(Objects.requireNonNull(file.getOriginalFilename()));
-        // Generate secure filename preserving original name
-        String secureFilename = UUID.randomUUID().toString() + "_" + originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+        String sanitized = originalFilename.replaceAll("[^a-zA-Z0-9\\.\\-]", "_");
+        String secureFilename = Files.exists(uploadPath.resolve(sanitized))
+                ? System.currentTimeMillis() + "_" + sanitized
+                : sanitized;
 
         Path filePath = uploadPath.resolve(secureFilename);
 
@@ -915,7 +948,7 @@ public class ReportController {
     }
 
     @GetMapping("/download/{reportId}/{filename}")
-    public ResponseEntity<Resource> downloadReportAttachment(
+    public ResponseEntity<?> downloadReportAttachment(
             @PathVariable Integer reportId,
             @PathVariable String filename,
             @RequestParam String requesterId) {
@@ -1011,7 +1044,7 @@ public class ReportController {
     }
 
     @PutMapping("/{id}/update-returned-report")
-    public ResponseEntity<ReportResponseDTO> updateReturnedReport(
+    public ResponseEntity<?> updateReturnedReport(
             @PathVariable Integer id,
             @RequestBody ReportRequestDTO reportData,
             Authentication authentication) {
@@ -1025,14 +1058,14 @@ public class ReportController {
 
             // Verify the report is in a returned status
             if (!isReportReturned(report)) {
-                return ResponseEntity.badRequest().body(null);
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
             }
 
             Report updatedReport = reportService.updateReturnedReport(id, reportData);
             return ResponseEntity.ok(reportService.toResponseDTO(updatedReport));
         } catch (RuntimeException e) {
             log.error("Error updating returned report: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
         } catch (Exception e) {
             log.error("System error updating returned report: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1104,7 +1137,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/receive-case")
-    public ResponseEntity<ReportResponseDTO> receiveCase(
+    public ResponseEntity<?> receiveCase(
             @PathVariable Integer id,
             Authentication authentication) {
         String officerId = authentication.getName();
@@ -1197,7 +1230,7 @@ public class ReportController {
     }
 
     @PostMapping("/{id}/send-to-legal-advisor")
-    public ResponseEntity<ReportResponseDTO> sendToLegalAdvisor(
+    public ResponseEntity<?> sendToLegalAdvisor(
             @PathVariable Integer id,
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -1209,7 +1242,7 @@ public class ReportController {
             log.error("Error in sendToLegalAdvisor for report {}: {}", id, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .header("X-Error-Message", e.getMessage())
-                    .body(null);
+                    .body(new ApiResponse(false, "An error occurred", null));
         }
     }
 
@@ -1283,7 +1316,7 @@ public class ReportController {
     }
 
     @PostMapping(value = "/{id}/return-with-document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ReportResponseDTO> returnReportWithDocument(
+    public ResponseEntity<?> returnReportWithDocument(
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
             @RequestParam(required = false) String returnReason,
@@ -1295,7 +1328,7 @@ public class ReportController {
 
             // Validate at least one reason is provided
             if ((returnReason == null || returnReason.trim().isEmpty()) && returnDocument == null) {
-                return ResponseEntity.badRequest().body(null);
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
             }
 
             // Store document if provided
@@ -1310,7 +1343,7 @@ public class ReportController {
                     if (!lowerFilename.endsWith(".doc") &&
                             !lowerFilename.endsWith(".docx") &&
                             !lowerFilename.endsWith(".pdf")) {
-                        return ResponseEntity.badRequest().body(null);
+                        return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
                     }
                 }
 
@@ -1335,10 +1368,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error returning report with document: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, "An error occurred", null));
         } catch (Exception e) {
             log.error("Error returning report with document: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "An error occurred", null));
         }
     }
 
@@ -1363,7 +1396,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/return-document")
-    public ResponseEntity<Resource> downloadReturnDocument(
+    public ResponseEntity<?> downloadReturnDocument(
             @PathVariable Integer id,
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -1375,7 +1408,7 @@ public class ReportController {
             if (!report.getCreatedBy().getEmployeeId().equals(employeeId) &&
                     !report.getCurrentRecipient().getEmployeeId().equals(employeeId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(null);
+                        .body(new ApiResponse(false, "An error occurred", null));
             }
 
             if (report.getReturnDocumentPath() == null) {
@@ -1421,7 +1454,7 @@ public class ReportController {
         } catch (Exception e) {
             log.error("Error downloading return document: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
+                    .body(new ApiResponse(false, "An error occurred", null));
         }
     }
 
@@ -1433,7 +1466,7 @@ public class ReportController {
     }
 
     @PutMapping("/{id}/edit")
-    public ResponseEntity<ReportResponseDTO> editReport(
+    public ResponseEntity<?> editReport(
             @PathVariable Integer id,
             @RequestPart("reportData") String reportDataJson,
             @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
@@ -1445,14 +1478,14 @@ public class ReportController {
 
             // Validate input
             if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(null);
+                return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
             }
 
             // Check if editing is allowed (report must be in returned status)
             Report existingReport = reportService.getReport(id);
             if (!reportService.canEditReport(existingReport, employeeId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(null);
+                        .body(new ApiResponse(false, "An error occurred", null));
             }
 
             // Process new attachments if provided
@@ -1480,7 +1513,7 @@ public class ReportController {
 
         } catch (RuntimeException e) {
             log.error("Validation error editing report: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(new ApiResponse(false, "An error occurred", null));
         } catch (Exception e) {
             log.error("Error editing report: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -1557,10 +1590,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error submitting case plan: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error submitting case plan: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1574,7 +1607,7 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (Exception e) {
             log.error("Error sending case plan to AC: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1588,10 +1621,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error sending case plan to Director of Investigation: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error sending case plan: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1615,7 +1648,7 @@ public class ReportController {
     }
 
     @GetMapping("/{id}/case-plan")
-    public ResponseEntity<ReportResponseDTO> getCasePlan(
+    public ResponseEntity<?> getCasePlan(
             @PathVariable Integer id,
             Authentication authentication) {
         String employeeId = authentication.getName();
@@ -1646,10 +1679,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error approving case plan: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error approving case plan: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1664,10 +1697,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error rejecting case plan: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error rejecting case plan: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1681,10 +1714,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error approving investigation report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error approving investigation report: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1699,10 +1732,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error rejecting investigation report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error rejecting investigation report: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1722,10 +1755,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error returning investigation report: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error returning investigation report: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
     @GetMapping("/assistant-commissioner/case-plans")
@@ -1757,10 +1790,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error approving case plan by AC: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error approving case plan: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 
@@ -1775,10 +1808,10 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error rejecting case plan by AC: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiResponse(false, e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error rejecting case plan: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal system error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(false, "Internal server error: " + e.getMessage(), null));
         }
     }
 }

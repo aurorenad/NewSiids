@@ -1,0 +1,231 @@
+.prso-left-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  height: 100%;
+}
+
+.prso-tab-navbar {
+  display: flex;
+  background-color: white;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.prso-tab-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.prso-tab-btn:hover {
+  background-color: var(--background-main);
+  color: var(--text-primary);
+}
+
+.prso-tab-btn.active {
+  background-color: var(--primary-accent);
+  color: white;
+  box-shadow: var(--shadow-subtle);
+}
+
+.return-reason-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background-color: #FAF5FF;
+  color: #8B5CF6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+/* PRSO Delegation settings styling */
+.delegation-setting-view {
+  background-color: white;
+  border-radius: 12px;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.delegation-setting-view h3 {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.delegation-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.delegation-toggle-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md);
+  border-radius: 8px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+.delegation-toggle-card strong {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.delegation-toggle-card p {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.delegation-toggle-btn {
+  background-color: var(--primary-brand);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.delegation-toggle-btn.active {
+  background-color: var(--danger-color);
+}
+
+/* Action button configurations */
+.release-approval-action-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.notes-block-preview {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background-color: white;
+  padding: var(--spacing-sm);
+  border-radius: 4px;
+  border: 1px solid rgba(226, 232, 240, 0.5);
+  display: block;
+}
+
+.btn-action-approve {
+  flex: 1;
+  background-color: var(--success-color);
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+}
+
+.btn-action-approve:hover {
+  background-color: #236127;
+}
+
+.btn-action-reject {
+  flex: 1;
+  background-color: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+}
+
+.btn-action-reject:hover {
+  background-color: var(--danger-bg);
+}
+
+.flex-column-layout {
+  flex-direction: column !important;
+}
+
+.btn-send-back-officer {
+  width: 100%;
+  background-color: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-send-back-officer:hover {
+  background-color: var(--danger-bg);
+}
+
+.btn-move-exception {
+  width: 100%;
+  background-color: transparent;
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+  border-radius: 6px;
+  padding: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-move-exception:hover {
+  background-color: var(--warning-bg);
+}
+
+/* Action Reason Form absolute overlay style */
+.action-reason-overlay-form {
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border: var(--panel-border);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.form-reason-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.form-reason-header h4 {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.btn-form-confirm-action {
+  flex: 1;
+  background-color: var(--primary-brand);
+  color: white;
+  border-radius: 6px;
+  padding: 8px;
+  font-weight: 600;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+}
+
+.btn-form-confirm-action:hover {
+  background-color: var(--primary-accent);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}

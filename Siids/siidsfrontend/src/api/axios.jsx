@@ -93,8 +93,15 @@ instance.interceptors.response.use(
                 originalRequest.headers['Authorization'] = `Bearer ${token}`;
                 return instance(originalRequest);
             } catch (refreshError) {
-                // If refresh fails, then we can consider redirecting
+                // If refresh fails, clear storage and redirect to login
                 console.error('Session expired, please login again.');
+                localStorage.removeItem('token');
+                localStorage.removeItem('employeeId');
+                localStorage.removeItem('refreshToken');
+                sessionStorage.removeItem('token');
+                sessionStorage.removeItem('employeeId');
+                sessionStorage.removeItem('refreshToken');
+                window.location.href = '/';
                 return Promise.reject(refreshError);
             }
         }

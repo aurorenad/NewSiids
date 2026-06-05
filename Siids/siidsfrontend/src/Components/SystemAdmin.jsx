@@ -44,6 +44,8 @@ const SystemAdmin = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const [openRegister, setOpenRegister] = useState(false);
     const [openRole, setOpenRole] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
@@ -65,7 +67,11 @@ const SystemAdmin = () => {
         }
     };
 
-    const handleRegisterToggle = () => setOpenRegister(!openRegister);
+    const handleRegisterToggle = () => {
+        setOpenRegister(!openRegister);
+        setFormData({ username: '', role: '' });
+        setError('');
+    };
 
     const handleFormChange = (e) => {
         const { name, value } = e.target;
@@ -115,6 +121,9 @@ const SystemAdmin = () => {
         }
     };
 
+    const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
+    const paginatedUsers = users.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
     if (loading) {
         return (
             <Box display="flex" justifyContent="center" py={6}>
@@ -136,7 +145,7 @@ const SystemAdmin = () => {
 
             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} sx={{ maxHeight: 520, overflow: 'auto' }}>
                 <Table>
                     <TableHead>
                         <TableRow>
@@ -148,7 +157,7 @@ const SystemAdmin = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {users.map((user) => (
+                        {paginatedUsers.map((user) => (
                             <TableRow key={user.id}>
                                 <TableCell>{user.id}</TableCell>
                                 <TableCell>{user.username}</TableCell>
@@ -179,11 +188,48 @@ const SystemAdmin = () => {
                 </Table>
             </TableContainer>
 
+            {/* Pagination Controls */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1, px: 1, py: 0.5, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary">Rows per page:</Typography>
+                    <Select
+                        value={pageSize}
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                        size="small"
+                        sx={{ fontSize: '0.75rem', height: 28, '.MuiSelect-select': { py: '2px' } }}
+                    >
+                        <MenuItem value={10}>10</MenuItem>
+                        <MenuItem value={30}>30</MenuItem>
+                        <MenuItem value={50}>50</MenuItem>
+                    </Select>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {users.length === 0 ? '0' : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, users.length)}`} of {users.length}
+                    </Typography>
+                    <Button size="small" variant="outlined" sx={{ minWidth: 0, px: 1.5, py: 0.25, fontSize: '0.75rem', lineHeight: 1.5 }}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={currentPage === 1}
+                    >Prev</Button>
+                    <Typography variant="caption">{currentPage} / {totalPages}</Typography>
+                    <Button size="small" variant="outlined" sx={{ minWidth: 0, px: 1.5, py: 0.25, fontSize: '0.75rem', lineHeight: 1.5 }}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={currentPage >= totalPages}
+                    >Next</Button>
+                </Box>
+            </Box>
+
             {/* Register Dialog */}
-            <Dialog open={openRegister} onClose={handleRegisterToggle} maxWidth="xs" fullWidth>
-                <DialogTitle>Register New User</DialogTitle>
+            <Dialog
+                open={openRegister}
+                onClose={handleRegisterToggle}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 700, pb: 0 }}>Register New User</DialogTitle>
                 <form onSubmit={handleRegisterSubmit}>
-                    <DialogContent>
+                    <DialogContent sx={{ pt: 1 }}>
+                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
                         <TextField
                             margin="dense"
                             label="Employee ID (Username)"
@@ -192,6 +238,7 @@ const SystemAdmin = () => {
                             onChange={handleFormChange}
                             fullWidth
                             required
+                            autoFocus
                         />
                         <FormControl fullWidth margin="dense" required>
                             <InputLabel>Role</InputLabel>
@@ -202,17 +249,22 @@ const SystemAdmin = () => {
                             </Select>
                         </FormControl>
                     </DialogContent>
-                    <DialogActions>
+                    <DialogActions sx={{ px: 3, pb: 2 }}>
                         <Button onClick={handleRegisterToggle} variant="outlined">Cancel</Button>
-                        <Button type="submit">Register</Button>
+                        <Button type="submit" variant="contained">Register</Button>
                     </DialogActions>
                 </form>
             </Dialog>
 
             {/* Edit Role Dialog */}
-            <Dialog open={openRole} onClose={() => setOpenRole(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Update User Role</DialogTitle>
-                <DialogContent>
+            <Dialog
+                open={openRole}
+                onClose={() => setOpenRole(false)}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle sx={{ fontWeight: 700, pb: 0 }}>Update User Role</DialogTitle>
+                <DialogContent sx={{ pt: 1 }}>
                     <FormControl fullWidth margin="dense" sx={{ mt: 1 }}>
                         <InputLabel>Role</InputLabel>
                         <Select value={newRole} label="Role" onChange={(e) => setNewRole(e.target.value)} MenuProps={{ sx: { zIndex: 99999 } }}>
@@ -222,9 +274,9 @@ const SystemAdmin = () => {
                         </Select>
                     </FormControl>
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
                     <Button onClick={() => setOpenRole(false)} variant="outlined">Cancel</Button>
-                    <Button onClick={handleRoleUpdateSubmit}>Save</Button>
+                    <Button onClick={handleRoleUpdateSubmit} variant="contained">Save</Button>
                 </DialogActions>
             </Dialog>
         </Box>

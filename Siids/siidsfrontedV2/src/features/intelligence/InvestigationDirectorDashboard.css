@@ -1,0 +1,95 @@
+.inv-dir-left-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  height: 100%;
+}
+
+.inv-dir-right-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--spacing-md);
+}
+
+.warning-text-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #d97706;
+  background-color: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn-assign-confirm {
+  background-color: var(--primary-brand);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  margin-top: var(--spacing-sm);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(13, 71, 161, 0.15);
+}
+
+.btn-assign-confirm:hover {
+  background-color: var(--primary-accent);
+  box-shadow: 0 6px 16px rgba(13, 71, 161, 0.25);
+}
+
+.assignment-status-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  background-color: rgba(46, 125, 50, 0.05);
+  border: 1px solid rgba(46, 125, 50, 0.15);
+  border-radius: 8px;
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+}
+
+.assignment-status-banner h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #2e7d32;
+}
+
+.assignment-status-banner p {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.btn-action-sign-report {
+  background-color: var(--success-color);
+  color: white;
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  margin-top: var(--spacing-md);
+  width: 100%;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.15);
+}
+
+.btn-action-sign-report:hover {
+  background-color: #1b5e20;
+  box-shadow: 0 6px 16px rgba(46, 125, 50, 0.25);
+}

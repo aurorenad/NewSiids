@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import SignatureCanvas from 'react-signature-canvas';
 import {
     Button, IconButton, Paper, Table, TableBody, TableCell, TableContainer, TableHead,
     TableRow, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
@@ -34,6 +35,11 @@ const AssistantCommissioner = () => {
     const [customDepartment, setCustomDepartment] = useState("");
     const [routingNotes, setRoutingNotes] = useState("");
     const [reportToRoute, setReportToRoute] = useState(null);
+
+    // Signature States
+    const sigCanvas = useRef({});
+    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+    const [reportToApprove, setReportToApprove] = useState(null);
 
     const navigate = useNavigate();
 
@@ -71,6 +77,7 @@ const AssistantCommissioner = () => {
         return map[status] || status?.replace(/_/g, ' ') || 'Unknown';
     };
 
+<<<<<<< HEAD
     const handleApproveClick = (report) => {
         if (activeTab === 0) {
             setReportToRoute(report);
@@ -108,12 +115,37 @@ const AssistantCommissioner = () => {
     };
 
     const handleApproveAction = async (report) => {
+=======
+    const isPending = (status) => {
+        return status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' ||
+               status === 'CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER' ||
+               status === 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION';
+    };
+
+    const triggerApprove = (report) => {
+        setReportToApprove(report);
+        setSignatureDialogOpen(true);
+    };
+
+    const handleApproveAction = async () => {
+        if (!reportToApprove) return;
+        if (sigCanvas.current.isEmpty()) {
+            showSnackbar("Please provide a signature first", "error");
+            return;
+        }
+
+        const signatureBase64 = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+        setSignatureDialogOpen(false);
+        const report = reportToApprove;
+
+>>>>>>> origin/dev
         try {
             setSubmitting(true);
+            const payload = { signatureBase64: signatureBase64 };
             if (activeTab === 1) {
-                await ReportApi.approveCasePlanByAssistantCommissioner(report.id);
+                await ReportApi.approveCasePlanByAssistantCommissioner(report.id, '', payload);
             } else {
-                await ReportApi.approveReport(report.id);
+                await ReportApi.approveReport(report.id, payload);
             }
             showSnackbar("Operational approval granted");
             await fetchAllData();
@@ -122,7 +154,12 @@ const AssistantCommissioner = () => {
             showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Approval failed", "error"); 
         } finally {
             setSubmitting(false);
+            setReportToApprove(null);
         }
+    };
+    
+    const clearSignature = () => {
+        sigCanvas.current.clear();
     };
 
     const handleRejectFinal = async () => {
@@ -239,8 +276,13 @@ const AssistantCommissioner = () => {
                                                 color="success"
                                                 size="small"
                                                 startIcon={<Check />}
+<<<<<<< HEAD
                                                 onClick={() => handleApproveClick(r)}
                                                 disabled={submitting}
+=======
+                                                onClick={() => triggerApprove(r)}
+                                                disabled={submitting || !isPending(r.status)}
+>>>>>>> origin/dev
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Approve
@@ -256,7 +298,7 @@ const AssistantCommissioner = () => {
                                                     setCloseReason("");
                                                     setCloseDialogOpen(true);
                                                 }}
-                                                disabled={submitting}
+                                                disabled={submitting || !isPending(r.status)}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Reject
@@ -329,6 +371,27 @@ const AssistantCommissioner = () => {
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCloseDialogOpen(false)}>Abort</Button>
                     <Button onClick={handleRejectFinal} variant="contained" color="error" disabled={submitting}>Confirm Rejection</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={signatureDialogOpen} onClose={() => setSignatureDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: 700 }}>Provide Digital Signature</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        By signing, you are granting operational approval. This signature will be permanently attached to the dossier.
+                    </Typography>
+                    <Box sx={{ border: '2px dashed #ccc', borderRadius: 2, bgcolor: '#fafafa', p: 1 }}>
+                        <SignatureCanvas 
+                            ref={sigCanvas} 
+                            penColor="black" 
+                            canvasProps={{ width: 500, height: 200, className: 'sigCanvas' }} 
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setSignatureDialogOpen(false)}>Cancel</Button>
+                    <Button onClick={clearSignature} color="error">Clear</Button>
+                    <Button onClick={handleApproveAction} variant="contained" color="primary">Submit Signature</Button>
                 </DialogActions>
             </Dialog>
 

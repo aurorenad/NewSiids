@@ -26,6 +26,10 @@ const StockManagerPage = () => {
   const [releaseModalOpen, setReleaseModalOpen] = useState(false);
   const [returnDialog, setReturnDialog] = useState(false);
   const [approveDialog, setApproveDialog] = useState(false);
+  const [handoverDialog, setHandoverDialog] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [isHandoverSubmitting, setIsHandoverSubmitting] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('date_desc');
@@ -95,10 +99,19 @@ const StockManagerPage = () => {
     }
 
     list.sort((a, b) => {
-      const dateA = new Date(a.createdAt || a.dateTimeSeized || 0);
-      const dateB = new Date(b.createdAt || b.dateTimeSeized || 0);
-      if (sortBy === 'date_desc') return dateB - dateA;
-      if (sortBy === 'date_asc') return dateA - dateB;
+      let aVal = a[sortBy.split('_')[0]] || '';
+      let bVal = b[sortBy.split('_')[0]] || '';
+
+      if (sortBy.startsWith('date')) {
+        aVal = new Date(a.createdAt || a.dateTimeSeized || 0).getTime();
+        bVal = new Date(b.createdAt || b.dateTimeSeized || 0).getTime();
+      } else if (sortBy.startsWith('seizureNumber') || sortBy.startsWith('taxpayerName') || sortBy.startsWith('goodsDescription')) {
+        aVal = aVal.toString().toLowerCase();
+        bVal = bVal.toString().toLowerCase();
+      }
+
+      if (aVal < bVal) return sortBy.endsWith('asc') ? -1 : 1;
+      if (aVal > bVal) return sortBy.endsWith('asc') ? 1 : -1;
       return 0;
     });
 
@@ -137,6 +150,59 @@ const StockManagerPage = () => {
     } catch (err) {
       toast.dismiss(loadingToast);
       toast.error('Failed to download PV');
+    }
+  };
+
+  const handleSendHandoverOtp = async () => {
+    try {
+      const res = await fetch('http://localhost:2005/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: selectedItem?.recipientPhone || selectedItem?.taxpayerContact || 'UNKNOWN',
+          context: 'HANDOVER',
+          referenceId: selectedItem?.seizureNumber
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setIsOtpSent(true);
+        toast.success(data.message);
+        const matchedOtp = data.message.match(/^\d{6}/);
+        if (matchedOtp) setOtpCode(matchedOtp[0]);
+      } else {
+        toast.error(data.message || 'Failed to send OTP');
+      }
+    } catch (err) {
+      toast.error('Network error sending OTP');
+    }
+  };
+
+  const handleVerifyAndHandover = async () => {
+    setIsHandoverSubmitting(true);
+    try {
+      const res = await fetch('http://localhost:2005/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: selectedItem?.recipientPhone || selectedItem?.taxpayerContact || 'UNKNOWN',
+          context: 'HANDOVER',
+          otp: otpCode
+        })
+      });
+      if (res.ok) {
+        toast.success('OTP Verified. Goods Handed Over Successfully!');
+        setHandoverDialog(false);
+        setIsOtpSent(false);
+        setOtpCode('');
+        fetchStock();
+      } else {
+        toast.error('Invalid OTP');
+      }
+    } catch (err) {
+      toast.error('Failed to verify OTP');
+    } finally {
+      setIsHandoverSubmitting(false);
     }
   };
 
@@ -179,6 +245,19 @@ const StockManagerPage = () => {
             }}
             sx={{ width: 320, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'white' } }}
           />
+          <TextField
+            select
+            size="small"
+            value={sortBy}
+            onChange={e => { setSortBy(e.target.value); setPage(0); }}
+            sx={{ width: 220, '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'white' } }}
+          >
+            <MenuItem value="date_desc">Date (Newest First)</MenuItem>
+            <MenuItem value="date_asc">Date (Oldest First)</MenuItem>
+            <MenuItem value="seizureNumber_asc">Reference Number</MenuItem>
+            <MenuItem value="taxpayerName_asc">Taxpayer / Owner</MenuItem>
+            <MenuItem value="goodsDescription_asc">Goods Type</MenuItem>
+          </TextField>
         </Box>
       </Box>
 
@@ -275,6 +354,19 @@ const StockManagerPage = () => {
                             </Button>
                           )}
                           {activeTab === 2 && <Chip label="In Review" size="small" variant="outlined" color="info" />}
+                          {activeTab === 3 && (
+                            <Button 
+                              size="small" 
+                              variant="contained" 
+                              color="primary"
+                              onClick={() => {
+                                setSelectedItem(item);
+                                setHandoverDialog(true);
+                              }}
+                            >
+                              Handover
+                            </Button>
+                          )}
 
                           {item.pvNumber && (
                             <Tooltip title="Download Statement of Offence (PV)">
@@ -418,10 +510,73 @@ const StockManagerPage = () => {
           }
         }}
         title="Return for Correction"
-        body="Provide a detailed reason for returning this seizure note. The Surveillance Officer will be notified to correct and resubmit."
+        body={
+          <Box sx={{ mt: 2, textAlign: 'left' }}>
+            <Typography variant="body2" color="var(--gray-600)" mb={2}>
+              Provide a detailed reason for returning this seizure note to the Surveillance Officer. They will be required to fix the highlighted issues and re-submit the intake request.
+            </Typography>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Common Reasons:</Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
+              {['Missing Documentation', 'Incorrect Goods Quantity', 'Invalid Taxpayer Details', 'Unclear Photos', 'Mismatch with Declaration'].map(r => (
+                <Chip 
+                  key={r} 
+                  label={r} 
+                  size="small" 
+                  onClick={() => {
+                    const el = document.querySelector('textarea[placeholder="Provide a clear reason (min. 15 characters)…"]');
+                    if(el) {
+                      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+                      nativeInputValueSetter.call(el, r);
+                      const ev2 = new Event('input', { bubbles: true});
+                      el.dispatchEvent(ev2);
+                    }
+                  }} 
+                  sx={{ cursor: 'pointer', bgcolor: 'var(--gray-100)', '&:hover': { bgcolor: 'var(--gray-200)' } }} 
+                />
+              ))}
+            </Box>
+          </Box>
+        }
         variant="danger"
         requiresReason={true}
         confirmLabel="Return to Officer"
+      />
+
+      <ConfirmDialog
+        isOpen={handoverDialog}
+        onClose={() => setHandoverDialog(false)}
+        title="Verify Handover (OTP)"
+        body={
+          <Box sx={{ mt: 2, textAlign: 'left' }}>
+            <Typography variant="body2" color="var(--gray-600)" mb={2}>
+              Goods are ready to be handed over to <strong>{selectedItem?.recipientName || selectedItem?.taxpayerName}</strong>. 
+              Please send and verify the OTP to their phone: {selectedItem?.recipientPhone || selectedItem?.taxpayerContact || 'N/A'}.
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+              <Button 
+                variant="contained" 
+                color="warning" 
+                onClick={handleSendHandoverOtp}
+                disabled={isOtpSent}
+              >
+                {isOtpSent ? 'OTP Sent' : 'Send OTP'}
+              </Button>
+              {isOtpSent && (
+                <TextField 
+                  size="small" 
+                  placeholder="Enter 6-digit OTP"
+                  value={otpCode}
+                  onChange={e => setOtpCode(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+              )}
+            </Box>
+          </Box>
+        }
+        onConfirm={handleVerifyAndHandover}
+        confirmLabel={isHandoverSubmitting ? "Verifying..." : "Verify & Finalize Handover"}
+        variant="success"
+        requiresReason={false}
       />
 
       <RequestReleaseModal

@@ -16,6 +16,15 @@ public class SeizureNoteRequestDTO {
     private String representativeName;
     private String representativeContact;
     private String goodsDescription;
+    
+    private Double quantity;
+    private String quantityType;
+    private String fullDescription;
+    private String locationOfSeizure;
+    private String conditionOfGoods;
+    private String conveyanceMeans;
+    private String conveyanceRegistration;
+
     private String seizureReason;
     private LocalDateTime dateTimeSeized;
     private String authorizationPassword;

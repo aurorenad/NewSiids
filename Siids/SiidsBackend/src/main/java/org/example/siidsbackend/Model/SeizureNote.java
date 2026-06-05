@@ -42,6 +42,26 @@ public class SeizureNote {
 
     private String seizureReason;
     
+    @Column(name = "scan_attachment_url")
+    private String scanAttachmentUrl;
+
+    @Column(name = "owner_otp_skipped", columnDefinition = "boolean default false")
+    private Boolean ownerOtpSkipped = false;
+
+    @Column(name = "goods_type")
+    private String goodsType;
+
+    private Double quantity;
+    private String quantityType; // e.g., bags, kg, liters, numbers
+    
+    @Column(columnDefinition = "TEXT")
+    private String fullDescription;
+    
+    private String locationOfSeizure;
+    private String conditionOfGoods;
+    private String conveyanceMeans;
+    private String conveyanceRegistration;
+
     private LocalDateTime dateTimeSeized;
 
     @ManyToOne
@@ -86,6 +106,8 @@ public class SeizureNote {
     private LocalDateTime auctionDate;
 
     private Double auctionAmount;
+
+    private Double estimatedValue;
 
     // --- Timestamps ---
 

@@ -1,0 +1,167 @@
+.admin-left-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  height: 100%;
+}
+
+.admin-right-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: var(--spacing-md);
+}
+
+.status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-active {
+  color: #15803d;
+  background-color: #dcfce7;
+}
+
+.status-inactive {
+  color: #b91c1c;
+  background-color: #fee2e2;
+}
+
+.admin-actions-section {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.btn-admin-edit-role {
+  flex: 1;
+  background-color: var(--primary-brand);
+  color: white;
+  padding: 8px var(--spacing-sm);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-admin-edit-role:hover {
+  background-color: var(--primary-accent);
+}
+
+.btn-admin-status-toggle {
+  flex: 1;
+  padding: 8px var(--spacing-sm);
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-deactivate {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.15);
+}
+
+.btn-deactivate:hover {
+  background-color: #fca5a5;
+}
+
+.btn-activate {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid rgba(21, 128, 61, 0.15);
+}
+
+.btn-activate:hover {
+  background-color: #86efac;
+}
+
+.edit-role-form-inline {
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  border: var(--panel-border);
+}
+
+.edit-role-form-inline h4 {
+  margin: 0 0 var(--spacing-xs) 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.admin-register-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  background-color: var(--background-panel);
+  border-radius: 12px;
+  padding: var(--spacing-md);
+  border: var(--panel-border);
+  box-shadow: 0 4px 12px rgba(10, 46, 102, 0.05);
+}
+
+.register-form-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: -8px 0 var(--spacing-xs) 0;
+  line-height: 1.4;
+}
+
+.btn-admin-submit-register {
+  background-color: var(--primary-brand);
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  margin-top: var(--spacing-xs);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(13, 71, 161, 0.15);
+}
+
+.btn-admin-submit-register:hover {
+  background-color: var(--primary-accent);
+  box-shadow: 0 6px 16px rgba(13, 71, 161, 0.25);
+}
+
+.admin-success-banner {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid rgba(21, 128, 61, 0.2);
+  border-radius: 6px;
+  padding: 8px var(--spacing-sm);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.admin-error-banner {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid rgba(185, 28, 28, 0.2);
+  border-radius: 6px;
+  padding: 8px var(--spacing-sm);
+  font-size: 11px;
+  font-weight: 500;
+}

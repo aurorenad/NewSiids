@@ -9,7 +9,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, MenuItem, Select,
     FormControl, IconButton, Chip, Tooltip, CircularProgress,
-    InputAdornment,
+    InputAdornment, Button,
 } from '@mui/material';
 import { FilterListOff, FileDownloadOutlined } from '@mui/icons-material';
 
@@ -204,6 +204,10 @@ const StockManagement = () => {
         return Math.max(0, total - releasedForThisItem);
     };
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
     const isFilterActive = searchOwner || searchItemName || searchTakenDate || releaseFilter !== 'all';
 
     const filteredStocks = useMemo(() => {
@@ -321,7 +325,14 @@ const StockManagement = () => {
         setSearchItemName('');
         setSearchTakenDate('');
         setReleaseFilter('all');
+        setCurrentPage(1);
     };
+
+    // Reset to page 1 whenever filters or page size change
+    useEffect(() => { setCurrentPage(1); }, [searchOwner, searchItemName, searchTakenDate, releaseFilter, pageSize]);
+
+    const totalPages = Math.max(1, Math.ceil(filteredStocks.length / pageSize));
+    const paginatedStocks = filteredStocks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const generateStockPdf = (stock) => {
         const doc = new jsPDF();
@@ -464,14 +475,14 @@ const StockManagement = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {filteredStocks.length === 0 ? (
+                            {paginatedStocks.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4, color: 'text.secondary', fontStyle: 'italic' }}>
                                         No stock items found matching your criteria.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredStocks.map(stock => (
+                                paginatedStocks.map(stock => (
                                     <TableRow key={stock.id}>
                                         <TableCell>{stock.ownerName}</TableCell>
                                         <TableCell>
@@ -577,6 +588,36 @@ const StockManagement = () => {
                 </TableContainer>
             )}
 
+            {/* Pagination Controls */}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1, px: 1, py: 0.5, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary">Rows per page:</Typography>
+                    <Select
+                        value={pageSize}
+                        onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                        size="small"
+                        sx={{ fontSize: '0.75rem', height: 28, '.MuiSelect-select': { py: '2px' } }}
+                    >
+                        <MenuItem value={10}>10</MenuItem>
+                        <MenuItem value={30}>30</MenuItem>
+                        <MenuItem value={50}>50</MenuItem>
+                    </Select>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="caption" color="text.secondary">
+                        {filteredStocks.length === 0 ? '0' : `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, filteredStocks.length)}`} of {filteredStocks.length}
+                    </Typography>
+                    <Button size="small" variant="outlined" sx={{ minWidth: 0, px: 1.5, py: 0.25, fontSize: '0.75rem', lineHeight: 1.5 }}
+                        onClick={() => setCurrentPage(p => p - 1)}
+                        disabled={currentPage === 1}
+                    >Prev</Button>
+                    <Typography variant="caption">{currentPage} / {totalPages}</Typography>
+                    <Button size="small" variant="outlined" sx={{ minWidth: 0, px: 1.5, py: 0.25, fontSize: '0.75rem', lineHeight: 1.5 }}
+                        onClick={() => setCurrentPage(p => p + 1)}
+                        disabled={currentPage >= totalPages}
+                    >Next</Button>
+                </Box>
+            </Box>
 
         </Box>
     );

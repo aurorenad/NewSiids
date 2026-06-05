@@ -1,0 +1,60 @@
+.siids-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+/* Status colors mappings */
+.badge-seized {
+  background-color: var(--info-bg);
+  color: var(--info-color);
+  border-color: rgba(2, 136, 209, 0.2);
+}
+
+.badge-main-stock {
+  background-color: #F1F5F9;
+  color: var(--text-secondary);
+  border-color: #CBD5E1;
+}
+
+.badge-release-pending {
+  background-color: var(--warning-bg);
+  color: var(--warning-color);
+  border-color: rgba(255, 179, 0, 0.2);
+}
+
+.badge-success {
+  background-color: var(--success-bg);
+  color: var(--success-color);
+  border-color: rgba(46, 125, 50, 0.2);
+}
+
+.badge-returned {
+  background-color: #FAF5FF;
+  color: #8B5CF6;
+  border-color: rgba(139, 92, 246, 0.2);
+}
+
+.badge-exception {
+  background-color: var(--danger-bg);
+  color: var(--danger-color);
+  border-color: rgba(211, 47, 47, 0.2);
+}
+
+.badge-signature-pending {
+  background-color: #FFFBEB;
+  color: #D97706;
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
+.badge-draft {
+  background-color: #F8FAFC;
+  color: var(--text-muted);
+  border-color: #E2E8F0;
+}

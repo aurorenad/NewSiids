@@ -1,0 +1,651 @@
+ 
+ 
+SIIDS
+Stock Operations Module
+Stakeholder Meeting — Change Log & Technical Specification
+Version 
+1.0  ·
+  25 Changes across 4 User Roles
+Rwanda Revenue Authority  ·  Intelligence & Enforcement Division
+Meeting Summary & Key Themes
+Following a stakeholder review session with end-users of the SIIDS stock operations module, the following 25 changes were identified and 
+prioritised
+. Changes span all active user roles and introduce one new role (Deputy PRSO). The session surfaced four cro
+ss-cutting themes that apply across all changes:
+OTP Validation
+Replace physical signatures with system-generated OTPs for goods seizure confirmation, owner goods return, and auction winner handover.
+Reports & Charts
+All four roles require a dedicated reports page with chart 
+visualisation
+, downloadable reports, money/finance tracking, and progressive summaries by week or month.
+Advanced Sorting & Filtering
+Every inventory table must support multi-dimensional sorting: by date, goods type, location, owner, reference number, and month.
+Dashboard UI Depth
+Information density must increase — more detail per record, status-aware actions, and clear navigation between operational states.
+Change Count by Role
+User / Role
+Changes
+Layer(s)
+Priority
+Surveillance Officer
+9 items
+All Layers
+CRITICAL
+Stock Manager
+5 items
+All Layers
+HIGH
+PRSO
+2 items
+Frontend
+HIGH
+Deputy PRSO (NEW)
+4 items
+All Layers
+CRITICAL
+Surveillance Officer
+Dashboard + Seizure Note + Release Flow + Reports
+9
+changes
+01
+Seizure Reason Dropdown — Add Three New Options
+Layer: 
+Frontend
+   ·   
+Configuration
+The seizure reason dropdown used during seizure note creation must include three new options alongside existing ones: Smuggling, Transit Violation, and Expired Entry Card
+ and make it more detailed with more inputs that make the seized goods being recorded and fully descriptive in details like the estimated value of goods that is being seized but this final value of goods will be optional is may the its value is not 
+know
+ but this will allow to 
+atrack
+ if the goods was not sold at row price in auction or track financial report from the operation 
+.
+TECHNICAL
+Add the three values to the 
+seizure_reason
+ ENUM in the database and to the dropdown data source (hardcoded list or lookup table). Selecting any of these does NOT trigger a free-text "Other" field — they are standalone options with no sub-field.
+02
+Days Column — Count from Day 1, 
+Colour
+ Alerts, Vehicle Exception
+Layer: 
+Frontend + Backend
+   ·   
+Logic Change
+The Days column in the temporary stock table 
+must count upward from 0
+ starting from the seizure date. 
+Colour
+ changes must warn the officer as the 7-day escalation deadline approaches. Vehicles are exempt from the 7-day rule and must not trigger the
+ 
+colour
+ alert regardless of days elapsed.
+TECHNICAL
+Backend: ensure the 
+days_in_stock
+ value is calculated as DATEDIFF(
+NOW(
+), 
+seized_at
+) + 1. Add a 
+goods_type
+ flag or check 
+goods_type
+ = VEHICLE to suppress 
+colour
+ logic. Frontend: apply 
+colour
+ classes — days 1–4 green, days 5–6 violet/amber, day 7+ red. For v
+ehicles, always render the cell with a neutral grey style and a "Vehicle — No Limit" label.
+03
+OTP Confirmation — Seizure Note Owner Acknowledgement
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature  ·  OTP
+When creating a seizure note, if a known owner is identified, the system must send an OTP to the owner's registered phone number to confirm they acknowledge that their goods have been seized. The officer cannot proceed past the signature step until the OTP
+ is verified. If the goods have no known owner, this step is 
+skippable
+ with a single toggle.
+TECHNICAL
+Backend: generate a 6-digit OTP using a secure random generator, store it hashed (SHA-256) with an expiry of 10 minutes in a new 
+otp_verifications
+ table (
+record_id
+, 
+otp_hash
+, 
+expires_at
+, 
+verified_at
+, context). Send via SMS gateway. Add POST /
+api
+/
+otp
+/send (
+context=SEIZURE_OWNER) and POST /
+api
+/
+otp
+/verify. Frontend: show OTP input step in the seizure note wizard. If 
+owner_known
+ = false, show a skip toggle with a confirmation message. Skipping is recorded in the seizure note (
+owner_otp_skipped
+ = true).
+04
+Seizure Note — Digital Template OR Physical Scan Attachment
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature
+The officer must choose between two seizure note modes: (A) fill the digital template in the system as currently done, or (B) attach a scanned physical document and still fill all goods metadata fields. Both modes must store the full goods data in the data
+base. The scanned document is stored as a file attachment linked to the seizure note record.
+TECHNICAL
+Frontend: add a mode selector at the start of the seizure note wizard — "Digital" or "Physical Scan". For Physical Scan mode, show a file upload input (PDF or image, max 10MB) alongside all existing goods metadata fields. Both modes submit the same goods p
+ayload; Physical Scan adds a 
+scan_attachment_url
+ field. Backend: accept multipart/form-data for Physical Scan submissions. Store the file in object storage (S3 or equivalent), save the URL to 
+seizure_
+notes.scan
+_attachment_url
+ (
+nullable
+ VARCHAR). Digital mo
+de leaves this field null.
+05
+Temporary Stock Table — Advanced Sort Options
+Layer: 
+Frontend
+   ·   
+UI Enhancement
+The temporary stock table must support six sort dimensions to help the officer quickly locate records: by month (of seizure), by goods type, by seizure date, by location (of seizure), by goods owner name, and by seizure reference number.
+TECHNICAL
+Add a multi-sort dropdown or sort-by selector above the table. Each sort option maps to a query parameter passed to GET /
+api
+/seizure-notes (
+e.g. ?
+sortBy
+=
+goods_type&order
+=
+asc
+). Ensure the backend supports all six sort fields with indexed columns. The existi
+ng search bar and active sort are combined — sorting does not reset search and vice versa. The page always resets to 1 on sort change.
+06
+Surveillance Officer — Reports & Charts Navigation Page
+Layer: 
+Frontend + Backend
+   ·   
+New Feature  ·  Reports
+Add a dedicated Reports page to the surveillance officer dashboard. It must include: bar/line charts of goods seized by month, filter by goods type or location, a weekly downloadable report (PDF) of all confiscated goods with full details, a send-to-PRSO b
+utton to submit the report directly to the PRSO in-system, and a financial section tracking fines and penalties collected from goods returned to owners.
+TECHNICAL
+Frontend: add a "Reports" navigation item in the sidebar. Use a charting library (
+Recharts
+ or
+ Chart.js) for 
+visualisations
+. Filter controls feed query parameters to report endpoints. The PDF export calls a dedicated backend endpoint that generates a formatted PDF server-side. Backend: add GET /
+api
+/reports/
+surveillance?week
+={
+iso_week
+}&format=
+json|p
+df
+. Add a POST /
+api
+/reports/send-to-
+prso
+ endpoint. Add a GET /
+api
+/finance/
+fines?officerId
+={id} endpoint aggregating fines from release notes where 
+release_type
+ = OWNER_RETURN.
+07
+Return to Owner — OTP Confirmation & Full Release Note
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature  ·  OTP + Document
+When the officer chooses to return goods to the owner from temporary stock, the system must: send an OTP to the owner to confirm receipt of goods, generate a full Release Note document capturing all goods details (copied from the seizure note), the amount 
+of fines/penalties paid, the time of release, and the officer identity. This release note must be printable as a hard-copy document and recorded permanently in the system.
+TECHNICAL
+Backend: on POST /
+api
+/seizure-notes/{id}/release-to-owner, trigger OTP sen
+d to owner phone. On OTP verification, create a 
+release_notes
+ record (id, 
+seizure_note_id
+, 
+released_at
+, 
+officer_id
+, 
+fine_amount
+, 
+penalty_amount
+, 
+goods_description_snapshot
+, 
+owner_confirmed_otp
+ = true). Goods description must be a snapshot — not a live FK —
+ so the record is immutable. Add GET /
+api
+/release-notes/{id}/pdf for hard-copy generation. Frontend: add OTP verification step before confirming the return. Show fine/penalty amount input fields. After confirmation, show a "Download Release Note" button.
+08
+PV Document Template — Enhanced Layout Matching Physical Format
+Layer: 
+Frontend + Backend
+   ·   
+UI Quality  ·  Document
+The PV Document generated when goods are escalated to the main stock must be redesigned to match the official physical PV document format used by RRA. It must include full goods description, owner details, applicable law reference, officer identity, and a 
+formal statement block. The current template is insufficient and must be replaced.
+TECHNICAL
+Frontend: update the 
+SeizurePVDocument
+ component to render the official layout — letterhead, case reference block, taxpayer section, full goods table (description,
+ quantity, condition, estimated value), legal basis block, formal statement, and officer signature block (name + employee ID from 
+auth
+ context, no manual input). Backend: the PV document generation endpoint must JOIN 
+seizure_notes
+, users, and goods to asse
+mble all fields server-side. The client receives a pre-populated data object — not individual fields to assemble.
+09
+Audit Trail — All Operations Tracked in Reports Page
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature  ·  Audit
+Every operation performed by the surveillance officer — seizure note creation, owner OTP verification, escalation, return to owner, report submission to PRSO — must be recorded in an audit log and visible in the Reports page under an Audit Trail section.
+T
+ECHNICAL
+Backend: create or extend an 
+audit_log
+ table (id, 
+actor_id
+, 
+action_type
+ ENUM, 
+entity_type
+, 
+entity_id
+, metadata JSONB, 
+created_at
+). Log every state-changing API call from the surveillance officer role. Add GET /api/
+audit?actorId
+={id}&entityType=SEI
+ZURE_NOTE&from={date}&to={date}. Frontend: add an Audit Trail section to the Reports page with a filterable paginated table of all logged actions.
+Stock Manager
+Inventory Navigation + Return Flow + Reports + Release Note + OTP
+5
+changes
+01
+Main Stock Table — Advanced Sort Options
+Layer: 
+Frontend
+   ·   
+UI Enhancement
+The main stock inventory table must support four sort dimensions: by month (of intake to main stock), by goods type, by intake date, and by PV document reference number. This mirrors the surveillance officer's sort improvement and ensures consistent naviga
+tion experience.
+TECHNICAL
+Add a sort-by selector above the table. Each option maps to a query parameter on GET /
+api
+/stock/goods (
+e.g. ?
+sortBy
+=
+pv_reference&order
+=
+asc
+). Ensure 
+pv_reference
+, 
+goods_type
+, 
+approved_at
+, and intake date are indexed for efficient ordering. Sort state persis
+ts within the active tab but resets on tab switch.
+02
+Return Goods — Structured Reason Form with Audit Tracking
+Layer: 
+Frontend + Backend + Database
+   ·   
+Flow Change  ·  Audit
+When the stock manager returns goods (to the surveillance officer), the return action must use a structured dynamic form — not a free-text field alone. Two specific return reasons must be supported as structured options: (1) 
+Invalid inputs provided on the 
+pv
+ or 
+serizure
+ 
+note ,
+ 
+Mismatch between seizure note a
+nd PV data 
+document, and (2) Owner appeal with valid request from Deputy PRSO. Each reason type triggers different sub-fields in the form. All returns are recorded in full for audit purposes.
+TECHNICAL
+Frontend: replace the single 
+return_reason
+ text input with a structured form. Reason type is a dropdown (DOCUMENT_MISMATCH | OWNER_APPEAL). DOCUMENT_MISMATCH sub-fields: which fields conflict (multi-checkbox), description of mismatch. OWNER_APPEAL sub-fiel
+ds: deputy PRSO name, request reference number, appeal summary. Backend: store 
+reason_type
+ ENUM and 
+reason_metadata
+ JSONB on the 
+audit_corrections
+ record. Add GET 
+/
+api
+/audit/
+corrections?goodsId
+={id} for auditors to retrieve the full correction history of a
+ny goods record.
+03
+Stock Manager — Reports & Charts Navigation Page with Finance Tracking
+Layer: 
+Frontend + Backend
+   ·   
+New Feature  ·  Reports  ·  Finance
+Add a dedicated Reports page to the stock manager dashboard with: operational charts (goods received, approved, released, returned by week or month), a finance section showing total auction revenue from released goods, downloadable reports for submission t
+o directors, and a summary of all operations 
+categorised
+ by state and time period.
+TECHNICAL
+Frontend: add "Reports" to the sidebar. Chart goods movement using 
+Recharts
+. Finance section pulls from 
+released_
+goods.auction
+_amount
+. Add date-range filter (week/month). Download button calls GET /
+api
+/reports/
+stock-
+manager?from
+={date}&to={date}&format=pdf
+. Backend: aggregate endpoint returns counts by status and sums of 
+auction_amount
+ within the date range. All download PDFs are generated server-side.
+04
+Release Note — Full Structured Document on Release Request
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature  ·  Document
+When the stock manager initiates a Release Request to the PRSO, the action must require filling a full structured Release Note form. The form data creates a 
+release_notes
+ record and a formatted document that mirrors the official physical release note forma
+t. The PRSO reviews this document as part of their approval decision.
+TECHNICAL
+Frontend: replace the simple confirm dialog for "Request Release" with a multi-field form: goods description (pre-filled from PV document, editable), estimated auction value, proposed auction date, intended buyer category, applicable law reference, and sto
+ck manager notes. On submit, POST /
+api
+/release-notes with the full payload. Backend: create 
+release_notes
+ table if not already existing (id, 
+goods_id
+, 
+created_by_id
+, status, 
+auction_estimate
+, 
+proposed_auction_date
+, 
+buyer_category
+, 
+sm_notes
+, 
+goods_descripti
+on_snapshot
+, 
+created_at
+). Generate a formatted PDF on demand via GET /
+api
+/release-notes/{id}/pdf.
+05
+Auction Winner Handover — OTP Confirmation
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature  ·  OTP
+Once PRSO approves the release and the auction winner is identified, the stock manager must send an OTP to the auction winner's phone number in the system before goods are physically handed over. The winner confirms receipt via OTP and this confirmation is
+ recorded against the release note.
+TECHNICAL
+Frontend: after PRSO approval is received, show an "Initiate Handover" step in the release note detail panel. The SM enters the winner's phone number (or it is pre-filled from the release note). Clicking "Send 
+OTP" calls POST /
+api
+/
+otp
+/send (context=AUCTION_HANDOVER, 
+releaseNoteId
+). The SM enters the OTP provided by the winner. On success, the release note status changes to HANDED_OVER and 
+winner_otp_confirmed
+ = true is stored. Backend: reuse the 
+otp_verification
+s
+ table. On verification, update 
+release_notes
+: set 
+handed_over_at
+ = NOW(), 
+winner_name
+, 
+winner_phone
+, 
+winner_otp_confirmed
+ = true.
+PRSO
+Dashboard Overview + Reports & Charts Navigation
+2
+changes
+01
+PRSO Dashboard — Full Stock Movement Overview
+Layer: 
+Frontend
+   ·   
+UI Enhancement  ·  Dashboard
+The PRSO dashboard must be redesigned to provide a high-level operational view of all physical stock movement across both the temporary stock and the main stock. The PRSO must be able to see at a glance: total goods in temporary stock, total in main stock,
+ pending release approvals, goods released to auction, and goods returned to owners.
+TECHNICAL
+Frontend: redesign the PRSO landing page as a metrics dashboard. Add metric cards for each state count (using real-time data from GET /
+api
+/dashboard/
+prso
+-summary
+). Add a recent activity feed showing the last 20 state transitions across all goods. Add a pending approvals section prominently at the top — this is the PRSO's primary action area. No new backend endpoints needed if the existing goods list endpoints supp
+ort status-based aggregation.
+02
+PRSO — Reports & Charts Navigation Page
+Layer: 
+Frontend + Backend
+   ·   
+New Feature  ·  Reports
+Add a dedicated Reports page to the PRSO dashboard. It must 
+visualise
+ the full lifecycle of goods through the system: total goods in temporary stock, main stock, released, returned to owners, total fines and penalties collected, total release requests acce
+pted and rejected, and all other operational metrics. Charts must be filterable by date range.
+TECHNICAL
+Frontend: add "Reports" to the PRSO sidebar. Key metrics: 
+goods_in_temp_stock
+, 
+goods_in_main_stock
+, 
+goods_released
+, 
+goods_returned_to_owner
+, 
+total_fines_collected
+, 
+prso_approvals_granted
+, 
+prso_approvals_rejected
+. Use 
+Recharts
+ for trend lines and bar charts
+. Backend: add GET /
+api
+/reports/
+prso?from
+={date}&to={date}&format=
+json|pdf
+. This endpoint aggregates across 
+seizure_notes
+, 
+main_stock_goods
+, 
+release_notes
+, and fine/penalty records.
+Deputy 
+PRSO  ·
+  NEW ROLE
+Brand-new user role to be created from scratch
+4
+changes
+★  
+The
+ Deputy PRSO is a new user role that does not exist in the current system. All database records, API routes, role guards, and UI screens for this role must be created from scratch. The Deputy PRSO operates below the PRSO and handles returned-goods revie
+w and, when 
+authorised
+ by the PRSO, release approvals.
+01
+Deputy PRSO — Role Creation & Returned Goods Review
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Role  ·  New Feature
+Create the DEPUTY_PRSO role in the system. The Deputy PRSO's primary function is to review goods returned by the stock manager, especially those returned due to document mismatches or owner appeals. He can view both the return reason and all linked documen
+ts (PV document, seizure note) before making a decision.
+TECHNICAL
+Database: add DEPUTY_PRSO to the user roles ENUM. Backend: create DEPUTY_PRSO role guards on all new Deputy PRSO endpoints. Frontend: create a new dashboard route (/deputy-
+prso
+) with sideba
+r and layout consistent with the other role dashboards. The Deputy PRSO's primary view is a queue of goods with status = RETURNED that require his review.
+02
+Deputy PRSO — Decision Actions on Returned Goods
+Layer: 
+Frontend + Backend
+   ·   
+New Feature
+On each returned goods record, the Deputy PRSO can take one of two actions: (1) Send back to Surveillance Officer for correction — if the return was due to a document error that the officer must fix, or (2) Move to Exception Case — for owner appeals where
+ the goods enter a separate exception handling flow (e.g. reduced fines, special release conditions).
+TECHNICAL
+Backend: add PATCH /
+api
+/stock/goods/{id}/deputy-send-back (sets status = RETURNED, routes back to 
+pv_in_charge_id
+, creates notification). Add PA
+TCH /
+api
+/stock/goods/{id}/exception-case (sets status = EXCEPTION, creates 
+exception_cases
+ record with 
+deputy_prso_id
+, 
+goods_id
+, reason, 
+created_at
+). Frontend: action buttons in the detail panel: "Send Back to Officer" (red outlined) and "Move to Exception
+ Case" (amber outlined). Both trigger a 
+ConfirmDialog
+ with a mandatory reason field.
+03
+Deputy PRSO — Delegated Release Approval from PRSO
+Layer: 
+Frontend + Backend + Database
+   ·   
+New Feature  ·  Authorization
+The PRSO can grant the Deputy PRSO the authority to approve or reject release requests from the stock manager. Once this authorization is granted, incoming release requests from the stock manager are routed to the Deputy PRSO instead of the PRSO. The PRSO 
+can revoke this authorization at any time.
+TECHNICAL
+Database: add a delegations table (id, 
+grantor_id
+ 
+FK→users
+, 
+grantee_id
+ 
+FK→users
+, permission ENUM[RELEASE_APPROVAL], 
+granted_at
+, 
+revoked_at
+ NULLABLE). Backend: PRSO dashboard has a POST /
+api
+/
+delegations
+ e
+ndpoint to create a delegation. Add middleware that checks active delegations when routing release requests — if an active RELEASE_APPROVAL delegation exists for the current PRSO, route PENDING_RELEASE notifications to the deputy instead. Frontend: PRSO se
+ttings section shows a "Delegate Release Approval" toggle with the deputy's name. Delegation status is shown as a badge in both the PRSO and Deputy PRSO dashboards.
+04
+Deputy PRSO — Reports & Audit Trail Page
+Layer: 
+Frontend + Backend
+   ·   
+New Feature  ·  Reports  ·  Audit
+The Deputy PRSO must have a Reports page that tracks all operations he has performed: goods reviewed, decisions made (send-back vs exception), release approvals granted or rejected if delegated, and finance metrics from exception cases (fines reduced, amou
+nts collected).
+TECHNICAL
+Frontend: add "Reports" to the Deputy PRSO sidebar. Key metrics: 
+total_reviewed
+, 
+sent_back_count
+, 
+exception_case_count
+, 
+delegated_approvals_granted
+, 
+delegated_approvals_rejected
+, 
+total_exception_fines_collected
+. Backend: add GET /
+api
+/reports/
+deputy-
+prso?from
+={date}&to={date}&format=
+json|pdf
+. Aggregate from 
+audit_log
+ (
+actor_id
+ = deputy), 
+exception_cases
+, and delegated approval records.
+Cross-Cutting Requirements
+The following requirements apply to all roles and all changes in this document. They must be implemented consistently across every affected screen and endpoint.
+OTP Infrastructure
+A single shared OTP system handles all three OTP contexts (SEIZURE_OWNER, O
+WNER_RETURN, AUCTION_HANDOVER). The 
+otp_verifications
+ table stores all OTPs hashed. OTPs expire in 10 minutes. Verified OTPs are marked with 
+verified_at
+ and cannot be reused. The SMS gateway integration is shared across all contexts.
+Reports Architecture
+All four roles have a Reports page. Each page shares the same charting components (
+Recharts
+) and download infrastructure. PDF generation is server-side only — never client-side. All report PDFs include RRA letterhead, date range, user identity, and a gener
+ation timestamp.
+Audit Log Coverage
+Every state-changing action across all roles must write to the 
+audit_log
+ table. This covers: seizure note creation, OTP sends and verifications, escalations, returns, approvals, rejections, delegations, and release handovers. The 
+audit_log
+ is append-only —
+ no updates or deletes are permitted.
+Finance Tracking
+All monetary amounts (fines, penalties, auction proceeds) are stored in RWF (Rwandan Franc) as 
+DECIMAL(
+15,2). Every Release Note and Return-to-Owner Note must include a financial summary. The Reports 
+pages for all roles aggregate these amounts with date filters.
+Document Snapshots
+All generated documents (Seizure Note, PV Document, Release Note, Return Note) must snapshot the goods description, officer identity, and owner details at the time of generation. Documents must not use live FK references that could change. Snapshots ensure
+ documents remain legally accurate even if underlying records are updated.
+Role Guards
+Every new endpoint must enforce role-based access control at the Spring Security layer. DEPUTY_PRSO endpoints must not be accessible to STOCK_MANAGER or SURVEILLANCE_OFFICER. Delegation logic is enforced server-side — a Deputy PRSO cannot self-grant releas
+e approval authority.
+SIIDS Stock Operations Module — Stakeholder Change Log v1.0
+25 Changes · 4 Roles (including 1 new) · Rwanda Revenue Authority · CONFIDENTIAL
