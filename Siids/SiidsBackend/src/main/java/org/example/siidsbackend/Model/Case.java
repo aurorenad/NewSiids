@@ -46,6 +46,16 @@ public class Case {
     private String informerIdType;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "routed_to")
+    private RoutedTo routedTo;
+
+    @Column(name = "department_name")
+    private String departmentName;
+
+    @Column(name = "routing_notes", columnDefinition = "TEXT")
+    private String routingNotes;
+
+    @Enumerated(EnumType.STRING)
     private WorkflowStatus status;
 
     @ManyToOne

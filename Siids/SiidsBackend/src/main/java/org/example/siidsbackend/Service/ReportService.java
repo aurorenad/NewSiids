@@ -169,6 +169,50 @@ public class ReportService {
         return toResponseDTO(report);
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> generateInvestigationDraft(Integer reportId, String officerId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        if (report.getInvestigationOfficer() == null
+                || !report.getInvestigationOfficer().getEmployeeId().equals(officerId)) {
+            throw new RuntimeException("You are not the assigned investigation officer for this report");
+        }
+
+        Case relatedCase = report.getRelatedCase();
+        List<String> evidencePaths = new ArrayList<>();
+        evidencePaths.addAll(report.getAttachmentPaths() == null ? List.of() : report.getAttachmentPaths());
+        evidencePaths.addAll(report.getFindingsAttachmentPaths() == null ? List.of() : report.getFindingsAttachmentPaths());
+
+        StringBuilder findings = new StringBuilder();
+        if (relatedCase != null && relatedCase.getSummaryOfInformationCase() != null) {
+            findings.append("Case summary: ")
+                    .append(relatedCase.getSummaryOfInformationCase().trim());
+        }
+        if (report.getDescription() != null && !report.getDescription().isBlank()) {
+            appendDraftSection(findings, "Initial report", report.getDescription());
+        }
+        if (report.getAssignmentNotes() != null && !report.getAssignmentNotes().isBlank()) {
+            appendDraftSection(findings, "Assignment notes", report.getAssignmentNotes());
+        }
+        if (report.getCasePlanDescription() != null && !report.getCasePlanDescription().isBlank()) {
+            appendDraftSection(findings, "Approved investigation plan", report.getCasePlanDescription());
+        }
+
+        Map<String, Object> draft = new LinkedHashMap<>();
+        draft.put("findings", findings.toString());
+        draft.put("recommendations", "");
+        draft.put("evidencePaths", evidencePaths.stream().distinct().toList());
+        return draft;
+    }
+
+    private void appendDraftSection(StringBuilder draft, String heading, String value) {
+        if (!draft.isEmpty()) {
+            draft.append("\n\n");
+        }
+        draft.append(heading).append(":\n").append(value.trim());
+    }
+
     private void validateAttachment(String attachmentPath) {
         if (attachmentPath != null && !attachmentPath.toLowerCase().endsWith(".pdf")) {
             throw new RuntimeException("Only PDF attachments are allowed");
@@ -1038,6 +1082,92 @@ public class ReportService {
     public ReportResponseDTO approveReportResponse(Integer reportId, String approverId) {
         Report report = approveReport(reportId, approverId);
         return toResponseDTO(report);
+    }
+
+    @Transactional
+    public ReportResponseDTO approveAndRouteByAssistantCommissioner(
+            Integer reportId,
+            String approverId,
+            String destinationDepartment,
+            String routingNotes) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null) {
+            throw new RuntimeException("Report is not linked to a case");
+        }
+        if (relatedCase.getStatus() != WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE) {
+            throw new IllegalStateException("Cannot route report in current status: " + relatedCase.getStatus());
+        }
+
+        String normalizedDepartment = normalizeRoutingDepartment(destinationDepartment);
+        RoutedTo routedTo = toRoutedTo(normalizedDepartment);
+        relatedCase.setRoutedTo(routedTo);
+        relatedCase.setDepartmentName(normalizedDepartment);
+        relatedCase.setRoutingNotes(StringUtils.hasText(routingNotes) ? routingNotes.trim() : null);
+
+        WorkflowStatus newStatus;
+        if (routedTo == RoutedTo.DIRECTOR_OF_INVESTIGATION) {
+            newStatus = WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION;
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            if (!directors.isEmpty()) {
+                report.setCurrentRecipient(directors.get(0));
+            } else {
+                throw new IllegalStateException("No Director of Investigation found to receive this report.");
+            }
+        } else {
+            newStatus = WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+            report.setCurrentRecipient(null);
+        }
+
+        relatedCase.setStatus(newStatus);
+        caseRepo.save(relatedCase);
+
+        report.setAssistantCommissioner(approver);
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("Report #%d approved and routed to %s by %s %s",
+                savedReport.getId(),
+                normalizedDepartment,
+                approver.getGivenName(),
+                approver.getFamilyName());
+        createNotification(savedReport, message);
+
+        auditService.logAction(
+                newStatus,
+                "Report " + savedReport.getId() + " approved and routed to "
+                        + normalizedDepartment + " by " + approver.getEmployeeId(),
+                approver);
+
+        return toResponseDTO(savedReport);
+    }
+
+    private String normalizeRoutingDepartment(String destinationDepartment) {
+        if (!StringUtils.hasText(destinationDepartment)) {
+            return "Director of Investigation";
+        }
+        return destinationDepartment.trim();
+    }
+
+    private RoutedTo toRoutedTo(String destinationDepartment) {
+        String enumName = destinationDepartment
+                .trim()
+                .toUpperCase(Locale.ROOT)
+                .replaceAll("[^A-Z0-9]+", "_")
+                .replaceAll("^_|_$", "");
+        try {
+            return RoutedTo.valueOf(enumName);
+        } catch (IllegalArgumentException e) {
+            return RoutedTo.OTHER;
+        }
     }
 
     @Transactional
