@@ -83,14 +83,19 @@ const Login = () => {
             <Card
                 elevation={4}
                 sx={{
+                    width: '100%',
+                    maxWidth: 390,
+                    mx: 'auto',
                     borderRadius: 4,
                     border: 'none',
-                    boxShadow: '0 8px 40px rgba(21,101,192,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-                    overflow: 'visible',
+                    background: 'rgba(255,255,255,0.96)',
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: '0 22px 56px rgba(21,101,192,0.14), 0 8px 20px rgba(15,23,42,0.08)',
+                    overflow: 'hidden',
                 }}
             >
-                <CardContent sx={{ p: 4 }}>
-                    <Stack spacing={3}>
+                <CardContent sx={{ px: { xs: 3, sm: 4 }, py: { xs: 3.5, sm: 4.5 } }}>
+                    <Stack spacing={2.75}>
                         <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                             <Box
                                 component="img"
@@ -103,15 +108,15 @@ const Login = () => {
                                     objectFit: 'contain',
                                     border: '3px solid',
                                     borderColor: 'primary.light',
-                                    bgcolor: '#fff',
+                                    bgcolor: '#ffffff',
                                     p: 0.5,
-                                    boxShadow: '0 4px 14px rgba(21,101,192,0.15)',
+                                    boxShadow: '0 8px 20px rgba(21,101,192,0.18)',
                                 }}
                             />
                         </Box>
 
                         <Box textAlign="center">
-                            <Typography variant="h6" fontWeight={700} gutterBottom>
+                            <Typography variant="h6" fontWeight={700} lineHeight={1.35} gutterBottom>
                                 Strategic Intelligence & Investigation Division System
                             </Typography>
                             <Typography variant="body2" color="text.secondary">(SIIDs)</Typography>
