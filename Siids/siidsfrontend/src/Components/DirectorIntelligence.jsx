@@ -340,7 +340,6 @@ const DirectorIntelligence = () => {
                     returnDocumentPath: responseData?.returnDocumentPath || r.returnDocumentPath || null
                 } : r
             ));
-            fetchReports();
 
             closeReturnDialog();
             setError(null);
@@ -517,7 +516,7 @@ const DirectorIntelligence = () => {
                         </Tooltip>
                     )}
 
-                    {report.returnDocumentPath && (
+                    {(report.hasReturnDocument || report.returnDocumentPath) && (
                         <Tooltip title="Download Return Document">
                             <IconButton onClick={() => handleDownloadReturnDocument(report.id)} size="small" color="primary">
                                 <Download fontSize="small" />

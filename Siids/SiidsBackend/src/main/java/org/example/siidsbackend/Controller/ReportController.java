@@ -884,7 +884,11 @@ public class ReportController {
             Authentication authentication) {
 
         String requesterId = authentication.getName();
-        return reportService.downloadReportAttachment(reportId, filename, requesterId);
+        try {
+            return reportService.downloadReportAttachment(reportId, filename, requesterId);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
     }
 
     @GetMapping("/{reportId}/attachments")
@@ -895,7 +899,11 @@ public class ReportController {
             Authentication authentication) {
 
         String requesterId = authentication.getName();
-        return reportService.downloadReportAttachment(reportId, filename, requesterId);
+        try {
+            return reportService.downloadReportAttachment(reportId, filename, requesterId);
+        } catch (SecurityException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
     }
 
     @GetMapping("/by-case")
@@ -1017,7 +1025,10 @@ public class ReportController {
 
     private boolean isReportReturned(Report report) {
         return report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER ||
-                report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION;
+                report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION ||
+                report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE ||
+                report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_ASSISTANT_COMMISSIONER ||
+                report.getRelatedCase().getStatus() == WorkflowStatus.REPORT_RETURNED_TO_INVESTIGATION_OFFICER;
     }
 
     @GetMapping("/assistant-commissioner/fines-report")
@@ -1285,39 +1296,26 @@ public class ReportController {
                 return ResponseEntity.badRequest().body(null);
             }
 
-            // Store document if provided
-            String documentPath = null;
             if (returnDocument != null && !returnDocument.isEmpty()) {
-                // Validate document type
-
                 String originalFilename = returnDocument.getOriginalFilename();
 
                 if (originalFilename != null) {
                     String lowerFilename = originalFilename.toLowerCase();
                     if (!lowerFilename.endsWith(".doc") &&
                             !lowerFilename.endsWith(".docx") &&
-                            !lowerFilename.endsWith(".pdf")) {
+                            !lowerFilename.endsWith(".pdf") &&
+                            !lowerFilename.endsWith(".txt")) {
                         return ResponseEntity.badRequest().body(null);
                     }
                 }
-
-                documentPath = storeReturnDocument(returnDocument);
             }
 
             // Create combined reason
-            String combinedReason = returnReason != null ? returnReason : "Document attached";
-            if (documentPath != null) {
-                combinedReason += " [Document: " + documentPath + "]";
-            }
+            String combinedReason = (returnReason == null || returnReason.trim().isEmpty())
+                    ? "Document attached"
+                    : returnReason.trim();
 
-            Report report = reportService.returnReport(id, combinedReason, returnToEmployeeId, employeeId);
-
-            // Store document path separately if needed
-            if (documentPath != null) {
-                // You might want to add a field to Report entity for returnDocumentPath
-                report.setReturnDocumentPath(documentPath);
-                reportRepo.save(report);
-            }
+            Report report = reportService.returnReport(id, combinedReason, returnToEmployeeId, employeeId, returnDocument);
 
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
@@ -1330,7 +1328,7 @@ public class ReportController {
     }
 
     private String storeReturnDocument(MultipartFile file) throws IOException {
-        return fileStorageService.store(file, "return-documents", Set.of(".pdf", ".doc", ".docx"));
+        return fileStorageService.store(file, "return-documents", Set.of(".pdf", ".doc", ".docx", ".txt"));
     }
 
     @GetMapping("/{id}/return-document")
@@ -1370,6 +1368,8 @@ public class ReportController {
                     contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
                 } else if (filename.endsWith(".pdf")) {
                     contentType = "application/pdf";
+                } else if (filename.endsWith(".txt")) {
+                    contentType = "text/plain";
                 } else {
                     contentType = "application/octet-stream";
                 }
@@ -1381,7 +1381,7 @@ public class ReportController {
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + filename + "\"")
+                            "attachment; filename=\"" + filename.replace("\"", "") + "\"")
                     .body(resource);
 
         } catch (Exception e) {
@@ -1434,8 +1434,7 @@ public class ReportController {
                 }
             }
 
-            // Edit the report
-            Report updatedReport = reportService.editReport(
+            ReportResponseDTO updatedReport = reportService.editReturnedReport(
                     id,
                     reportData,
                     newAttachmentPaths,
@@ -1443,7 +1442,7 @@ public class ReportController {
                     existingReport.getReturnReason() // Pass the return reason for context
             );
 
-            return ResponseEntity.ok(reportService.toResponseDTO(updatedReport));
+            return ResponseEntity.ok(updatedReport);
 
         } catch (RuntimeException e) {
             log.error("Validation error editing report: {}", e.getMessage());

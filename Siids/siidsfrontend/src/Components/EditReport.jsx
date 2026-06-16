@@ -57,7 +57,7 @@ const EditReport = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(false);
+    const [success, setSuccess] = useState(null);
     const [report, setReport] = useState(null);
     const [editPermission, setEditPermission] = useState(null);
     const [attachments, setAttachments] = useState([]);
@@ -146,7 +146,8 @@ const EditReport = () => {
                 });
 
             await ReportApi.editReport(reportId, formDataToSend);
-            setSuccess(true);
+            setError(null);
+            setSuccess('Report saved and resubmitted successfully.');
             setTimeout(() => navigate(ROUTES.INTELLIGENCE_OFFICER), 1500);
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to update report');
@@ -290,7 +291,7 @@ const EditReport = () => {
             fontSize: '0.8125rem'
         }}
     >
-        {report?.directorIntelligenceMessage || report?.returnReason}
+        {report?.returnReason || 'No return message provided.'}
     </Typography>
 
     <Typography variant="caption" color="text.secondary">
@@ -468,13 +469,13 @@ const EditReport = () => {
             </Paper>
 
             <Snackbar
-                open={success}
+                open={Boolean(success)}
                 autoHideDuration={3000}
-                onClose={() => setSuccess(false)}
+                onClose={() => setSuccess(null)}
                 anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
             >
-                <Alert severity="success" onClose={() => setSuccess(false)} sx={{ fontSize: '0.8125rem' }}>
-                    Report updated successfully.
+                <Alert severity="success" onClose={() => setSuccess(null)} sx={{ fontSize: '0.8125rem' }}>
+                    {success || 'Report updated successfully.'}
                 </Alert>
             </Snackbar>
 

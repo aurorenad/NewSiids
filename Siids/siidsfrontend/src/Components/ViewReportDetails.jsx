@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { ArrowBack, PictureAsPdf, Download, Visibility } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
+import { displayNameFromStored } from '../utils/fileUtils';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import AppTable from './ui/AppTable.jsx';
@@ -98,59 +99,19 @@ const ViewReportDetails = () => {
     };
 
     const handleDownloadAttachment = async (attachmentPath) => {
+        if (!attachmentPath || typeof attachmentPath !== 'string' || attachmentPath.trim() === '') return;
         try {
-            if (!attachmentPath) {
-                setError('No attachment available');
-                return;
-            }
-
-            if (!attachmentPath || typeof attachmentPath !== 'string' || attachmentPath.trim() === '') {
-                setError('Invalid attachment filename');
-                return;
-            }
-
-            console.log('Downloading attachment:', {
-                reportId: id,
-                filename: attachmentPath,
-                allAttachments: report.attachmentPaths
-            });
-
             await ReportApi.downloadAttachment(id, attachmentPath);
-
         } catch (err) {
-            console.error('Download error details:', {
-                error: err,
-                response: err.response,
-                message: err.message
-            });
-
-            // Try to extract more specific error message
-            let errorMessage = 'Failed to download attachment';
-            if (err.response) {
-                if (err.response.status === 404) {
-                    errorMessage = 'File not found on server';
-                } else if (err.response.status === 403) {
-                    errorMessage = 'Permission denied to download this file';
-                } else if (err.response.status === 500) {
-                    errorMessage = 'Server error while downloading file';
-                } else if (err.response.data?.message) {
-                    errorMessage = err.response.data.message;
-                }
-            } else if (err.message) {
-                errorMessage = err.message;
-            }
-
-            setError(errorMessage);
+            console.error('Download error details:', err);
+            setError(err?.response?.data?.message || 'Attachment download failed');
         }
     };
 
     const handleViewAttachment = async (attachmentPath) => {
-        try {
-            if (!attachmentPath || typeof attachmentPath !== 'string' || attachmentPath.trim() === '') {
-                setError('Invalid attachment filename');
-                return;
-            }
+        if (!attachmentPath || typeof attachmentPath !== 'string' || attachmentPath.trim() === '') return;
 
+        try {
             await ReportApi.viewAttachment(id, attachmentPath);
         } catch (err) {
             console.error('View attachment error:', err);
@@ -384,13 +345,14 @@ const ViewReportDetails = () => {
                                             sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
                                         >
                                             <Typography variant="body2" sx={{ maxWidth: 260, overflowWrap: 'anywhere' }}>
-                                                {attachmentPath.split('/').pop() || `Attachment ${index + 1}`}
+                                                {displayNameFromStored(attachmentPath) || `Attachment ${index + 1}`}
                                             </Typography>
                                             <Button
                                                 size="small"
                                                 variant="outlined"
                                                 startIcon={<Visibility />}
                                                 onClick={() => handleViewAttachment(attachmentPath)}
+                                                
                                             >
                                                 View
                                             </Button>

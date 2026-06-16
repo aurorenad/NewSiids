@@ -22,9 +22,9 @@ public class WebSocketNotificationService {
 
     public void sendNotificationToUser(String employeeId, NotificationDTO notification) {
         try {
-            String destination = "/user/" + employeeId + "/notifications";
-            messagingTemplate.convertAndSend(destination, notification);
-            log.info("Notification sent to user {} at destination {}", employeeId, destination);
+            messagingTemplate.convertAndSendToUser(employeeId, "/queue/notifications", notification);
+            messagingTemplate.convertAndSend("/user/" + employeeId + "/notifications", notification);
+            log.info("Notification sent to user {} on user queue and employee channel", employeeId);
         } catch (Exception e) {
             log.error("Failed to send notification to user {}: {}", employeeId, e.getMessage());
         }

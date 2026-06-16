@@ -53,7 +53,8 @@ export const ReportsProvider = ({ children }) => {
         try {
             setLoading(true);
             const response = await ReportApi.updateReturnedReport(reportId, formData);
-            showSnackbar('Report updated and resubmitted successfully', 'success');
+            // rely on backend to create/push notification to recipient; show local success
+            showSnackbar('Report resubmitted', 'success');
             return response.data;
         } catch (error) {
             showSnackbar(error.response?.data?.message || 'Failed to update report', 'error');

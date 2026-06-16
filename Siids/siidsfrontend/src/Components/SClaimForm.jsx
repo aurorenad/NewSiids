@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ReportApi } from '../api/Axios/caseApi.jsx';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ROUTES } from '../constants/routes';
 
 export const SClaimForm = () => {
     const [text, setText] = useState('');
@@ -77,16 +78,7 @@ export const SClaimForm = () => {
             const response = await ReportApi.submitReport(formData, employeeId);
             console.log('New report created with ID:', response.id);
             setCreatedReport(response);
-
-            try {
-                // Automatically send to Director of Intelligence
-                await ReportApi.sendToDirectorIntelligence(response.id);
-                setSuccess(`Report submitted and sent to Director of Intelligence! Report ID: ${response.id}`);
-            } catch (directorError) {
-                console.warn('Failed to send to Director:', directorError);
-                setSuccess(`Report submitted successfully! Report ID: ${response.id}`);
-                setError('Failed to automatically send to Director. Please send manually.');
-            }
+            setSuccess(`Report submitted successfully and sent to Director of Intelligence. Report ID: ${response.id}`);
 
             // Reset form
             setText('');
@@ -106,7 +98,7 @@ export const SClaimForm = () => {
                         reportId: response.id
                     }
                 });
-            }, 2000);
+            }, 3000);
         } catch (err) {
             console.error('Error submitting report:', err);
 
@@ -165,15 +157,8 @@ export const SClaimForm = () => {
                 )}
 
                 {success && (
-                    <div className="alert alert-success" role="alert">
+                    <div className="alert alert-success toast-success" role="alert">
                         {success}
-                        {createdReport && (
-                            <div className="report-details">
-                                <strong>Report ID:</strong> {createdReport.id}<br/>
-                                <strong>Status:</strong> {createdReport.status}<br/>
-                                <strong>Created At:</strong> {new Date(createdReport.createdAt).toLocaleString()}
-                            </div>
-                        )}
                     </div>
                 )}
 
@@ -333,6 +318,19 @@ export const SClaimForm = () => {
                     background: #e8f5e8;
                     color: #2e7d32;
                     border-left: 4px solid #2e7d32;
+                }
+
+                .toast-success {
+                    position: fixed;
+                    top: 24px;
+                    right: 24px;
+                    z-index: 2000;
+                    max-width: min(420px, calc(100vw - 32px));
+                    background: #16a34a;
+                    color: #ffffff;
+                    border-left: 0;
+                    border: 1px solid #15803d;
+                    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.28);
                 }
 
                 .report-details {

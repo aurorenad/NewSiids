@@ -28,7 +28,7 @@ export const connectWebSocket = (employeeId, onNotification, onError) => {
         onConnect: (frame) => {
             console.log('Connected to WebSocket:', frame);
 
-            stompClient.subscribe(`/user/${employeeId}/notifications`, (message) => {
+            const handleMessage = (message) => {
                 console.log('Received notification:', message.body);
                 try {
                     const notification = JSON.parse(message.body);
@@ -37,7 +37,10 @@ export const connectWebSocket = (employeeId, onNotification, onError) => {
                     console.error('Error parsing notification:', err);
                     onError(err);
                 }
-            });
+            };
+
+            stompClient.subscribe('/user/queue/notifications', handleMessage);
+            stompClient.subscribe(`/user/${employeeId}/notifications`, handleMessage);
 
             stompClient.publish({
                 destination: '/app/connect',

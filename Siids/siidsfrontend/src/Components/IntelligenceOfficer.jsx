@@ -344,9 +344,10 @@ const IntelligenceOfficer = () => {
     const handleDownloadAttachment = async (reportId, filename) => {
         try {
             await ReportApi.downloadAttachment(reportId, filename);
-            showSnackbar('Attachment downloaded successfully', 'success');
-        } catch {
-            showSnackbar('Failed to download attachment', 'error');
+            showSnackbar('Attachment downloaded', 'success');
+        } catch (err) {
+            console.error('Download attachment failed:', err);
+            showSnackbar(err?.response?.data?.message || 'Attachment download failed', 'error');
         }
     };
 

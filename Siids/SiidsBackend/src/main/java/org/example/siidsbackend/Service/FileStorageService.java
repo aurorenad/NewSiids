@@ -72,7 +72,9 @@ public class FileStorageService {
         Path targetDirectory = resolveDirectory(subDirectory);
         Files.createDirectories(targetDirectory);
 
-        String secureFilename = UUID.randomUUID() + extension;
+        // Preserve original filename for user-friendly downloads while ensuring uniqueness
+        String cleanedOriginal = sanitizeFilename(originalFilename);
+        String secureFilename = UUID.randomUUID() + "_" + cleanedOriginal;
         Path targetFile = targetDirectory.resolve(secureFilename).normalize();
         if (!targetFile.startsWith(targetDirectory)) {
             throw new IOException("Invalid file path - security violation");
@@ -101,7 +103,11 @@ public class FileStorageService {
             return "document.pdf";
         }
         Path filename = Paths.get(relativePath).getFileName();
-        return filename == null ? "document.pdf" : filename.toString();
+        if (filename == null) return "document.pdf";
+        String name = filename.toString();
+        // If saved as UUID_originalName.ext, return only the original name for downloads
+        int underscore = name.indexOf('_');
+        return underscore > 0 && underscore < name.length() - 1 ? name.substring(underscore + 1) : name;
     }
 
     private String getExtension(String filename) {

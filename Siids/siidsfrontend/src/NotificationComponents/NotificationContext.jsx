@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useRef } from 'react';
 import { connectWebSocket, disconnectWebSocket } from '../websocket.js';
 import caseApi from '../api/Axios/caseApi';
 import { toast } from 'sonner';
@@ -8,6 +8,7 @@ export const NotificationContext = createContext();
 export const NotificationProvider = ({ children, employeeId }) => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const seenNotificationIds = useRef(new Set());
 
     useEffect(() => {
         // Fetch initial notifications with better error handling
@@ -16,6 +17,7 @@ export const NotificationProvider = ({ children, employeeId }) => {
             try {
                 const response = await caseApi.get(`/api/notifications/employee/${employeeId}`);
                 const data = response.data;
+                seenNotificationIds.current = new Set(data.map(item => item.id).filter(Boolean));
                 setNotifications(data);
                 setUnreadCount(data.filter(n => !n.read).length);
             } catch (err) {
@@ -32,8 +34,18 @@ export const NotificationProvider = ({ children, employeeId }) => {
         connectWebSocket(
             employeeId,
             (notification) => {
-                setNotifications(prev => [notification, ...prev]);
-                setUnreadCount(prev => prev + 1);
+                if (notification.id && seenNotificationIds.current.has(notification.id)) {
+                    return;
+                }
+                if (notification.id) {
+                    seenNotificationIds.current.add(notification.id);
+                }
+                setNotifications(prev => {
+                    return [notification, ...prev];
+                });
+                if (!notification.read) {
+                    setUnreadCount(prev => prev + 1);
+                }
                 
                 // Trigger toast notification
                 toast.info(notification.message, {

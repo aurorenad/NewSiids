@@ -30,6 +30,36 @@
     color: #4a5568;
 }
 
+.tax-report-form-card .alert {
+    margin: 1rem 1.5rem 0;
+    padding: 0.95rem 1.1rem;
+    border-radius: 0.5rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.tax-report-form-card .alert-success {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 2000;
+    max-width: min(420px, calc(100vw - 32px));
+    margin: 0;
+    background: #16a34a;
+    color: #ffffff;
+    border: 1px solid #15803d;
+    box-shadow: 0 12px 32px rgba(22, 163, 74, 0.28);
+}
+
+.tax-report-form-card .alert-error {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
 /* Form Fields */
 .tax-report-form {
     padding: 1.5rem;

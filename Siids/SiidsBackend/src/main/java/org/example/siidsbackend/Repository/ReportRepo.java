@@ -16,6 +16,14 @@ import java.util.Optional;
 @Repository
 public interface ReportRepo extends JpaRepository<Report, Integer> {
 
+    @Query("""
+            SELECT r FROM Report r
+            LEFT JOIN FETCH r.attachmentPaths ap
+            LEFT JOIN FETCH r.findingsAttachmentPaths fap
+            WHERE r.id = :id
+            """)
+    Optional<Report> findByIdWithAttachments(@Param("id") Integer id);
+
     List<Report> findByCreatedByOrderByCreatedAtDesc(Employee employee);
 
     @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +

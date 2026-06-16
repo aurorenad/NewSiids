@@ -303,7 +303,7 @@ const TaxReportForm = () => {
 
             if (response.data) {
                 setSuccess('Case created successfully!');
-                const id = setTimeout(() => navigate(ROUTES.INTELLIGENCE_OFFICER), 2000);
+                const id = setTimeout(() => navigate(ROUTES.INTELLIGENCE_OFFICER), 3000);
                 setTimeoutId(id);
             }
         } catch (err) {

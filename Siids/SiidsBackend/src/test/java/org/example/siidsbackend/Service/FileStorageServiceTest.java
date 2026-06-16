@@ -86,6 +86,7 @@ class FileStorageServiceTest {
     void extractDownloadFilename_ShouldReturnStoredFilenameOnly() {
         FileStorageService service = new FileStorageService(tempDir.toString());
 
-        assertEquals("file.pdf", service.extractDownloadFilename("stock-documents/file.pdf"));
+        // If stored filename is UUID_original.pdf, extraction should return the original name
+        assertEquals("file.pdf", service.extractDownloadFilename("stock-documents/123e4567_file.pdf"));
     }
 }

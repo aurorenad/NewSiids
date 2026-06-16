@@ -154,7 +154,7 @@ const LegalAdvisorDashboard = () => {
                 throw new Error('No filename provided');
             }
 
-            await ReportApi.downloadFindingsAttachment(reportId, filename);
+            await ReportApi.downloadAttachment(reportId, filename);
 
             setSnackbar({
                 open: true,

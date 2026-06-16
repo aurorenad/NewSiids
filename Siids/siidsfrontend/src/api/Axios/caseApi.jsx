@@ -10,6 +10,28 @@ const caseApi = axios.create({
     timeout: 60000,
 });
 
+const getFilenameFromDisposition = (disposition, fallback) => {
+    if (!disposition) return fallback;
+    const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+        return decodeURIComponent(utf8Match[1]);
+    }
+    const filenameMatch = disposition.match(/filename="?([^";]+)"?/i);
+    return filenameMatch?.[1] || fallback;
+};
+
+const downloadBlob = (response, fallbackFilename) => {
+    const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = getFilenameFromDisposition(response.headers?.['content-disposition'], fallbackFilename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+};
+
 caseApi.interceptors.request.use((config) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
     const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
@@ -153,8 +175,8 @@ export const ReportApi = {
                 formData,
                 {
                     params: {
-                        returnToEmployeeId: returnToEmployeeId,
-                        returnReason: returnReason || ''
+                        returnToEmployeeId,
+                        ...(returnReason ? { returnReason } : {})
                     },
                     headers: {
                         'Content-Type': 'multipart/form-data'
@@ -275,22 +297,12 @@ export const ReportApi = {
 
     downloadFindingsAttachment: async (reportId, filename) => {
         try {
-            const response = await caseApi.get(
-                `/api/reports/${reportId}/findings-attachments/by-name/${encodeURIComponent(filename)}`,
-                { responseType: 'blob' }
-            );
-
-            // trigger download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
+            return await caseApi.get(`/api/reports/${reportId}/attachments`, {
+                responseType: 'blob',
+                params: { filename },
+            });
         } catch (err) {
-            console.error("Error downloading findings file by name", err);
+            console.error("Error downloading findings file", err);
             throw err;
         }
     },
@@ -407,46 +419,30 @@ export const ReportApi = {
     },
 
     downloadAttachment: async (reportId, filename) => {
-        const response = await caseApi.get(
-            `/api/reports/${reportId}/attachments`,
-            {
-                responseType: "blob",
-                params: { filename },
-            }
-        );
-
-        const blob = new Blob([response.data]);
-        const url = window.URL.createObjectURL(blob);
-
-        const link = document.createElement("a");
-        link.href = url;
-        const disposition = response.headers?.['content-disposition'];
-        const filenameMatch = disposition?.match(/filename="?([^"]+)"?/);
-        link.download = filenameMatch?.[1] || filename;
-        document.body.appendChild(link);
-
-        link.click();
-
-        link.remove();
-        window.URL.revokeObjectURL(url);
+        const url = `/api/reports/${reportId}/attachments?filename=${encodeURIComponent(filename)}`;
+        const response = await caseApi.get(url, { responseType: 'blob' });
+        downloadBlob(response, filename);
     },
     viewAttachment: async (reportId, filename) => {
         const response = await caseApi.get(
             `/api/reports/${reportId}/attachments`,
             {
-                responseType: "blob",
-                params: { filename },
+                params: {
+                    filename,
+                    inline: true,
+                },
+                responseType: 'blob'
             }
         );
 
         const blob = new Blob([response.data], {
             type: response.headers?.['content-type'] || 'application/pdf'
         });
-        const url = window.URL.createObjectURL(blob);
-        window.open(url, '_blank', 'noopener,noreferrer');
-
-        return url;
+        const objectUrl = window.URL.createObjectURL(blob);
+        window.open(objectUrl, '_blank', 'noopener,noreferrer');
+        return objectUrl;
     },
+
     getDepartments: () => {
         return caseApi.get('/api/departments');
     },

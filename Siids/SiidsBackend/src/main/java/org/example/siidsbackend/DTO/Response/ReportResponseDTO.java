@@ -31,6 +31,9 @@ public class ReportResponseDTO {
     private String returnedBy;
     private String returnReason;
     private LocalDateTime returnedAt;
+    private String returnDocumentPath;
+    private String returnDocumentOriginalName;
+    private boolean hasReturnDocument;
     private String findings;
     private String recommendations;
     private List<String> findingsAttachmentPaths;
