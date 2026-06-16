@@ -11,7 +11,7 @@ import {
     Description, Check, Close, Reply,
     ListAlt,
     ArrowUpward, ArrowDownward, CloudUpload,
-    Download, Delete, DriveFileRenameOutline
+    Download, Delete
 } from "@mui/icons-material";
 import { useNavigate } from 'react-router-dom';
 import { ROUTES, routeTo } from '../constants/routes';
@@ -19,7 +19,6 @@ import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
-import ReportSignatureDialog from './ui/ReportSignatureDialog.jsx';
 import AppTable from './ui/AppTable.jsx';
 
 const DirectorIntelligence = () => {
@@ -36,7 +35,6 @@ const DirectorIntelligence = () => {
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
     const [infoDialogOpen, setInfoDialogOpen] = useState(false);
-    const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
 
     const [selectedReport, setSelectedReport] = useState(null);
 
@@ -268,18 +266,6 @@ const DirectorIntelligence = () => {
         }
     };
 
-    const handleOpenSignatureDialog = (report) => {
-        setSelectedReport(report);
-        setSignatureDialogOpen(true);
-    };
-
-    const handleSignedReport = (updatedReport) => {
-        setReports(prev => prev.map(report =>
-            report.id === updatedReport.id ? { ...report, ...updatedReport } : report
-        ));
-        setError(null);
-    };
-
     const handleDownloadInvestigationReport = async (report) => {
         setReportLoading(report.id, true);
         try {
@@ -341,19 +327,20 @@ const DirectorIntelligence = () => {
                 }
             );
 
-            // Update local state
             setReports(prev => prev.map(r =>
                 r.id === selectedReport.id ? {
                     ...r,
-                    status: 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER',
-                    returnReason: returnReasonText || 'Document attached',
-                    returnedAt: new Date().toISOString(),
-                    returnedBy: currentUser,
+                    ...responseData,
+                    status: responseData?.status || 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER',
+                    returnReason: responseData?.returnReason || returnReasonText || 'Document attached',
+                    returnedAt: responseData?.returnedAt || new Date().toISOString(),
+                    returnedBy: responseData?.returnedBy || currentUser,
                     returnedToEmployeeId: targetEmployeeId,
-                    hasReturnDocument: !!returnAttachment,
-                    returnDocumentPath: responseData?.returnDocumentPath || null
+                    hasReturnDocument: responseData?.hasReturnDocument ?? !!returnAttachment,
+                    returnDocumentPath: responseData?.returnDocumentPath || r.returnDocumentPath || null
                 } : r
             ));
+            fetchReports();
 
             closeReturnDialog();
             setError(null);
@@ -377,6 +364,9 @@ const DirectorIntelligence = () => {
             case 'REPORT_RETURNED_ASSISTANT_COMMISSIONER': return 'warning';
             case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': return 'info';
             case 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': return 'warning';
+            case 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': return 'warning';
+            case 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER': return 'success';
+            case 'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION': return 'info';
             default: return 'default';
         }
     };
@@ -388,8 +378,11 @@ const DirectorIntelligence = () => {
             'REPORT_RETURNED_ASSISTANT_COMMISSIONER': 'Returned to Assistant Commissioner',
             'REPORT_RETURNED_INTELLIGENCE_OFFICER': 'Returned to Intelligence Officer',
             'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Director Intelligence',
+            'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER': 'Approved by Assistant Commissioner',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION': 'Submitted to Director Investigation',
+            'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': 'Returned to Director Intelligence',
+            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned to Intelligence Officer',
             'REPORT_SUBMITTED': 'Submitted',
-            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned'
         };
         return statusMap[status] || status?.replace(/_/g, ' ').toLowerCase() || 'Unknown';
     };
@@ -504,21 +497,6 @@ const DirectorIntelligence = () => {
                                     color="warning"
                                 >
                                     <Reply fontSize="small" />
-                                </IconButton>
-                            </span>
-                        </Tooltip>
-                    )}
-
-                    {canApproveIntelligence && (
-                        <Tooltip title={report.directorSigned ? 'Update director signature' : 'Sign as Director Intelligence'}>
-                            <span>
-                                <IconButton
-                                    disabled={isReportLoading(report.id)}
-                                    onClick={() => handleOpenSignatureDialog(report)}
-                                    size="small"
-                                    color="primary"
-                                >
-                                    <DriveFileRenameOutline fontSize="small" />
                                 </IconButton>
                             </span>
                         </Tooltip>
@@ -864,14 +842,6 @@ const DirectorIntelligence = () => {
                 </DialogActions>
             </Dialog>
 
-            <ReportSignatureDialog
-                open={signatureDialogOpen}
-                report={selectedReport}
-                role="DIRECTOR_INTELLIGENCE"
-                title="Director Intelligence Signature"
-                onClose={() => setSignatureDialogOpen(false)}
-                onSigned={handleSignedReport}
-            />
         </Box>
     );
 };

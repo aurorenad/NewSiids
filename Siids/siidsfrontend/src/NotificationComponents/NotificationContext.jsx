@@ -48,6 +48,7 @@ export const NotificationProvider = ({ children, employeeId }) => {
     }, [employeeId]);
 
     const markAsRead = async (id) => {
+        if (!id) return;
         try {
             await caseApi.put(`/api/notifications/${id}/read`, {});
 

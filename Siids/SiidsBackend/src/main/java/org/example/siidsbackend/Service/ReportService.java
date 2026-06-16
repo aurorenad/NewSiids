@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
@@ -540,6 +541,7 @@ public class ReportService {
             case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_SUBMITTED:
                 newStatus = WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER;
+                report.setDirectorIntelligence(returner);
                 break;
             case REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION:
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
@@ -598,10 +600,11 @@ public class ReportService {
             notification.setReport(report);
             notification.setCreatedAt(LocalDateTime.now());
             notification.setRead(false);
-            notificationRepo.save(notification);
+            Notification savedNotification = notificationRepo.save(notification);
 
             NotificationDTO notificationDTO = webSocketNotificationService
                     .createNotificationDTO(report, message, report.getCurrentRecipient());
+            notificationDTO.setId(savedNotification.getId());
             notificationDTO.setNotificationType(getNotificationType(report.getRelatedCase().getStatus()));
 
             webSocketNotificationService.sendNotificationToUser(
@@ -632,6 +635,7 @@ public class ReportService {
                 return "REPORT_REJECTED";
             case REPORT_RETURNED_TO_INTELLIGENCE_OFFICER:
             case REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION:
+            case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
                 return "REPORT_RETURNED";
             case INVESTIGATION_IN_PROGRESS:
                 return "INVESTIGATION_IN_PROGRESS";
@@ -711,6 +715,11 @@ public class ReportService {
         dto.setCreatedAt(report.getCreatedAt());
         dto.setUpdatedAt(report.getUpdatedAt());
         dto.setCreatedByEmployeeId(report.getCreatedBy().getEmployeeId());
+        dto.setReturnedBy(report.getReturnedBy() != null
+                ? report.getReturnedBy().getGivenName() + " " + report.getReturnedBy().getFamilyName()
+                : null);
+        dto.setReturnedAt(report.getReturnedAt());
+        dto.setReturnReason(report.getReturnReason());
         dto.setRelatedCase(report.getRelatedCase());
         dto.setPrincipleAmount(report.getPrincipleAmount());
         dto.setPenaltiesAmount(report.getPenaltiesAmount());
@@ -831,7 +840,7 @@ public class ReportService {
     }
 
     public List<Report> getReportsForDirectorIntelligence(String directorId) {
-        return reportRepo.findReportsSubmittedToDirectorIntelligence();
+        return reportRepo.findReportsHandledByDirectorIntelligence();
     }
 
     @Transactional(readOnly = true)
@@ -898,6 +907,7 @@ public class ReportService {
 
         switch (relatedCase.getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+            case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_SUBMITTED:
             case CASE_PLAN_SUBMITTED:
                 if (relatedCase.getStatus() == WorkflowStatus.CASE_PLAN_SUBMITTED) {
@@ -1018,6 +1028,7 @@ public class ReportService {
         WorkflowStatus newStatus;
         switch (report.getRelatedCase().getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+            case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
                 report.setDirectorIntelligence(rejector);
@@ -1399,7 +1410,8 @@ public class ReportService {
             Path filePath = fileStorageService.resolveStoredPath(filename);
 
             if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
-                throw new RuntimeException("File not found or not readable: " + filename);
+                log.warn("Attachment not found or not readable: {}", filename);
+                return ResponseEntity.notFound().build();
             }
 
             Resource resource = new UrlResource(filePath.toUri());
@@ -1421,7 +1433,8 @@ public class ReportService {
                     .body(resource);
 
         } catch (Exception e) {
-            throw new RuntimeException("Error downloading file: " + e.getMessage(), e);
+            log.error("Error downloading file {}: {}", filename, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -1454,14 +1467,20 @@ public class ReportService {
 
     public ResponseEntity<Resource> downloadReportAttachment(Integer reportId, String filename, String requesterId) {
         try {
-            Report report = reportRepo.findById(reportId)
-                    .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+            Optional<Report> maybeReport = reportRepo.findById(reportId);
+            if (maybeReport.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            Report report = maybeReport.get();
 
-            Employee requester = employeeRepo.findByEmployeeId(requesterId)
-                    .orElseThrow(() -> new RuntimeException("Requester not found"));
+            Optional<Employee> maybeRequester = employeeRepo.findByEmployeeId(requesterId);
+            if (maybeRequester.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            Employee requester = maybeRequester.get();
 
             if (!hasAccessToReport(report, requester)) {
-                throw new RuntimeException("Access denied to this report");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
 
             boolean isValidAttachment = false;
@@ -1483,7 +1502,7 @@ public class ReportService {
             }
 
             if (!isValidAttachment) {
-                throw new RuntimeException("Attachment not found in this report");
+                return ResponseEntity.notFound().build();
             }
             auditService.logAction(
                     WorkflowStatus.ATTACHMENT_DOWNLOADED,
@@ -1493,7 +1512,8 @@ public class ReportService {
             return downloadAttachment(filename);
 
         } catch (Exception e) {
-            throw new RuntimeException("Error downloading report attachment: " + e.getMessage(), e);
+            log.error("Error downloading report attachment {} for report {}: {}", filename, reportId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -2063,13 +2083,14 @@ public class ReportService {
         Report savedReport = reportRepo.save(report);
 
         // Log the edit action with return reason context
+        String descriptionForAudit = reportData.getDescription() != null ? reportData.getDescription() : "";
         String actionDescription = String.format(
                 "Report #%d edited by %s. Original return reason: %s. Changes: %s",
                 savedReport.getId(),
                 editor.getEmployeeId(),
                 returnReason != null ? returnReason : "N/A",
-                reportData.getDescription().length() > 100 ? reportData.getDescription().substring(0, 100) + "..."
-                        : reportData.getDescription());
+                descriptionForAudit.length() > 100 ? descriptionForAudit.substring(0, 100) + "..."
+                        : descriptionForAudit);
 
         auditService.logAction(
                 newStatus,

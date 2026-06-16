@@ -7,6 +7,7 @@ public class CaseRequestDTO {
     private String tin;
     private String taxPayerName;
     private String taxPayerAddress;
+    private String taxPayerContact;
     private String taxType;
     private String taxPeriod;
     private String summaryOfInformationCase;

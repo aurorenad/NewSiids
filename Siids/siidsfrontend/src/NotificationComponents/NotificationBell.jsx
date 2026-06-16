@@ -64,6 +64,21 @@ export const NotificationBell = () => {
                 break;
             case 'REPORT_UPDATE':
             case 'DEPARTMENT_NOTIFICATION':
+            case 'NEW_REPORT_DIRECTOR_INTELLIGENCE':
+            case 'NEW_REPORT_DIRECTOR_INVESTIGATION':
+            case 'NEW_REPORT_ASSISTANT_COMMISSIONER':
+            case 'NEW_REPORT_LEGAL_ADVISOR':
+            case 'REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER':
+            case 'REPORT_APPROVED':
+            case 'REPORT_REJECTED':
+            case 'REPORT_RETURNED':
+            case 'REPORT_RETURNED_FROM_LEGAL':
+            case 'CASE_PLAN_SUBMITTED':
+            case 'CASE_PLAN_SENT_TO_DIRECTOR_INVESTIGATION':
+            case 'CASE_PLAN_APPROVED_BY_DIRECTOR_INVESTIGATION':
+            case 'CASE_PLAN_REJECTED_BY_DIRECTOR_INVESTIGATION':
+            case 'INVESTIGATION_REPORT_APPROVED':
+            case 'INVESTIGATION_REPORT_RETURNED':
                 if (notification.reportId) {
                     navigate(`/view-report/${notification.reportId}`);
                 }

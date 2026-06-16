@@ -684,6 +684,27 @@ const IntelligenceOfficer = () => {
             status === 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE';
     };
 
+    const getStatusLabel = (status) => {
+        const statusMap = {
+            CASE_CREATED: 'Case Created',
+            REPORT_SUBMITTED: 'Report Created',
+            REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE: 'Sent to Director Intelligence',
+            REPORT_RETURNED_TO_INTELLIGENCE_OFFICER: 'Returned to Intelligence Officer',
+            REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION: 'Returned to Director Investigation',
+            REPORT_RETURNED_ASSISTANT_COMMISSIONER: 'Returned to Assistant Commissioner',
+            REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE: 'Returned to Director Intelligence',
+            REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE: 'Rejected by Director Intelligence',
+            REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER: 'Rejected by Assistant Commissioner',
+            REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION: 'Rejected by Director Investigation',
+            REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE: 'Approved by Director Intelligence',
+            REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER: 'Approved by Assistant Commissioner',
+            REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION: 'Approved by Director Investigation',
+            INVESTIGATION_COMPLETED: 'Investigation Completed'
+        };
+
+        return statusMap[status] || status?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase()) || 'Unknown';
+    };
+
     const getStatusIcon = (status) => {
         if (isReturnedStatus(status)) {
             return <WarningIcon sx={{ color: '#ff9800' }} />;
@@ -772,7 +793,7 @@ const IntelligenceOfficer = () => {
                     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                         {getStatusIcon(caseItem.status)}
                         <Chip
-                            label={caseItem.status}
+                            label={getStatusLabel(caseItem.status)}
                             size="small"
                             sx={{
                                 backgroundColor: getStatusColor(caseItem.status),

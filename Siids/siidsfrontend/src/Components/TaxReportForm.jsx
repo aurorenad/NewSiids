@@ -15,6 +15,7 @@ const TaxReportForm = () => {
         taxPayerName: '',
         taxType: 'None',
         taxPayerAddress: '',
+        taxPayerContact: '',
         taxPeriod: '',
         intelligenceOfficer: authState.userId || '',
         reportedDate: new Date().toISOString().split('T')[0],
@@ -104,6 +105,7 @@ const TaxReportForm = () => {
                 taxPayerName: caseData.taxPayerName || '',
                 taxType: caseData.taxType || 'None',
                 taxPayerAddress: caseData.taxPayerAddress || '',
+                taxPayerContact: caseData.taxPayerContact || caseData.taxPayer?.contact || '',
                 taxPeriod: caseData.taxPeriod || '',
                 intelligenceOfficer: caseData.reportingOfficer || authState.userId || '',
                 reportedDate: caseData.reportedDate || new Date().toISOString().split('T')[0],
@@ -139,7 +141,8 @@ const TaxReportForm = () => {
                     setFormData(prev => ({
                         ...prev,
                         taxPayerName: response.data.taxPayerName || prev.taxPayerName,
-                        taxPayerAddress: response.data.taxPayerAddress || prev.taxPayerAddress
+                        taxPayerAddress: response.data.taxPayerAddress || prev.taxPayerAddress,
+                        taxPayerContact: response.data.taxPayerContact || response.data.contact || prev.taxPayerContact
                     }));
                 }
             } catch (error) {
@@ -276,6 +279,7 @@ const TaxReportForm = () => {
                 tin: formData.tin,
                 taxPayerName: formData.taxPayerName,
                 taxPayerAddress: formData.taxPayerAddress,
+                taxPayerContact: formData.taxPayerContact,
                 taxType: formData.taxType,
                 taxPeriod: formData.taxPeriod,
                 summaryOfInformationCase: formData.summaryOfInformationCase,
@@ -403,6 +407,18 @@ const TaxReportForm = () => {
                                 onChange={handleChange}
                                 className="tax-report-form-input"
                                 placeholder="Enter tax payer address"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="tax-report-form-label">Tax Payer Contact</label>
+                            <input
+                                type="text"
+                                name="taxPayerContact"
+                                value={formData.taxPayerContact}
+                                onChange={handleChange}
+                                className="tax-report-form-input"
+                                placeholder="Enter phone or email"
                             />
                         </div>
 

@@ -406,39 +406,46 @@ export const ReportApi = {
         });
     },
 
-    downloadAttachment: async (reportId, storedFilename) => {
-        try {
-            const response = await caseApi.get(
-                `/api/reports/download/${reportId}/${storedFilename}`,
-                {
-                    responseType: 'blob'
-                }
-            );
-
-            // Create a link to trigger browser download
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-
-            // Extract filename from header
-            let filename = 'attachment.pdf';
-            const disposition = response.headers['content-disposition'];
-            if (disposition) {
-                const match = disposition.match(/filename="?(.+)"?/);
-                if (match) {
-                    filename = match[1];
-                }
+    downloadAttachment: async (reportId, filename) => {
+        const response = await caseApi.get(
+            `/api/reports/${reportId}/attachments`,
+            {
+                responseType: "blob",
+                params: { filename },
             }
+        );
 
-            link.setAttribute('download', filename);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error("Error downloading attachment", error);
-            throw error;
-        }
+        const blob = new Blob([response.data]);
+        const url = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = url;
+        const disposition = response.headers?.['content-disposition'];
+        const filenameMatch = disposition?.match(/filename="?([^"]+)"?/);
+        link.download = filenameMatch?.[1] || filename;
+        document.body.appendChild(link);
+
+        link.click();
+
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    },
+    viewAttachment: async (reportId, filename) => {
+        const response = await caseApi.get(
+            `/api/reports/${reportId}/attachments`,
+            {
+                responseType: "blob",
+                params: { filename },
+            }
+        );
+
+        const blob = new Blob([response.data], {
+            type: response.headers?.['content-type'] || 'application/pdf'
+        });
+        const url = window.URL.createObjectURL(blob);
+        window.open(url, '_blank', 'noopener,noreferrer');
+
+        return url;
     },
     getDepartments: () => {
         return caseApi.get('/api/departments');
@@ -479,5 +486,6 @@ export const AuditApi = {
         return caseApi.get('/api/audit/audit-actions');
     }
 };
+
 
 export default caseApi;

@@ -20,6 +20,11 @@ import AppTable from './ui/AppTable.jsx';
 
 const STATUS_MAP = {
     case_created: { label: 'Case Created', color: 'primary' },
+    report_submitted: { label: 'Report Created', color: 'warning' },
+    report_submitted_to_director_intelligence: { label: 'Sent to Director Intelligence', color: 'secondary' },
+    report_approved_by_director_intelligence: { label: 'Approved by Director Intelligence', color: 'success' },
+    report_rejected_by_director_intelligence: { label: 'Rejected by Director Intelligence', color: 'error' },
+    report_returned_to_intelligence_officer: { label: 'Returned to Intelligence Officer', color: 'warning' },
     open: { label: 'Open', color: 'info' },
     in_progress: { label: 'In Progress', color: 'warning' },
     closed: { label: 'Closed', color: 'success' },
@@ -111,6 +116,7 @@ const TaxReportView = () => {
                 taxPayerName: response.data.taxPayer?.name || 'N/A',
                 taxPayerTIN: response.data.taxPayer?.tin || 'N/A',
                 taxPayerAddress: response.data.taxPayer?.address || 'N/A',
+                taxPayerContact: response.data.taxPayer?.contact || 'N/A',
                 taxType: response.data.taxType || 'N/A',
                 informerId: response.data.informer?.informerId || 'N/A',
                 informerName: response.data.informer?.name || 'N/A',
@@ -248,6 +254,7 @@ const TaxReportView = () => {
                     { label: 'TIN', value: caseData.taxPayerTIN },
                     { label: 'Tax Type', value: caseData.taxType },
                     { label: 'Address', value: caseData.taxPayerAddress },
+                    { label: 'Contact', value: caseData.taxPayerContact },
                 ]} />
 
                 <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>Informer Information</Typography>

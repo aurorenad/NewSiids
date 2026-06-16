@@ -887,6 +887,17 @@ public class ReportController {
         return reportService.downloadReportAttachment(reportId, filename, requesterId);
     }
 
+    @GetMapping("/{reportId}/attachments")
+    @PreAuthorize("hasAuthority('REPORT_VIEW')")
+    public ResponseEntity<Resource> downloadReportAttachmentByName(
+            @PathVariable Integer reportId,
+            @RequestParam String filename,
+            Authentication authentication) {
+
+        String requesterId = authentication.getName();
+        return reportService.downloadReportAttachment(reportId, filename, requesterId);
+    }
+
     @GetMapping("/by-case")
     @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<List<ReportResponseDTO>> getReportsByCaseNum(
@@ -1389,7 +1400,7 @@ public class ReportController {
 
     @PutMapping("/{id}/edit")
     @PreAuthorize("hasAuthority('REPORT_CREATE')")
-    public ResponseEntity<ReportResponseDTO> editReport(
+    public ResponseEntity<?> editReport(
             @PathVariable Integer id,
             @RequestPart("reportData") String reportDataJson,
             @RequestPart(value = "attachments", required = false) MultipartFile[] attachments,
@@ -1401,14 +1412,14 @@ public class ReportController {
 
             // Validate input
             if (reportData.getDescription() == null || reportData.getDescription().trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(null);
+                return ResponseEntity.badRequest().body(Map.of("message", "Report description is required"));
             }
 
             // Check if editing is allowed (report must be in returned status)
             Report existingReport = reportService.getReport(id);
             if (!reportService.canEditReport(existingReport, employeeId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(null);
+                        .body(Map.of("message", "You are not authorized to edit this report or it is no longer returned"));
             }
 
             // Process new attachments if provided
@@ -1436,10 +1447,11 @@ public class ReportController {
 
         } catch (RuntimeException e) {
             log.error("Validation error editing report: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error editing report: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Internal system error while updating report: " + e.getMessage()));
         }
     }
 

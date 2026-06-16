@@ -4,7 +4,7 @@ import {
     Box, Typography, Paper, Button, CircularProgress,
     Alert, Chip, Divider
 } from '@mui/material';
-import { Description, ArrowBack, PictureAsPdf } from '@mui/icons-material';
+import { ArrowBack, PictureAsPdf, Download, Visibility } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -86,24 +86,24 @@ const ViewReportDetails = () => {
             'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE': 'Rejected by Director',
             'REPORT_RETURNED_ASSISTANT_COMMISSIONER': 'Returned to Assistant Commissioner',
             'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': 'Submitted to Director',
+            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': 'Returned to Intelligence Officer',
+            'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': 'Returned to Director Intelligence',
+            'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER': 'Approved by Assistant Commissioner',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION': 'Submitted to Director Investigation',
             'REPORT_PENDING_DIRECTOR_INTELLIGENCE': 'Pending Director Review',
             'REPORT_DRAFT': 'Draft',
             'REPORT_SUBMITTED': 'Submitted'
         };
-        return statusMap[status] || status.replace(/_/g, ' ').toLowerCase();
+        return statusMap[status] || status?.replace(/_/g, ' ').toLowerCase() || 'Unknown';
     };
 
-    const handleDownloadAttachment = async () => {
+    const handleDownloadAttachment = async (attachmentPath) => {
         try {
-            if (!report?.attachmentPaths || report.attachmentPaths.length === 0) {
+            if (!attachmentPath) {
                 setError('No attachment available');
                 return;
             }
 
-            // Get the first attachment
-            const attachmentPath = report.attachmentPaths[0];
-
-            // Check if it's a valid filename
             if (!attachmentPath || typeof attachmentPath !== 'string' || attachmentPath.trim() === '') {
                 setError('Invalid attachment filename');
                 return;
@@ -115,7 +115,6 @@ const ViewReportDetails = () => {
                 allAttachments: report.attachmentPaths
             });
 
-            // Use the stored filename directly (it should be the UUID_filename.pdf format)
             await ReportApi.downloadAttachment(id, attachmentPath);
 
         } catch (err) {
@@ -142,6 +141,20 @@ const ViewReportDetails = () => {
             }
 
             setError(errorMessage);
+        }
+    };
+
+    const handleViewAttachment = async (attachmentPath) => {
+        try {
+            if (!attachmentPath || typeof attachmentPath !== 'string' || attachmentPath.trim() === '') {
+                setError('Invalid attachment filename');
+                return;
+            }
+
+            await ReportApi.viewAttachment(id, attachmentPath);
+        } catch (err) {
+            console.error('View attachment error:', err);
+            setError(err.response?.data?.message || 'Failed to open attachment');
         }
     };
 
@@ -209,7 +222,7 @@ const ViewReportDetails = () => {
                     startIcon={<ArrowBack />}
                     onClick={() => navigate(-1)}
                 >
-                    Back to Reports
+                    Back to Report
                 </Button>
 
                 <Box display="flex" gap={2}>
@@ -361,16 +374,37 @@ const ViewReportDetails = () => {
                                 <Typography variant="body2" sx={{ mb: 1 }}>
                                     Number of attachments: {report.attachmentPaths.length}
                                 </Typography>
-                                <Typography variant="body2" sx={{ mb: 2, fontFamily: 'monospace', backgroundColor: '#f5f5f5', p: 1, borderRadius: 1 }}>
-                                    Filename: {report.attachmentPaths[0]}
-                                </Typography>
-                                <Button
-                                    variant="outlined"
-                                    startIcon={<Description />}
-                                    onClick={handleDownloadAttachment}
-                                >
-                                    Download Attachment
-                                </Button>
+                                <Box display="flex" gap={1.5} flexWrap="wrap">
+                                    {report.attachmentPaths.map((attachmentPath, index) => (
+                                        <Box
+                                            key={`${attachmentPath}-${index}`}
+                                            display="flex"
+                                            gap={1}
+                                            alignItems="center"
+                                            sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
+                                        >
+                                            <Typography variant="body2" sx={{ maxWidth: 260, overflowWrap: 'anywhere' }}>
+                                                {attachmentPath.split('/').pop() || `Attachment ${index + 1}`}
+                                            </Typography>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                startIcon={<Visibility />}
+                                                onClick={() => handleViewAttachment(attachmentPath)}
+                                            >
+                                                View
+                                            </Button>
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                startIcon={<Download />}
+                                                onClick={() => handleDownloadAttachment(attachmentPath)}
+                                            >
+                                                Download
+                                            </Button>
+                                        </Box>
+                                    ))}
+                                </Box>
                             </Box>
                         ) : (
                             <Typography variant="body1">No attachments</Typography>
@@ -380,7 +414,7 @@ const ViewReportDetails = () => {
                     <Divider sx={{ my: 3 }} />
                     <Box sx={{ textAlign: 'center', mt: 4 }}>
                         <Typography variant="h6" align="center" sx={{ mb: 1, fontWeight: 'bold' }}>
-                            HEREFOR YOU TO SERVE
+                            HERE FOR YOU TO SERVE
                         </Typography>
                         <Typography variant="body2" align="center" sx={{ fontStyle: 'italic' }}>
                             Kicukiro-Sonatube-Silverback Mall, P.O.Box 3987 Kigali, Rwanda

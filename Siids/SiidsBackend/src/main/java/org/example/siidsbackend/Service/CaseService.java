@@ -348,6 +348,7 @@ public class CaseService {
             taxPayerDTO.setTin(caseEntity.getTin().getTaxPayerTIN());
             taxPayerDTO.setName(caseEntity.getTin().getTaxPayerName());
             taxPayerDTO.setAddress(caseEntity.getTin().getTaxPayerAddress());
+            taxPayerDTO.setContact(caseEntity.getTin().getTaxPayerContact());
             responseDTO.setTaxPayer(taxPayerDTO);
         }
 

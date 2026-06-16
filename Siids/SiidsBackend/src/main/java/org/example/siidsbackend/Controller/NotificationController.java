@@ -197,6 +197,7 @@ public class NotificationController {
             dto.setReportId(notification.getReport().getId());
             dto.setReportStatus(notification.getReport().getStatus());
             dto.setReportDescription(notification.getReport().getDescription());
+            dto.setNotificationType(getNotificationType(notification.getReport().getStatus()));
             if (notification.getReport().getCreatedBy() != null) {
                 dto.setSenderName(notification.getReport().getCreatedBy().getGivenName() + " " +
                         notification.getReport().getCreatedBy().getFamilyName());
@@ -214,5 +215,35 @@ public class NotificationController {
         dto.setRead(notification.isRead());
         dto.setRelatedReference(notification.getRelatedReference());
         return dto;
+    }
+
+    private String getNotificationType(org.example.siidsbackend.Model.WorkflowStatus status) {
+        if (status == null) {
+            return "GENERAL_NOTIFICATION";
+        }
+
+        return switch (status) {
+            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE -> "NEW_REPORT_DIRECTOR_INTELLIGENCE";
+            case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION -> "NEW_REPORT_DIRECTOR_INVESTIGATION";
+            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER -> "NEW_REPORT_ASSISTANT_COMMISSIONER";
+            case REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER -> "REPORT_ASSIGNED_TO_INVESTIGATION_OFFICER";
+            case REPORT_SENT_TO_LEGAL_TEAM -> "NEW_REPORT_LEGAL_ADVISOR";
+            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE,
+                 REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION,
+                 REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER -> "REPORT_APPROVED";
+            case REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE,
+                 REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION,
+                 REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER -> "REPORT_REJECTED";
+            case REPORT_RETURNED_TO_INTELLIGENCE_OFFICER,
+                 REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION,
+                 REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE -> "REPORT_RETURNED";
+            case INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION -> "INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION";
+            case INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION,
+                 INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER -> "INVESTIGATION_REPORT_APPROVED";
+            case INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION,
+                 INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER -> "INVESTIGATION_REPORT_RETURNED";
+            case REPORT_RETURNED_TO_INVESTIGATION_OFFICER -> "REPORT_RETURNED_FROM_LEGAL";
+            default -> "GENERAL_NOTIFICATION";
+        };
     }
 }

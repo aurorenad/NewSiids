@@ -78,7 +78,7 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             "                                   j.job_master_id = 119\n" +
             "                                 and j.grade_id = 5)\n" +
             "       OR r.director_intelligence_id IS NOT NULL \n" +
-            "       OR c.status IN ('REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE', 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE')\n" +
+            "       OR c.status IN ('REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE', 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE', 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER', 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE')\n" +
             "       ORDER BY r.updated_at DESC", nativeQuery = true)
     List<Report> findReportsHandledByDirectorIntelligence();
 

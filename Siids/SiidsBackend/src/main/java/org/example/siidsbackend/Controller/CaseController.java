@@ -58,8 +58,10 @@ public class CaseController {
                         newTaxPayer.setTaxPayerTIN(caseRequestDTO.getTin().trim());
                         newTaxPayer.setTaxPayerName(caseRequestDTO.getTaxPayerName());
                         newTaxPayer.setTaxPayerAddress(caseRequestDTO.getTaxPayerAddress());
+                        newTaxPayer.setTaxPayerContact(caseRequestDTO.getTaxPayerContact());
                         return taxPayerService.addTaxPayer(newTaxPayer);
                     });
+            updateTaxPayerDetails(taxPayer, caseRequestDTO);
 
             // Handle informer information (if not anonymous)
             Informer informer = null;
@@ -138,8 +140,10 @@ public class CaseController {
                         newTaxPayer.setTaxPayerTIN(caseRequestDTO.getTin().trim());
                         newTaxPayer.setTaxPayerName(caseRequestDTO.getTaxPayerName());
                         newTaxPayer.setTaxPayerAddress(caseRequestDTO.getTaxPayerAddress());
+                        newTaxPayer.setTaxPayerContact(caseRequestDTO.getTaxPayerContact());
                         return taxPayerService.addTaxPayer(newTaxPayer);
                     });
+            updateTaxPayerDetails(taxPayer, caseRequestDTO);
 
             Informer informer = null;
             String informerNationalId = caseRequestDTO.getInformerNationalId();
@@ -368,5 +372,33 @@ public class CaseController {
             log.error("Error registering informer", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
+    }
+
+    private void updateTaxPayerDetails(TaxPayer taxPayer, CaseRequestDTO caseRequestDTO) {
+        if (taxPayer == null || caseRequestDTO == null) {
+            return;
+        }
+
+        boolean changed = false;
+        if (hasText(caseRequestDTO.getTaxPayerName()) && !caseRequestDTO.getTaxPayerName().equals(taxPayer.getTaxPayerName())) {
+            taxPayer.setTaxPayerName(caseRequestDTO.getTaxPayerName());
+            changed = true;
+        }
+        if (hasText(caseRequestDTO.getTaxPayerAddress()) && !caseRequestDTO.getTaxPayerAddress().equals(taxPayer.getTaxPayerAddress())) {
+            taxPayer.setTaxPayerAddress(caseRequestDTO.getTaxPayerAddress());
+            changed = true;
+        }
+        if (hasText(caseRequestDTO.getTaxPayerContact()) && !caseRequestDTO.getTaxPayerContact().equals(taxPayer.getTaxPayerContact())) {
+            taxPayer.setTaxPayerContact(caseRequestDTO.getTaxPayerContact());
+            changed = true;
+        }
+
+        if (changed) {
+            taxPayerService.addTaxPayer(taxPayer);
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 }

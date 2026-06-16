@@ -157,12 +157,16 @@ import { NotificationProvider } from './NotificationComponents/NotificationConte
 
 const NotificationWrapper = ({ children }) => {
     const { authState, loading } = useContext(AuthContext);
+    const employeeId = authState?.employeeId
+        || authState?.userId
+        || localStorage.getItem('employeeId')
+        || sessionStorage.getItem('employeeId');
     
     // Don't render notification provider until auth state is loaded
     if (loading) return children;
     
     return (
-        <NotificationProvider employeeId={authState?.employeeId}>
+        <NotificationProvider employeeId={employeeId}>
             {children}
         </NotificationProvider>
     );
