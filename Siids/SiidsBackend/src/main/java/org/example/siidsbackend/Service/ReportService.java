@@ -1054,7 +1054,8 @@ public class ReportService {
             Integer reportId,
             String approverId,
             String routeDepartment,
-            String signatureBase64) {
+            String signatureBase64,
+            String routingNotes) {
         validateAssistantCommissioner(approverId);
 
         Report report = reportRepo.findById(reportId)
@@ -1096,6 +1097,9 @@ public class ReportService {
         report.setAssistantCommissioner(approver);
         report.setApprovedBy(approver);
         report.setApprovedAt(LocalDateTime.now());
+        if (routingNotes != null && !routingNotes.trim().isEmpty()) {
+            report.setAssignmentNotes(routingNotes.trim());
+        }
         report.setUpdatedAt(LocalDateTime.now());
         upsertSignature(report, approver, "ASSISTANT_COMMISSIONER", signatureBase64);
 
@@ -1111,7 +1115,10 @@ public class ReportService {
         auditService.logAction(
                 relatedCase.getStatus(),
                 "Report " + savedReport.getId() + " approved by Assistant Commissioner " + approverId
-                        + " and routed to " + normalizedRoute,
+                        + " and routed to " + normalizedRoute
+                        + (routingNotes != null && !routingNotes.trim().isEmpty()
+                        ? ". Notes: " + routingNotes.trim()
+                        : ""),
                 approver);
 
         return savedReport;

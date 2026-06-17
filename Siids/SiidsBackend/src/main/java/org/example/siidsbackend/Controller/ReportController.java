@@ -494,11 +494,13 @@ public class ReportController {
         try {
             String routeDepartment = request != null ? request.get("routeDepartment") : null;
             String signatureBase64 = request != null ? request.get("signatureBase64") : null;
+            String routingNotes = request != null ? request.get("routingNotes") : null;
             Report report = reportService.approveCaseIntakeByAssistantCommissioner(
                     id,
                     employeeId,
                     routeDepartment,
-                    signatureBase64);
+                    signatureBase64,
+                    routingNotes);
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (SecurityException e) {
             log.error("AC approval forbidden for report {}: {}", id, e.getMessage());

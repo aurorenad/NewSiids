@@ -37,6 +37,7 @@ const AssistantCommissioner = () => {
     const [routingDialogOpen, setRoutingDialogOpen] = useState(false);
     const [routeDepartment, setRouteDepartment] = useState("Director of Investigation");
     const [customDepartment, setCustomDepartment] = useState("");
+    const [routingNotes, setRoutingNotes] = useState("");
 
     const navigate = useNavigate();
     const routeOptions = [
@@ -49,7 +50,7 @@ const AssistantCommissioner = () => {
         { value: "Other Departments", label: "Other Departments", caption: "Enter a custom destination" }
     ];
 
-    const fetchAllData = async () => {
+    const fetchAllData = async (showError = true) => {
         try {
             setLoading(true);
             const [reportsRes, plansRes] = await Promise.all([
@@ -59,7 +60,9 @@ const AssistantCommissioner = () => {
             setReports(reportsRes.data?.content || reportsRes.data || []);
             setCasePlans(plansRes.data?.content || plansRes.data || []);
         } catch {
-            setSnackbar({ open: true, message: "Failed to synchronize with central command", severity: "error" });
+            if (showError) {
+                setSnackbar({ open: true, message: "Failed to synchronize with central command", severity: "error" });
+            }
         } finally {
             setLoading(false);
         }
@@ -97,6 +100,7 @@ const AssistantCommissioner = () => {
             setApprovalTab(activeTab);
             setRouteDepartment("Director of Investigation");
             setCustomDepartment("");
+            setRoutingNotes("");
             setRoutingDialogOpen(true);
             return;
         }
@@ -159,8 +163,11 @@ const AssistantCommissioner = () => {
                 const selectedDepartment = routeDepartment === "Other Departments"
                     ? customDepartment.trim()
                     : routeDepartment;
-                await ReportApi.approveReportByAssistantCommissioner(report.id, selectedDepartment, signatureBase64);
+                await ReportApi.approveReportByAssistantCommissioner(report.id, selectedDepartment, signatureBase64, routingNotes);
             }
+
+            approvalSucceeded = true;
+            setSignatureDialogOpen(false);
             
             if (approvalTab === 0) {
                 const selectedDepartment = routeDepartment === "Other Departments"
@@ -173,9 +180,11 @@ const AssistantCommissioner = () => {
                 showSnackbar("Investigation report approved");
             }
 
-            await fetchAllData();
-            approvalSucceeded = true;
-            setSignatureDialogOpen(false);
+            try {
+                await fetchAllData(false);
+            } catch {
+                // Approval already succeeded; do not replace the success notification with a refresh error.
+            }
         } catch (err) { 
             showSnackbar(getErrorMessage(err, "Approval failed"), "error"); 
         } finally {
@@ -185,6 +194,7 @@ const AssistantCommissioner = () => {
                 setApprovalTab(0);
                 setRouteDepartment("Director of Investigation");
                 setCustomDepartment("");
+                setRoutingNotes("");
             }
         }
     };
@@ -422,6 +432,17 @@ const AssistantCommissioner = () => {
                             inputProps={{ maxLength: 120 }}
                         />
                     )}
+                    <TextField
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        label="Routing Notes (optional)"
+                        placeholder="Add any instructions, context, or routing comments..."
+                        value={routingNotes}
+                        onChange={(e) => setRoutingNotes(e.target.value)}
+                        sx={{ mt: 2 }}
+                        inputProps={{ maxLength: 1000 }}
+                    />
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setRoutingDialogOpen(false)} disabled={submitting}>Cancel</Button>

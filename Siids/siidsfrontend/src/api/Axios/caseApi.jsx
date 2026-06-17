@@ -351,10 +351,11 @@ export const ReportApi = {
         return caseApi.post(`/api/reports/${reportId}/approve`, {});
     },
 
-    approveReportByAssistantCommissioner: (reportId, routeDepartment, signatureBase64) => {
+    approveReportByAssistantCommissioner: (reportId, routeDepartment, signatureBase64, routingNotes = '') => {
         return caseApi.post(`/api/reports/${reportId}/approve-assistant-commissioner`, {
             routeDepartment,
-            signatureBase64
+            signatureBase64,
+            routingNotes
         });
     },
 
