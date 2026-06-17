@@ -17,12 +17,20 @@ import java.util.Optional;
 public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     @Query("""
-            SELECT r FROM Report r
-            LEFT JOIN FETCH r.attachmentPaths ap
-            LEFT JOIN FETCH r.findingsAttachmentPaths fap
+            SELECT DISTINCT r
+            FROM Report r
+            LEFT JOIN FETCH r.attachmentPaths
             WHERE r.id = :id
             """)
-    Optional<Report> findByIdWithAttachments(@Param("id") Integer id);
+    Optional<Report> findByIdWithAttachmentPaths(@Param("id") Integer id);
+
+    @Query("""
+            SELECT DISTINCT r
+            FROM Report r
+            LEFT JOIN FETCH r.findingsAttachmentPaths
+            WHERE r.id = :id
+            """)
+    Optional<Report> findByIdWithFindingsAttachmentPaths(@Param("id") Integer id);
 
     List<Report> findByCreatedByOrderByCreatedAtDesc(Employee employee);
 

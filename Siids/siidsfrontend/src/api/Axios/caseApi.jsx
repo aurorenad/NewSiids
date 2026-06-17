@@ -24,12 +24,18 @@ const downloadBlob = (response, fallbackFilename) => {
     const blob = response.data instanceof Blob ? response.data : new Blob([response.data]);
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
+    const filename = getFilenameFromDisposition(response.headers?.['content-disposition'], fallbackFilename);
+
     link.href = url;
-    link.download = getFilenameFromDisposition(response.headers?.['content-disposition'], fallbackFilename);
+    link.download = filename;
+    link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
+
+    setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+    }, 1000);
 };
 
 caseApi.interceptors.request.use((config) => {
@@ -435,12 +441,14 @@ export const ReportApi = {
             }
         );
 
-        const blob = new Blob([response.data], {
-            type: response.headers?.['content-type'] || 'application/pdf'
-        });
-        const objectUrl = window.URL.createObjectURL(blob);
-        window.open(objectUrl, '_blank', 'noopener,noreferrer');
-        return objectUrl;
+        const fileURL = window.URL.createObjectURL(
+            new Blob([response.data], {
+                type: response.headers?.['content-type'] || 'application/pdf'
+            })
+        );
+
+        window.open(fileURL, '_blank', 'noopener,noreferrer');
+        return fileURL;
     },
 
     getDepartments: () => {

@@ -896,11 +896,12 @@ public class ReportController {
     public ResponseEntity<Resource> downloadReportAttachmentByName(
             @PathVariable Integer reportId,
             @RequestParam String filename,
+            @RequestParam(required = false, defaultValue = "false") boolean inline,
             Authentication authentication) {
 
         String requesterId = authentication.getName();
         try {
-            return reportService.downloadReportAttachment(reportId, filename, requesterId);
+            return reportService.downloadReportAttachment(reportId, filename, requesterId, inline);
         } catch (SecurityException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

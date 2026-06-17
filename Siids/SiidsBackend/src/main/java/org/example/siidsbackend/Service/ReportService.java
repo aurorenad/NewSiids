@@ -1413,6 +1413,10 @@ public class ReportService {
     }
 
     public ResponseEntity<Resource> downloadAttachment(String filename) {
+        return downloadAttachment(filename, false);
+    }
+
+    public ResponseEntity<Resource> downloadAttachment(String filename, boolean inline) {
         try {
             Path filePath = fileStorageService.resolveStoredPath(filename);
 
@@ -1433,7 +1437,7 @@ public class ReportService {
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            contentDisposition(originalFilename))
+                            contentDisposition(originalFilename, inline))
                     .body(resource);
 
         } catch (Exception e) {
@@ -1442,9 +1446,10 @@ public class ReportService {
         }
     }
 
-    private String contentDisposition(String filename) {
+    private String contentDisposition(String filename, boolean inline) {
         String safeFilename = filename == null ? "document" : filename.replace("\"", "");
-        return "attachment; filename=\"" + safeFilename + "\"";
+        String dispositionType = inline ? "inline" : "attachment";
+        return dispositionType + "; filename=\"" + safeFilename + "\"";
     }
 
     public Map<String, Object> getFileInfo(String filename) {
@@ -1475,9 +1480,14 @@ public class ReportService {
     }
 
     public ResponseEntity<Resource> downloadReportAttachment(Integer reportId, String filename, String requesterId) {
-        log.info("downloadReportAttachment called reportId={}, filename={}, requesterId={}", reportId, filename, requesterId);
+        return downloadReportAttachment(reportId, filename, requesterId, false);
+    }
+
+    public ResponseEntity<Resource> downloadReportAttachment(Integer reportId, String filename, String requesterId,
+            boolean inline) {
+        log.info("downloadReportAttachment called reportId={}, filename={}, requesterId={}, inline={}", reportId, filename, requesterId, inline);
         try {
-            Optional<Report> maybeReport = reportRepo.findByIdWithAttachments(reportId);
+            Optional<Report> maybeReport = reportRepo.findByIdWithAttachmentPaths(reportId);
             if (maybeReport.isEmpty()) {
                 log.warn("Report not found for attachment download: {}", reportId);
                 return ResponseEntity.notFound().build();
@@ -1509,7 +1519,7 @@ public class ReportService {
                     "Attachment '" + downloadLabel + "' downloaded from report #" + reportId + " by " + requesterId,
                     requester);
 
-            ResponseEntity<Resource> response = downloadAttachment(storedFilename);
+            ResponseEntity<Resource> response = downloadAttachment(storedFilename, inline);
             if (!response.getStatusCode().is2xxSuccessful()) {
                 log.warn("Attachment download returned non-2xx status {} for {}", response.getStatusCode(), storedFilename);
             }

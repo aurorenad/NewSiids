@@ -7,6 +7,8 @@ import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.WorkflowStatus;
 import org.example.siidsbackend.Repository.AuditLogRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -16,6 +18,7 @@ import java.time.LocalDateTime;
 public class AuditService {
     private final AuditLogRepository auditLogRepository;
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logAction(WorkflowStatus action, String description, Employee user) {
         AuditLog log = new AuditLog();
         log.setAction(action);
