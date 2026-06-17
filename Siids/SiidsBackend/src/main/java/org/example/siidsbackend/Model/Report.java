@@ -94,8 +94,7 @@ public class Report {
     private Double principleAmount;
     private Double penaltiesAmount;
 
-
-    @Column(name="CasePlan")
+    @Column(name = "CasePlan")
     private String casePlan;
     @Column(name = "CasePlan_description")
     private String casePlanDescription;
@@ -104,13 +103,13 @@ public class Report {
     private LocalDateTime investigationReportApprovedAt;
 
     private String investigationReportRejectedBy;
-     private String investigationReportRejectionReason;
+    private String investigationReportRejectionReason;
     private LocalDateTime investigationReportRejectedAt;
 
-    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ReportSignature> signatures = new ArrayList<>();
 
-    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<ReportRevision> revisions = new ArrayList<>();
 
     @PrePersist
