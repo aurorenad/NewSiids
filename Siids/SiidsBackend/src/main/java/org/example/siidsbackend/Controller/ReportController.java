@@ -50,6 +50,8 @@ import java.util.stream.Collectors;
 public class ReportController {
     private static final String ADMIN_OR_REPORT_APPROVE_INTELLIGENCE =
             "hasAuthority('REPORT_APPROVE_INTELLIGENCE') or hasRole('ADMIN') or hasAuthority('Admin') or hasAuthority('ADMIN')";
+    private static final String ADMIN_OR_ASSISTANT_COMMISSIONER_APPROVAL =
+            "hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER') or hasRole('ADMIN') or hasAuthority('Admin') or hasAuthority('ADMIN')";
 
     private final ReportService reportService;
 
@@ -482,6 +484,25 @@ public class ReportController {
         }
     }
 
+    @PostMapping("/{id}/approve-and-route")
+    @PreAuthorize(ADMIN_OR_ASSISTANT_COMMISSIONER_APPROVAL)
+    public ResponseEntity<?> approveAndRouteByAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> requestBody,
+            Authentication authentication) {
+        try {
+            return ResponseEntity.ok(reportService.approveAndRouteByAssistantCommissioner(
+                    id,
+                    authentication.getName(),
+                    requestBody.get("destinationDepartment"),
+                    requestBody.get("routingNotes")));
+        } catch (Exception e) {
+            log.error("Error approving and routing report {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @PostMapping("/{id}/reject")
     @PreAuthorize(ADMIN_OR_REPORT_APPROVE_INTELLIGENCE)
     public ResponseEntity<?> rejectReport(
@@ -621,7 +642,24 @@ public class ReportController {
         }
     }
 
+    }
+
     //
+    @PostMapping("/{id}/generate-draft")
+    @PreAuthorize("hasAuthority('REPORT_CREATE')")
+    public ResponseEntity<?> generateInvestigationDraft(
+            @PathVariable Integer id,
+            Authentication authentication) {
+        try {
+            return ResponseEntity.ok(
+                    reportService.generateInvestigationDraft(id, authentication.getName()));
+        } catch (RuntimeException e) {
+            log.warn("Draft generation rejected for report {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/{id}/findings")
     @PreAuthorize("hasAuthority('REPORT_VIEW')")
     public ResponseEntity<ReportResponseDTO> getFindings(

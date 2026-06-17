@@ -1,46 +1,51 @@
-import React, { useContext } from 'react';
+import React, { lazy, Suspense, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
-import Home from './Components/Home.jsx';
-import Login from './Components/Login';
 import Sidebar from './Components/SideNav.jsx';
 import Header from './Components/Header';
-import DirectorIntelligence from './Components/DirectorIntelligence';
-import IntelligenceOfficer from './Components/IntelligenceOfficer';
-import InvestigationOfficer from "./Components/InvestigationOfficer";
-import DirectorInvestigation from "./Components/DirectorInvestigation";
-import AssistantCommissioner from './Components/AssistantCommissioner';
-import SurveillenceOfficer from "./Components/SurveillenceOffice/SurveillenceOfficer.jsx";
-import NewSurveillenceCase from "./Components/SurveillenceOffice/NewSurveillenceCase.jsx";
-import TaxReportView from "./Components/TaxReportView.jsx";
-import History from './Components/History';
-import NewCase from './Components/TaxReportForm.jsx';
 import './App.css';
-import { ClaimForm as ClaimForm } from "./Components/ClaimForm.jsx";
-import { SClaimForm as SClaimForm } from "./Components/SClaimForm.jsx";
-import SurveillanceCaseView from "./Components/SurveillenceOffice/SurveillanceCaseView.jsx";
-import ReportView from "./Components/ReportView.jsx";
-import FindingsViewerPage from "./Components/FindingsViewerPage.jsx";
-import ViewReportDetails from "./Components/ViewReportDetails.jsx";
-import FinesReport from "./Components/FinesReport.jsx";
-import DirectorIntelligenceCaseReports from "./Components/DirectorIntelligenceCaseReports.jsx";
-import T3OfficersReports from "./Components/T3OfficersReports.jsx";
-import ForgotPassword from "./Components/ForgotPassword.jsx";
-import SetupPassword from "./Components/SetupPassword.jsx";
-import LegalAdvisor from "./Components/LegalAdvisor.jsx"
-import EditReport from "./Components/EditReport.jsx";
-import StockManagement from "./Components/StockManagement.jsx";
-import SystemAdmin from "./Components/SystemAdmin.jsx";
-import { Box } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import { Toaster } from 'sonner';
 import { hasAllPermissions, hasAnyPermission } from './utils/authorization';
 import { PERMISSIONS } from './constants/permissions';
 import { ROUTES } from './constants/routes';
 
-// --- NEW PHYSICAL STOCK MODULE IMPORTS ---
-import PVTemporaryStockPage from "./Pages/Stock/PVTemporaryStockPage.jsx";
-import StockManagerPage from "./Pages/Stock/StockManagerPage.jsx";
-import PRSOApprovalsPage from "./Pages/Stock/PRSOApprovalsPage.jsx";
+const Home = lazy(() => import('./Components/Home.jsx'));
+const Login = lazy(() => import('./Components/Login'));
+const DirectorIntelligence = lazy(() => import('./Components/DirectorIntelligence'));
+const IntelligenceOfficer = lazy(() => import('./Components/IntelligenceOfficer'));
+const InvestigationOfficer = lazy(() => import('./Components/InvestigationOfficer'));
+const DirectorInvestigation = lazy(() => import('./Components/DirectorInvestigation'));
+const AssistantCommissioner = lazy(() => import('./Components/AssistantCommissioner'));
+const SurveillenceOfficer = lazy(() => import('./Components/SurveillenceOffice/SurveillenceOfficer.jsx'));
+const NewSurveillenceCase = lazy(() => import('./Components/SurveillenceOffice/NewSurveillenceCase.jsx'));
+const TaxReportView = lazy(() => import('./Components/TaxReportView.jsx'));
+const History = lazy(() => import('./Components/History'));
+const NewCase = lazy(() => import('./Components/TaxReportForm.jsx'));
+const ClaimForm = lazy(() => import('./Components/ClaimForm.jsx').then((module) => ({ default: module.ClaimForm })));
+const SClaimForm = lazy(() => import('./Components/SClaimForm.jsx').then((module) => ({ default: module.SClaimForm })));
+const SurveillanceCaseView = lazy(() => import('./Components/SurveillenceOffice/SurveillanceCaseView.jsx'));
+const ReportView = lazy(() => import('./Components/ReportView.jsx'));
+const FindingsViewerPage = lazy(() => import('./Components/FindingsViewerPage.jsx'));
+const ViewReportDetails = lazy(() => import('./Components/ViewReportDetails.jsx'));
+const FinesReport = lazy(() => import('./Components/FinesReport.jsx'));
+const DirectorIntelligenceCaseReports = lazy(() => import('./Components/DirectorIntelligenceCaseReports.jsx'));
+const T3OfficersReports = lazy(() => import('./Components/T3OfficersReports.jsx'));
+const ForgotPassword = lazy(() => import('./Components/ForgotPassword.jsx'));
+const SetupPassword = lazy(() => import('./Components/SetupPassword.jsx'));
+const LegalAdvisor = lazy(() => import('./Components/LegalAdvisor.jsx'));
+const EditReport = lazy(() => import('./Components/EditReport.jsx'));
+const StockManagement = lazy(() => import('./Components/StockManagement.jsx'));
+const SystemAdmin = lazy(() => import('./Components/SystemAdmin.jsx'));
+const PVTemporaryStockPage = lazy(() => import('./Pages/Stock/PVTemporaryStockPage.jsx'));
+const StockManagerPage = lazy(() => import('./Pages/Stock/StockManagerPage.jsx'));
+const PRSOApprovalsPage = lazy(() => import('./Pages/Stock/PRSOApprovalsPage.jsx'));
+
+const RouteLoadingScreen = () => (
+    <Box sx={{ display: 'grid', placeItems: 'center', minHeight: '100vh' }}>
+        <CircularProgress aria-label="Loading page" />
+    </Box>
+);
 
 const AppShell = ({ children }) => (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -178,7 +183,9 @@ function App() {
             <Toaster position="top-right" expand={false} richColors />
             <AuthProvider>
                 <NotificationWrapper>
-                    <AppRoutes />
+                    <Suspense fallback={<RouteLoadingScreen />}>
+                        <AppRoutes />
+                    </Suspense>
                 </NotificationWrapper>
             </AuthProvider>
         </Router>
