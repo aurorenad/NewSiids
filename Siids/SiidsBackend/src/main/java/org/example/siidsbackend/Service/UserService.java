@@ -2,6 +2,7 @@ package org.example.siidsbackend.Service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Response.PageResponseDTO;
+import org.example.siidsbackend.DTO.Response.UserResponseDTO;
 import org.example.siidsbackend.Model.AccountAuditLog;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
@@ -351,11 +352,13 @@ public class UserService {
         return response;
     }
 
-    public java.util.List<User> getAllUsers() {
-        return repo.findAll();
+    public java.util.List<UserResponseDTO> getAllUsers() {
+        return repo.findAll().stream()
+                .map(this::toUserResponse)
+                .toList();
     }
 
-    public PageResponseDTO<User> getUserPage(int page, int size, String search) {
+    public PageResponseDTO<UserResponseDTO> getUserPage(int page, int size, String search) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(size, 1);
         Page<User> users = repo.searchUsers(
@@ -363,7 +366,9 @@ public class UserService {
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "id")));
 
         return new PageResponseDTO<>(
-                users.getContent(),
+                users.getContent().stream()
+                        .map(this::toUserResponse)
+                        .toList(),
                 users.getNumber(),
                 users.getSize(),
                 users.getTotalElements(),
@@ -483,6 +488,15 @@ public class UserService {
         response.put("performedAt", auditLog.getPerformedAt());
         response.put("details", auditLog.getDetails());
         return response;
+    }
+
+    public UserResponseDTO toUserResponse(User user) {
+        return new UserResponseDTO(
+                user.getId(),
+                user.getUsername(),
+                user.getRole(),
+                user.getActive(),
+                user.getAuthProvider());
     }
 
     private String trim(String value) {

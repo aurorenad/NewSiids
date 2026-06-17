@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import {
-    Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead,
-    TableRow, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
-    Box, CircularProgress, Alert, Snackbar, Tooltip,
-    Typography, Chip, Tabs, Tab, MenuItem
+    Button, Paper, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
+    Box, Alert, Snackbar, Tooltip, Typography, Chip, Tabs, Tab
 } from "@mui/material";
 import {
     Search, Description, Check, Undo, Refresh, Assignment, Assessment, AccountBalance
@@ -32,12 +30,6 @@ const AssistantCommissioner = () => {
     // Signature States
     const sigCanvas = useRef({});
     const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
-    const [reportToApprove, setReportToApprove] = useState(null);
-    const [approvalTab, setApprovalTab] = useState(0);
-    const [routingDialogOpen, setRoutingDialogOpen] = useState(false);
-    const [routeDepartment, setRouteDepartment] = useState("Director of Investigation");
-    const [customDepartment, setCustomDepartment] = useState("");
-    const [routingNotes, setRoutingNotes] = useState("");
 
     const navigate = useNavigate();
     const routeOptions = [
@@ -84,6 +76,19 @@ const AssistantCommissioner = () => {
             "INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER": "Approved"
         };
         return map[status] || status?.replace(/_/g, ' ') || 'Unknown';
+    };
+
+    const handleApproveClick = (report) => {
+        if (activeTab === 0) {
+            setReportToRoute(report);
+            setRouteDestination("Director of Investigation");
+            setCustomDepartment("");
+            setRoutingNotes("");
+            setRouteDialogOpen(true);
+            return;
+        }
+
+        handleApproveAction(report);
     };
 
     const getErrorMessage = (err, fallback = "Action failed") => {
@@ -203,6 +208,35 @@ const AssistantCommissioner = () => {
         sigCanvas.current?.clear?.();
     };
 
+    const handleApproveAndRoute = async () => {
+        const finalDestination = routeDestination === "Other Departments"
+            ? customDepartment.trim()
+            : routeDestination;
+
+        if (!finalDestination) {
+            showSnackbar("Destination department is required", "error");
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+            await ReportApi.approveAndRouteByAssistantCommissioner(
+                reportToRoute.id,
+                finalDestination,
+                routingNotes
+            );
+            setRouteDialogOpen(false);
+            showSnackbar(`Case approved and routed to ${finalDestination}`);
+            await fetchAllData();
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || err.response?.data || "Approval and routing failed";
+            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Approval and routing failed", "error");
+        } finally {
+            setSubmitting(false);
+            setReportToRoute(null);
+        }
+    };
+
     const handleRejectFinal = async () => {
         if (!selectedReport) {
             showSnackbar("No report selected", "error");
@@ -247,21 +281,166 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const getFilteredData = () => {
-        const query = searchQuery.toLowerCase();
-        if (activeTab === 1) {
-            return casePlans.filter(p =>
-                p.relatedCase?.caseNum?.toLowerCase().includes(query) ||
-                p.id?.toString().includes(query)
-            );
-        }
-        
-        return reports.filter(r => {
-            const status = r.status || '';
-            if (activeTab === 0) return !status.includes('INVESTIGATION') && !status.includes('CASE_PLAN');
-            return status.includes('INVESTIGATION');
-        }).filter(r => r.relatedCase?.caseNum?.toLowerCase().includes(query) || r.id.toString().includes(query));
+    const updateReportInState = (updatedReport) => {
+        setRows(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
     };
+
+    const handleOpenSignatureDialog = (report) => {
+        setSelectedReport(report);
+        setSignatureDialogOpen(true);
+    };
+
+    const handleDownloadInvestigationReport = async (report) => {
+        try {
+            setSubmitting(true);
+            const response = await ReportApi.downloadInvestigationReportPdf(report.id);
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `investigation-report-${report.id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || "Failed to download investigation report";
+            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Failed to download investigation report", "error");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleTabChange = (event, nextTab) => {
+        setActiveTab(nextTab);
+        setPage(0);
+    };
+
+    const handleSearchChange = (value) => {
+        setSearchQuery(value);
+        setPage(0);
+    };
+
+    const columns = [
+        {
+            key: 'operationalId',
+            label: 'Operational ID',
+            render: (r) => (
+                <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{r.relatedCase?.caseNum || r.id}</Typography>
+                    <Typography variant="caption" color="text.secondary">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</Typography>
+                </Box>
+            )
+        },
+        {
+            key: 'leadPersonnel',
+            label: 'Lead Personnel',
+            render: (r) => r.investigationOfficer?.givenName || r.createdBy || 'N/A'
+        },
+        {
+            key: 'workflowState',
+            label: 'Workflow State',
+            render: (r) => (
+                <Chip
+                    label={formatStatus(r.status)}
+                    size="small"
+                    sx={{ fontWeight: 700 }}
+                    color={r.status?.includes('APPROVED') ? 'success' : 'primary'}
+                />
+            )
+        },
+        {
+            key: 'summary',
+            label: 'Intelligence Summary',
+            render: (r) => (
+                <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>
+                    {r.description || r.casePlanDescription || 'N/A'}
+                </Typography>
+            )
+        },
+        {
+            key: 'actions',
+            label: 'Critical Actions',
+            cellStyle: { textAlign: 'center' },
+            render: (r) => (
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        size="small"
+                        startIcon={<Description />}
+                        onClick={() => navigate(routeTo.reportDetails(r.id))}
+                        sx={{ textTransform: 'none', fontWeight: 700 }}
+                    >
+                        View
+                    </Button>
+
+                    {canApproveAssistantCommissioner && (
+                        <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            startIcon={<Check />}
+                            onClick={() => handleApproveAction(r)}
+                            disabled={submitting}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Approve
+                        </Button>
+                    )}
+
+                    {canApproveAssistantCommissioner && activeTab === 2 && (
+                        <Button
+                            variant={r.acSigned ? "outlined" : "contained"}
+                            color="primary"
+                            size="small"
+                            startIcon={<DriveFileRenameOutline />}
+                            onClick={() => handleOpenSignatureDialog(r)}
+                            disabled={submitting}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            {r.acSigned ? 'Re-sign' : 'Sign'}
+                        </Button>
+                    )}
+
+                    {activeTab === 2 && (
+                        <Tooltip title={r.finalised ? 'Download final investigation report' : 'Both signatures are required before final PDF download'}>
+                            <span>
+                                <Button
+                                    variant="outlined"
+                                    color="primary"
+                                    size="small"
+                                    startIcon={<Download />}
+                                    onClick={() => handleDownloadInvestigationReport(r)}
+                                    disabled={submitting || !r.finalised}
+                                    sx={{ textTransform: 'none', fontWeight: 700 }}
+                                >
+                                    PDF
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    )}
+
+                    {canApproveAssistantCommissioner && (
+                        <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
+                            startIcon={<Undo />}
+                            onClick={() => {
+                                setSelectedReport(r);
+                                setCloseReason("");
+                                setCloseDialogOpen(true);
+                            }}
+                            disabled={submitting}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Reject
+                        </Button>
+                    )}
+                </Box>
+            )
+        }
+    ];
 
     return (
         <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
@@ -378,6 +557,57 @@ const AssistantCommissioner = () => {
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCloseDialogOpen(false)} disabled={submitting}>Abort</Button>
                     <Button onClick={handleRejectFinal} variant="contained" color="error" disabled={submitting || !closeReason.trim()}>Confirm Rejection</Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={routeDialogOpen} onClose={() => setRouteDialogOpen(false)} fullWidth maxWidth="sm">
+                <DialogTitle sx={{ bgcolor: '#2563eb', color: '#fff' }}>Approve and Route Case</DialogTitle>
+                <DialogContent sx={{ mt: 2 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Select where this case should go after Assistant Commissioner approval.
+                    </Typography>
+                    <TextField
+                        select
+                        fullWidth
+                        label="Destination"
+                        value={routeDestination}
+                        onChange={(event) => setRouteDestination(event.target.value)}
+                        sx={{ mb: 2 }}
+                    >
+                        <MenuItem value="Director of Investigation">Director of Investigation</MenuItem>
+                        <MenuItem value="Prosecution">Prosecution</MenuItem>
+                        <MenuItem value="Enforcement">Enforcement</MenuItem>
+                        <MenuItem value="Collection">Collection</MenuItem>
+                        <MenuItem value="To be filled">To be filled</MenuItem>
+                        <MenuItem value="Other Departments">Other Departments</MenuItem>
+                    </TextField>
+                    {routeDestination === "Other Departments" && (
+                        <TextField
+                            fullWidth
+                            label="Department name"
+                            value={customDepartment}
+                            onChange={(event) => setCustomDepartment(event.target.value)}
+                            sx={{ mb: 2 }}
+                        />
+                    )}
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={3}
+                        label="Routing notes"
+                        value={routingNotes}
+                        onChange={(event) => setRoutingNotes(event.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setRouteDialogOpen(false)} disabled={submitting}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleApproveAndRoute}
+                        disabled={submitting || (routeDestination === "Other Departments" && !customDepartment.trim())}
+                    >
+                        Confirm Route and Approve
+                    </Button>
                 </DialogActions>
             </Dialog>
 

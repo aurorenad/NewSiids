@@ -351,14 +351,6 @@ export const ReportApi = {
         return caseApi.post(`/api/reports/${reportId}/approve`, {});
     },
 
-    approveReportByAssistantCommissioner: (reportId, routeDepartment, signatureBase64, routingNotes = '') => {
-        return caseApi.post(`/api/reports/${reportId}/approve-assistant-commissioner`, {
-            routeDepartment,
-            signatureBase64,
-            routingNotes
-        });
-    },
-
     rejectReport: (reportId, rejectionReason) => {
         return caseApi.post(`/api/reports/${reportId}/reject`, null, {
             params: { rejectionReason }
@@ -370,6 +362,10 @@ export const ReportApi = {
             signatureBase64,
             role
         });
+    },
+
+    generateInvestigationDraft: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/generate-draft`);
     },
 
     downloadInvestigationReportPdf: (reportId) => {

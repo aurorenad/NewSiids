@@ -3,6 +3,7 @@ package org.example.siidsbackend.Controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.siidsbackend.DTO.Response.PageResponseDTO;
+import org.example.siidsbackend.DTO.Response.UserResponseDTO;
 import org.example.siidsbackend.Model.Employee;
 import org.example.siidsbackend.Model.User;
 import org.example.siidsbackend.Service.UserService;
@@ -183,7 +184,7 @@ public class UserController {
 
     @GetMapping("/users")
     @PreAuthorize("hasAuthority('USER_VIEW')")
-    public PageResponseDTO<User> getAllUsers(
+    public PageResponseDTO<UserResponseDTO> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "") String search) {
@@ -216,7 +217,7 @@ public class UserController {
             String reason = request.get("reason");
             String performedBy = authentication != null ? authentication.getName() : "system";
             User updatedUser = service.updateUserRole(id, role, performedBy, reason);
-            return ResponseEntity.ok(updatedUser);
+            return ResponseEntity.ok(service.toUserResponse(updatedUser));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -232,7 +233,7 @@ public class UserController {
         try {
             String performedBy = authentication != null ? authentication.getName() : "system";
             User updatedUser = service.toggleUserActiveStatus(id, performedBy);
-            return ResponseEntity.ok(updatedUser);
+            return ResponseEntity.ok(service.toUserResponse(updatedUser));
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to toggle user status");
