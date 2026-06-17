@@ -50,6 +50,8 @@ import java.util.stream.Collectors;
 public class ReportController {
     private static final String ADMIN_OR_REPORT_APPROVE_INTELLIGENCE =
             "hasAuthority('REPORT_APPROVE_INTELLIGENCE') or hasRole('ADMIN') or hasAuthority('Admin') or hasAuthority('ADMIN')";
+    private static final String ADMIN_OR_REPORT_APPROVE_ANY =
+            "hasAnyAuthority('REPORT_APPROVE_INTELLIGENCE', 'REPORT_APPROVE_INVESTIGATION', 'REPORT_APPROVE_ASSISTANT_COMMISSIONER') or hasRole('ADMIN') or hasAuthority('Admin') or hasAuthority('ADMIN')";
 
     private final ReportService reportService;
 
@@ -621,7 +623,7 @@ public class ReportController {
         }
     }
 
-    }
+    
 
     //
     @PostMapping("/{id}/generate-draft")
