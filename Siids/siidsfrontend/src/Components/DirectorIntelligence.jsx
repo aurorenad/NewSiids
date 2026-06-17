@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo, useRef } from 'react';
 import {
     IconButton,
     Dialog, DialogTitle, DialogContent, DialogActions,
@@ -28,9 +28,11 @@ const DirectorIntelligence = () => {
     const [totalReports, setTotalReports] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [success, setSuccess] = useState(null);
     const [actionLoadingReports, setActionLoadingReports] = useState(new Set());
     const [currentUser] = useState("Current User");
     const [uploadProgress, setUploadProgress] = useState(0);
+    const returnSubmitInFlight = useRef(false);
 
     const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
     const [returnDialogOpen, setReturnDialogOpen] = useState(false);
@@ -185,6 +187,8 @@ const DirectorIntelligence = () => {
         setReturnType('creator');
         setReturnAttachment(null);
         setAttachmentError('');
+        setError(null);
+        setSuccess(null);
         setReturnDialogOpen(true);
     };
 
@@ -287,6 +291,10 @@ const DirectorIntelligence = () => {
     };
 
     const handleConfirmReturn = async () => {
+        if (returnSubmitInFlight.current) {
+            return;
+        }
+
         // Validate that either text or document is provided
         if (!returnAttachment && !returnReasonText.trim()) {
             setError('Please provide either a text reason or upload a document');
@@ -308,6 +316,7 @@ const DirectorIntelligence = () => {
             return;
         }
 
+        returnSubmitInFlight.current = true;
         setReportLoading(selectedReport.id, true);
         setUploadProgress(0);
 
@@ -333,6 +342,7 @@ const DirectorIntelligence = () => {
                     ...responseData,
                     status: responseData?.status || 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER',
                     returnReason: responseData?.returnReason || returnReasonText || 'Document attached',
+                    directorIntelligenceMessage: responseData?.directorIntelligenceMessage || responseData?.returnReason || returnReasonText || 'Document attached',
                     returnedAt: responseData?.returnedAt || new Date().toISOString(),
                     returnedBy: responseData?.returnedBy || currentUser,
                     returnedToEmployeeId: targetEmployeeId,
@@ -343,9 +353,36 @@ const DirectorIntelligence = () => {
 
             closeReturnDialog();
             setError(null);
+            setSuccess('Report returned successfully');
         } catch (err) {
-            setError(err.response?.data?.message || err.response?.data || 'Failed to return report');
+            const errorMessage = err.response?.data?.message
+                || (typeof err.response?.data === 'string' ? err.response.data : null)
+                || err.message
+                || 'Failed to return report';
+
+            if (errorMessage.includes('Cannot return report in current status')) {
+                setReports(prev => prev.map(r =>
+                    r.id === selectedReport.id ? {
+                        ...r,
+                        status: String(r.status || '').startsWith('REPORT_RETURNED')
+                            ? r.status
+                            : 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER',
+                        returnReason: r.returnReason || returnReasonText || 'Document attached',
+                        directorIntelligenceMessage: r.directorIntelligenceMessage || r.returnReason || returnReasonText || 'Document attached',
+                        returnedAt: r.returnedAt || new Date().toISOString(),
+                        returnedBy: r.returnedBy || currentUser
+                    } : r
+                ));
+                closeReturnDialog();
+                setError(null);
+                setSuccess('Report returned successfully');
+                return;
+            }
+
+            setSuccess(null);
+            setError(errorMessage);
         } finally {
+            returnSubmitInFlight.current = false;
             setReportLoading(selectedReport.id, false);
             setUploadProgress(0);
         }
@@ -546,6 +583,14 @@ const DirectorIntelligence = () => {
                 <Box mb={2}>
                     <Alert severity="error" onClose={() => setError(null)}>
                         {error}
+                    </Alert>
+                </Box>
+            )}
+
+            {success && (
+                <Box mb={2}>
+                    <Alert severity="success" onClose={() => setSuccess(null)}>
+                        {success}
                     </Alert>
                 </Box>
             )}

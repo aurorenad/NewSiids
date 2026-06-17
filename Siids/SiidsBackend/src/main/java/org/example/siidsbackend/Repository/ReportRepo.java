@@ -24,6 +24,10 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
             """)
     Optional<Report> findByIdWithAttachmentPaths(@Param("id") Integer id);
 
+    default Optional<Report> findByIdWithAttachments(Integer id) {
+        return findByIdWithAttachmentPaths(id);
+    }
+
     @Query("""
             SELECT DISTINCT r
             FROM Report r

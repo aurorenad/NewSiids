@@ -12,8 +12,10 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -33,7 +35,10 @@ public class NotificationController {
     @MessageMapping("/connect")
     public void handleConnection(@Payload String employeeId, SimpMessageHeaderAccessor headerAccessor) {
         // Store employee ID in session attributes for user-specific messaging
-        headerAccessor.getSessionAttributes().put("employeeId", employeeId);
+        Map<String, Object> sessionAttributes = headerAccessor.getSessionAttributes();
+        if (sessionAttributes != null) {
+            sessionAttributes.put("employeeId", employeeId);
+        }
         System.out.println("User connected: " + employeeId);
     }
 
@@ -50,6 +55,7 @@ public class NotificationController {
      */
     @GetMapping("/employee/{employeeId}")
     @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<NotificationDTO>> getNotificationsForEmployee(
             @PathVariable String employeeId,
             @RequestParam(defaultValue = "false") boolean unreadOnly) {
@@ -142,6 +148,7 @@ public class NotificationController {
      */
     @GetMapping("/employee/{employeeId}/unread-count")
     @PreAuthorize("hasAuthority('NOTIFICATION_VIEW')")
+    @Transactional(readOnly = true)
     public ResponseEntity<Long> getUnreadCount(@PathVariable String employeeId) {
         String requestingEmployeeId = getCurrentUser();
         try {

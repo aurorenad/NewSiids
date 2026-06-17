@@ -1282,7 +1282,7 @@ public class ReportController {
 
     @PostMapping(value = "/{id}/return-with-document", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyAuthority('REPORT_APPROVE_INTELLIGENCE', 'REPORT_APPROVE_INVESTIGATION', 'REPORT_APPROVE_ASSISTANT_COMMISSIONER', 'LEGAL_REVIEW')")
-    public ResponseEntity<ReportResponseDTO> returnReportWithDocument(
+    public ResponseEntity<?> returnReportWithDocument(
             @PathVariable Integer id,
             @RequestParam String returnToEmployeeId,
             @RequestParam(required = false) String returnReason,
@@ -1294,7 +1294,8 @@ public class ReportController {
 
             // Validate at least one reason is provided
             if ((returnReason == null || returnReason.trim().isEmpty()) && returnDocument == null) {
-                return ResponseEntity.badRequest().body(null);
+                return ResponseEntity.badRequest()
+                        .body(Collections.singletonMap("message", "Return reason or return document is required"));
             }
 
             if (returnDocument != null && !returnDocument.isEmpty()) {
@@ -1306,7 +1307,8 @@ public class ReportController {
                             !lowerFilename.endsWith(".docx") &&
                             !lowerFilename.endsWith(".pdf") &&
                             !lowerFilename.endsWith(".txt")) {
-                        return ResponseEntity.badRequest().body(null);
+                        return ResponseEntity.badRequest()
+                                .body(Collections.singletonMap("message", "Only DOC, DOCX, PDF, and TXT files are allowed"));
                     }
                 }
             }
@@ -1321,10 +1323,12 @@ public class ReportController {
             return ResponseEntity.ok(reportService.toResponseDTO(report));
         } catch (RuntimeException e) {
             log.error("Error returning report with document: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Collections.singletonMap("message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error returning report with document: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.singletonMap("message", "An unexpected system error occurred"));
         }
     }
 

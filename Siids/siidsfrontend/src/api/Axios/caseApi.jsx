@@ -169,13 +169,6 @@ export const ReportApi = {
                 formData.append('returnDocument', returnDocument);
             }
 
-            console.log('Sending return request:', {
-                reportId,
-                returnToEmployeeId,
-                returnReason,
-                hasFile: !!returnDocument
-            });
-
             const response = await caseApi.post(
                 `/api/reports/${reportId}/return-with-document`,  // Make sure reportId is a number/string, not FormData
                 formData,
@@ -192,8 +185,7 @@ export const ReportApi = {
             );
             return response.data;
         } catch (error) {
-            console.error('API Error in returnReportWithAttachment:', error);
-            throw error.response?.data || error.message;
+            throw error;
         }
     },
     receiveCase: (reportId) => {

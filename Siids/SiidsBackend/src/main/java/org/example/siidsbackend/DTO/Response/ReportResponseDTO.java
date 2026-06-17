@@ -30,6 +30,7 @@ public class ReportResponseDTO {
     private String createdByEmployeeId;
     private String returnedBy;
     private String returnReason;
+    private String directorIntelligenceMessage;
     private LocalDateTime returnedAt;
     private String returnDocumentPath;
     private String returnDocumentOriginalName;

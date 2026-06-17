@@ -10,6 +10,7 @@ import org.example.siidsbackend.DTO.Response.PageResponseDTO;
 import org.example.siidsbackend.DTO.Response.ReportResponseDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.*;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -162,7 +163,10 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public ReportResponseDTO getReportResponse(Integer reportId) {
-        return toResponseDTO(getReport(reportId));
+        Report report = reportRepo.findByIdWithAttachments(reportId)
+                .or(() -> reportRepo.findById(reportId))
+                .orElseThrow(() -> new RuntimeException("Report not found"));
+        return toResponseDTO(report);
     }
 
     private void validateAttachment(String attachmentPath) {
@@ -541,6 +545,7 @@ public class ReportService {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_SUBMITTED:
+            case REPORT_RETURNED_TO_INTELLIGENCE_OFFICER:
                 newStatus = WorkflowStatus.REPORT_RETURNED_TO_INTELLIGENCE_OFFICER;
                 report.setDirectorIntelligence(returner);
                 break;
@@ -702,8 +707,9 @@ public class ReportService {
         dto.setSubject(report.getSubject());
         dto.setLegalBasis(report.getLegalBasis());
 
-        if (report.getAttachmentPaths() != null && !report.getAttachmentPaths().isEmpty()) {
-            dto.setAttachmentPaths(new ArrayList<>(report.getAttachmentPaths()));
+        List<String> attachmentPaths = initializedList(report.getAttachmentPaths());
+        if (!attachmentPaths.isEmpty()) {
+            dto.setAttachmentPaths(attachmentPaths);
         } else if (report.getAttachmentPath() != null) {
             dto.setAttachmentPaths(List.of(report.getAttachmentPath()));
         } else {
@@ -723,6 +729,7 @@ public class ReportService {
                 : null);
         dto.setReturnedAt(report.getReturnedAt());
         dto.setReturnReason(report.getReturnReason());
+        dto.setDirectorIntelligenceMessage(report.getReturnReason());
         dto.setReturnDocumentPath(report.getReturnDocumentPath());
         dto.setReturnDocumentOriginalName(report.getReturnDocumentOriginalName());
         dto.setHasReturnDocument(report.getReturnDocumentPath() != null || report.getReturnDocumentOriginalName() != null);
@@ -731,10 +738,7 @@ public class ReportService {
         dto.setPenaltiesAmount(report.getPenaltiesAmount());
         dto.setFindings(report.getFindings());
         dto.setRecommendations(report.getRecommendations());
-        List<String> findingsAttachments = report.getFindingsAttachmentPaths() == null
-                ? List.of()
-                : new ArrayList<>(report.getFindingsAttachmentPaths());
-        dto.setFindingsAttachmentPaths(new ArrayList<>(findingsAttachments));
+        dto.setFindingsAttachmentPaths(initializedList(report.getFindingsAttachmentPaths()));
         dto.setCasePlan(report.getCasePlan());
         dto.setCasePlanDescription(report.getCasePlanDescription());
 
@@ -768,6 +772,13 @@ public class ReportService {
         }
         
         return dto;
+    }
+
+    private List<String> initializedList(List<String> values) {
+        if (values == null || !Hibernate.isInitialized(values)) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(values);
     }
 
     private void mapSignatureState(Report report, ReportResponseDTO dto) {
@@ -847,7 +858,12 @@ public class ReportService {
     }
 
     public List<Report> getReportsForDirectorIntelligence(String directorId) {
-        return reportRepo.findReportsSubmittedToDirectorIntelligence();
+        Map<Integer, Report> reportsById = new LinkedHashMap<>();
+        reportRepo.findReportsHandledByDirectorIntelligence()
+                .forEach(report -> reportsById.put(report.getId(), report));
+        reportRepo.findReportsSubmittedToDirectorIntelligence()
+                .forEach(report -> reportsById.putIfAbsent(report.getId(), report));
+        return new ArrayList<>(reportsById.values());
     }
 
     @Transactional(readOnly = true)
@@ -1487,7 +1503,8 @@ public class ReportService {
             boolean inline) {
         log.info("downloadReportAttachment called reportId={}, filename={}, requesterId={}, inline={}", reportId, filename, requesterId, inline);
         try {
-            Optional<Report> maybeReport = reportRepo.findByIdWithAttachmentPaths(reportId);
+            Optional<Report> maybeReport = reportRepo.findByIdWithAttachments(reportId)
+                    .or(() -> reportRepo.findById(reportId));
             if (maybeReport.isEmpty()) {
                 log.warn("Report not found for attachment download: {}", reportId);
                 return ResponseEntity.notFound().build();

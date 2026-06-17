@@ -291,7 +291,7 @@ const EditReport = () => {
             fontSize: '0.8125rem'
         }}
     >
-        {report?.returnReason || 'No return message provided.'}
+        {report?.directorIntelligenceMessage || report?.returnMessage || report?.returnReason || 'No return message provided.'}
     </Typography>
 
     <Typography variant="caption" color="text.secondary">
