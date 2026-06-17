@@ -901,118 +901,153 @@ const DirectorInvestigation = () => {
         {
             key: 'actions',
             label: 'Actions',
-            render: (caseItem) => (
-                <Box display="flex" gap={1} flexWrap="wrap">
-                    <Tooltip title="View Report">
-                        <IconButton color="primary" size="small" onClick={() => handleViewReport(caseItem)}>
-                            <Description />
-                        </IconButton>
-                    </Tooltip>
+            headerStyle: { textAlign: 'center' },
+            cellStyle: { textAlign: 'center' },
+            render: (caseItem) => {
+                const canApprove = canApproveInvestigation && (
+                    caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                    caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                    caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
+                    caseItem.investigationReportStatus === 'submitted' ||
+                    caseItem.casePlanStatus === 'submitted'
+                ) && !caseItem.casePlanSentToCommissioner &&
+                    caseItem.investigationReportStatus !== 'approved' &&
+                    caseItem.casePlanStatus !== 'approved';
 
-                    {caseItem.hasFindings && (
-                        <Tooltip title="View Findings">
-                            <IconButton color="info" size="small" onClick={() => handleViewFindings(caseItem)}>
-                                <Visibility />
-                            </IconButton>
-                        </Tooltip>
-                    )}
+                const canReject = canApproveInvestigation && (
+                    caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                    caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
+                    caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
+                    caseItem.investigationReportStatus === 'submitted' ||
+                    caseItem.casePlanStatus === 'submitted'
+                ) && !caseItem.casePlanSentToCommissioner &&
+                    caseItem.investigationReportStatus !== 'approved' &&
+                    caseItem.investigationReportStatus !== 'rejected' &&
+                    caseItem.casePlanStatus !== 'approved' &&
+                    caseItem.casePlanStatus !== 'rejected';
 
-                    {shouldShowInvestigationReportActions(caseItem) && (
-                        <Tooltip title="Review Investigation Report">
-                            <IconButton color="warning" size="small" onClick={() => handleViewInvestigationReport(caseItem)}>
-                                <Assignment />
-                            </IconButton>
-                        </Tooltip>
-                    )}
-
-                    {caseItem.hasCasePlan && caseItem.casePlanStatus === 'submitted' && (
-                        <Tooltip title="View Case Plan">
-                            <IconButton color="secondary" size="small" onClick={() => handleViewCasePlan(caseItem)}>
-                                <TaskAlt />
-                            </IconButton>
-                        </Tooltip>
-                    )}
-
-                    {canApproveInvestigation && (
-                        <Tooltip title="Approve Report">
-                            <IconButton
-                                color="success"
-                                size="small"
-                                onClick={() => {
-                                    if (caseItem.reportId) {
-                                        handleApprove(caseItem.reportId);
-                                    } else {
-                                        console.error('Report ID is undefined for case:', caseItem);
-                                        setSnackbar({
-                                            open: true,
-                                            message: 'Cannot approve: Report ID is missing',
-                                            severity: 'error'
-                                        });
-                                    }
-                                }}
-                                disabled={caseItem.status.includes("Approved") ||
-                                    caseItem.status.includes("Rejected") ||
-                                    caseItem.casePlanSentToCommissioner ||
-                                    caseItem.investigationReportStatus === 'approved' ||
-                                    caseItem.casePlanStatus === 'approved' ||
-                                    !(
-                                        caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                        caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                        caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                        caseItem.investigationReportStatus === 'submitted' ||
-                                        caseItem.casePlanStatus === 'submitted'
-                                    )}
-                            >
-                                <Check />
-                            </IconButton>
-                        </Tooltip>
-                    )}
-
-                    {canAssignInvestigation && (
-                        <Tooltip title="Assign Officer">
+                return (
+                    <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Tooltip title="View report details">
                             <Button
                                 variant="outlined"
+                                color="primary"
                                 size="small"
-                                onClick={() => handleOpenAssignDialog(caseItem)}
-                                disabled={caseItem.isAssigned && !caseItem.status.includes("REJECTED")}
+                                startIcon={<Description />}
+                                onClick={() => handleViewReport(caseItem)}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 70 }}
                             >
-                                Assign
+                                View
                             </Button>
                         </Tooltip>
-                    )}
 
-                    {canApproveInvestigation && (
-                        <Tooltip title="Reject Report">
-                            <IconButton
-                                color="error"
-                                size="small"
-                                onClick={() => {
-                                    setSelectedCase(caseItem);
-                                    setRejectDialogOpen(true);
-                                }}
-                                disabled={
-                                    caseItem.status.includes("Approved") ||
-                                    caseItem.status.includes("Rejected") ||
-                                    caseItem.casePlanSentToCommissioner ||
-                                    caseItem.investigationReportStatus === 'approved' ||
-                                    caseItem.investigationReportStatus === 'rejected' ||
-                                    caseItem.casePlanStatus === 'approved' ||
-                                    caseItem.casePlanStatus === 'rejected' ||
-                                    !(
-                                        caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
-                                        caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
-                                        caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
-                                        caseItem.investigationReportStatus === 'submitted' ||
-                                        caseItem.casePlanStatus === 'submitted'
-                                    )
-                                }
-                            >
-                                <Close />
-                            </IconButton>
-                        </Tooltip>
-                    )}
-                </Box>
-            )
+                        {caseItem.hasFindings && (
+                            <Tooltip title="View investigation findings">
+                                <Button
+                                    variant="outlined"
+                                    color="info"
+                                    size="small"
+                                    startIcon={<Visibility />}
+                                    onClick={() => handleViewFindings(caseItem)}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 85 }}
+                                >
+                                    Findings
+                                </Button>
+                            </Tooltip>
+                        )}
+
+                        {shouldShowInvestigationReportActions(caseItem) && (
+                            <Tooltip title="Review submitted investigation report">
+                                <Button
+                                    variant="contained"
+                                    color="warning"
+                                    size="small"
+                                    startIcon={<Assignment />}
+                                    onClick={() => handleViewInvestigationReport(caseItem)}
+                                    sx={{
+                                        borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 90,
+                                        background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                                        color: '#fff',
+                                        '&:hover': { background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' }
+                                    }}
+                                >
+                                    Review
+                                </Button>
+                            </Tooltip>
+                        )}
+
+                        {caseItem.hasCasePlan && caseItem.casePlanStatus === 'submitted' && (
+                            <Tooltip title="Review submitted case plan">
+                                <Button
+                                    variant="outlined"
+                                    color="secondary"
+                                    size="small"
+                                    startIcon={<TaskAlt />}
+                                    onClick={() => handleViewCasePlan(caseItem)}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 90 }}
+                                >
+                                    Case Plan
+                                </Button>
+                            </Tooltip>
+                        )}
+
+                        {canAssignInvestigation && (
+                            <Tooltip title={caseItem.isAssigned ? 'Reassign investigation officer' : 'Assign investigation officer'}>
+                                <Button
+                                    variant={caseItem.isAssigned ? 'outlined' : 'contained'}
+                                    color="primary"
+                                    size="small"
+                                    startIcon={<Send />}
+                                    onClick={() => handleOpenAssignDialog(caseItem)}
+                                    disabled={caseItem.isAssigned && !caseItem.status.includes('REJECTED')}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 80 }}
+                                >
+                                    {caseItem.isAssigned ? 'Reassign' : 'Assign'}
+                                </Button>
+                            </Tooltip>
+                        )}
+
+                        {canApprove && (
+                            <Tooltip title="Approve this report">
+                                <Button
+                                    variant="contained"
+                                    color="success"
+                                    size="small"
+                                    startIcon={officersLoading ? <CircularProgress size={14} color="inherit" /> : <Check />}
+                                    onClick={() => handleApprove(caseItem.reportId)}
+                                    disabled={officersLoading}
+                                    sx={{
+                                        borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 90,
+                                        background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)',
+                                        '&:hover': { background: 'linear-gradient(135deg, #15803d 0%, #16a34a 100%)' }
+                                    }}
+                                >
+                                    Approve
+                                </Button>
+                            </Tooltip>
+                        )}
+
+                        {canReject && (
+                            <Tooltip title="Reject this report">
+                                <Button
+                                    variant="contained"
+                                    color="error"
+                                    size="small"
+                                    startIcon={<Close />}
+                                    onClick={() => { setSelectedCase(caseItem); setRejectDialogOpen(true); }}
+                                    sx={{
+                                        borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 80,
+                                        background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                                        '&:hover': { background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)' }
+                                    }}
+                                >
+                                    Reject
+                                </Button>
+                            </Tooltip>
+                        )}
+                    </Box>
+                );
+            }
         }
     ];
 
@@ -1026,30 +1061,61 @@ const DirectorInvestigation = () => {
 
     return (
         <Box sx={{ width: '100%', p: 3, bgcolor: '#f8fafc', minHeight: '100vh' }}>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: '#1e293b' }}>
-                Director of Investigation - Case Management
-            </Typography>
 
-            {/* Tabs for filtering */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-                <Tabs value={activeTab} onChange={handleTabChange}>
-                    <Tab label="All Operations" />
-                    <Tab label="Pending Assignment" />
-                    <Tab label="Investigation Reports Review" />
-                    <Tab label="Strategic Plans Review" />
-                </Tabs>
+            {/* Header */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                    <Typography variant="h4" sx={{ fontWeight: 800, color: '#0f172a', mb: 0.5 }}>
+                        Director of Investigation
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Case management, officer assignments and report reviews
+                    </Typography>
+                </Box>
+                <Button
+                    variant="contained"
+                    startIcon={<Refresh />}
+                    onClick={fetchData}
+                    sx={{ borderRadius: 2, px: 3, fontWeight: 600, textTransform: 'none' }}
+                >
+                    Refresh
+                </Button>
             </Box>
 
-            {activeTab === 1 && (
-                <Chip
-                    label={`${totalCases} Pending Review`}
-                    color="warning"
-                    variant="outlined"
-                    sx={{ mb: 2 }}
-                />
-            )}
+            {/* Stats Row */}
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                {[
+                    { label: 'Total Cases', value: totalCases, color: '#3b82f6', bg: '#eff6ff' },
+                    { label: 'Pending Assignment', value: cases.filter(c => !c.isAssigned).length, color: '#f59e0b', bg: '#fffbeb' },
+                    { label: 'Investigation Reports', value: cases.filter(c => c.investigationReportStatus === 'submitted').length, color: '#8b5cf6', bg: '#f5f3ff' },
+                    { label: 'Case Plans', value: cases.filter(c => c.casePlanStatus === 'submitted').length, color: '#10b981', bg: '#ecfdf5' },
+                ].map((stat) => (
+                    <Grid item xs={6} sm={3} key={stat.label}>
+                        <Paper elevation={0} sx={{ p: 2, borderRadius: 3, bgcolor: stat.bg, border: `1px solid ${stat.color}22` }}>
+                            <Typography variant="h5" sx={{ fontWeight: 800, color: stat.color }}>{stat.value}</Typography>
+                            <Typography variant="caption" sx={{ color: stat.color, fontWeight: 600 }}>{stat.label}</Typography>
+                        </Paper>
+                    </Grid>
+                ))}
+            </Grid>
 
-            <AppTable
+            {/* Tabs */}
+            <Paper elevation={0} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0', mb: 0 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={handleTabChange}
+                    sx={{ px: 2, pt: 1, bgcolor: '#fff', borderBottom: '1px solid #e2e8f0' }}
+                    textColor="primary"
+                    indicatorColor="primary"
+                >
+                    <Tab icon={<Assignment fontSize="small" />} iconPosition="start" label="All Operations" sx={{ fontWeight: 700, textTransform: 'none', fontSize: 13 }} />
+                    <Tab icon={<Send fontSize="small" />} iconPosition="start" label="Pending Assignment" sx={{ fontWeight: 700, textTransform: 'none', fontSize: 13 }} />
+                    <Tab icon={<TaskAlt fontSize="small" />} iconPosition="start" label="Investigation Reports" sx={{ fontWeight: 700, textTransform: 'none', fontSize: 13 }} />
+                    <Tab icon={<Description fontSize="small" />} iconPosition="start" label="Strategic Plans" sx={{ fontWeight: 700, textTransform: 'none', fontSize: 13 }} />
+                </Tabs>
+
+                <Box sx={{ p: 2 }}>
+                    <AppTable
                 columns={columns}
                 rows={cases}
                 rowKey={(caseItem) => caseItem.reportId || caseItem.id}
@@ -1064,6 +1130,8 @@ const DirectorInvestigation = () => {
                 onPageChange={(event, nextPage) => setPage(nextPage)}
                 minWidth={1180}
             />
+                </Box>
+            </Paper>
 
             {/* Investigation Report Dialog */}
             <Dialog

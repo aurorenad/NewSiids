@@ -40,16 +40,12 @@ const downloadBlob = (response, fallbackFilename) => {
 
 caseApi.interceptors.request.use((config) => {
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
 
     // Removed employee_id header dependency
-    return config;
-
-    // console.log('Request headers:', config.headers);
     return config;
 }, (error) => Promise.reject(error));
 
@@ -161,32 +157,28 @@ export const ReportApi = {
         );
     },
     returnReportWithAttachment: async (reportId, returnToEmployeeId, returnReason, returnDocument, options = {}) => {
-        try {
-            const formData = new FormData();
+        const formData = new FormData();
 
-            // Add the file if provided
-            if (returnDocument) {
-                formData.append('returnDocument', returnDocument);
-            }
-
-            const response = await caseApi.post(
-                `/api/reports/${reportId}/return-with-document`,  // Make sure reportId is a number/string, not FormData
-                formData,
-                {
-                    params: {
-                        returnToEmployeeId,
-                        ...(returnReason ? { returnReason } : {})
-                    },
-                    headers: {
-                        'Content-Type': 'multipart/form-data'
-                    },
-                    ...options
-                }
-            );
-            return response.data;
-        } catch (error) {
-            throw error;
+        // Add the file if provided
+        if (returnDocument) {
+            formData.append('returnDocument', returnDocument);
         }
+
+        const response = await caseApi.post(
+            `/api/reports/${reportId}/return-with-document`,  // Make sure reportId is a number/string, not FormData
+            formData,
+            {
+                params: {
+                    returnToEmployeeId,
+                    ...(returnReason ? { returnReason } : {})
+                },
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                },
+                ...options
+            }
+        );
+        return response.data;
     },
     receiveCase: (reportId) => {
         return caseApi.post(`/api/reports/${reportId}/receive-case`, {});
@@ -230,7 +222,6 @@ export const ReportApi = {
     },
 
     getCasePlansForDirectorInvestigation: () => {
-        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
         return caseApi.get('/api/reports/director-investigation/case-plans');
     },
     getCasePlan: (reportId) => {
@@ -305,7 +296,7 @@ export const ReportApi = {
         }
     },
 
-    submitReport: async (formData, employeeId) => {
+    submitReport: async (formData) => {
         try {
             const response = await caseApi.post(
                 '/api/reports',
@@ -352,8 +343,19 @@ export const ReportApi = {
         return caseApi.get('/api/reports/assistant-commissioner/approved-reports', { params });
     },
 
+    getAllReportsForAssistantCommissioner: () => {
+        return caseApi.get('/api/reports/assistant-commissioner/all-reports');
+    },
+
     approveReport: (reportId) => {
         return caseApi.post(`/api/reports/${reportId}/approve`, {});
+    },
+
+    approveReportByAssistantCommissioner: (reportId, routeDepartment, signatureBase64) => {
+        return caseApi.post(`/api/reports/${reportId}/approve-assistant-commissioner`, {
+            routeDepartment,
+            signatureBase64
+        });
     },
 
     rejectReport: (reportId, rejectionReason) => {
@@ -458,7 +460,6 @@ export const ReportApi = {
         });
     },
     getReportsForLegalAdvisor: (params = {}) => {
-        const employeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
         return caseApi.get('/api/reports/legal-advisor/my-reports', { params });
     },
     getAllReportsWithLegalAdvisors: () => {

@@ -106,9 +106,6 @@ public class ReportService {
         if (request == null || request.getRole() == null || request.getRole().isBlank()) {
             throw new IllegalArgumentException("Signature role is required");
         }
-        if (request.getSignatureBase64() == null || request.getSignatureBase64().isBlank()) {
-            throw new IllegalArgumentException("Signature data is required");
-        }
 
         String signatureRole = request.getRole().trim().toUpperCase(Locale.ROOT);
         if (!"DIRECTOR_INTELLIGENCE".equals(signatureRole) && !"ASSISTANT_COMMISSIONER".equals(signatureRole)) {
@@ -132,6 +129,25 @@ public class ReportService {
         Employee signer = employeeRepo.findByEmployeeId(signerId)
                 .orElseThrow(() -> new RuntimeException("Signer employee not found with ID: " + signerId));
 
+        if ("ASSISTANT_COMMISSIONER".equals(signatureRole)) {
+            validateAssistantCommissionerCanHandle(report, signerId);
+        }
+
+        upsertSignature(report, signer, signatureRole, request.getSignatureBase64());
+
+        Report savedReport = reportRepo.save(report);
+        auditService.logAction(
+                savedReport.getRelatedCase() != null ? savedReport.getRelatedCase().getStatus() : WorkflowStatus.REPORT_SUBMITTED,
+                "Report " + savedReport.getId() + " signed as " + signatureRole + " by " + signerId,
+                signer);
+        return savedReport;
+    }
+
+    private void upsertSignature(Report report, Employee signer, String signatureRole, String signatureBase64) {
+        if (signatureBase64 == null || signatureBase64.isBlank()) {
+            throw new IllegalArgumentException("Signature data is required");
+        }
+
         ReportSignature signature = report.getSignatures().stream()
                 .filter(existing -> signatureRole.equals(existing.getSignatureRole()))
                 .findFirst()
@@ -144,16 +160,9 @@ public class ReportService {
 
         signature.setSignedBy(signer);
         signature.setSignatureRole(signatureRole);
-        signature.setSignaturePath(request.getSignatureBase64());
+        signature.setSignaturePath(signatureBase64.trim());
         signature.setSignedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
-
-        Report savedReport = reportRepo.save(report);
-        auditService.logAction(
-                savedReport.getRelatedCase() != null ? savedReport.getRelatedCase().getStatus() : WorkflowStatus.REPORT_SUBMITTED,
-                "Report " + savedReport.getId() + " signed as " + signatureRole + " by " + signerId,
-                signer);
-        return savedReport;
     }
 
     @Transactional
@@ -1041,20 +1050,134 @@ public class ReportService {
     }
 
     @Transactional
+    public Report approveCaseIntakeByAssistantCommissioner(
+            Integer reportId,
+            String approverId,
+            String routeDepartment,
+            String signatureBase64) {
+        validateAssistantCommissioner(approverId);
+
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+        validateAssistantCommissionerCanHandle(report, approverId);
+
+        Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE) {
+            throw new IllegalStateException("Cannot approve case intake in current status: "
+                    + (relatedCase != null ? relatedCase.getStatus() : "UNKNOWN"));
+        }
+
+        String normalizedRoute = normalizeAssistantCommissionerRoute(routeDepartment);
+        relatedCase.setReferringDepartment(normalizedRoute);
+
+        if ("Director of Investigation".equalsIgnoreCase(normalizedRoute)) {
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            if (directors.isEmpty()) {
+                throw new IllegalStateException("No Director of Investigation found to receive report.");
+            }
+            relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
+            report.setCurrentRecipient(directors.get(0));
+        } else if ("Legal Advisor".equalsIgnoreCase(normalizedRoute)) {
+            List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
+            if (legalAdvisors.isEmpty()) {
+                throw new IllegalStateException("No Legal Advisor found to receive report.");
+            }
+            Employee legalAdvisor = legalAdvisors.get(0);
+            relatedCase.setStatus(WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM);
+            report.setLegalAdvisor(legalAdvisor);
+            report.setCurrentRecipient(legalAdvisor);
+        } else {
+            relatedCase.setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
+            report.setCurrentRecipient(null);
+        }
+
+        report.setAssistantCommissioner(approver);
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
+        report.setUpdatedAt(LocalDateTime.now());
+        upsertSignature(report, approver, "ASSISTANT_COMMISSIONER", signatureBase64);
+
+        caseRepo.save(relatedCase);
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("Report #%d has been approved by Assistant Commissioner %s %s and routed to %s",
+                savedReport.getId(),
+                approver.getGivenName(),
+                approver.getFamilyName(),
+                normalizedRoute);
+        createNotification(savedReport, message);
+        auditService.logAction(
+                relatedCase.getStatus(),
+                "Report " + savedReport.getId() + " approved by Assistant Commissioner " + approverId
+                        + " and routed to " + normalizedRoute,
+                approver);
+
+        return savedReport;
+    }
+
+    private String normalizeAssistantCommissionerRoute(String routeDepartment) {
+        if (routeDepartment == null || routeDepartment.trim().isEmpty()) {
+            throw new IllegalArgumentException("Route department is required");
+        }
+
+        String route = routeDepartment.trim();
+        Set<String> fixedRoutes = Set.of(
+                "Director of Investigation",
+                "Legal Advisor",
+                "Prosecution",
+                "Enforcement",
+                "Collection",
+                "To be filled");
+
+        if (fixedRoutes.stream().anyMatch(allowed -> allowed.equalsIgnoreCase(route))) {
+            return fixedRoutes.stream()
+                    .filter(allowed -> allowed.equalsIgnoreCase(route))
+                    .findFirst()
+                    .orElse(route);
+        }
+
+        if (route.length() < 2 || route.length() > 120) {
+            throw new IllegalArgumentException("Custom department name must be between 2 and 120 characters");
+        }
+
+        return route;
+    }
+
+    @Transactional
     public Report rejectReport(Integer reportId, String rejectionReason, String rejectorId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
         Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
                 .orElseThrow(() -> new RuntimeException("Rejector not found"));
+        User rejectorUser = userRepo.findByUsername(rejectorId).orElse(null);
+        boolean rejectorIsAssistantCommissioner = rbacService.hasAnyRole(rejectorUser, "Admin", "AssistantCommissioner");
 
         WorkflowStatus newStatus;
         switch (report.getRelatedCase().getStatus()) {
             case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
             case REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE:
-            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
                 report.setDirectorIntelligence(rejector);
+                break;
+            case REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE:
+                if (rejectorIsAssistantCommissioner) {
+                    newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
+                    report.setAssistantCommissioner(rejector);
+                    if (report.getDirectorIntelligence() != null) {
+                        report.setCurrentRecipient(report.getDirectorIntelligence());
+                    } else {
+                        List<Employee> directors = reportRepo.DirectorsOfIntelligence();
+                        if (!directors.isEmpty()) {
+                            report.setCurrentRecipient(directors.get(0));
+                        }
+                    }
+                } else {
+                    newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
+                    report.setDirectorIntelligence(rejector);
+                }
                 break;
             case REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION:
                 newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION;
@@ -1201,6 +1324,23 @@ public class ReportService {
                 throw new RuntimeException("Access denied: User " + employeeId + " does not have the Assistant Commissioner role. (System found role: '" + userRole + "')");
             }
         }
+    }
+
+    private void validateAssistantCommissionerCanHandle(Report report, String employeeId) {
+        validateAssistantCommissioner(employeeId);
+
+        WorkflowStatus status = report.getRelatedCase() != null ? report.getRelatedCase().getStatus() : null;
+        boolean actionableStatus = status == WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE
+                || status == WorkflowStatus.CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER
+                || status == WorkflowStatus.INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION
+                || status == WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER;
+
+        if (!actionableStatus) {
+            throw new IllegalStateException("Assistant Commissioner cannot sign report in current status: " + status);
+        }
+
+        // Assistant Commissioners can act on AC-visible queue records, including
+        // records assigned to another AC user when the dashboard is used as a role queue.
     }
 
     public List<Report> getReportsApprovedByAssistantCommissionerForDirectorInvestigation(String directorId) {
@@ -2883,6 +3023,8 @@ public class ReportService {
         caseRepo.save(relatedCase);
 
         report.setAssistantCommissioner(approver);
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
         // Send back to investigation officer
@@ -2894,6 +3036,10 @@ public class ReportService {
 
         String message = "Your case plan # " + report.getId() + " has been approved by the Assistant Commissioner.";
         createNotification(savedReport, message);
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_APPROVED_BY_ASSISTANT_COMMISSIONER,
+                "Case plan approved for report #" + savedReport.getId() + " by Assistant Commissioner " + approverId,
+                approver);
 
         return savedReport;
     }
@@ -2916,7 +3062,12 @@ public class ReportService {
         caseRepo.save(relatedCase);
 
         report.setAssistantCommissioner(rejector);
+        report.setRejectedBy(rejector);
         report.setRejectionReason(reason);
+        report.setRejectedAt(LocalDateTime.now());
+        report.setReturnedBy(rejector);
+        report.setReturnReason(reason);
+        report.setReturnedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
 
         // Return to investigation officer
@@ -2928,6 +3079,11 @@ public class ReportService {
 
         String message = "Your case plan # " + report.getId() + " has been rejected by the Assistant Commissioner. Reason: " + reason;
         createNotification(savedReport, message);
+        auditService.logAction(
+                WorkflowStatus.CASE_PLAN_REJECTED_BY_ASSISTANT_COMMISSIONER,
+                "Case plan rejected for report #" + savedReport.getId() + " by Assistant Commissioner "
+                        + rejectorId + ". Reason: " + reason,
+                rejector);
 
         return savedReport;
     }

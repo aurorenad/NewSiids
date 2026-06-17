@@ -4,7 +4,7 @@ import {
     Box, Typography, Paper, Button, CircularProgress,
     Alert, Chip, Divider
 } from '@mui/material';
-import { ArrowBack, PictureAsPdf, Download, Visibility } from '@mui/icons-material';
+import { ArrowBack, PictureAsPdf, Download, Visibility, HourglassEmpty, CheckCircle } from '@mui/icons-material';
 import { ReportApi } from '../api/Axios/caseApi';
 import { displayNameFromStored } from '../utils/fileUtils';
 import html2canvas from 'html2canvas';
@@ -166,6 +166,14 @@ const ViewReportDetails = () => {
         return report?.relatedCase?.informerId?.informerName ||
             report?.relatedCase?.informerId?.informerPhoneNum ||
             report?.relatedCase?.informerId?.informerId;
+    };
+
+    const getAssistantCommissionerSignature = () => {
+        return report?.signatures?.find(signature => signature.role === 'ASSISTANT_COMMISSIONER');
+    };
+
+    const hasAssistantCommissionerSignature = () => {
+        return report?.acSigned || Boolean(getAssistantCommissionerSignature());
     };
 
     if (loading) {
@@ -371,6 +379,38 @@ const ViewReportDetails = () => {
                         ) : (
                             <Typography variant="body1">No attachments</Typography>
                         )}
+                    </Box>
+
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                        Signature Status
+                    </Typography>
+                    <Box sx={{ mb: 4 }}>
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 2,
+                                border: '2px solid',
+                                borderColor: hasAssistantCommissionerSignature() ? 'success.main' : 'warning.main',
+                                borderRadius: 2,
+                                maxWidth: 360
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+                                {hasAssistantCommissionerSignature() ? (
+                                    <CheckCircle color="success" fontSize="small" />
+                                ) : (
+                                    <HourglassEmpty color="warning" fontSize="small" />
+                                )}
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                                    Assistant Commissioner
+                                </Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ fontStyle: hasAssistantCommissionerSignature() ? 'normal' : 'italic' }}>
+                                {hasAssistantCommissionerSignature()
+                                    ? `Signed${getAssistantCommissionerSignature()?.signedAt ? ` on ${formatDate(getAssistantCommissionerSignature().signedAt)}` : ''}`
+                                    : 'Pending signature'}
+                            </Typography>
+                        </Paper>
                     </Box>
 
                     <Divider sx={{ my: 3 }} />

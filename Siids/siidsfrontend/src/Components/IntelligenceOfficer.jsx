@@ -820,82 +820,86 @@ const IntelligenceOfficer = () => {
         {
             key: 'actions',
             label: 'Actions',
+            headerStyle: { textAlign: 'center' },
+            cellStyle: { textAlign: 'center' },
             render: (caseItem) => {
                 const isReturned = isReturnedStatus(caseItem.status);
                 const hasReturnDoc = hasReturnDocument(caseItem);
 
-                return (
-                    <Box display="flex" flexDirection="column" gap={1}>
-                        {caseItem.reportId ? (
-                            <>
-                                <Box display="flex" gap={1} flexWrap="wrap">
-                                    {isReturned && (
-                                        <Button
-                                            variant="contained"
-                                            color="warning"
-                                            startIcon={<EditIcon />}
-                                            onClick={() => handleEditReturnedReport(caseItem)}
-                                            disabled={reportLoading}
-                                            size="small"
-                                        >
-                                            Edit Report
-                                        </Button>
-                                    )}
-
-                                    <Button
-                                        variant="outlined"
-                                        color="info"
-                                        startIcon={<VisibilityIcon />}
-                                        onClick={() => navigate(routeTo.reportDetails(caseItem.reportId))}
-                                        size="small"
-                                    >
-                                        View
-                                    </Button>
-                                </Box>
-
-                                <Box display="flex" gap={1} flexWrap="wrap">
-                                    {hasReturnDoc && (
-                                        <Button
-                                            variant="text"
-                                            size="small"
-                                            startIcon={
-                                                returnDocumentLoading.has(caseItem.reportId) ?
-                                                    <CircularProgress size={14} /> :
-                                                    <GetAppIcon />
-                                            }
-                                            onClick={() => handleDownloadReturnDocument(caseItem.reportId)}
-                                            disabled={returnDocumentLoading.has(caseItem.reportId)}
-                                        >
-                                            Return Doc
-                                        </Button>
-                                    )}
-
-                                    {caseItem.attachmentPaths && caseItem.attachmentPaths.length > 0 && (
-                                        <Button
-                                            variant="text"
-                                            size="small"
-                                            startIcon={<DownloadIcon />}
-                                            onClick={() => {
-                                                if (caseItem.attachmentPaths[0]) {
-                                                    handleDownloadAttachment(caseItem.reportId, caseItem.attachmentPaths[0]);
-                                                }
-                                            }}
-                                        >
-                                            Download PDF
-                                        </Button>
-                                    )}
-                                </Box>
-                            </>
-                        ) : (
+                if (!caseItem.reportId) {
+                    return (
+                        <Tooltip title="Create a new report for this case">
                             <Button
                                 variant="contained"
                                 color="primary"
+                                size="small"
                                 startIcon={<AddIcon />}
                                 onClick={() => navigate(routeTo.intelligenceOfficerClaimForm(caseItem.caseNum))}
-                                size="small"
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
                             >
                                 Create Report
                             </Button>
+                        </Tooltip>
+                    );
+                }
+
+                return (
+                    <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'center', alignItems: 'center', flexWrap: 'nowrap' }}>
+                        <Tooltip title="View report details">
+                            <Button
+                                variant="outlined"
+                                color="info"
+                                size="small"
+                                startIcon={<VisibilityIcon />}
+                                onClick={() => navigate(routeTo.reportDetails(caseItem.reportId))}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 75 }}
+                            >
+                                View
+                            </Button>
+                        </Tooltip>
+
+                        {isReturned && (
+                            <Tooltip title="Edit this returned report">
+                                <Button
+                                    variant="contained"
+                                    color="warning"
+                                    size="small"
+                                    startIcon={reportLoading ? <CircularProgress size={14} color="inherit" /> : <EditIcon />}
+                                    onClick={() => handleEditReturnedReport(caseItem)}
+                                    disabled={reportLoading}
+                                    sx={{
+                                        borderRadius: 2,
+                                        textTransform: 'none',
+                                        fontWeight: 600,
+                                        minWidth: 90,
+                                        background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                                        color: '#fff',
+                                        '&:hover': { background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)' }
+                                    }}
+                                >
+                                    Edit
+                                </Button>
+                            </Tooltip>
+                        )}
+
+                        {hasReturnDoc && (
+                            <Tooltip title="Download the return document from reviewer">
+                                <Button
+                                    variant="outlined"
+                                    color="secondary"
+                                    size="small"
+                                    startIcon={
+                                        returnDocumentLoading.has(caseItem.reportId)
+                                            ? <CircularProgress size={14} />
+                                            : <GetAppIcon />
+                                    }
+                                    onClick={() => handleDownloadReturnDocument(caseItem.reportId)}
+                                    disabled={returnDocumentLoading.has(caseItem.reportId)}
+                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, minWidth: 90 }}
+                                >
+                                    Return Doc
+                                </Button>
+                            </Tooltip>
                         )}
                     </Box>
                 );

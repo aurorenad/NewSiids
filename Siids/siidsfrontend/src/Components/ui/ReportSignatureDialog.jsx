@@ -16,20 +16,66 @@ import { ReportApi } from '../../api/Axios/caseApi.jsx';
 const stripPngDataPrefix = (signatureDataUrl) =>
     signatureDataUrl.replace(/^data:image\/png;base64,/, '');
 
+const readImageAsPngBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            const context = canvas.getContext('2d');
+            context.drawImage(image, 0, 0);
+            resolve(stripPngDataPrefix(canvas.toDataURL('image/png')));
+        };
+        image.onerror = () => reject(new Error('Failed to read signature image.'));
+        image.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error('Failed to read signature image.'));
+    reader.readAsDataURL(file);
+});
+
 const ReportSignatureDialog = ({ open, report, role, title, onClose, onSigned }) => {
     const signatureRef = useRef(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [uploadedSignatureBase64, setUploadedSignatureBase64] = useState('');
+    const [uploadedFileName, setUploadedFileName] = useState('');
 
     useEffect(() => {
         if (!open) return;
         setError('');
+        setUploadedSignatureBase64('');
+        setUploadedFileName('');
         window.setTimeout(() => signatureRef.current?.clear(), 0);
     }, [open, report?.id, role]);
 
     const handleClear = () => {
         signatureRef.current?.clear();
+        setUploadedSignatureBase64('');
+        setUploadedFileName('');
         setError('');
+    };
+
+    const handleSignatureUpload = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            setError('Please attach a signature image.');
+            return;
+        }
+
+        try {
+            const signatureBase64 = await readImageAsPngBase64(file);
+            setUploadedSignatureBase64(signatureBase64);
+            setUploadedFileName(file.name);
+            signatureRef.current?.clear();
+            setError('');
+        } catch (err) {
+            setError(err.message || 'Failed to attach signature image.');
+        }
     };
 
     const handleSign = async () => {
@@ -38,15 +84,15 @@ const ReportSignatureDialog = ({ open, report, role, title, onClose, onSigned })
             return;
         }
 
-        if (!signatureRef.current || signatureRef.current.isEmpty()) {
-            setError('Please draw your signature before submitting.');
+        if (!uploadedSignatureBase64 && (!signatureRef.current || signatureRef.current.isEmpty())) {
+            setError('Please draw or attach your signature before submitting.');
             return;
         }
 
         try {
             setSaving(true);
             setError('');
-            const signatureBase64 = stripPngDataPrefix(signatureRef.current.toDataURL('image/png'));
+            const signatureBase64 = uploadedSignatureBase64 || stripPngDataPrefix(signatureRef.current.toDataURL('image/png'));
             const response = await ReportApi.signReport(report.id, signatureBase64, role);
             onSigned?.(response.data);
             onClose?.();
@@ -96,8 +142,20 @@ const ReportSignatureDialog = ({ open, report, role, title, onClose, onSigned })
                 </Box>
 
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                    Draw your signature inside the box. This signature is attached to the generated investigation report PDF.
+                    Draw your signature inside the box or attach a signature image. This signature is attached to the generated investigation report PDF.
                 </Typography>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 2, flexWrap: 'wrap' }}>
+                    <Button component="label" variant="outlined" disabled={saving}>
+                        Attach Signature
+                        <input type="file" hidden accept="image/*" onChange={handleSignatureUpload} />
+                    </Button>
+                    {uploadedFileName && (
+                        <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>
+                            Attached: {uploadedFileName}
+                        </Typography>
+                    )}
+                </Box>
             </DialogContent>
             <DialogActions sx={{ px: 3, pb: 2, flexWrap: 'wrap', gap: 1 }}>
                 <Button onClick={handleClear} disabled={saving}>
