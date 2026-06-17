@@ -59,12 +59,14 @@ const AppShell = ({ children }) => (
 
 const ProtectedRoute = ({ children, permissions, requireAllPermissions = false }) => {
     const { authState, loading } = useContext(AuthContext);
+    const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const storedEmployeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
 
     if (loading) {
         return <div>Loading...</div>;
     }
 
-    if (!authState?.token || !authState?.employeeId) {
+    if (!authState?.token || !authState?.employeeId || !storedToken || !storedEmployeeId) {
         console.log("ProtectedRoute: Missing token or employeeId, redirecting to login");
         return <Navigate to={ROUTES.LOGIN} replace />;
     }
@@ -82,8 +84,28 @@ const ProtectedRoute = ({ children, permissions, requireAllPermissions = false }
     return <AppShell>{children}</AppShell>;
 };
 
+const PublicOnlyRoute = ({ children }) => {
+    const { authState, loading } = useContext(AuthContext);
+    const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const storedEmployeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+
+    if (loading) {
+        return <RouteLoadingScreen />;
+    }
+
+    if (authState?.token && authState?.employeeId && storedToken && storedEmployeeId) {
+        return <Navigate to={ROUTES.HOME} replace />;
+    }
+
+    return children;
+};
+
 const withProtected = (element, permissions, requireAllPermissions) => (
     <ProtectedRoute permissions={permissions} requireAllPermissions={requireAllPermissions}>{element}</ProtectedRoute>
+);
+
+const withPublicOnly = (element) => (
+    <PublicOnlyRoute>{element}</PublicOnlyRoute>
 );
 
 const publicRoutes = [
@@ -144,7 +166,7 @@ const AppRoutes = () => {
     return (
         <Routes>
             {publicRoutes.map((route) => (
-                <Route key={route.path} path={route.path} element={route.element} />
+                <Route key={route.path} path={route.path} element={withPublicOnly(route.element)} />
             ))}
             {protectedRoutes.map((route) => (
                 <Route

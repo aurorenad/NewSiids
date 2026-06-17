@@ -623,8 +623,6 @@ public class ReportController {
         }
     }
 
-    
-
     //
     @PostMapping("/{id}/generate-draft")
     @PreAuthorize("hasAuthority('REPORT_CREATE')")
