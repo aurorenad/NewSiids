@@ -2,15 +2,19 @@ import React, { useState, useEffect, useContext, useRef } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import {
     Button, Paper, TextField, Dialog, DialogActions, DialogContent, DialogTitle,
-    Box, Alert, Snackbar, Tooltip, Typography, Chip, Tabs, Tab
+    Box, Alert, Snackbar, Tooltip, Typography, Chip, Tabs, Tab,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    CircularProgress
 } from "@mui/material";
 import {
-    Search, Description, Check, Undo, Refresh, Assignment, Assessment, AccountBalance
+    Search, Description, Check, Undo, Refresh, Assignment, Assessment, AccountBalance,
+    DriveFileRenameOutline, Download
 } from "@mui/icons-material";
 
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
+import { routeTo } from '../constants/routes';
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
@@ -34,8 +38,12 @@ const AssistantCommissioner = () => {
     const [approvalTab, setApprovalTab] = useState(0);
     const [routingDialogOpen, setRoutingDialogOpen] = useState(false);
     const [routeDepartment, setRouteDepartment] = useState("Director of Investigation");
+    const [customDepartment, setCustomDepartment] = useState("");
+    const [routingNotes, setRoutingNotes] = useState("");
+    const [page, setPage] = useState(0);
 
     const navigate = useNavigate();
+    const canApproveAssistantCommissioner = authState?.permissions?.includes('REPORT_APPROVE_ASSISTANT_COMMISSIONER');
     const routeOptions = [
         { value: "Director of Investigation", label: "Director of Investigation", caption: "Investigation director review" },
         { value: "Legal Advisor", label: "Legal Advisor", caption: "Legal review and advice" },
@@ -244,13 +252,12 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const updateReportInState = (updatedReport) => {
-        setRows(prev => prev.map(report => report.id === updatedReport.id ? { ...report, ...updatedReport } : report));
-    };
-
     const handleOpenSignatureDialog = (report) => {
         setSelectedReport(report);
+        setReportToApprove(report);
+        setApprovalTab(activeTab);
         setSignatureDialogOpen(true);
+        window.setTimeout(() => sigCanvas.current?.clear?.(), 0);
     };
 
     const handleDownloadInvestigationReport = async (report) => {
@@ -281,6 +288,34 @@ const AssistantCommissioner = () => {
     const handleSearchChange = (value) => {
         setSearchQuery(value);
         setPage(0);
+    };
+
+    const getFilteredData = () => {
+        const source = activeTab === 1
+            ? casePlans
+            : reports.filter((report) => {
+                if (activeTab === 0) {
+                    return report.status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE';
+                }
+                return report.status === 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION' ||
+                    report.status === 'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER';
+            });
+
+        const normalizedSearch = searchQuery.trim().toLowerCase();
+        if (!normalizedSearch) return source;
+
+        return source.filter((item) => {
+            const searchable = [
+                item.id,
+                item.relatedCase?.caseNum,
+                item.createdBy,
+                item.description,
+                item.casePlanDescription,
+                item.status
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            return searchable.includes(normalizedSearch);
+        });
     };
 
     const columns = [
@@ -343,7 +378,7 @@ const AssistantCommissioner = () => {
                             color="success"
                             size="small"
                             startIcon={<Check />}
-                            onClick={() => handleApproveAction(r)}
+                            onClick={() => handleApproveClick(r)}
                             disabled={submitting}
                             sx={{ textTransform: 'none', fontWeight: 700 }}
                         >
@@ -416,7 +451,7 @@ const AssistantCommissioner = () => {
             </Box>
 
             <Paper sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} sx={{ px: 2, pt: 1, backgroundColor: '#fff' }}>
+                <Tabs value={activeTab} onChange={handleTabChange} sx={{ px: 2, pt: 1, backgroundColor: '#fff' }}>
                     <Tab icon={<Description />} label="Case Intake" iconPosition="start" sx={{ fontWeight: 700 }} />
                     <Tab icon={<Assignment />} label="Strategic Plans" iconPosition="start" sx={{ fontWeight: 700 }} />
                     <Tab icon={<Assessment />} label="Investigation Results" iconPosition="start" sx={{ fontWeight: 700 }} />
@@ -427,7 +462,7 @@ const AssistantCommissioner = () => {
                         size="small" 
                         placeholder="Search operational IDs..." 
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => handleSearchChange(e.target.value)}
                         InputProps={{ startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} /> }}
                         sx={{ width: 400 }}
                     />
