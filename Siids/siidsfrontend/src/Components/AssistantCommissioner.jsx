@@ -8,6 +8,7 @@ import {
 } from "@mui/material";
 import {
     Search, Description, Check, Undo, Refresh, Assignment, Assessment, AccountBalance,
+    KeyboardReturn,
 } from "@mui/icons-material";
 
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ const AssistantCommissioner = () => {
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
     const [closeReason, setCloseReason] = useState("");
     const [selectedReport, setSelectedReport] = useState(null);
+    const [closeActionType, setCloseActionType] = useState("reject");
 
     // Signature States
     const sigCanvas = useRef({});
@@ -207,6 +209,24 @@ const AssistantCommissioner = () => {
         sigCanvas.current?.clear?.();
     };
 
+    const handleCriticalActionClick = (report, actionType) => {
+        setSelectedReport(report);
+        setCloseReason("");
+        setCloseActionType(actionType);
+        setCloseDialogOpen(true);
+    };
+
+    const getCriticalActionCopy = () => {
+        const isReturn = closeActionType === "return";
+        return {
+            title: isReturn ? "Return Operational Dossier" : "Rejection of Operational Dossier",
+            label: isReturn ? "Reason for Return" : "Reason for Rejection",
+            button: isReturn ? "Confirm Return" : "Confirm Rejection",
+            emptyWarning: isReturn ? "Return reason is required" : "Rejection reason is required",
+            color: isReturn ? "warning" : "error"
+        };
+    };
+
     const handleRejectFinal = async () => {
         if (!selectedReport) {
             showSnackbar("No report selected", "error");
@@ -214,35 +234,44 @@ const AssistantCommissioner = () => {
         }
 
         if (!closeReason.trim()) {
-            showSnackbar("Rejection reason is required", "warning");
+            showSnackbar(getCriticalActionCopy().emptyWarning, "warning");
             return;
         }
 
         try {
             setSubmitting(true);
-            if (activeTab === 1) {
+            if (closeActionType === "return") {
+                if (activeTab === 1) {
+                    await ReportApi.rejectCasePlanByAssistantCommissioner(selectedReport.id, closeReason);
+                    showSnackbar("Case plan returned to Investigation Officer");
+                } else if (activeTab === 2) {
+                    if (selectedReport.directorInvestigationId) {
+                        await ReportApi.returnReport(selectedReport.id, selectedReport.directorInvestigationId, closeReason);
+                        showSnackbar("Investigation report returned to Director of Investigation");
+                    } else {
+                        await ReportApi.rejectReport(selectedReport.id, closeReason);
+                        showSnackbar("Investigation report returned using fallback handling");
+                    }
+                } else {
+                    if (selectedReport.directorIntelligenceId) {
+                        await ReportApi.returnReport(selectedReport.id, selectedReport.directorIntelligenceId, closeReason);
+                        showSnackbar("Case intake returned to Director Intelligence");
+                    } else {
+                        await ReportApi.rejectReport(selectedReport.id, closeReason);
+                        showSnackbar("Case intake returned using fallback handling");
+                    }
+                }
+            } else if (activeTab === 1) {
                 await ReportApi.rejectCasePlanByAssistantCommissioner(selectedReport.id, closeReason);
                 showSnackbar("Case plan rejected and returned to Investigation Officer");
-            } else if (activeTab === 2) {
-                if (selectedReport.directorInvestigationId) {
-                    await ReportApi.returnReport(selectedReport.id, selectedReport.directorInvestigationId, closeReason);
-                    showSnackbar("Investigation report returned to Director of Investigation");
-                } else {
-                    await ReportApi.rejectReport(selectedReport.id, closeReason);
-                    showSnackbar("Investigation report rejected using fallback handling");
-                }
             } else {
-                if (selectedReport.directorIntelligenceId) {
-                    await ReportApi.returnReport(selectedReport.id, selectedReport.directorIntelligenceId, closeReason);
-                    showSnackbar("Case intake returned to Director Intelligence");
-                } else {
-                    await ReportApi.rejectReport(selectedReport.id, closeReason);
-                    showSnackbar("Case intake rejected using fallback handling");
-                }
+                await ReportApi.rejectReport(selectedReport.id, closeReason);
+                showSnackbar(activeTab === 2 ? "Investigation report rejected" : "Case intake rejected");
             }
             setCloseDialogOpen(false);
             setSelectedReport(null);
             setCloseReason("");
+            setCloseActionType("reject");
             await fetchAllData();
         } catch (err) { 
             showSnackbar(getErrorMessage(err), "error");
@@ -345,7 +374,7 @@ const AssistantCommissioner = () => {
                                         <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>{r.description || r.casePlanDescription || 'N/A'}</Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                                             <Button
                                                 variant="outlined"
                                                 color="primary"
@@ -374,15 +403,23 @@ const AssistantCommissioner = () => {
                                                 color="error"
                                                 size="small"
                                                 startIcon={<Undo />}
-                                                onClick={() => {
-                                                    setSelectedReport(r);
-                                                    setCloseReason("");
-                                                    setCloseDialogOpen(true);
-                                                }}
+                                                onClick={() => handleCriticalActionClick(r, "reject")}
                                                 disabled={submitting || !isPending(r.status)}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Reject
+                                            </Button>
+
+                                            <Button
+                                                variant="contained"
+                                                color="warning"
+                                                size="small"
+                                                startIcon={<KeyboardReturn />}
+                                                onClick={() => handleCriticalActionClick(r, "return")}
+                                                disabled={submitting || !isPending(r.status)}
+                                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Return
                                             </Button>
                                         </Box>
                                     </TableCell>
@@ -395,13 +432,17 @@ const AssistantCommissioner = () => {
 
             {/* Rejection Portal */}
             <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} fullWidth>
-                <DialogTitle sx={{ bgcolor: '#ef4444', color: '#fff' }}>Rejection of Operational Dossier</DialogTitle>
+                <DialogTitle sx={{ bgcolor: closeActionType === "return" ? '#f59e0b' : '#ef4444', color: '#fff' }}>
+                    {getCriticalActionCopy().title}
+                </DialogTitle>
                 <DialogContent sx={{ mt: 2 }}>
-                    <TextField fullWidth multiline rows={4} label="Reason for Rejection" value={closeReason} onChange={(e) => setCloseReason(e.target.value)} />
+                    <TextField fullWidth multiline rows={4} label={getCriticalActionCopy().label} value={closeReason} onChange={(e) => setCloseReason(e.target.value)} />
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCloseDialogOpen(false)} disabled={submitting}>Abort</Button>
-                    <Button onClick={handleRejectFinal} variant="contained" color="error" disabled={submitting || !closeReason.trim()}>Confirm Rejection</Button>
+                    <Button onClick={handleRejectFinal} variant="contained" color={getCriticalActionCopy().color} disabled={submitting || !closeReason.trim()}>
+                        {getCriticalActionCopy().button}
+                    </Button>
                 </DialogActions>
             </Dialog>
 

@@ -15,9 +15,46 @@ import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
 import { hasPermission } from '../utils/authorization';
 import { PERMISSIONS } from '../constants/permissions';
+import { routeTo } from '../constants/routes';
 import AppTable from './ui/AppTable.jsx';
 
 const ROWS_PER_PAGE = 10;
+const legalAdvisorRequestCache = {
+    key: '',
+    promise: null,
+    data: null,
+    timestamp: 0
+};
+
+const getLegalAdvisorReportsOnce = async (params) => {
+    const key = JSON.stringify(params);
+    const now = Date.now();
+
+    if (legalAdvisorRequestCache.key === key && legalAdvisorRequestCache.promise) {
+        return legalAdvisorRequestCache.promise;
+    }
+
+    if (
+        legalAdvisorRequestCache.key === key &&
+        legalAdvisorRequestCache.data &&
+        now - legalAdvisorRequestCache.timestamp < 1000
+    ) {
+        return legalAdvisorRequestCache.data;
+    }
+
+    legalAdvisorRequestCache.key = key;
+    legalAdvisorRequestCache.promise = ReportApi.getReportsForLegalAdvisor(params)
+        .then((response) => {
+            legalAdvisorRequestCache.data = response;
+            legalAdvisorRequestCache.timestamp = Date.now();
+            return response;
+        })
+        .finally(() => {
+            legalAdvisorRequestCache.promise = null;
+        });
+
+    return legalAdvisorRequestCache.promise;
+};
 
 const LegalAdvisorDashboard = () => {
     const { authState } = useContext(AuthContext);
@@ -50,7 +87,7 @@ const LegalAdvisorDashboard = () => {
 
             console.log('Fetching legal advisor reports...');
 
-            const response = await ReportApi.getReportsForLegalAdvisor({
+            const response = await getLegalAdvisorReportsOnce({
                 page,
                 size: ROWS_PER_PAGE,
                 search: searchTerm,
