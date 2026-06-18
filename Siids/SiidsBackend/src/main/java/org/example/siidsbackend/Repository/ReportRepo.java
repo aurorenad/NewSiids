@@ -61,7 +61,11 @@ public interface ReportRepo extends JpaRepository<Report, Integer> {
 
     List<Report> findByRelatedCaseStatus(WorkflowStatus workflowStatus);
 
-    @Query(value = "SELECT * FROM employees WHERE employee_id IN ('04037', '03544')", nativeQuery = true)
+    @Query("SELECT e FROM Employee e WHERE e.employeeId IN " +
+            "(SELECT u.username FROM User u " +
+            "WHERE LOWER(REPLACE(REPLACE(REPLACE(u.role, 'ROLE_', ''), ' ', ''), '_', '')) = 'investigationofficer' " +
+            "AND (u.active = true OR u.active IS NULL)) " +
+            "ORDER BY e.givenName, e.familyName")
     List<Employee> findAvailableT3Officers();
 
     @Query("SELECT COUNT(r) FROM Report r JOIN r.relatedCase c " +

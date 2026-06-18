@@ -5,6 +5,42 @@ import { toast } from 'sonner';
 
 export const NotificationContext = createContext();
 
+const notificationRequestCache = {
+    employeeId: '',
+    promise: null,
+    data: null,
+    timestamp: 0
+};
+
+const fetchNotificationsOnce = async (employeeId) => {
+    const now = Date.now();
+
+    if (notificationRequestCache.employeeId === employeeId && notificationRequestCache.promise) {
+        return notificationRequestCache.promise;
+    }
+
+    if (
+        notificationRequestCache.employeeId === employeeId &&
+        notificationRequestCache.data &&
+        now - notificationRequestCache.timestamp < 1000
+    ) {
+        return notificationRequestCache.data;
+    }
+
+    notificationRequestCache.employeeId = employeeId;
+    notificationRequestCache.promise = caseApi.get(`/api/notifications/employee/${employeeId}`)
+        .then((response) => {
+            notificationRequestCache.data = response.data || [];
+            notificationRequestCache.timestamp = Date.now();
+            return notificationRequestCache.data;
+        })
+        .finally(() => {
+            notificationRequestCache.promise = null;
+        });
+
+    return notificationRequestCache.promise;
+};
+
 export const NotificationProvider = ({ children, employeeId }) => {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -15,8 +51,7 @@ export const NotificationProvider = ({ children, employeeId }) => {
         const fetchNotifications = async () => {
             if (!employeeId) return;
             try {
-                const response = await caseApi.get(`/api/notifications/employee/${employeeId}`);
-                const data = response.data;
+                const data = await fetchNotificationsOnce(employeeId);
                 seenNotificationIds.current = new Set(data.map(item => item.id).filter(Boolean));
                 setNotifications(data);
                 setUnreadCount(data.filter(n => !n.read).length);

@@ -8,13 +8,12 @@ import {
 } from "@mui/material";
 import {
     Search, Description, Check, Undo, Refresh, Assignment, Assessment, AccountBalance,
-    DriveFileRenameOutline, Download
+    KeyboardReturn,
 } from "@mui/icons-material";
 
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
-import { routeTo } from '../constants/routes';
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
@@ -30,6 +29,7 @@ const AssistantCommissioner = () => {
     const [closeDialogOpen, setCloseDialogOpen] = useState(false);
     const [closeReason, setCloseReason] = useState("");
     const [selectedReport, setSelectedReport] = useState(null);
+    const [closeActionType, setCloseActionType] = useState("reject");
 
     // Signature States
     const sigCanvas = useRef({});
@@ -40,10 +40,8 @@ const AssistantCommissioner = () => {
     const [routeDepartment, setRouteDepartment] = useState("Director of Investigation");
     const [customDepartment, setCustomDepartment] = useState("");
     const [routingNotes, setRoutingNotes] = useState("");
-    const [page, setPage] = useState(0);
 
     const navigate = useNavigate();
-    const canApproveAssistantCommissioner = authState?.permissions?.includes('REPORT_APPROVE_ASSISTANT_COMMISSIONER');
     const routeOptions = [
         { value: "Director of Investigation", label: "Director of Investigation", caption: "Investigation director review" },
         { value: "Legal Advisor", label: "Legal Advisor", caption: "Legal review and advice" },
@@ -91,9 +89,12 @@ const AssistantCommissioner = () => {
     };
 
     const getErrorMessage = (err, fallback = "Action failed") => {
+        if (typeof err === 'string') return err;
         const data = err.response?.data;
         if (typeof data === 'string') return data;
         if (data?.message) return data.message;
+        if (err.response?.statusText) return err.response.statusText;
+        if (err.message) return err.message;
         return fallback;
     };
 
@@ -114,6 +115,7 @@ const AssistantCommissioner = () => {
 
     const isPending = (status) => {
         return status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' ||
+               status === 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER' ||
                status === 'CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER' ||
                status === 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION';
     };
@@ -153,7 +155,7 @@ const AssistantCommissioner = () => {
         try {
             setSubmitting(true);
             const signatureBase64 = sigCanvas.current
-                .getTrimmedCanvas()
+                .getCanvas()
                 .toDataURL('image/png')
                 .replace(/^data:image\/png;base64,/, '');
 
@@ -167,8 +169,7 @@ const AssistantCommissioner = () => {
                 const selectedDepartment = routeDepartment === "Other Departments"
                     ? customDepartment.trim()
                     : routeDepartment;
-                await ReportApi.signReport(report.id, signatureBase64, 'ASSISTANT_COMMISSIONER');
-                await ReportApi.approveAndRouteByAssistantCommissioner(report.id, selectedDepartment, routingNotes);
+                await ReportApi.approveAndRouteByAssistantCommissioner(report.id, selectedDepartment, signatureBase64, routingNotes);
             }
 
             approvalSucceeded = true;
@@ -208,6 +209,24 @@ const AssistantCommissioner = () => {
         sigCanvas.current?.clear?.();
     };
 
+    const handleCriticalActionClick = (report, actionType) => {
+        setSelectedReport(report);
+        setCloseReason("");
+        setCloseActionType(actionType);
+        setCloseDialogOpen(true);
+    };
+
+    const getCriticalActionCopy = () => {
+        const isReturn = closeActionType === "return";
+        return {
+            title: isReturn ? "Return Operational Dossier" : "Rejection of Operational Dossier",
+            label: isReturn ? "Reason for Return" : "Reason for Rejection",
+            button: isReturn ? "Confirm Return" : "Confirm Rejection",
+            emptyWarning: isReturn ? "Return reason is required" : "Rejection reason is required",
+            color: isReturn ? "warning" : "error"
+        };
+    };
+
     const handleRejectFinal = async () => {
         if (!selectedReport) {
             showSnackbar("No report selected", "error");
@@ -215,35 +234,44 @@ const AssistantCommissioner = () => {
         }
 
         if (!closeReason.trim()) {
-            showSnackbar("Rejection reason is required", "warning");
+            showSnackbar(getCriticalActionCopy().emptyWarning, "warning");
             return;
         }
 
         try {
             setSubmitting(true);
-            if (activeTab === 1) {
+            if (closeActionType === "return") {
+                if (activeTab === 1) {
+                    await ReportApi.rejectCasePlanByAssistantCommissioner(selectedReport.id, closeReason);
+                    showSnackbar("Case plan returned to Investigation Officer");
+                } else if (activeTab === 2) {
+                    if (selectedReport.directorInvestigationId) {
+                        await ReportApi.returnReport(selectedReport.id, selectedReport.directorInvestigationId, closeReason);
+                        showSnackbar("Investigation report returned to Director of Investigation");
+                    } else {
+                        await ReportApi.rejectReport(selectedReport.id, closeReason);
+                        showSnackbar("Investigation report returned using fallback handling");
+                    }
+                } else {
+                    if (selectedReport.directorIntelligenceId) {
+                        await ReportApi.returnReport(selectedReport.id, selectedReport.directorIntelligenceId, closeReason);
+                        showSnackbar("Case intake returned to Director Intelligence");
+                    } else {
+                        await ReportApi.rejectReport(selectedReport.id, closeReason);
+                        showSnackbar("Case intake returned using fallback handling");
+                    }
+                }
+            } else if (activeTab === 1) {
                 await ReportApi.rejectCasePlanByAssistantCommissioner(selectedReport.id, closeReason);
                 showSnackbar("Case plan rejected and returned to Investigation Officer");
-            } else if (activeTab === 2) {
-                if (selectedReport.directorInvestigationId) {
-                    await ReportApi.returnReport(selectedReport.id, selectedReport.directorInvestigationId, closeReason);
-                    showSnackbar("Investigation report returned to Director of Investigation");
-                } else {
-                    await ReportApi.rejectReport(selectedReport.id, closeReason);
-                    showSnackbar("Investigation report rejected using fallback handling");
-                }
             } else {
-                if (selectedReport.directorIntelligenceId) {
-                    await ReportApi.returnReport(selectedReport.id, selectedReport.directorIntelligenceId, closeReason);
-                    showSnackbar("Case intake returned to Director Intelligence");
-                } else {
-                    await ReportApi.rejectReport(selectedReport.id, closeReason);
-                    showSnackbar("Case intake rejected using fallback handling");
-                }
+                await ReportApi.rejectReport(selectedReport.id, closeReason);
+                showSnackbar(activeTab === 2 ? "Investigation report rejected" : "Case intake rejected");
             }
             setCloseDialogOpen(false);
             setSelectedReport(null);
             setCloseReason("");
+            setCloseActionType("reject");
             await fetchAllData();
         } catch (err) { 
             showSnackbar(getErrorMessage(err), "error");
@@ -252,53 +280,23 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const handleOpenSignatureDialog = (report) => {
-        setSelectedReport(report);
-        setReportToApprove(report);
-        setApprovalTab(activeTab);
-        setSignatureDialogOpen(true);
-        window.setTimeout(() => sigCanvas.current?.clear?.(), 0);
-    };
-
-    const handleDownloadInvestigationReport = async (report) => {
-        try {
-            setSubmitting(true);
-            const response = await ReportApi.downloadInvestigationReportPdf(report.id);
-            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `investigation-report-${report.id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            const errorMsg = err.response?.data?.message || "Failed to download investigation report";
-            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Failed to download investigation report", "error");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
     const handleTabChange = (event, nextTab) => {
         setActiveTab(nextTab);
-        setPage(0);
     };
 
     const handleSearchChange = (value) => {
         setSearchQuery(value);
-        setPage(0);
     };
 
     const getFilteredData = () => {
         const source = activeTab === 1
             ? casePlans
             : reports.filter((report) => {
+                const status = report.status || '';
                 if (activeTab === 0) {
-                    return report.status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE';
+                    return !status.includes('CASE_PLAN') && !status.includes('INVESTIGATION');
                 }
-                return report.status === 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION' ||
-                    report.status === 'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER';
+                return status.includes('INVESTIGATION_REPORT');
             });
 
         const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -317,128 +315,6 @@ const AssistantCommissioner = () => {
             return searchable.includes(normalizedSearch);
         });
     };
-
-    const columns = [
-        {
-            key: 'operationalId',
-            label: 'Operational ID',
-            render: (r) => (
-                <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{r.relatedCase?.caseNum || r.id}</Typography>
-                    <Typography variant="caption" color="text.secondary">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</Typography>
-                </Box>
-            )
-        },
-        {
-            key: 'leadPersonnel',
-            label: 'Lead Personnel',
-            render: (r) => r.investigationOfficer?.givenName || r.createdBy || 'N/A'
-        },
-        {
-            key: 'workflowState',
-            label: 'Workflow State',
-            render: (r) => (
-                <Chip
-                    label={formatStatus(r.status)}
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                    color={r.status?.includes('APPROVED') ? 'success' : 'primary'}
-                />
-            )
-        },
-        {
-            key: 'summary',
-            label: 'Intelligence Summary',
-            render: (r) => (
-                <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>
-                    {r.description || r.casePlanDescription || 'N/A'}
-                </Typography>
-            )
-        },
-        {
-            key: 'actions',
-            label: 'Critical Actions',
-            cellStyle: { textAlign: 'center' },
-            render: (r) => (
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Button
-                        variant="outlined"
-                        color="primary"
-                        size="small"
-                        startIcon={<Description />}
-                        onClick={() => navigate(routeTo.reportDetails(r.id))}
-                        sx={{ textTransform: 'none', fontWeight: 700 }}
-                    >
-                        View
-                    </Button>
-
-                    {canApproveAssistantCommissioner && (
-                        <Button
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            startIcon={<Check />}
-                            onClick={() => handleApproveClick(r)}
-                            disabled={submitting}
-                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Approve
-                        </Button>
-                    )}
-
-                    {canApproveAssistantCommissioner && activeTab === 2 && (
-                        <Button
-                            variant={r.acSigned ? "outlined" : "contained"}
-                            color="primary"
-                            size="small"
-                            startIcon={<DriveFileRenameOutline />}
-                            onClick={() => handleOpenSignatureDialog(r)}
-                            disabled={submitting}
-                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                        >
-                            {r.acSigned ? 'Re-sign' : 'Sign'}
-                        </Button>
-                    )}
-
-                    {activeTab === 2 && (
-                        <Tooltip title={r.finalised ? 'Download final investigation report' : 'Both signatures are required before final PDF download'}>
-                            <span>
-                                <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    size="small"
-                                    startIcon={<Download />}
-                                    onClick={() => handleDownloadInvestigationReport(r)}
-                                    disabled={submitting || !r.finalised}
-                                    sx={{ textTransform: 'none', fontWeight: 700 }}
-                                >
-                                    PDF
-                                </Button>
-                            </span>
-                        </Tooltip>
-                    )}
-
-                    {canApproveAssistantCommissioner && (
-                        <Button
-                            variant="contained"
-                            color="error"
-                            size="small"
-                            startIcon={<Undo />}
-                            onClick={() => {
-                                setSelectedReport(r);
-                                setCloseReason("");
-                                setCloseDialogOpen(true);
-                            }}
-                            disabled={submitting}
-                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Reject
-                        </Button>
-                    )}
-                </Box>
-            )
-        }
-    ];
 
     return (
         <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>
@@ -498,7 +374,7 @@ const AssistantCommissioner = () => {
                                         <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>{r.description || r.casePlanDescription || 'N/A'}</Typography>
                                     </TableCell>
                                     <TableCell align="center">
-                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                                             <Button
                                                 variant="outlined"
                                                 color="primary"
@@ -527,15 +403,23 @@ const AssistantCommissioner = () => {
                                                 color="error"
                                                 size="small"
                                                 startIcon={<Undo />}
-                                                onClick={() => {
-                                                    setSelectedReport(r);
-                                                    setCloseReason("");
-                                                    setCloseDialogOpen(true);
-                                                }}
+                                                onClick={() => handleCriticalActionClick(r, "reject")}
                                                 disabled={submitting || !isPending(r.status)}
                                                 sx={{ textTransform: 'none', fontWeight: 700 }}
                                             >
                                                 Reject
+                                            </Button>
+
+                                            <Button
+                                                variant="contained"
+                                                color="warning"
+                                                size="small"
+                                                startIcon={<KeyboardReturn />}
+                                                onClick={() => handleCriticalActionClick(r, "return")}
+                                                disabled={submitting || !isPending(r.status)}
+                                                sx={{ textTransform: 'none', fontWeight: 700 }}
+                                            >
+                                                Return
                                             </Button>
                                         </Box>
                                     </TableCell>
@@ -548,13 +432,17 @@ const AssistantCommissioner = () => {
 
             {/* Rejection Portal */}
             <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} fullWidth>
-                <DialogTitle sx={{ bgcolor: '#ef4444', color: '#fff' }}>Rejection of Operational Dossier</DialogTitle>
+                <DialogTitle sx={{ bgcolor: closeActionType === "return" ? '#f59e0b' : '#ef4444', color: '#fff' }}>
+                    {getCriticalActionCopy().title}
+                </DialogTitle>
                 <DialogContent sx={{ mt: 2 }}>
-                    <TextField fullWidth multiline rows={4} label="Reason for Rejection" value={closeReason} onChange={(e) => setCloseReason(e.target.value)} />
+                    <TextField fullWidth multiline rows={4} label={getCriticalActionCopy().label} value={closeReason} onChange={(e) => setCloseReason(e.target.value)} />
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCloseDialogOpen(false)} disabled={submitting}>Abort</Button>
-                    <Button onClick={handleRejectFinal} variant="contained" color="error" disabled={submitting || !closeReason.trim()}>Confirm Rejection</Button>
+                    <Button onClick={handleRejectFinal} variant="contained" color={getCriticalActionCopy().color} disabled={submitting || !closeReason.trim()}>
+                        {getCriticalActionCopy().button}
+                    </Button>
                 </DialogActions>
             </Dialog>
 

@@ -1,0 +1,180 @@
+* [33mdb29935[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32madmin[m[33m, [m[1;31morigin/admin[m[33m)[m fix
+*   [33mcc4c14c[m solving conlfict
+[32m|[m[33m\[m  
+[32m|[m *   [33m0976835[m[33m ([m[1;31morigin/ft-review-dev-integ[m[33m)[m Merge pull request #19 from aurorenad/ft-review-dev-integ
+[32m|[m [34m|[m[35m\[m  
+[32m|[m [34m|[m *   [33mb69734e[m Merge branch 'ft-review-dev-integ' of https://github.com/aurorenad/NewSiids into ft-review-dev-integ
+[32m|[m [34m|[m [36m|[m[1;31m\[m  
+[32m|[m [34m|[m [36m|[m *   [33m920dddc[m Merge pull request #18 from aurorenad/admin
+[32m|[m [34m|[m [36m|[m [1;32m|[m[1;33m\[m  
+[32m|[m [34m|[m * [1;32m|[m [1;33m|[m [33mca5f83c[m Add SMTP timeout configuration
+[32m|[m [34m|[m * [1;32m|[m [1;33m|[m [33mf42d76e[m Integrate dev draft generation and AC routing workflow
+[32m|[m [34m|[m[34m/[m [1;32m/[m [1;33m/[m  
+* [34m|[m [1;32m|[m [1;33m|[m [33m8a2637a[m updated the Director of Investigation
+* [34m|[m [1;32m|[m [1;33m|[m [33maeeee3e[m updated the Director of Investigation
+[34m|[m[34m/[m [1;32m/[m [1;33m/[m  
+* [1;32m|[m [1;33m|[m [33m2f4adef[m Report returned successfully
+* [1;32m|[m [1;33m|[m [33m9450e0a[m notifaications now working
+[1;33m|[m [1;32m|[m [1;33m|[m * [33m4a91ffb[m[33m ([m[1;32mblessing-backup[m[33m)[m Backup current work
+[1;33m|[m [1;32m|[m[1;33m_[m[1;33m|[m[1;33m/[m  
+[1;33m|[m[1;33m/[m[1;32m|[m [1;33m|[m   
+* [1;32m|[m [1;33m|[m [33m61dd98a[m now download and view attachement is working
+* [1;32m|[m [1;33m|[m [33m0912ef2[m updated the save and resubmitted
+* [1;32m|[m [1;33m|[m [33maee4d6d[m Updated the return report form
+* [1;32m|[m [1;33m|[m [33m7c3adec[m[33m ([m[1;32mdev[m[33m)[m Updated the login interface
+[1;33m|[m [1;32m|[m[1;33m/[m  
+[1;33m|[m[1;33m/[m[1;32m|[m   
+* [1;32m|[m [33m5cbe7d9[m[33m ([m[1;32mfeature[m[33m)[m New updates
+[1;32m|[m[1;32m/[m  
+* [33m9c968a2[m[33m ([m[1;32mmain[m[33m)[m Complete shared AppTable migration
+* [33m28ea50f[m Add war file in pom.xml and add report service to application class
+* [33m3ccfd05[m Complete shared AppTable migration
+* [33m07bb5a3[m Fix director intelligence access and report DTO lazy loading
+* [33m3c3d22c[m Add report signature UI and final PDF download controls
+* [33me4c8c12[m feat: integrate report case stock metadata
+* [33md4da292[m[33m ([m[1;31morigin/ft-review[m[33m)[m refactor: move legacy frontend calls to shared API clients
+* [33mbc0a4d6[m chore: harden storage authorization and workflow permissions
+* [33m91f6416[m refactor: centralize report and stock file storage
+* [33m03e5710[m fix: restrict stock document downloads
+* [33mcbe353c[m fix: derive report attachment requester from authentication
+* [33ma4b08d0[m http://localhost:5173/investigation-officer
+* [33m48c812f[m test: quiet websocket logs in backend tests
+* [33mfa462a5[m test: configure mockito java agent
+* [33m287c5e9[m chore: clean backend config and controller injection
+* [33m66d6a3e[m feat: expose user role and account history
+* [33md525665[m refactor: centralize frontend routes and permissions
+* [33m318eaf7[m refactor: reuse permission constants in frontend
+* [33mfaba370[m fix: normalize legal advisor role checks
+* [33m265de3f[m refactor: centralize RBAC seed constants
+* [33m6b48673[m fix: align case and surveillance UI with RBAC permissions
+* [33m4f0270c[m feat: expand RBAC guards across backend workflows
+* [33m7a23e8e[m fix: hide password setup token from onboarding UI
+* [33m78b8e0f[m feat: secure report workflow endpoints with RBAC permissions
+* [33m0bb4456[m feat: split temporary stock management permission
+* [33m0f87073[m feat: gate admin and stock actions by RBAC permissions
+* [33m1ea5947[m replace sidebar accordions with permission-based groups
+* [33m4d9ebd1[m add RBAC permissions and secure admin stock endpoints
+* [33md9ea055[m share admin onboarding fields and clean employee import refs
+* [33m5a1a69a[m feat: add admin onboarding with password setup flow
+* [33ma43481a[m clean repository ignores and move docs
+[1;34m|[m *   [33mfd42bb2[m[33m ([m[1;31morigin/dev[m[33m)[m Merge pull request #17 from aurorenad/racia
+[1;34m|[m [1;35m|[m[1;36m\[m  
+[1;34m|[m [1;35m|[m * [33m24aa869[m[33m ([m[1;31morigin/racia[m[33m)[m perf(frontend): implement lazy loading and fix syntax errors
+[1;34m|[m * [1;36m|[m [33m0e0fd9e[m Merge pull request #16 from aurorenad/racia
+[1;34m|[m [31m|[m[1;36m\[m[1;36m|[m 
+[1;34m|[m [31m|[m *   [33m6c0be8b[m Merge dev into racia and resolve conflicts
+[1;34m|[m [31m|[m [33m|[m[31m\[m  
+[1;34m|[m [31m|[m [33m|[m[31m/[m  
+[1;34m|[m [31m|[m[31m/[m[33m|[m   
+[1;34m|[m * [33m|[m [33m178b9dc[m docs: add reference documents and legacy data migration scripts
+[1;34m|[m * [33m|[m [33ma7ea35a[m feat(arch): scaffold next-generation frontend v2 workspace
+[1;34m|[m * [33m|[m [33m5b5feb1[m feat(stock): enhance stock release workflow and approval modals
+[1;34m|[m * [33m|[m [33m52027c7[m feat(ui): implement dynamic inputs for owner escape and quantity details
+[1;34m|[m * [33m|[m [33ma73eaac[m refactor(ui): update Intelligence dashboards layout and navigation
+[1;34m|[m * [33m|[m [33ma7badc5[m feat(dashboard): introduce Deputy PRSO verification dashboard
+[1;34m|[m * [33m|[m [33mb7e3a7c[m feat(reports): add advanced charts and excel export for surveillance metrics
+[1;34m|[m * [33m|[m [33ma70481e[m feat(api): expand case and stock api endpoints
+[1;34m|[m * [33m|[m [33me9cfbd5[m fix(api): handle token refresh logic correctly on 401 response
+[1;34m|[m * [33m|[m [33ma533bab[m chore(stock): add seizure reason dictionary initialization
+[1;34m|[m * [33m|[m [33m719e46a[m feat(stock): update HTML templates for digital signature documents
+[1;34m|[m * [33m|[m [33mc32c371[m feat(auth): implement backend OTP generation and verification for mockup
+[1;34m|[m * [33m|[m [33m4a1e080[m feat(stock): map new detailed goods fields and handle taxpayer escape logic
+[1;34m|[m * [33m|[m [33m5dd5988[m feat(stock): add advanced goods description and conveyance fields to SeizureNote
+[1;34m|[m * [33m|[m [33m9c75038[m fix(auth): handle 401 unauthorized instead of 403 for expired tokens
+[1;34m|[m * [33m|[m   [33me4e1444[m Merge pull request #15 from aurorenad/salomon
+[1;34m|[m [35m|[m[36m\[m [33m\[m  
+[1;34m|[m [35m|[m * [33m|[m [33me537f56[m[33m ([m[1;31morigin/salomon[m[33m)[m [200~feat(intelligence-officer): implement all 4 IO requirement changes
+[1;34m|[m [35m|[m[35m/[m [33m/[m  
+[1;34m|[m * [33m|[m   [33mfcedb64[m Merge pull request #14 from aurorenad/salomon
+[1;34m|[m [1;31m|[m[1;32m\[m [33m\[m  
+[1;34m|[m [1;31m|[m * [33m|[m [33m9e73764[m solve coflict on admin and stock manager
+[1;34m|[m [1;31m|[m[1;31m/[m [33m/[m  
+[1;34m|[m * [33m|[m   [33mc78dd5e[m Merge pull request #13 from aurorenad/salomon
+[1;34m|[m [1;33m|[m[1;34m\[m [33m\[m  
+[1;34m|[m [1;33m|[m * [33m\[m   [33mb9f0104[m fix conflict
+[1;34m|[m [1;33m|[m [1;35m|[m[1;36m\[m [33m\[m  
+[1;34m|[m [1;33m|[m [1;35m|[m * [33m|[m [33mf5ce6da[m add paging to stock and admin
+[1;34m|[m [1;33m|[m * [1;36m|[m [33m|[m [33m53b71d7[m fix error of editing returned file to intelligence officer
+[1;34m|[m [1;33m|[m * [1;36m|[m [33m|[m [33m2f963fc[m fix error of editing returned file to intelligence officer
+[1;34m|[m [1;33m|[m * [1;36m|[m [33m|[m   [33me69880a[m Merge branch 'dev' of github.com:aurorenad/NewSiids into salomon
+[1;34m|[m [1;33m|[m [31m|[m[1;33m\[m [1;36m\[m [33m\[m  
+[1;34m|[m [1;33m|[m [31m|[m[1;33m/[m [1;36m/[m [33m/[m  
+[1;34m|[m [1;33m|[m[1;33m/[m[31m|[m [1;36m|[m [33m|[m   
+[1;34m|[m * [31m|[m [1;36m|[m [33m|[m   [33me3c9b87[m Merge pull request #12 from aurorenad/racia
+[1;34m|[m [33m|[m[34m\[m [31m\[m [1;36m\[m [33m\[m  
+[1;34m|[m [33m|[m [34m|[m * [1;36m|[m [33m|[m [33m8283533[m Ignore .idea/ IDE files
+[1;34m|[m [33m|[m [34m|[m * [1;36m|[m [33m|[m   [33mcd19b6b[m Merge branch 'dev' into salomon merge salomon into dev
+[1;34m|[m [33m|[m [34m|[m [35m|[m[33m\[m [1;36m\[m [33m\[m  
+[1;34m|[m [33m|[m [34m|[m[33m_[m[35m|[m[33m/[m [1;36m/[m [33m/[m  
+[1;34m|[m [33m|[m[33m/[m[34m|[m [35m|[m [1;36m|[m [33m|[m   
+[1;34m|[m [33m|[m [34m|[m * [1;36m|[m [33m|[m [33m715d961[m Add .env to .gitignore
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m[1;36m/[m [33m/[m  
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m * [33medfecb9[m feat(ui): add ac routing modal and signature canvas
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m * [33mb3f02b8[m feat(api): add signReport endpoint
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m * [33m30a1366[m feat(backend): implement ac case routing and signature status
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m * [33mc72ce32[m feat(ui): add auto-generate draft button for final reports
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m * [33m6a15ef7[m feat(api): add generate final draft endpoint to caseApi
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m * [33ma2f24b6[m feat(backend): add endpoint to auto-generate investigation draft
+[1;34m|[m [33m|[m [34m|[m [1;36m|[m[34m/[m  
+[1;34m|[m [33m|[m [34m|[m[34m/[m[1;36m|[m   
+[1;34m|[m [33m|[m * [1;36m|[m [33m505b685[m refactor(ui): improve Director Investigation dashboard layout and pagination
+[1;34m|[m [33m|[m[33m/[m [1;36m/[m  
+[1;34m|[m * [1;36m/[m [33mc7a3905[m Refactor: SIIDS Global Modernization & Security Overhaul
+[1;34m|[m[1;34m/[m [1;36m/[m  
+* [1;36m|[m   [33m24fba3e[m Merge pull request #11 from aurorenad/jesse
+[1;31m|[m[1;32m\[m [1;36m\[m  
+[1;31m|[m * [1;36m|[m [33m3281c6c[m[33m ([m[1;31morigin/jesse[m[33m)[m feat(report-service): enhance case plan submission process and add recipient handling for Assistant Commissioner
+[1;31m|[m * [1;36m|[m [33mb272b6e[m feat(report-repo): update query to include CASE_PLAN_SUBMITTED status for reports submitted to director intelligence
+[1;31m|[m * [1;36m|[m [33mc0d403b[m feat(report-controller): add endpoint to send case plan to assistant commissioner
+[1;31m|[m * [1;36m|[m [33m3706a06[m feat(database-fixer): add DatabaseFixer component to manage stale check constraints
+[1;31m|[m * [1;36m|[m [33m84f04a2[m feat(assistant-commissioner): implement submitting state for approval actions and enable/disable buttons accordingly
+[1;31m|[m * [1;36m|[m [33mbf26bf8[m feat(investigation-officer): update case plan submission process for clarity and improved messaging
+* [1;32m|[m [1;36m|[m [33m8e4142f[m Merge pull request #10 from aurorenad/jesse
+[1;33m|[m[1;32m\[m[1;32m|[m [1;36m|[m 
+[1;33m|[m * [1;36m|[m [33m4c90d89[m feat(physical-stock): update seizure note methods to use employee object instead of username
+[1;33m|[m * [1;36m|[m [33maa0334e[m feat(report-response): add director investigation and intelligence IDs to ReportResponseDTO
+[1;33m|[m * [1;36m|[m [33m22bbfa0[m feat(report-service): enhance report workflow and notification logic for investigation approvals
+[1;33m|[m * [1;36m|[m [33m71d59a9[m feat(configuration): update application properties for improved CORS settings and logging configurations
+[1;33m|[m * [1;36m|[m [33m914338d[m feat(assistant-commissioner): enhance approval and rejection workflows with improved error handling and UI updates
+[1;33m|[m * [1;36m|[m [33m717d6ff[m feat(investigation): enhance case plan and findings dialogs with additional fields and improved submission flow
+[1;33m|[m * [1;36m|[m   [33m4f95b09[m Merge branch 'dev' into jesse
+[1;33m|[m [1;35m|[m[1;36m\[m [1;36m\[m  
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m13dc9af[m Implement feature X to enhance user experience and fix bug Y in module Z
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m20b355b[m fix(intelligence): correct status string for report submission to director
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m1d4a55e[m feat(investigation): update investigation report status logic and rename tabs for clarity
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m85f0eb9[m chore(config): clean up application.properties by removing unused properties and comments
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m7155980[m feat(report): add custom zIndex for status filter dropdown menu
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m5dae590[m Implement code changes to enhance functionality and improve performance
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m09e11f4[m feat(case): add receiveCase function to handle case reception for reports
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m6292cd3[m feat(report): enhance case submission logic and add case reception functionality for investigation officers
+[1;33m|[m * [1;36m|[m [1;36m|[m [33mc5215fb[m feat(report): refactor report queries and remove unused methods for improved clarity and performance
+[1;33m|[m * [1;36m|[m [1;36m|[m [33mf2ea453[m feat(report): update investigation officer endpoints and add case reception functionality
+[1;33m|[m * [1;36m|[m [1;36m|[m [33mb3739dd[m feat(auth): enhance getSafeAuth function to ensure safe profile initialization
+[1;33m|[m * [1;36m|[m [1;36m|[m [33m7d4b714[m feat(database): update database constraints and connection properties; add new case plan files
+* [1;36m|[m [1;36m|[m [1;36m|[m   [33mdd92cfb[m Merge pull request #9 from aurorenad/feature/stock-operations
+[1;36m|[m[32m\[m [1;36m\[m [1;36m\[m [1;36m\[m  
+[1;36m|[m [32m|[m[1;36m_[m[1;36m|[m[1;36m/[m [1;36m/[m  
+[1;36m|[m[1;36m/[m[32m|[m [1;36m|[m [1;36m|[m   
+[1;36m|[m * [1;36m|[m [1;36m|[m [33m64402a5[m[33m ([m[1;31morigin/feature/stock-operations[m[33m)[m fix(backend): correct type mismatch in PhysicalStockController by converting username to Employee
+* [32m|[m [1;36m|[m [1;36m|[m [33mbaefdb2[m Merge pull request #8 from aurorenad/feature/stock-operations
+[33m|[m[32m\[m[32m|[m [1;36m|[m [1;36m|[m 
+[33m|[m * [1;36m|[m [1;36m|[m   [33m6a24ac8[m Merge branch 'dev' into feature/stock-operations
+[33m|[m [35m|[m[36m\[m [1;36m\[m [1;36m\[m  
+[33m|[m [35m|[m * [1;36m\[m [1;36m\[m   [33ma760468[m merge: resolve conflicts with origin/dev and integrate stock management enhancements
+[33m|[m [35m|[m [1;31m|[m[33m\[m [1;36m\[m [1;36m\[m  
+[33m|[m [35m|[m[33m_[m[1;31m|[m[33m/[m [1;36m/[m [1;36m/[m  
+[33m|[m[33m/[m[35m|[m [1;31m|[m [1;36m|[m [1;36m|[m   
+* [35m|[m [1;31m|[m [1;36m|[m [1;36m|[m [33m2ad1af2[m fix recorrection stock manager and add env file
+* [35m|[m [1;31m|[m [1;36m|[m [1;36m|[m   [33md541ed5[m Merge branch 'dev' of https://github.com/aurorenad/NewSiids into dev
+[1;33m|[m[1;36m\[m [35m\[m [1;31m\[m [1;36m\[m [1;36m\[m  
+[1;33m|[m [1;36m|[m [35m|[m[1;36m_[m[1;31m|[m[1;36m/[m [1;36m/[m  
+[1;33m|[m [1;36m|[m[1;36m/[m[35m|[m [1;31m|[m [1;36m|[m   
+[1;33m|[m * [35m|[m [1;31m|[m [1;36m|[m   [33m0f11ce9[m Merge pull request #7 from aurorenad/racia
+[1;33m|[m [1;36m|[m[1;36m\[m [35m\[m [1;31m\[m [1;36m\[m  
+[1;33m|[m [1;36m|[m [1;36m|[m[1;36m_[m[35m|[m[1;36m_[m[1;31m|[m[1;36m/[m  
+[1;33m|[m [1;36m|[m[1;36m/[m[1;36m|[m [35m|[m [1;31m|[m   
+[1;33m|[m [1;36m|[m * [35m|[m [1;31m|[m [33m21b0eb3[m feat(stock): add missing general release note HTML template
+[1;33m|[m [1;36m|[m * [35m|[m [1;31m|[m [33mdb9650f[m fix(di): align investigation-officers routing path and add missing status filter
+[1;33m|[m [1;36m|[m * [35m|[m [1;31m|[m [33m1e852ce[m feat(ac): map Domestic Taxes department workflow status and routing
+[1;33m|[m [1;36m|[m * [35m|[m [1;31m|[m [33mdd708a2[m fix(admin): surface detailed backend errors in user role update dialog
+[1;33m|[m [1;36m|[m * [35m|[m [1;31m|[m [33m6f1ab8a[m style: remove global backdrop z-index override to fix modal blocking bugs

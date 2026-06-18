@@ -813,11 +813,14 @@ const DirectorInvestigation = () => {
             key: 'currentOfficer',
             label: 'Current Officer',
             render: (caseItem) => caseItem.isAssigned ? (
-                <Typography color="success.main" fontWeight="bold">
-                    {caseItem.delegateName}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main', flexShrink: 0 }} />
+                    <Typography variant="body2" fontWeight={600} color="success.dark">
+                        {caseItem.delegateName}
+                    </Typography>
+                </Box>
             ) : (
-                <Typography color="text.secondary">Not assigned</Typography>
+                <Chip label="Unassigned" size="small" variant="outlined" color="warning" sx={{ fontWeight: 600 }} />
             )
         },
         {
@@ -827,31 +830,27 @@ const DirectorInvestigation = () => {
         {
             key: 'status',
             label: 'Status',
-            render: (caseItem) => (
-                <Box>
-                    <Typography
-                        sx={{
-                            color: caseItem.status.includes("Approved") ? "green" :
-                                caseItem.status.includes("Rejected") ? "red" :
-                                    caseItem.status.includes("INVESTIGATION_COMPLETED") ? "blue" :
-                                        caseItem.status.includes("Assigned") ? "orange" :
-                                            caseItem.status.includes("CASE_PLAN") ? "#9c27b0" :
-                                                caseItem.status.includes("SENT_TO_ASSISTANT_COMMISSIONER") ? "#ff9800" :
-                                                    caseItem.status.includes("COMMISSIONER") ? "#673ab7" :
-                                                        caseItem.status.includes("FINDINGS") ? "#2196f3" :
-                                                            caseItem.status.includes("INVESTIGATION_REPORT") ? "#3f51b5" : "inherit",
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        {caseItem.status}
-                    </Typography>
-                    {caseItem.reason && (
-                        <Typography variant="caption" color="error">
-                            Reason: {caseItem.reason}
-                        </Typography>
-                    )}
-                </Box>
-            )
+            render: (caseItem) => {
+                const s = caseItem.status || '';
+                const color = s.includes('APPROVED') ? 'success'
+                    : s.includes('REJECTED') ? 'error'
+                    : s.includes('INVESTIGATION_REPORT') || s.includes('FINDINGS') ? 'info'
+                    : s.includes('CASE_PLAN') ? 'secondary'
+                    : s.includes('INVESTIGATION_COMPLETED') ? 'primary'
+                    : s.includes('ASSIGNED') || s.includes('Assigned') ? 'warning'
+                    : 'default';
+                const label = s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Unknown';
+                return (
+                    <Box>
+                        <Chip label={label} color={color} size="small" sx={{ fontWeight: 600, maxWidth: 220, height: 'auto', '& .MuiChip-label': { whiteSpace: 'normal', py: 0.5 } }} />
+                        {caseItem.reason && (
+                            <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+                                {caseItem.reason}
+                            </Typography>
+                        )}
+                    </Box>
+                );
+            }
         },
         {
             key: 'casePlan',
@@ -1116,20 +1115,20 @@ const DirectorInvestigation = () => {
 
                 <Box sx={{ p: 2 }}>
                     <AppTable
-                columns={columns}
-                rows={cases}
-                rowKey={(caseItem) => caseItem.reportId || caseItem.id}
-                loading={loading}
-                emptyMessage="No cases found"
-                searchValue={searchQuery}
-                searchPlaceholder="Search cases, officers, or instructions"
-                onSearchChange={handleSearchChange}
-                page={page}
-                rowsPerPage={ROWS_PER_PAGE}
-                totalRows={totalCases}
-                onPageChange={(event, nextPage) => setPage(nextPage)}
-                minWidth={1180}
-            />
+                        columns={columns}
+                        rows={cases}
+                        rowKey={(caseItem) => caseItem.reportId || caseItem.id}
+                        loading={loading}
+                        emptyMessage="No cases found"
+                        searchValue={searchQuery}
+                        searchPlaceholder="Search cases, officers, or instructions"
+                        onSearchChange={handleSearchChange}
+                        page={page}
+                        rowsPerPage={ROWS_PER_PAGE}
+                        totalRows={totalCases}
+                        onPageChange={(event, nextPage) => setPage(nextPage)}
+                        minWidth={1180}
+                    />
                 </Box>
             </Paper>
 
@@ -1140,10 +1139,10 @@ const DirectorInvestigation = () => {
                 fullWidth
                 maxWidth="lg"
             >
-                <DialogTitle>
-                    Investigation Report - Case {selectedCaseForInvestigationReport?.id || 'Unknown'}
+                <DialogTitle sx={{ bgcolor: '#1e40af', color: '#fff', fontWeight: 700 }}>
+                    Investigation Report — Case {selectedCaseForInvestigationReport?.id || 'Unknown'}
                     {selectedCaseForInvestigationReport?.delegateName && (
-                        <Typography variant="subtitle1" color="text.secondary">
+                        <Typography variant="body2" sx={{ color: '#bfdbfe', mt: 0.5 }}>
                             Submitted by: {selectedCaseForInvestigationReport.delegateName}
                         </Typography>
                     )}
@@ -1267,7 +1266,7 @@ const DirectorInvestigation = () => {
 
             {/* Investigation Report Reject Dialog */}
             <Dialog open={investigationReportRejectDialogOpen} onClose={() => setInvestigationReportRejectDialogOpen(false)}>
-                <DialogTitle>Reject Investigation Report</DialogTitle>
+                <DialogTitle sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700 }}>Reject Investigation Report</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Case ID: {selectedCaseForInvestigationReport?.id || 'Unknown'}</Typography>
                     <Typography variant="body2" color="text.secondary" paragraph>
@@ -1303,7 +1302,7 @@ const DirectorInvestigation = () => {
 
             {/* Investigation Report Return Dialog */}
             <Dialog open={investigationReportReturnDialogOpen} onClose={() => setInvestigationReportReturnDialogOpen(false)}>
-                <DialogTitle>Return Investigation Report for Revision</DialogTitle>
+                <DialogTitle sx={{ bgcolor: '#d97706', color: '#fff', fontWeight: 700 }}>Return Investigation Report for Revision</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Case ID: {selectedCaseForInvestigationReport?.id || 'Unknown'}</Typography>
                     <Typography variant="body2" color="text.secondary" paragraph>
@@ -1340,8 +1339,8 @@ const DirectorInvestigation = () => {
 
             {/* Assign Officer Dialog */}
             <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>
-                    Assign Investigation Officer - Case {selectedCase?.id}
+                <DialogTitle sx={{ bgcolor: '#1e40af', color: '#fff', fontWeight: 700 }}>
+                    Assign Investigation Officer — Case {selectedCase?.id}
                 </DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom variant="h6" color="primary">
@@ -1460,7 +1459,7 @@ const DirectorInvestigation = () => {
 
             {/* Reject Dialog */}
             <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
-                <DialogTitle>Reject Report</DialogTitle>
+                <DialogTitle sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700 }}>Reject Report</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Case ID: {selectedCase?.id}</Typography>
                     <TextField
@@ -1806,7 +1805,7 @@ const DirectorInvestigation = () => {
 
             {/* Case Plan Reject Dialog */}
             <Dialog open={casePlanRejectDialogOpen} onClose={() => setCasePlanRejectDialogOpen(false)}>
-                <DialogTitle>Reject Case Plan</DialogTitle>
+                <DialogTitle sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700 }}>Reject Case Plan</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Report ID: {selectedCase?.id}</Typography>
                     <TextField

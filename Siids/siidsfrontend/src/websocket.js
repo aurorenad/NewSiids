@@ -2,9 +2,22 @@ import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
 let stompClient = null;
+let activeEmployeeId = null;
+let disconnectTimer = null;
 
 export const connectWebSocket = (employeeId, onNotification, onError) => {
     if (!employeeId) return;
+
+    if (disconnectTimer) {
+        clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+    }
+
+    if (stompClient && activeEmployeeId === employeeId) {
+        console.log(`WebSocket already active for employee: ${employeeId}`);
+        return;
+    }
+
     console.log(`Connecting WebSocket for employee: ${employeeId}`);
 
     // Disconnect existing connection if it exists
@@ -13,6 +26,7 @@ export const connectWebSocket = (employeeId, onNotification, onError) => {
     }
 
     // Create new client
+    activeEmployeeId = employeeId;
     stompClient = new Client({
         webSocketFactory: () => new SockJS(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:2005'}/ws-notifications`),
         connectHeaders: {
@@ -67,11 +81,18 @@ export const connectWebSocket = (employeeId, onNotification, onError) => {
 };
 
 export const disconnectWebSocket = () => {
-    if (stompClient) {
+    if (disconnectTimer) {
+        clearTimeout(disconnectTimer);
+    }
+
+    disconnectTimer = setTimeout(() => {
+        if (!stompClient) return;
         console.log('Disconnecting WebSocket');
         stompClient.deactivate();
         stompClient = null;
-    }
+        activeEmployeeId = null;
+        disconnectTimer = null;
+    }, 300);
 };
 
 export const getStompClient = () => stompClient;
