@@ -110,6 +110,7 @@ public class CaseService {
         return mapToCaseResponseDTO(updatedCase);
     }
 
+    @Transactional(readOnly = true)
     public CaseResponseDTO getCaseResponseById(Integer id) {
         if (id == null) {
             throw new IllegalArgumentException("Case ID cannot be null");
@@ -121,6 +122,7 @@ public class CaseService {
         return mapToCaseResponseDTO(caseEntity);
     }
 
+    @Transactional(readOnly = true)
     public List<CaseResponseDTO> getCasesByCreator(String employeeId) {
         if (employeeId == null) {
             throw new IllegalArgumentException("Employee ID cannot be null");
@@ -138,6 +140,7 @@ public class CaseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public PageResponseDTO<CaseResponseDTO> getCasePageByCreator(
             String employeeId,
             int requestedPage,
@@ -215,6 +218,7 @@ public class CaseService {
         return new PageResponseDTO<>(rows.subList(fromIndex, toIndex), page, size, totalElements, totalPages);
     }
 
+    @Transactional(readOnly = true)
     public Optional<CaseResponseDTO> getCaseIfCreator(Integer caseId, String employeeId) {
         if (caseId == null || employeeId == null) {
             throw new IllegalArgumentException("Case ID and Employee ID cannot be null");
@@ -269,6 +273,7 @@ public class CaseService {
         return mapToCaseResponseDTO(updatedCase);
     }
 
+    @Transactional(readOnly = true)
     public Optional<CaseResponseDTO> getCaseByCaseNum(String caseNum, String employeeId) {
         if (caseNum == null || employeeId == null) {
             throw new IllegalArgumentException("Case number and employee ID cannot be null");
@@ -286,6 +291,7 @@ public class CaseService {
                 .map(this::mapToCaseResponseDTO);
     }
 
+    @Transactional(readOnly = true)
     public List<CaseResponseDTO> getCasesByStatus(WorkflowStatus status, String employeeId) {
         if (status == null || employeeId == null) {
             throw new IllegalArgumentException("Status and employee ID cannot be null");
