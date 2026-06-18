@@ -8,13 +8,11 @@ import {
 } from "@mui/material";
 import {
     Search, Description, Check, Undo, Refresh, Assignment, Assessment, AccountBalance,
-    DriveFileRenameOutline, Download
 } from "@mui/icons-material";
 
 import { useNavigate } from 'react-router-dom';
 import { ReportApi } from '../api/Axios/caseApi';
 import { AuthContext } from '../context/AuthContext';
-import { routeTo } from '../constants/routes';
 
 const AssistantCommissioner = () => {
     const { authState } = useContext(AuthContext);
@@ -40,10 +38,8 @@ const AssistantCommissioner = () => {
     const [routeDepartment, setRouteDepartment] = useState("Director of Investigation");
     const [customDepartment, setCustomDepartment] = useState("");
     const [routingNotes, setRoutingNotes] = useState("");
-    const [page, setPage] = useState(0);
 
     const navigate = useNavigate();
-    const canApproveAssistantCommissioner = authState?.permissions?.includes('REPORT_APPROVE_ASSISTANT_COMMISSIONER');
     const routeOptions = [
         { value: "Director of Investigation", label: "Director of Investigation", caption: "Investigation director review" },
         { value: "Legal Advisor", label: "Legal Advisor", caption: "Legal review and advice" },
@@ -91,9 +87,12 @@ const AssistantCommissioner = () => {
     };
 
     const getErrorMessage = (err, fallback = "Action failed") => {
+        if (typeof err === 'string') return err;
         const data = err.response?.data;
         if (typeof data === 'string') return data;
         if (data?.message) return data.message;
+        if (err.response?.statusText) return err.response.statusText;
+        if (err.message) return err.message;
         return fallback;
     };
 
@@ -114,6 +113,7 @@ const AssistantCommissioner = () => {
 
     const isPending = (status) => {
         return status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE' ||
+               status === 'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER' ||
                status === 'CASE_PLAN_SENT_TO_ASSISTANT_COMMISSIONER' ||
                status === 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION';
     };
@@ -153,7 +153,7 @@ const AssistantCommissioner = () => {
         try {
             setSubmitting(true);
             const signatureBase64 = sigCanvas.current
-                .getTrimmedCanvas()
+                .getCanvas()
                 .toDataURL('image/png')
                 .replace(/^data:image\/png;base64,/, '');
 
@@ -167,8 +167,7 @@ const AssistantCommissioner = () => {
                 const selectedDepartment = routeDepartment === "Other Departments"
                     ? customDepartment.trim()
                     : routeDepartment;
-                await ReportApi.signReport(report.id, signatureBase64, 'ASSISTANT_COMMISSIONER');
-                await ReportApi.approveAndRouteByAssistantCommissioner(report.id, selectedDepartment, routingNotes);
+                await ReportApi.approveAndRouteByAssistantCommissioner(report.id, selectedDepartment, signatureBase64, routingNotes);
             }
 
             approvalSucceeded = true;
@@ -252,53 +251,23 @@ const AssistantCommissioner = () => {
         }
     };
 
-    const handleOpenSignatureDialog = (report) => {
-        setSelectedReport(report);
-        setReportToApprove(report);
-        setApprovalTab(activeTab);
-        setSignatureDialogOpen(true);
-        window.setTimeout(() => sigCanvas.current?.clear?.(), 0);
-    };
-
-    const handleDownloadInvestigationReport = async (report) => {
-        try {
-            setSubmitting(true);
-            const response = await ReportApi.downloadInvestigationReportPdf(report.id);
-            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `investigation-report-${report.id}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            const errorMsg = err.response?.data?.message || "Failed to download investigation report";
-            showSnackbar(typeof errorMsg === 'string' ? errorMsg : "Failed to download investigation report", "error");
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
     const handleTabChange = (event, nextTab) => {
         setActiveTab(nextTab);
-        setPage(0);
     };
 
     const handleSearchChange = (value) => {
         setSearchQuery(value);
-        setPage(0);
     };
 
     const getFilteredData = () => {
         const source = activeTab === 1
             ? casePlans
             : reports.filter((report) => {
+                const status = report.status || '';
                 if (activeTab === 0) {
-                    return report.status === 'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE';
+                    return !status.includes('CASE_PLAN') && !status.includes('INVESTIGATION');
                 }
-                return report.status === 'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION' ||
-                    report.status === 'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER';
+                return status.includes('INVESTIGATION_REPORT');
             });
 
         const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -317,128 +286,6 @@ const AssistantCommissioner = () => {
             return searchable.includes(normalizedSearch);
         });
     };
-
-    const columns = [
-        {
-            key: 'operationalId',
-            label: 'Operational ID',
-            render: (r) => (
-                <Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{r.relatedCase?.caseNum || r.id}</Typography>
-                    <Typography variant="caption" color="text.secondary">{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'N/A'}</Typography>
-                </Box>
-            )
-        },
-        {
-            key: 'leadPersonnel',
-            label: 'Lead Personnel',
-            render: (r) => r.investigationOfficer?.givenName || r.createdBy || 'N/A'
-        },
-        {
-            key: 'workflowState',
-            label: 'Workflow State',
-            render: (r) => (
-                <Chip
-                    label={formatStatus(r.status)}
-                    size="small"
-                    sx={{ fontWeight: 700 }}
-                    color={r.status?.includes('APPROVED') ? 'success' : 'primary'}
-                />
-            )
-        },
-        {
-            key: 'summary',
-            label: 'Intelligence Summary',
-            render: (r) => (
-                <Typography variant="body2" sx={{ maxWidth: 250 }} noWrap>
-                    {r.description || r.casePlanDescription || 'N/A'}
-                </Typography>
-            )
-        },
-        {
-            key: 'actions',
-            label: 'Critical Actions',
-            cellStyle: { textAlign: 'center' },
-            render: (r) => (
-                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <Button
-                        variant="outlined"
-                        color="primary"
-                        size="small"
-                        startIcon={<Description />}
-                        onClick={() => navigate(routeTo.reportDetails(r.id))}
-                        sx={{ textTransform: 'none', fontWeight: 700 }}
-                    >
-                        View
-                    </Button>
-
-                    {canApproveAssistantCommissioner && (
-                        <Button
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            startIcon={<Check />}
-                            onClick={() => handleApproveClick(r)}
-                            disabled={submitting}
-                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Approve
-                        </Button>
-                    )}
-
-                    {canApproveAssistantCommissioner && activeTab === 2 && (
-                        <Button
-                            variant={r.acSigned ? "outlined" : "contained"}
-                            color="primary"
-                            size="small"
-                            startIcon={<DriveFileRenameOutline />}
-                            onClick={() => handleOpenSignatureDialog(r)}
-                            disabled={submitting}
-                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                        >
-                            {r.acSigned ? 'Re-sign' : 'Sign'}
-                        </Button>
-                    )}
-
-                    {activeTab === 2 && (
-                        <Tooltip title={r.finalised ? 'Download final investigation report' : 'Both signatures are required before final PDF download'}>
-                            <span>
-                                <Button
-                                    variant="outlined"
-                                    color="primary"
-                                    size="small"
-                                    startIcon={<Download />}
-                                    onClick={() => handleDownloadInvestigationReport(r)}
-                                    disabled={submitting || !r.finalised}
-                                    sx={{ textTransform: 'none', fontWeight: 700 }}
-                                >
-                                    PDF
-                                </Button>
-                            </span>
-                        </Tooltip>
-                    )}
-
-                    {canApproveAssistantCommissioner && (
-                        <Button
-                            variant="contained"
-                            color="error"
-                            size="small"
-                            startIcon={<Undo />}
-                            onClick={() => {
-                                setSelectedReport(r);
-                                setCloseReason("");
-                                setCloseDialogOpen(true);
-                            }}
-                            disabled={submitting}
-                            sx={{ textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Reject
-                        </Button>
-                    )}
-                </Box>
-            )
-        }
-    ];
 
     return (
         <Box sx={{ p: 4, backgroundColor: '#f8fafc', minHeight: '100vh' }}>

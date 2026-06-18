@@ -1094,6 +1094,113 @@ public class ReportService {
     }
 
     @Transactional
+    public Report approveAndRouteByAssistantCommissioner(
+            Integer reportId,
+            String approverId,
+            String destinationDepartment,
+            String signatureBase64,
+            String routingNotes) {
+        validateAssistantCommissioner(approverId);
+
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+        Employee approver = employeeRepo.findByEmployeeId(approverId)
+                .orElseThrow(() -> new RuntimeException("Approver not found"));
+
+        Case relatedCase = report.getRelatedCase();
+        WorkflowStatus currentStatus = relatedCase != null ? relatedCase.getStatus() : null;
+        boolean canApproveCaseIntake = currentStatus == WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE
+                || currentStatus == WorkflowStatus.REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER;
+        if (!canApproveCaseIntake) {
+            throw new IllegalStateException("Cannot approve and route report in current status: "
+                    + (currentStatus != null ? currentStatus : "UNKNOWN"));
+        }
+
+        if (signatureBase64 != null && !signatureBase64.isBlank()) {
+            upsertSignature(report, approver, "ASSISTANT_COMMISSIONER", signatureBase64);
+        }
+
+        boolean hasAcSignature = report.getSignatures() != null && report.getSignatures().stream()
+                .anyMatch(signature -> "ASSISTANT_COMMISSIONER".equals(signature.getSignatureRole())
+                        && signature.getSignaturePath() != null
+                        && !signature.getSignaturePath().isBlank());
+        if (!hasAcSignature) {
+            throw new IllegalStateException("Assistant Commissioner signature is required before approval");
+        }
+
+        String normalizedDestination = normalizeAssistantCommissionerDestination(destinationDepartment);
+        relatedCase.setReferringDepartment(normalizedDestination);
+
+        if ("Director of Investigation".equalsIgnoreCase(normalizedDestination)) {
+            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
+            relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
+            report.setCurrentRecipient(directors.isEmpty() ? null : directors.get(0));
+        } else if ("Legal Advisor".equalsIgnoreCase(normalizedDestination)) {
+            List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
+            relatedCase.setStatus(WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM);
+            if (legalAdvisors.isEmpty()) {
+                report.setCurrentRecipient(null);
+            } else {
+                Employee legalAdvisor = legalAdvisors.get(0);
+                report.setLegalAdvisor(legalAdvisor);
+                report.setCurrentRecipient(legalAdvisor);
+            }
+        } else {
+            relatedCase.setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
+            report.setCurrentRecipient(null);
+        }
+
+        report.setAssistantCommissioner(approver);
+        report.setApprovedBy(approver);
+        report.setApprovedAt(LocalDateTime.now());
+        if (routingNotes != null && !routingNotes.trim().isEmpty()) {
+            report.setAssignmentNotes(routingNotes.trim());
+        }
+        report.setUpdatedAt(LocalDateTime.now());
+
+        caseRepo.save(relatedCase);
+        Report savedReport = reportRepo.save(report);
+
+        String message = String.format("Report #%d has been approved by Assistant Commissioner %s %s and routed to %s",
+                savedReport.getId(),
+                approver.getGivenName(),
+                approver.getFamilyName(),
+                normalizedDestination);
+        createNotification(savedReport, message);
+
+        auditService.logAction(
+                relatedCase.getStatus(),
+                "Report " + savedReport.getId() + " approved and routed by Assistant Commissioner "
+                        + approverId + " to " + normalizedDestination
+                        + (routingNotes != null && !routingNotes.trim().isEmpty()
+                        ? ". Notes: " + routingNotes.trim()
+                        : ""),
+                approver);
+
+        return savedReport;
+    }
+
+    private String normalizeAssistantCommissionerDestination(String destinationDepartment) {
+        if (destinationDepartment == null || destinationDepartment.trim().isEmpty()) {
+            throw new IllegalArgumentException("Destination department is required");
+        }
+
+        String destination = destinationDepartment.trim();
+        Set<String> fixedDestinations = Set.of(
+                "Director of Investigation",
+                "Legal Advisor",
+                "Prosecution",
+                "Enforcement",
+                "Collection",
+                "To be filled");
+
+        return fixedDestinations.stream()
+                .filter(allowed -> allowed.equalsIgnoreCase(destination))
+                .findFirst()
+                .orElse(destination);
+    }
+
+    @Transactional
     public Report rejectReport(Integer reportId, String rejectionReason, String rejectorId) {
         Report report = reportRepo.findById(reportId)
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));

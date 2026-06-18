@@ -500,6 +500,33 @@ public class ReportController {
         }
     }
 
+    @PostMapping("/{id}/approve-and-route")
+    @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER') or hasRole('ADMIN') or hasAuthority('Admin') or hasAuthority('ADMIN')")
+    public ResponseEntity<?> approveAndRouteByAssistantCommissioner(
+            @PathVariable Integer id,
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+        String employeeId = authentication.getName();
+        try {
+            String destinationDepartment = request != null ? request.get("destinationDepartment") : null;
+            String routingNotes = request != null ? request.get("routingNotes") : null;
+            String signatureBase64 = request != null ? request.get("signatureBase64") : null;
+            Report report = reportService.approveAndRouteByAssistantCommissioner(
+                    id,
+                    employeeId,
+                    destinationDepartment,
+                    signatureBase64,
+                    routingNotes);
+            return ResponseEntity.ok(reportService.toResponseDTO(report));
+        } catch (SecurityException e) {
+            log.error("AC route approval forbidden for report {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", e.getMessage()));
+        } catch (RuntimeException e) {
+            log.error("Error approving and routing report by AC: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/assistant-commissioner/approved-reports")
     @PreAuthorize("hasAuthority('REPORT_APPROVE_ASSISTANT_COMMISSIONER')")
     public ResponseEntity<PageResponseDTO<ReportResponseDTO>> getApprovedReportsForAssistantCommissioner(
