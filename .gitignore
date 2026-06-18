@@ -5,7 +5,6 @@ desktop.ini
 
 # Editors and IDEs
 .idea/
-.vscode/
 *.iml
 *.iws
 *.ipr
@@ -38,7 +37,6 @@ hs_err_pid*
 replay_pid*
 
 # Environment and local config
-.env*
 !.env.example
 !**/.env.example
 application-local.properties
@@ -87,3 +85,4 @@ Screenshot*.png
 
 # Local documentation and audit notes
 /docs/
+config.bat
