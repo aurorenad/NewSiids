@@ -1,5 +1,4 @@
 export const USER_ROLES = [
-  { value: 'Admin', label: 'Admin' },
   { value: 'IntelligenceOfficer', label: 'Intelligence Officer' },
   { value: 'Surveillance', label: 'Surveillance Officer' },
   { value: 'InvestigationOfficer', label: 'Investigation Officer' },

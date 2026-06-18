@@ -178,6 +178,50 @@ public class ReportService {
         return toResponseDTO(report);
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, Object> generateInvestigationDraft(Integer reportId, String officerId) {
+        Report report = reportRepo.findById(reportId)
+                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
+
+        if (report.getInvestigationOfficer() == null
+                || !report.getInvestigationOfficer().getEmployeeId().equals(officerId)) {
+            throw new RuntimeException("You are not the assigned investigation officer for this report");
+        }
+
+        Case relatedCase = report.getRelatedCase();
+        List<String> evidencePaths = new ArrayList<>();
+        evidencePaths.addAll(report.getAttachmentPaths() == null ? List.of() : report.getAttachmentPaths());
+        evidencePaths.addAll(report.getFindingsAttachmentPaths() == null ? List.of() : report.getFindingsAttachmentPaths());
+
+        StringBuilder findings = new StringBuilder();
+        if (relatedCase != null && relatedCase.getSummaryOfInformationCase() != null) {
+            findings.append("Case summary: ")
+                    .append(relatedCase.getSummaryOfInformationCase().trim());
+        }
+        if (report.getDescription() != null && !report.getDescription().isBlank()) {
+            appendDraftSection(findings, "Initial report", report.getDescription());
+        }
+        if (report.getAssignmentNotes() != null && !report.getAssignmentNotes().isBlank()) {
+            appendDraftSection(findings, "Assignment notes", report.getAssignmentNotes());
+        }
+        if (report.getCasePlanDescription() != null && !report.getCasePlanDescription().isBlank()) {
+            appendDraftSection(findings, "Approved investigation plan", report.getCasePlanDescription());
+        }
+
+        Map<String, Object> draft = new LinkedHashMap<>();
+        draft.put("findings", findings.toString());
+        draft.put("recommendations", "");
+        draft.put("evidencePaths", evidencePaths.stream().distinct().toList());
+        return draft;
+    }
+
+    private void appendDraftSection(StringBuilder draft, String heading, String value) {
+        if (!draft.isEmpty()) {
+            draft.append("\n\n");
+        }
+        draft.append(heading).append(":\n").append(value.trim());
+    }
+
     private void validateAttachment(String attachmentPath) {
         if (attachmentPath != null && !attachmentPath.toLowerCase().endsWith(".pdf")) {
             throw new RuntimeException("Only PDF attachments are allowed");
@@ -1047,102 +1091,6 @@ public class ReportService {
     public ReportResponseDTO approveReportResponse(Integer reportId, String approverId) {
         Report report = approveReport(reportId, approverId);
         return toResponseDTO(report);
-    }
-
-    @Transactional
-    public Report approveCaseIntakeByAssistantCommissioner(
-            Integer reportId,
-            String approverId,
-            String routeDepartment,
-            String signatureBase64) {
-        validateAssistantCommissioner(approverId);
-
-        Report report = reportRepo.findById(reportId)
-                .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
-        Employee approver = employeeRepo.findByEmployeeId(approverId)
-                .orElseThrow(() -> new RuntimeException("Approver not found"));
-        validateAssistantCommissionerCanHandle(report, approverId);
-
-        Case relatedCase = report.getRelatedCase();
-        if (relatedCase == null || relatedCase.getStatus() != WorkflowStatus.REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE) {
-            throw new IllegalStateException("Cannot approve case intake in current status: "
-                    + (relatedCase != null ? relatedCase.getStatus() : "UNKNOWN"));
-        }
-
-        String normalizedRoute = normalizeAssistantCommissionerRoute(routeDepartment);
-        relatedCase.setReferringDepartment(normalizedRoute);
-
-        if ("Director of Investigation".equalsIgnoreCase(normalizedRoute)) {
-            List<Employee> directors = reportRepo.DirectorsOfInvestigation();
-            if (directors.isEmpty()) {
-                throw new IllegalStateException("No Director of Investigation found to receive report.");
-            }
-            relatedCase.setStatus(WorkflowStatus.REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION);
-            report.setCurrentRecipient(directors.get(0));
-        } else if ("Legal Advisor".equalsIgnoreCase(normalizedRoute)) {
-            List<Employee> legalAdvisors = reportRepo.findLegalAdvisors();
-            if (legalAdvisors.isEmpty()) {
-                throw new IllegalStateException("No Legal Advisor found to receive report.");
-            }
-            Employee legalAdvisor = legalAdvisors.get(0);
-            relatedCase.setStatus(WorkflowStatus.REPORT_SENT_TO_LEGAL_TEAM);
-            report.setLegalAdvisor(legalAdvisor);
-            report.setCurrentRecipient(legalAdvisor);
-        } else {
-            relatedCase.setStatus(WorkflowStatus.REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER);
-            report.setCurrentRecipient(null);
-        }
-
-        report.setAssistantCommissioner(approver);
-        report.setApprovedBy(approver);
-        report.setApprovedAt(LocalDateTime.now());
-        report.setUpdatedAt(LocalDateTime.now());
-        upsertSignature(report, approver, "ASSISTANT_COMMISSIONER", signatureBase64);
-
-        caseRepo.save(relatedCase);
-        Report savedReport = reportRepo.save(report);
-
-        String message = String.format("Report #%d has been approved by Assistant Commissioner %s %s and routed to %s",
-                savedReport.getId(),
-                approver.getGivenName(),
-                approver.getFamilyName(),
-                normalizedRoute);
-        createNotification(savedReport, message);
-        auditService.logAction(
-                relatedCase.getStatus(),
-                "Report " + savedReport.getId() + " approved by Assistant Commissioner " + approverId
-                        + " and routed to " + normalizedRoute,
-                approver);
-
-        return savedReport;
-    }
-
-    private String normalizeAssistantCommissionerRoute(String routeDepartment) {
-        if (routeDepartment == null || routeDepartment.trim().isEmpty()) {
-            throw new IllegalArgumentException("Route department is required");
-        }
-
-        String route = routeDepartment.trim();
-        Set<String> fixedRoutes = Set.of(
-                "Director of Investigation",
-                "Legal Advisor",
-                "Prosecution",
-                "Enforcement",
-                "Collection",
-                "To be filled");
-
-        if (fixedRoutes.stream().anyMatch(allowed -> allowed.equalsIgnoreCase(route))) {
-            return fixedRoutes.stream()
-                    .filter(allowed -> allowed.equalsIgnoreCase(route))
-                    .findFirst()
-                    .orElse(route);
-        }
-
-        if (route.length() < 2 || route.length() > 120) {
-            throw new IllegalArgumentException("Custom department name must be between 2 and 120 characters");
-        }
-
-        return route;
     }
 
     @Transactional

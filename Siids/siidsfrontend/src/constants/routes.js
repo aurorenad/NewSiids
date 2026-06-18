@@ -2,6 +2,7 @@ export const ROUTES = {
   ASSISTANT_COMMISSIONER: '/assistant-commissioner',
   ASSISTANT_COMMISSIONER_FINES_REPORT: '/assistant-commissioner/fines-report',
   ASSISTANT_COMMISSIONER_PENALTIES_REPORT: '/assistant-commissioner/penalties-report',
+  CHANGE_PASSWORD: '/change-password',
   DIRECTOR_INTELLIGENCE: '/director-intelligence',
   DIRECTOR_INTELLIGENCE_CASE_REPORTS: '/director-intelligence/case-reports',
   DIRECTOR_INVESTIGATION: '/director-investigation',

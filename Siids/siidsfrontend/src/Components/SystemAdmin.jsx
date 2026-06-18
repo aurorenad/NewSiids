@@ -47,6 +47,7 @@ const SystemAdmin = () => {
     workEmail: '',
     phoneNumber: '',
     role: '',
+    temporaryPassword: '',
   });
   const [newRole, setNewRole] = useState('');
   const [roleChangeReason, setRoleChangeReason] = useState('');
@@ -91,7 +92,7 @@ const SystemAdmin = () => {
     setError('');
     try {
       await adminApi.registerUser(formData);
-      alert('User created successfully. A password setup token has been emailed to the user.');
+      alert('User created successfully. Share the temporary password securely; the user must change it on first login.');
       handleRegisterToggle();
       fetchUsers();
       setFormData({
@@ -101,6 +102,7 @@ const SystemAdmin = () => {
         workEmail: '',
         phoneNumber: '',
         role: '',
+        temporaryPassword: '',
       });
     } catch (err) {
       setError(err.response?.data?.error || 'Error registering user.');
@@ -181,11 +183,21 @@ const SystemAdmin = () => {
         key: 'status',
         label: 'Status',
         render: (user) => (
-          <Chip
-            label={user.active !== false ? 'Active' : 'Deactivated'}
-            color={user.active !== false ? 'success' : 'error'}
-            size="small"
-          />
+          <Box display="flex" gap={1} flexWrap="wrap">
+            <Chip
+              label={user.active !== false ? 'Active' : 'Deactivated'}
+              color={user.active !== false ? 'success' : 'error'}
+              size="small"
+            />
+            {user.mustChangePassword && (
+              <Chip
+                label="Must change password"
+                color="warning"
+                size="small"
+                variant="outlined"
+              />
+            )}
+          </Box>
         )
       }
     ];

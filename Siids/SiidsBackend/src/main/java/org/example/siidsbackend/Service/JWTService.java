@@ -25,7 +25,7 @@ public class JWTService {
     @Value("${jwt.refresh-token.expiration:604800000}") // 7 days default
     private long refreshTokenExpiration;
 
-    @Value("${jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
+    @Value("${jwt.secret}")
     private String secretKey;
 
     public JWTService() {

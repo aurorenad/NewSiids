@@ -42,6 +42,9 @@ public class User {
     @Column(name = "password_setup_expiry_time")
     private LocalDateTime passwordSetupExpiryTime;
 
+    @Column(name = "must_change_password", columnDefinition = "boolean default false")
+    private Boolean mustChangePassword = false;
+
     public Integer getId() {
         return id;
     }
@@ -129,6 +132,14 @@ public class User {
         this.passwordSetupExpiryTime = passwordSetupExpiryTime;
     }
 
+    public Boolean getMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(Boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
+    }
+
     @Override
     public String toString() {
         return "User{" +
@@ -136,6 +147,7 @@ public class User {
                 ", username='" + username + '\'' +
                 ", role='" + role + '\'' +
                 ", active=" + active +
+                ", mustChangePassword=" + mustChangePassword +
                 ", authProvider='" + authProvider + '\'' +
                 '}';
     }

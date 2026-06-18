@@ -67,6 +67,21 @@ const UserOnboardingForm = ({ formData, onChange, disabled = false }) => (
         disabled={disabled}
       />
     </Grid>
+    <Grid item xs={12}>
+      <TextField
+        margin="dense"
+        label="Temporary Password"
+        name="temporaryPassword"
+        type="password"
+        value={formData.temporaryPassword}
+        onChange={onChange}
+        fullWidth
+        required
+        disabled={disabled}
+        helperText="User will be forced to change this password on first login."
+        autoComplete="new-password"
+      />
+    </Grid>
   </Grid>
 );
 

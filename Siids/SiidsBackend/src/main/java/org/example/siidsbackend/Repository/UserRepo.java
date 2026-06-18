@@ -37,6 +37,17 @@ public interface UserRepo extends JpaRepository<User, Integer> {
             """)
     Page<User> searchUsers(@Param("search") String search, Pageable pageable);
 
+    @Query("""
+            SELECT u FROM User u
+            WHERE LOWER(REPLACE(REPLACE(REPLACE(u.role, 'ROLE_', ''), ' ', ''), '_', '')) <> 'admin'
+              AND (:search IS NULL OR :search = ''
+               OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR LOWER(u.role) LIKE LOWER(CONCAT('%', :search, '%'))
+               OR (:search = 'active' AND u.active = true)
+               OR (:search = 'deactivated' AND (u.active = false OR u.active IS NULL)))
+            """)
+    Page<User> searchManageableUsers(@Param("search") String search, Pageable pageable);
+
     @Modifying
     @Transactional
     @Query("UPDATE User u SET u.otp = :otp, u.otpExpiryTime = :expiry WHERE u.id = :id")

@@ -27,11 +27,21 @@ const InvestigationOfficer = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [page, setPage] = useState(0);
     const [activeTab, setActiveTab] = useState(0);
+    const [generatingDraft, setGeneratingDraft] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
     // Dialog States
     const [casePlanDialog, setCasePlanDialog] = useState({ open: false, report: null, text: "", file: null });
-    const [findingsDialog, setFindingsDialog] = useState({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
+    const [findingsDialog, setFindingsDialog] = useState({
+        open: false,
+        report: null,
+        text: "",
+        recs: "",
+        principleAmount: "",
+        penaltiesAmount: "",
+        files: [],
+        evidencePaths: []
+    });
     const canCreateReport = hasPermission(authState, PERMISSIONS.REPORT_CREATE);
 
     useEffect(() => { fetchReports(); }, [activeTab, page, searchQuery]);
@@ -129,7 +139,16 @@ const InvestigationOfficer = () => {
                             color="success"
                             size="small"
                             startIcon={<Assessment />}
-                            onClick={() => setFindingsDialog({ open: true, report, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] })}
+                            onClick={() => setFindingsDialog({
+                                open: true,
+                                report,
+                                text: "",
+                                recs: "",
+                                principleAmount: "",
+                                penaltiesAmount: "",
+                                files: [],
+                                evidencePaths: []
+                            })}
                             sx={{ ml: 1, textTransform: 'none', fontWeight: 'bold', boxShadow: 2 }}
                         >
                             Create Final Report
@@ -171,8 +190,39 @@ const InvestigationOfficer = () => {
             await ReportApi.submitFindings(findingsDialog.report.id, formData);
             setSnackbar({ open: true, message: "Report submitted successfully", severity: "success" });
             fetchReports();
-            setFindingsDialog({ open: false, report: null, text: "", recs: "", principleAmount: "", penaltiesAmount: "", files: [] });
+            setFindingsDialog({
+                open: false,
+                report: null,
+                text: "",
+                recs: "",
+                principleAmount: "",
+                penaltiesAmount: "",
+                files: [],
+                evidencePaths: []
+            });
         } catch (err) { setSnackbar({ open: true, message: "Failed to submit report", severity: "error" }); }
+    };
+
+    const handleGenerateDraft = async () => {
+        if (!findingsDialog.report?.id) return;
+
+        try {
+            setGeneratingDraft(true);
+            const response = await ReportApi.generateInvestigationDraft(findingsDialog.report.id);
+            const draft = response.data || {};
+            setFindingsDialog((current) => ({
+                ...current,
+                text: draft.findings || current.text,
+                recs: draft.recommendations || current.recs,
+                evidencePaths: draft.evidencePaths || []
+            }));
+            setSnackbar({ open: true, message: "Editable draft generated", severity: "success" });
+        } catch (err) {
+            const message = err.response?.data?.message || "Failed to generate draft";
+            setSnackbar({ open: true, message, severity: "error" });
+        } finally {
+            setGeneratingDraft(false);
+        }
     };
 
     return (
@@ -256,7 +306,22 @@ const InvestigationOfficer = () => {
 
             {/* FINDINGS DIALOG */}
             <Dialog open={findingsDialog.open} onClose={() => setFindingsDialog({ ...findingsDialog, open: false })} fullWidth maxWidth="md">
-                <DialogTitle sx={{ backgroundColor: '#2e7d32', color: 'white' }}>Final Investigation Report - {findingsDialog.report?.caseId}</DialogTitle>
+                <DialogTitle sx={{ backgroundColor: '#2e7d32', color: 'white' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+                        <span>Final Investigation Report - {findingsDialog.report?.caseId}</span>
+                        <Button
+                            variant="contained"
+                            color="warning"
+                            size="small"
+                            startIcon={generatingDraft ? <CircularProgress size={16} color="inherit" /> : <Refresh />}
+                            onClick={handleGenerateDraft}
+                            disabled={generatingDraft}
+                            sx={{ textTransform: 'none', fontWeight: 700 }}
+                        >
+                            Generate Draft
+                        </Button>
+                    </Box>
+                </DialogTitle>
                 <DialogContent sx={{ mt: 2 }}>
                     <Box sx={{ display: 'flex', gap: 2, mb: 2, mt: 1 }}>
                         <TextField 
@@ -292,8 +357,25 @@ const InvestigationOfficer = () => {
                     
                     <Box sx={{ mt: 3, p: 2, border: '1px dashed #ccc', borderRadius: 2, bgcolor: '#f9f9f9' }}>
                         <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold' }}>Evidence & Attachments</Typography>
+                        {findingsDialog.evidencePaths.length > 0 && (
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="caption" color="primary" sx={{ fontWeight: 700 }}>
+                                    Existing case evidence
+                                </Typography>
+                                <List dense disablePadding>
+                                    {findingsDialog.evidencePaths.map((path) => (
+                                        <ListItem key={path} disableGutters>
+                                            <ListItemIcon sx={{ minWidth: 34 }}>
+                                                <Description fontSize="small" color="info" />
+                                            </ListItemIcon>
+                                            <ListItemText primary={path.split(/[\\/]/).pop()} />
+                                        </ListItem>
+                                    ))}
+                                </List>
+                            </Box>
+                        )}
                         <Button variant="outlined" component="label" fullWidth startIcon={<AttachFile />} sx={{ mb: 1 }}>
-                            Attach Files
+                            Attach Additional Files
                             <input 
                                 type="file" 
                                 hidden 

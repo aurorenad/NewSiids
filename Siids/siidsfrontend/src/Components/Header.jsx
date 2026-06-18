@@ -20,7 +20,7 @@ const Header = () => {
 
     const handleLogout = () => {
         logout();
-        navigate(ROUTES.LOGIN);
+        navigate(ROUTES.LOGIN, { replace: true });
     };
 
     return (

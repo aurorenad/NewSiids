@@ -6,6 +6,7 @@ import org.example.siidsbackend.DTO.Request.EscalateRequestDTO;
 import org.example.siidsbackend.DTO.Request.ReleaseNoteRequestDTO;
 import org.example.siidsbackend.DTO.Request.SeizureNoteRequestDTO;
 import org.example.siidsbackend.DTO.Response.PageResponseDTO;
+import org.example.siidsbackend.DTO.Response.PhysicalStockRowDTO;
 import org.example.siidsbackend.Model.*;
 import org.example.siidsbackend.Repository.CaseRepo;
 import org.example.siidsbackend.Repository.PVDocumentRepository;
@@ -146,8 +147,9 @@ public class PhysicalStockService {
         return notes;
     }
 
-    public PageResponseDTO<SeizureNote> getTemporaryStockPage(int page, int size, String search) {
-        return toPageResponse(filterStockRows(getTemporaryStock(), search, "ALL"), page, size);
+    @Transactional(readOnly = true)
+    public PageResponseDTO<PhysicalStockRowDTO> getTemporaryStockPage(int page, int size, String search) {
+        return toStockPageResponse(filterStockRows(getTemporaryStock(), search, "ALL"), page, size);
     }
 
     public List<SeizureNote> getSeizureHistory(Employee officer) {
@@ -161,8 +163,9 @@ public class PhysicalStockService {
         return getSeizureHistory(getEmployeeByUsername(username));
     }
 
-    public PageResponseDTO<SeizureNote> getSeizureHistoryPage(String username, int page, int size, String search, String status) {
-        return toPageResponse(filterStockRows(getSeizureHistory(username), search, status), page, size);
+    @Transactional(readOnly = true)
+    public PageResponseDTO<PhysicalStockRowDTO> getSeizureHistoryPage(String username, int page, int size, String search, String status) {
+        return toStockPageResponse(filterStockRows(getSeizureHistory(username), search, status), page, size);
     }
 
     private List<SeizureNote> filterStockRows(List<SeizureNote> rows, String search, String status) {
@@ -212,6 +215,58 @@ public class PhysicalStockService {
         int fromIndex = Math.min(page * size, totalElements);
         int toIndex = Math.min(fromIndex + size, totalElements);
         return new PageResponseDTO<>(rows.subList(fromIndex, toIndex), page, size, totalElements, totalPages);
+    }
+
+    private PageResponseDTO<PhysicalStockRowDTO> toStockPageResponse(List<SeizureNote> rows, int requestedPage, int requestedSize) {
+        PageResponseDTO<SeizureNote> entityPage = toPageResponse(rows, requestedPage, requestedSize);
+        List<PhysicalStockRowDTO> content = entityPage.getContent().stream()
+                .map(this::toStockRowDTO)
+                .toList();
+        return new PageResponseDTO<>(
+                content,
+                entityPage.getPage(),
+                entityPage.getSize(),
+                entityPage.getTotalElements(),
+                entityPage.getTotalPages());
+    }
+
+    private PhysicalStockRowDTO toStockRowDTO(SeizureNote note) {
+        PhysicalStockRowDTO dto = new PhysicalStockRowDTO();
+        dto.setId(note.getId());
+        dto.setSeizureNumber(note.getSeizureNumber());
+        dto.setPvNumber(note.getPvNumber());
+        dto.setTaxpayerTin(note.getTaxpayerTin());
+        dto.setTaxpayerName(note.getTaxpayerName());
+        dto.setTaxpayerAddress(note.getTaxpayerAddress());
+        dto.setTaxpayerContact(note.getTaxpayerContact());
+        dto.setTaxpayerType(note.getTaxpayerType());
+        dto.setNationalId(note.getNationalId());
+        dto.setPhysicalDescription(note.getPhysicalDescription());
+        dto.setRepresentativeName(note.getRepresentativeName());
+        dto.setRepresentativeContact(note.getRepresentativeContact());
+        dto.setGoodsDescription(note.getGoodsDescription());
+        dto.setQuantity(note.getQuantity());
+        dto.setQuantityType(note.getQuantityType());
+        dto.setFullDescription(note.getFullDescription());
+        dto.setLocationOfSeizure(note.getLocationOfSeizure());
+        dto.setConditionOfGoods(note.getConditionOfGoods());
+        dto.setConveyanceMeans(note.getConveyanceMeans());
+        dto.setConveyanceRegistration(note.getConveyanceRegistration());
+        dto.setSeizureReason(note.getSeizureReason());
+        dto.setDateTimeSeized(note.getDateTimeSeized());
+        dto.setStatus(note.getStatus() == null ? null : note.getStatus().name());
+        dto.setReturnReason(note.getReturnReason());
+        dto.setReturnDate(note.getReturnDate());
+        dto.setApprovedAt(note.getApprovedAt());
+        dto.setReleaseRequestedAt(note.getReleaseRequestedAt());
+        dto.setReleasedAt(note.getReleasedAt());
+        dto.setAuctionWinner(note.getAuctionWinner());
+        dto.setAuctionDate(note.getAuctionDate());
+        dto.setAuctionAmount(note.getAuctionAmount());
+        dto.setCreatedAt(note.getCreatedAt());
+        dto.setUpdatedAt(note.getUpdatedAt());
+        dto.setActionedAt(note.getActionedAt());
+        return dto;
     }
 
     private boolean isAdminUsername(String username) {
@@ -761,7 +816,8 @@ public class PhysicalStockService {
                 .toList();
     }
 
-    public PageResponseDTO<SeizureNote> getMainStockPage(int page, int size, String search, String view, String sort) {
+    @Transactional(readOnly = true)
+    public PageResponseDTO<PhysicalStockRowDTO> getMainStockPage(int page, int size, String search, String view, String sort) {
         String normalizedSearch = search == null ? "" : search.trim().toLowerCase(Locale.ROOT);
         String normalizedView = view == null || view.isBlank() ? "ALL" : view.trim().toUpperCase(Locale.ROOT);
         boolean ascending = "date_asc".equalsIgnoreCase(sort);
@@ -782,7 +838,7 @@ public class PhysicalStockService {
                 })
                 .toList();
 
-        return toPageResponse(rows, page, size);
+        return toStockPageResponse(rows, page, size);
     }
 
     private boolean matchesMainStockView(SeizureNote row, String view) {

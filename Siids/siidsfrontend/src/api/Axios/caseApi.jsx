@@ -351,10 +351,10 @@ export const ReportApi = {
         return caseApi.post(`/api/reports/${reportId}/approve`, {});
     },
 
-    approveReportByAssistantCommissioner: (reportId, routeDepartment, signatureBase64) => {
-        return caseApi.post(`/api/reports/${reportId}/approve-assistant-commissioner`, {
-            routeDepartment,
-            signatureBase64
+    approveAndRouteByAssistantCommissioner: (reportId, destinationDepartment, routingNotes = '') => {
+        return caseApi.post(`/api/reports/${reportId}/approve-and-route`, {
+            destinationDepartment,
+            routingNotes
         });
     },
 
@@ -369,6 +369,10 @@ export const ReportApi = {
             signatureBase64,
             role
         });
+    },
+
+    generateInvestigationDraft: (reportId) => {
+        return caseApi.post(`/api/reports/${reportId}/generate-draft`);
     },
 
     downloadInvestigationReportPdf: (reportId) => {
