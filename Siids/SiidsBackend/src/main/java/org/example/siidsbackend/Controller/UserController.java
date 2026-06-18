@@ -256,6 +256,8 @@ public class UserController {
             String performedBy = authentication != null ? authentication.getName() : "system";
             User updatedUser = service.toggleUserActiveStatus(id, performedBy);
             return ResponseEntity.ok(service.toUserResponse(updatedUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to toggle user status");

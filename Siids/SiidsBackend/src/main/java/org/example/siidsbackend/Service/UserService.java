@@ -66,6 +66,7 @@ public class UserService {
     private RbacService rbacService;
 
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    private static final String PROTECTED_ADMIN_ROLE = "ADMIN";
 
     private User getSingleUser(String username) {
         return repo.findByUsername(username).orElse(null);
@@ -91,6 +92,9 @@ public class UserService {
         }
         if (temporaryPassword.length() < 8) {
             throw new IllegalArgumentException("Temporary password must be at least 8 characters");
+        }
+        if (isProtectedAdminRole(role)) {
+            throw new IllegalArgumentException("Admin is a protected system role and cannot be created from user management.");
         }
 
         if (repo.findByUsername(employeeId).isPresent()) {
@@ -402,6 +406,7 @@ public class UserService {
 
     public java.util.List<UserResponseDTO> getAllUsers() {
         return repo.findAll().stream()
+                .filter(user -> !isProtectedAdminUser(user))
                 .map(this::toUserResponse)
                 .toList();
     }
@@ -409,7 +414,7 @@ public class UserService {
     public PageResponseDTO<UserResponseDTO> getUserPage(int page, int size, String search) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(size, 1);
-        Page<User> users = repo.searchUsers(
+        Page<User> users = repo.searchManageableUsers(
                 search == null ? "" : search.trim().toLowerCase(),
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "id")));
 
@@ -460,6 +465,12 @@ public class UserService {
         }
 
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (isProtectedAdminUser(user)) {
+            throw new IllegalArgumentException("Admin is a protected system account and its role cannot be changed.");
+        }
+        if (isProtectedAdminRole(normalizedRoleInput)) {
+            throw new IllegalArgumentException("Admin is a protected system role and cannot be assigned from user management.");
+        }
         String previousRole = user.getRole();
         user.setRole(normalizedRoleInput);
         User saved = repo.save(user);
@@ -475,11 +486,22 @@ public class UserService {
 
     public User toggleUserActiveStatus(Integer id, String performedBy) {
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (isProtectedAdminUser(user)) {
+            throw new IllegalArgumentException("Admin is a protected system account and cannot be activated or deactivated here.");
+        }
         user.setActive(user.getActive() == null ? false : !user.getActive());
         User saved = repo.save(user);
         recordAccountAudit(Boolean.TRUE.equals(saved.getActive()) ? "USER_ACTIVATED" : "USER_DEACTIVATED",
                 saved.getUsername(), performedBy, "Active status changed to " + saved.getActive());
         return saved;
+    }
+
+    private boolean isProtectedAdminRole(String role) {
+        return PROTECTED_ADMIN_ROLE.equals(rbacService.normalizeRole(role));
+    }
+
+    private boolean isProtectedAdminUser(User user) {
+        return user != null && isProtectedAdminRole(user.getRole());
     }
 
     private void applyEmployeeDefaults(Employee employee) {
