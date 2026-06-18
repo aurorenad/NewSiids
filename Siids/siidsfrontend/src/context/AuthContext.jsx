@@ -15,6 +15,7 @@ const emptyAuthState = {
     name: null,
     role: null,
     permissions: [],
+    mustChangePassword: false,
     profile: {},
 };
 
@@ -26,6 +27,7 @@ export const AuthProvider = ({ children }) => {
         name: null,
         role: null,
         permissions: [],
+        mustChangePassword: false,
         profile: {}, // Defensive initialization
     });
 
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }) => {
         const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
         const name = localStorage.getItem('name') || sessionStorage.getItem('name');
         const role = localStorage.getItem('role') || sessionStorage.getItem('role');
+        const mustChangePassword = (localStorage.getItem('mustChangePassword') || sessionStorage.getItem('mustChangePassword')) === 'true';
         const permissions = readStoredPermissions();
 
         if (token && employeeId) {
@@ -57,6 +60,7 @@ export const AuthProvider = ({ children }) => {
                 name,
                 role,
                 permissions,
+                mustChangePassword,
                 profile: {}, 
             });
         } else {
@@ -80,7 +84,7 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
-    const login = (userId, token, employeeId, name, remember, role, permissions = []) => {
+    const login = (userId, token, employeeId, name, remember, role, permissions = [], mustChangePassword = false) => {
         const storage = remember ? localStorage : sessionStorage;
         
         storage.setItem('token', token);
@@ -89,6 +93,7 @@ export const AuthProvider = ({ children }) => {
         storage.setItem('name', name);
         storage.setItem('role', role);
         storage.setItem('permissions', JSON.stringify(permissions));
+        storage.setItem('mustChangePassword', String(Boolean(mustChangePassword)));
 
         setAuthState({ 
             token, 
@@ -97,8 +102,18 @@ export const AuthProvider = ({ children }) => {
             name, 
             role, 
             permissions,
+            mustChangePassword: Boolean(mustChangePassword),
             profile: {} 
         });
+    };
+
+    const markPasswordChanged = () => {
+        localStorage.setItem('mustChangePassword', 'false');
+        sessionStorage.setItem('mustChangePassword', 'false');
+        setAuthState((current) => ({
+            ...current,
+            mustChangePassword: false,
+        }));
     };
 
     const logout = () => {
@@ -120,6 +135,7 @@ export const AuthProvider = ({ children }) => {
             authState: getSafeAuth(authState),
             currentUser: getSafeAuth(authState),
             login,
+            markPasswordChanged,
             logout,
             loading
         }}>

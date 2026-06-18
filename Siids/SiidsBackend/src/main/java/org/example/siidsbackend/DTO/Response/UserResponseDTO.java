@@ -11,4 +11,5 @@ public class UserResponseDTO {
     private String role;
     private Boolean active;
     private String authProvider;
+    private Boolean mustChangePassword;
 }

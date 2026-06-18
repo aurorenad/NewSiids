@@ -33,6 +33,7 @@ const DirectorIntelligenceCaseReports = lazy(() => import('./Components/Director
 const T3OfficersReports = lazy(() => import('./Components/T3OfficersReports.jsx'));
 const ForgotPassword = lazy(() => import('./Components/ForgotPassword.jsx'));
 const SetupPassword = lazy(() => import('./Components/SetupPassword.jsx'));
+const ChangePassword = lazy(() => import('./Components/ChangePassword.jsx'));
 const LegalAdvisor = lazy(() => import('./Components/LegalAdvisor.jsx'));
 const EditReport = lazy(() => import('./Components/EditReport.jsx'));
 const StockManagement = lazy(() => import('./Components/StockManagement.jsx'));
@@ -71,6 +72,10 @@ const ProtectedRoute = ({ children, permissions, requireAllPermissions = false }
         return <Navigate to={ROUTES.LOGIN} replace />;
     }
 
+    if (authState?.mustChangePassword) {
+        return <Navigate to={ROUTES.CHANGE_PASSWORD} replace />;
+    }
+
     if (permissions?.length) {
         const hasAccess = requireAllPermissions
             ? hasAllPermissions(authState, permissions)
@@ -94,6 +99,29 @@ const PublicOnlyRoute = ({ children }) => {
     }
 
     if (authState?.token && authState?.employeeId && storedToken && storedEmployeeId) {
+        if (authState?.mustChangePassword) {
+            return <Navigate to={ROUTES.CHANGE_PASSWORD} replace />;
+        }
+        return <Navigate to={ROUTES.HOME} replace />;
+    }
+
+    return children;
+};
+
+const PasswordChangeRoute = ({ children }) => {
+    const { authState, loading } = useContext(AuthContext);
+    const storedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const storedEmployeeId = localStorage.getItem('employeeId') || sessionStorage.getItem('employeeId');
+
+    if (loading) {
+        return <RouteLoadingScreen />;
+    }
+
+    if (!authState?.token || !authState?.employeeId || !storedToken || !storedEmployeeId) {
+        return <Navigate to={ROUTES.LOGIN} replace />;
+    }
+
+    if (!authState?.mustChangePassword) {
         return <Navigate to={ROUTES.HOME} replace />;
     }
 
@@ -165,6 +193,7 @@ const protectedRoutes = [
 const AppRoutes = () => {
     return (
         <Routes>
+            <Route path={ROUTES.CHANGE_PASSWORD} element={<PasswordChangeRoute><ChangePassword /></PasswordChangeRoute>} />
             {publicRoutes.map((route) => (
                 <Route key={route.path} path={route.path} element={withPublicOnly(route.element)} />
             ))}

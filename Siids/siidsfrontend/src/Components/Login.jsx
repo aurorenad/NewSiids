@@ -34,7 +34,7 @@ const Login = () => {
 
     useEffect(() => {
         if (authState?.token && authState?.employeeId) {
-            navigate(ROUTES.HOME, { replace: true });
+            navigate(authState.mustChangePassword ? ROUTES.CHANGE_PASSWORD : ROUTES.HOME, { replace: true });
         }
     }, [authState, navigate]);
 
@@ -59,9 +59,10 @@ const Login = () => {
                     const permissions = Array.isArray(data.permissions)
                         ? data.permissions
                         : (data.permissions || '').split(',').map((permission) => permission.trim()).filter(Boolean);
+                    const mustChangePassword = data.mustChangePassword === true || data.mustChangePassword === 'true';
 
-                    login(userId.trim(), data.token, employeeId, name, rememberMe, role, permissions);
-                    // Navigation happens in useEffect
+                    login(userId.trim(), data.token, employeeId, name, rememberMe, role, permissions, mustChangePassword);
+                    navigate(mustChangePassword ? ROUTES.CHANGE_PASSWORD : ROUTES.HOME, { replace: true });
                 } catch (loginError) {
                     console.error('Login context error:', loginError);
                     setError('Internal authentication error. Please try again.');
