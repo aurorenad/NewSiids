@@ -1,6 +1,7 @@
 package org.example.siidsbackend.Config;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +18,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -31,17 +33,16 @@ public class SecurityConfig {
     @org.springframework.context.annotation.Lazy
     private UserDetailsService userDetailsService;
 
+    @Value("${cors.allowed-origins}")
+    private String allowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         return http.csrf(customizer -> customizer.disable())
                 .cors(customizer -> customizer.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of(
-                        "http://localhost:3000", "http://localhost:5173", "http://localhost:5174",
-                        "http://127.0.0.1:3000", "http://127.0.0.1:5173", "http://127.0.0.1:5174",
-                        "http://192.168.0.142:8086"
-                    ));
+                    config.setAllowedOrigins(parseOrigins());
                     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
                     config.setAllowedHeaders(List.of("*"));
                     config.setExposedHeaders(List.of("Authorization", "X-Auth-User", "X-Auth-Status", "X-Auth-Roles", "X-Auth-Error"));
@@ -79,5 +80,12 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    private List<String> parseOrigins() {
+        return Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
     }
 }

@@ -48,6 +48,18 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private UserRepo userRepo;
 
+    @Value("${app.bootstrap-admin.enabled:false}")
+    private boolean bootstrapAdminEnabled;
+
+    @Value("${app.bootstrap-admin.username:}")
+    private String bootstrapAdminUsername;
+
+    @Value("${app.bootstrap-admin.password:}")
+    private String bootstrapAdminPassword;
+
+    @Value("${app.bootstrap-admin.role:Admin}")
+    private String bootstrapAdminRole;
+
     @Override
     public void run(String... args) {
         System.out.println("========================================");
@@ -89,17 +101,29 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeDefaultAdmin() {
-        long count = userRepo.count();
-        if (count == 0) {
-            System.out.println("→ Creating default admin user (00763)...");
-            User admin = new User();
-            admin.setUsername("00763");
-            admin.setPassword(new BCryptPasswordEncoder().encode("admin123"));
-            admin.setRole("Admin");
-            admin.setActive(true);
-            userRepo.save(admin);
-            System.out.println("✓ Default admin created.");
+        if (!bootstrapAdminEnabled) {
+            System.out.println("Bootstrap admin seeding is disabled.");
+            return;
         }
+        if (bootstrapAdminUsername == null || bootstrapAdminUsername.isBlank()
+                || bootstrapAdminPassword == null || bootstrapAdminPassword.isBlank()) {
+            System.out.println("Bootstrap admin enabled, but username/password are missing. Skipping admin seed.");
+            return;
+        }
+        if (userRepo.findByUsername(bootstrapAdminUsername.trim()).isPresent()) {
+            System.out.println("Bootstrap admin user already exists. Password was not changed.");
+            return;
+        }
+        System.out.println("Creating bootstrap admin user (" + bootstrapAdminUsername.trim() + ")...");
+        User admin = new User();
+        admin.setUsername(bootstrapAdminUsername.trim());
+        admin.setPassword(new BCryptPasswordEncoder().encode(bootstrapAdminPassword.trim()));
+        admin.setRole(bootstrapAdminRole == null || bootstrapAdminRole.isBlank() ? "Admin" : bootstrapAdminRole.trim());
+        admin.setActive(true);
+        admin.setAuthProvider("LOCAL");
+        admin.setMustChangePassword(true);
+        userRepo.save(admin);
+        System.out.println("Bootstrap admin created.");
     }
 
     private void initializeEmployeesForExistingUsers() {

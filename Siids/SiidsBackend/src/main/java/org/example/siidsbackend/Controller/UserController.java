@@ -83,6 +83,7 @@ public class UserController {
             response.put("username", user.getUsername());
             response.put("role", result.get("role"));
             response.put("permissions", result.getOrDefault("permissions", ""));
+            response.put("mustChangePassword", result.getOrDefault("mustChangePassword", "false"));
             response.put("message", "Login successful");
 
             // Add the employee name to the response
@@ -182,6 +183,27 @@ public class UserController {
         }
     }
 
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> request, Authentication authentication) {
+        try {
+            String username = authentication != null ? authentication.getName() : null;
+            Map<String, String> result = service.changePassword(
+                    username,
+                    request.get("currentPassword"),
+                    request.get("newPassword"));
+
+            if (result.containsKey("error")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(result);
+            }
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Change password error", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to change password"));
+        }
+    }
+
     @GetMapping("/users")
     @PreAuthorize("hasAuthority('USER_VIEW')")
     public PageResponseDTO<UserResponseDTO> getAllUsers(
@@ -234,6 +256,8 @@ public class UserController {
             String performedBy = authentication != null ? authentication.getName() : "system";
             User updatedUser = service.toggleUserActiveStatus(id, performedBy);
             return ResponseEntity.ok(service.toUserResponse(updatedUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", "Failed to toggle user status");

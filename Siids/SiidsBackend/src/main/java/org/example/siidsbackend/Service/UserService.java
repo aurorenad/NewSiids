@@ -66,6 +66,7 @@ public class UserService {
     private RbacService rbacService;
 
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    private static final String PROTECTED_ADMIN_ROLE = "ADMIN";
 
     private User getSingleUser(String username) {
         return repo.findByUsername(username).orElse(null);
@@ -84,9 +85,16 @@ public class UserService {
         String familyName = trim(request.get("familyName"));
         String workEmail = trim(request.get("workEmail"));
         String phoneNumber = trim(request.get("phoneNumber"));
+        String temporaryPassword = trim(request.get("temporaryPassword"));
 
-        if (employeeId == null || role == null || givenName == null || familyName == null || workEmail == null) {
-            throw new IllegalArgumentException("Employee ID, given name, family name, work email, and role are required");
+        if (employeeId == null || role == null || givenName == null || familyName == null || workEmail == null || temporaryPassword == null) {
+            throw new IllegalArgumentException("Employee ID, given name, family name, work email, role, and temporary password are required");
+        }
+        if (temporaryPassword.length() < 8) {
+            throw new IllegalArgumentException("Temporary password must be at least 8 characters");
+        }
+        if (isProtectedAdminRole(role)) {
+            throw new IllegalArgumentException("Admin is a protected system role and cannot be created from user management.");
         }
 
         if (repo.findByUsername(employeeId).isPresent()) {
@@ -107,19 +115,17 @@ public class UserService {
         user.setRole(role);
         user.setActive(true);
         user.setAuthProvider("LOCAL");
-        user.setPassword(encoder.encode(UUID.randomUUID().toString()));
-        String rawSetupToken = UUID.randomUUID().toString();
-        user.setPasswordSetupToken(hashToken(rawSetupToken));
-        user.setPasswordSetupExpiryTime(LocalDateTime.now().plusMinutes(60));
+        user.setPassword(encoder.encode(temporaryPassword));
+        user.setMustChangePassword(true);
+        user.setPasswordSetupToken(null);
+        user.setPasswordSetupExpiryTime(null);
         repo.save(user);
 
-        recordRoleHistory(user, null, role, performedBy, "Initial user onboarding");
-        recordAccountAudit("USER_CREATED", employeeId, performedBy, "Created employee profile and user account with role " + role);
-
-        emailService.sendPasswordSetupEmail(workEmail, employeeId, rawSetupToken);
+        recordRoleHistory(user, null, role, performedBy, "Initial user onboarding with temporary password");
+        recordAccountAudit("USER_CREATED", employeeId, performedBy, "Created employee profile and user account with role " + role + "; temporary password requires change on first login");
 
         Map<String, String> response = new HashMap<>();
-        response.put("message", "User created and password setup email sent");
+        response.put("message", "User created with temporary password. User must change password on first login.");
         response.put("username", employeeId);
         response.put("role", role);
         return response;
@@ -164,6 +170,7 @@ public class UserService {
                     response.put("token", token);
                     response.put("role", dbUser.getRole());
                     response.put("permissions", String.join(",", rbacService.getPermissionsForRole(dbUser.getRole())));
+                    response.put("mustChangePassword", String.valueOf(Boolean.TRUE.equals(dbUser.getMustChangePassword())));
                 } else {
                     response.put("error", "User not found");
                 }
@@ -311,6 +318,7 @@ public class UserService {
         // OTP is valid, proceed with password reset
         User user = getSingleUser(username);
         user.setPassword(encoder.encode(newPassword));
+        user.setMustChangePassword(false);
         user.setOtp(null); // Clear OTP after use
         user.setOtpExpiryTime(null);
         repo.save(user);
@@ -344,6 +352,7 @@ public class UserService {
         user.setPasswordSetupToken(null);
         user.setPasswordSetupExpiryTime(null);
         user.setActive(true);
+        user.setMustChangePassword(false);
         repo.save(user);
 
         recordAccountAudit("PASSWORD_SETUP_COMPLETED", user.getUsername(), user.getUsername(), "User completed password setup");
@@ -352,8 +361,52 @@ public class UserService {
         return response;
     }
 
+    public Map<String, String> changePassword(String username, String currentPassword, String newPassword) {
+        Map<String, String> response = new HashMap<>();
+
+        if (username == null || username.isBlank()) {
+            response.put("error", "Authenticated username is required");
+            return response;
+        }
+        if (currentPassword == null || currentPassword.isBlank() || newPassword == null || newPassword.isBlank()) {
+            response.put("error", "Current password and new password are required");
+            return response;
+        }
+        if (newPassword.length() < 8) {
+            response.put("error", "New password must be at least 8 characters");
+            return response;
+        }
+        if (currentPassword.equals(newPassword)) {
+            response.put("error", "New password must be different from the temporary/current password");
+            return response;
+        }
+
+        User user = getSingleUser(username);
+        if (user == null) {
+            response.put("error", "User not found");
+            return response;
+        }
+        if (!encoder.matches(currentPassword, user.getPassword())) {
+            response.put("error", "Current password is incorrect");
+            return response;
+        }
+
+        user.setPassword(encoder.encode(newPassword));
+        user.setMustChangePassword(false);
+        user.setPasswordSetupToken(null);
+        user.setPasswordSetupExpiryTime(null);
+        repo.save(user);
+
+        recordAccountAudit("PASSWORD_CHANGED", username, username, "User changed password");
+
+        response.put("message", "Password changed successfully");
+        response.put("mustChangePassword", "false");
+        return response;
+    }
+
     public java.util.List<UserResponseDTO> getAllUsers() {
         return repo.findAll().stream()
+                .filter(user -> !isProtectedAdminUser(user))
                 .map(this::toUserResponse)
                 .toList();
     }
@@ -361,7 +414,7 @@ public class UserService {
     public PageResponseDTO<UserResponseDTO> getUserPage(int page, int size, String search) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(size, 1);
-        Page<User> users = repo.searchUsers(
+        Page<User> users = repo.searchManageableUsers(
                 search == null ? "" : search.trim().toLowerCase(),
                 PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "id")));
 
@@ -412,6 +465,12 @@ public class UserService {
         }
 
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (isProtectedAdminUser(user)) {
+            throw new IllegalArgumentException("Admin is a protected system account and its role cannot be changed.");
+        }
+        if (isProtectedAdminRole(normalizedRoleInput)) {
+            throw new IllegalArgumentException("Admin is a protected system role and cannot be assigned from user management.");
+        }
         String previousRole = user.getRole();
         user.setRole(normalizedRoleInput);
         User saved = repo.save(user);
@@ -427,11 +486,22 @@ public class UserService {
 
     public User toggleUserActiveStatus(Integer id, String performedBy) {
         User user = repo.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (isProtectedAdminUser(user)) {
+            throw new IllegalArgumentException("Admin is a protected system account and cannot be activated or deactivated here.");
+        }
         user.setActive(user.getActive() == null ? false : !user.getActive());
         User saved = repo.save(user);
         recordAccountAudit(Boolean.TRUE.equals(saved.getActive()) ? "USER_ACTIVATED" : "USER_DEACTIVATED",
                 saved.getUsername(), performedBy, "Active status changed to " + saved.getActive());
         return saved;
+    }
+
+    private boolean isProtectedAdminRole(String role) {
+        return PROTECTED_ADMIN_ROLE.equals(rbacService.normalizeRole(role));
+    }
+
+    private boolean isProtectedAdminUser(User user) {
+        return user != null && isProtectedAdminRole(user.getRole());
     }
 
     private void applyEmployeeDefaults(Employee employee) {
@@ -496,7 +566,8 @@ public class UserService {
                 user.getUsername(),
                 user.getRole(),
                 user.getActive(),
-                user.getAuthProvider());
+                user.getAuthProvider(),
+                user.getMustChangePassword());
     }
 
     private String trim(String value) {
