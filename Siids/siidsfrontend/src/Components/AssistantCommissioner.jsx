@@ -431,7 +431,17 @@ const AssistantCommissioner = () => {
             </Paper>
 
             {/* Rejection Portal */}
-            <Dialog open={closeDialogOpen} onClose={() => setCloseDialogOpen(false)} fullWidth>
+            <Dialog 
+                open={closeDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setCloseDialogOpen(false);
+                    }
+                }} 
+                fullWidth
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ bgcolor: closeActionType === "return" ? '#f59e0b' : '#ef4444', color: '#fff' }}>
                     {getCriticalActionCopy().title}
                 </DialogTitle>
@@ -446,7 +456,18 @@ const AssistantCommissioner = () => {
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={routingDialogOpen} onClose={() => !submitting && setRoutingDialogOpen(false)} fullWidth maxWidth="sm">
+            <Dialog 
+                open={routingDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick' && !submitting) {
+                        setRoutingDialogOpen(false);
+                    }
+                }} 
+                fullWidth 
+                maxWidth="sm"
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ fontWeight: 700 }}>Route Case Intake</DialogTitle>
                 <DialogContent sx={{ mt: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
@@ -521,7 +542,18 @@ const AssistantCommissioner = () => {
                 </DialogActions>
             </Dialog>
 
-            <Dialog open={signatureDialogOpen} onClose={() => !submitting && setSignatureDialogOpen(false)} maxWidth="sm" fullWidth>
+            <Dialog 
+                open={signatureDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick' && !submitting) {
+                        setSignatureDialogOpen(false);
+                    }
+                }} 
+                maxWidth="sm" 
+                fullWidth
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ fontWeight: 700 }}>Provide Digital Signature</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

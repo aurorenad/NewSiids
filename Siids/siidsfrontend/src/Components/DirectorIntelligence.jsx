@@ -641,7 +641,18 @@ const DirectorIntelligence = () => {
             />
 
             {/* Reject Dialog */}
-            <Dialog open={rejectDialogOpen} onClose={closeRejectDialog} maxWidth="sm" fullWidth>
+            <Dialog 
+                open={rejectDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        closeRejectDialog();
+                    }
+                }} 
+                maxWidth="sm" 
+                fullWidth
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle>Reject Report</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -676,7 +687,18 @@ const DirectorIntelligence = () => {
             </Dialog>
 
             {/* Return Dialog */}
-            <Dialog open={returnDialogOpen} onClose={closeReturnDialog} maxWidth="md" fullWidth>
+            <Dialog 
+                open={returnDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        closeReturnDialog();
+                    }
+                }} 
+                maxWidth="md" 
+                fullWidth
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle>Return Report</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -827,7 +849,7 @@ const DirectorIntelligence = () => {
             </Dialog>
 
             {/* Info Dialog */}
-            <Dialog open={infoDialogOpen} onClose={closeInfoDialog} maxWidth="sm" fullWidth>
+            <Dialog open={infoDialogOpen} onClose={closeInfoDialog} maxWidth="sm" fullWidth disableEnforceFocus disableRestoreFocus>
                 <DialogTitle>Report Information</DialogTitle>
                 <DialogContent>
                     <Box sx={{ '& > *': { mb: 1 } }}>

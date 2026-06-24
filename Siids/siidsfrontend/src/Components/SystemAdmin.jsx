@@ -313,9 +313,15 @@ const SystemAdmin = () => {
       {/* Register Dialog */}
       <Dialog
         open={openRegister}
-        onClose={handleRegisterToggle}
+        onClose={(e, reason) => {
+          if (reason !== 'backdropClick') {
+            handleRegisterToggle();
+          }
+        }}
         maxWidth="sm"
         fullWidth
+        disableEnforceFocus
+        disableRestoreFocus
         PaperProps={{
           sx: {
             overflow: 'visible',
@@ -341,12 +347,16 @@ const SystemAdmin = () => {
       {/* Edit Role Dialog */}
       <Dialog
         open={openRole}
-        onClose={() => {
-          setOpenRole(false);
-          setRoleChangeReason('');
+        onClose={(e, reason) => {
+          if (reason !== 'backdropClick') {
+            setOpenRole(false);
+            setRoleChangeReason('');
+          }
         }}
         maxWidth="xs"
         fullWidth
+        disableEnforceFocus
+        disableRestoreFocus
         PaperProps={{
           sx: {
             overflow: 'visible',
@@ -395,6 +405,8 @@ const SystemAdmin = () => {
         onClose={() => setOpenHistory(false)}
         maxWidth="md"
         fullWidth
+        disableEnforceFocus
+        disableRestoreFocus
       >
         <DialogTitle>
           User History {selectedUser?.username ? `- ${selectedUser.username}` : ''}

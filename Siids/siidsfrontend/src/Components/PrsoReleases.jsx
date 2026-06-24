@@ -188,7 +188,18 @@ const PrsoReleases = () => {
             />
 
             {/* Reject Dialog */}
-            <Dialog open={openReject} onClose={() => setOpenReject(false)} maxWidth="sm" fullWidth>
+            <Dialog 
+                open={openReject} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setOpenReject(false);
+                    }
+                }} 
+                maxWidth="sm" 
+                fullWidth
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle>Reject Release</DialogTitle>
                 <DialogContent>
                     <TextField

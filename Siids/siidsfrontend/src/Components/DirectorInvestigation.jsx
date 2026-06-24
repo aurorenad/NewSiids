@@ -1138,6 +1138,8 @@ const DirectorInvestigation = () => {
                 onClose={() => setInvestigationReportDialogOpen(false)}
                 fullWidth
                 maxWidth="lg"
+                disableEnforceFocus
+                disableRestoreFocus
             >
                 <DialogTitle sx={{ bgcolor: '#1e40af', color: '#fff', fontWeight: 700 }}>
                     Investigation Report — Case {selectedCaseForInvestigationReport?.id || 'Unknown'}
@@ -1265,7 +1267,16 @@ const DirectorInvestigation = () => {
             </Dialog>
 
             {/* Investigation Report Reject Dialog */}
-            <Dialog open={investigationReportRejectDialogOpen} onClose={() => setInvestigationReportRejectDialogOpen(false)}>
+            <Dialog 
+                open={investigationReportRejectDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setInvestigationReportRejectDialogOpen(false);
+                    }
+                }}
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700 }}>Reject Investigation Report</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Case ID: {selectedCaseForInvestigationReport?.id || 'Unknown'}</Typography>
@@ -1301,7 +1312,16 @@ const DirectorInvestigation = () => {
             </Dialog>
 
             {/* Investigation Report Return Dialog */}
-            <Dialog open={investigationReportReturnDialogOpen} onClose={() => setInvestigationReportReturnDialogOpen(false)}>
+            <Dialog 
+                open={investigationReportReturnDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setInvestigationReportReturnDialogOpen(false);
+                    }
+                }}
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ bgcolor: '#d97706', color: '#fff', fontWeight: 700 }}>Return Investigation Report for Revision</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Case ID: {selectedCaseForInvestigationReport?.id || 'Unknown'}</Typography>
@@ -1338,7 +1358,7 @@ const DirectorInvestigation = () => {
             </Dialog>
 
             {/* Assign Officer Dialog */}
-            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="md" fullWidth>
+            <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="md" fullWidth disableEnforceFocus disableRestoreFocus>
                 <DialogTitle sx={{ bgcolor: '#1e40af', color: '#fff', fontWeight: 700 }}>
                     Assign Investigation Officer — Case {selectedCase?.id}
                 </DialogTitle>
@@ -1423,7 +1443,7 @@ const DirectorInvestigation = () => {
             </Dialog>
 
             {/* Send to Assistant Commissioner Dialog */}
-            <Dialog open={sendToCommissionerDialogOpen} onClose={() => setSendToCommissionerDialogOpen(false)}>
+            <Dialog open={sendToCommissionerDialogOpen} onClose={() => setSendToCommissionerDialogOpen(false)} disableEnforceFocus disableRestoreFocus>
                 <DialogTitle>Send Case Plan to Assistant Commissioner</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom variant="h6" color="primary">
@@ -1458,7 +1478,16 @@ const DirectorInvestigation = () => {
             </Dialog>
 
             {/* Reject Dialog */}
-            <Dialog open={rejectDialogOpen} onClose={() => setRejectDialogOpen(false)}>
+            <Dialog 
+                open={rejectDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setRejectDialogOpen(false);
+                    }
+                }}
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700 }}>Reject Report</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Case ID: {selectedCase?.id}</Typography>
@@ -1499,6 +1528,8 @@ const DirectorInvestigation = () => {
                 onClose={() => setViewReportDialogOpen(false)}
                 fullWidth
                 maxWidth="md"
+                disableEnforceFocus
+                disableRestoreFocus
             >
                 <DialogTitle>Report Details - Case {selectedCase?.id}</DialogTitle>
                 <DialogContent>
@@ -1569,6 +1600,8 @@ const DirectorInvestigation = () => {
                 onClose={() => setViewFindingsDialogOpen(false)}
                 fullWidth
                 maxWidth="lg"
+                disableEnforceFocus
+                disableRestoreFocus
             >
                 <DialogTitle>
                     Investigation Findings - Case {selectedCase?.id}
@@ -1695,6 +1728,8 @@ const DirectorInvestigation = () => {
                 onClose={() => setViewCasePlanDialogOpen(false)}
                 fullWidth
                 maxWidth="lg"
+                disableEnforceFocus
+                disableRestoreFocus
             >
                 <DialogTitle>
                     Case Plan - Report #{selectedCase?.id}
@@ -1804,7 +1839,16 @@ const DirectorInvestigation = () => {
             </Dialog>
 
             {/* Case Plan Reject Dialog */}
-            <Dialog open={casePlanRejectDialogOpen} onClose={() => setCasePlanRejectDialogOpen(false)}>
+            <Dialog 
+                open={casePlanRejectDialogOpen} 
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setCasePlanRejectDialogOpen(false);
+                    }
+                }}
+                disableEnforceFocus
+                disableRestoreFocus
+            >
                 <DialogTitle sx={{ bgcolor: '#dc2626', color: '#fff', fontWeight: 700 }}>Reject Case Plan</DialogTitle>
                 <DialogContent>
                     <Typography gutterBottom>Report ID: {selectedCase?.id}</Typography>

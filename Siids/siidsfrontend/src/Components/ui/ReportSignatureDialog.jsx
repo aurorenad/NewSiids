@@ -105,7 +105,18 @@ const ReportSignatureDialog = ({ open, report, role, title, onClose, onSigned })
     };
 
     return (
-        <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
+        <Dialog 
+            open={open} 
+            onClose={(e, reason) => {
+                if (reason !== 'backdropClick' && !saving) {
+                    onClose?.();
+                }
+            }} 
+            fullWidth 
+            maxWidth="sm"
+            disableEnforceFocus
+            disableRestoreFocus
+        >
             <DialogTitle>{title}</DialogTitle>
             <DialogContent>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>

@@ -80,11 +80,15 @@ const RequestReleaseModal = ({ isOpen, onClose, onConfirm, seizureNumber }) => {
   return (
     <Dialog 
       open={Boolean(isOpen)} 
-      onClose={onClose}
+      onClose={(e, reason) => {
+        if (reason !== 'backdropClick') {
+          onClose();
+        }
+      }}
       maxWidth="sm"
       fullWidth
       disableRestoreFocus
-      disableEnforceFocus={false}
+      disableEnforceFocus={true}
       // Force high z-index and ensure it's on top
       sx={{ zIndex: 9999 }}
       PaperProps={{

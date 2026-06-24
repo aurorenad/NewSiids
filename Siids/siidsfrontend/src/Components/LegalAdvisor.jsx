@@ -497,9 +497,15 @@ const LegalAdvisorDashboard = () => {
             {/* Return Report Dialog */}
             <Dialog
                 open={returnDialogOpen}
-                onClose={() => setReturnDialogOpen(false)}
+                onClose={(e, reason) => {
+                    if (reason !== 'backdropClick') {
+                        setReturnDialogOpen(false);
+                    }
+                }}
                 maxWidth="sm"
                 fullWidth
+                disableEnforceFocus
+                disableRestoreFocus
             >
                 <DialogTitle>
                     <Box display="flex" alignItems="center" gap={1}>

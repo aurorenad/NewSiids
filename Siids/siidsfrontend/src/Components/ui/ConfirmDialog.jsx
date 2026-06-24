@@ -25,7 +25,11 @@ const ConfirmDialog = ({
 
   return (
     <Portal>
-      <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-overlay" onClick={() => {
+        if (!requiresReason) {
+          onClose();
+        }
+      }}>
         <div className="modal-card" style={{ maxWidth: 420 }} onClick={e => e.stopPropagation()}>
           <div style={{ padding: '24px 24px 0', textAlign: 'center' }}>
             <cfg.icon style={{ width: 40, height: 40, color: cfg.iconColor, margin: '0 auto 12px' }} />
