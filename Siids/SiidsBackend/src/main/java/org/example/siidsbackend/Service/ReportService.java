@@ -1206,6 +1206,30 @@ public class ReportService {
                 .orElseThrow(() -> new RuntimeException("Report not found with ID: " + reportId));
 
         Employee rejector = employeeRepo.findByEmployeeId(rejectorId)
+                .orElseThrow(() -> new RuntimeException("Rejector not found with ID: " + rejectorId));
+
+        Case relatedCase = report.getRelatedCase();
+        if (relatedCase == null) {
+            throw new IllegalStateException("Report is not associated with a case.");
+        }
+
+        WorkflowStatus newStatus;
+        switch (relatedCase.getStatus()) {
+            case REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE:
+                newStatus = WorkflowStatus.REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE;
+                report.setDirectorIntelligence(rejector);
+                break;
+            case REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER:
+                newStatus = WorkflowStatus.REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER;
+                report.setAssistantCommissioner(rejector);
+                break;
+            default:
+                throw new IllegalStateException("Cannot reject report in current status: " + relatedCase.getStatus());
+        }
+
+        relatedCase.setStatus(newStatus);
+        report.setRejectedBy(rejector);
+        report.setRejectionReason(rejectionReason);
         report.setRejectedAt(LocalDateTime.now());
         report.setUpdatedAt(LocalDateTime.now());
         
