@@ -400,7 +400,7 @@ const DirectorIntelligence = () => {
             case 'REPORT_RETURNED_ASSISTANT_COMMISSIONER': return 'warning';
             case 'REPORT_SUBMITTED_TO_DIRECTOR_INTELLIGENCE': return 'info';
             case 'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER': return 'warning';
-            case 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': return 'warning';
+            case 'REPORT_RETURNED_TO_DIRECTOR_INTELLIGENCE': return 'error';
             case 'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER': return 'success';
             case 'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION': return 'info';
             default: return 'default';
