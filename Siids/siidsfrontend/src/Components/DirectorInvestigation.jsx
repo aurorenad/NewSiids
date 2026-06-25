@@ -905,6 +905,7 @@ const DirectorInvestigation = () => {
             render: (caseItem) => {
                 const canApprove = canApproveInvestigation && (
                     caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                    caseItem.status?.includes('REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION') ||
                     caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
                     caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
                     caseItem.investigationReportStatus === 'submitted' ||
@@ -915,6 +916,7 @@ const DirectorInvestigation = () => {
 
                 const canReject = canApproveInvestigation && (
                     caseItem.status?.includes('REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION') ||
+                    caseItem.status?.includes('REPORT_RETURNED_TO_DIRECTOR_INVESTIGATION') ||
                     caseItem.status?.includes('INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION') ||
                     caseItem.status?.includes('INVESTIGATION_COMPLETED') ||
                     caseItem.investigationReportStatus === 'submitted' ||

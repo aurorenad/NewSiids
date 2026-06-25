@@ -424,17 +424,56 @@ const DirectorIntelligence = () => {
     };
 
     const isActionDisabled = (report) => {
+        // Reports that have left Director Intelligence's scope (moved further in workflow
+        // or already finalised/rejected/returned) should not be actionable
         const disabledStatuses = [
             'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE',
             'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE',
             'REPORT_RETURNED_ASSISTANT_COMMISSIONER',
-            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER'
+            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER',
+            // Past Director Intelligence stage — these are now in Investigation/AC scope
+            'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER',
+            'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION',
+            'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION',
+            'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER',
+            'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER',
+            'INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER',
         ];
+        // Also disable if the report is fully finalised (both signatures obtained)
+        if (report.finalised) return true;
         return disabledStatuses.includes(report.status) || actionLoadingReports.has(report.id);
     };
 
     const isReportLoading = (reportId) => {
         return actionLoadingReports.has(reportId);
+    };
+
+    const getActionTooltip = (report, defaultLabel) => {
+        if (report.finalised) return 'Report is finalised — no further actions required';
+        const downstreamStatuses = [
+            'REPORT_APPROVED_BY_DIRECTOR_INTELLIGENCE',
+            'REPORT_REJECTED_BY_DIRECTOR_INTELLIGENCE',
+            'REPORT_RETURNED_ASSISTANT_COMMISSIONER',
+            'REPORT_RETURNED_TO_INTELLIGENCE_OFFICER',
+            'REPORT_SUBMITTED_TO_ASSISTANT_COMMISSIONER',
+            'REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER',
+            'REPORT_SUBMITTED_TO_DIRECTOR_INVESTIGATION',
+            'REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION',
+            'REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER',
+            'REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_SENT_TO_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_APPROVED_BY_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_APPROVED_BY_ASSISTANT_COMMISSIONER',
+            'INVESTIGATION_REPORT_REJECTED_BY_DIRECTOR_INVESTIGATION',
+            'INVESTIGATION_REPORT_REJECTED_BY_ASSISTANT_COMMISSIONER',
+        ];
+        if (downstreamStatuses.includes(report.status)) return 'Report has already been processed beyond this stage';
+        return defaultLabel;
     };
 
     const formatDate = (dateString) => {
@@ -494,7 +533,7 @@ const DirectorIntelligence = () => {
                     </Tooltip>
 
                     {canApproveIntelligence && (
-                        <Tooltip title="Approve">
+                        <Tooltip title={getActionTooltip(report, 'Approve')}>
                             <span>
                                 <IconButton
                                     disabled={isActionDisabled(report)}
@@ -509,7 +548,7 @@ const DirectorIntelligence = () => {
                     )}
 
                     {canApproveIntelligence && (
-                        <Tooltip title="Close">
+                        <Tooltip title={getActionTooltip(report, 'Reject')}>
                             <span>
                                 <IconButton
                                     disabled={isActionDisabled(report)}
@@ -524,7 +563,7 @@ const DirectorIntelligence = () => {
                     )}
 
                     {canReturnReport && (
-                        <Tooltip title="Return">
+                        <Tooltip title={getActionTooltip(report, 'Return')}>
                             <span>
                                 <IconButton
                                     disabled={isActionDisabled(report)}
